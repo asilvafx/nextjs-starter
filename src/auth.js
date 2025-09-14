@@ -1,0 +1,112 @@
+// auth.js
+import NextAuth from 'next-auth';
+import CredentialsProvider from 'next-auth/providers/credentials';
+
+const authConfig = {
+    providers: [
+        CredentialsProvider({
+            id: 'credentials',
+            name: 'credentials',
+            credentials: {
+                email: { label: 'Email', type: 'email' },
+                password: { label: 'Password', type: 'password' },
+                client: { label: 'Client', type: 'text' },
+                action: { label: 'Action', type: 'text' },
+                name: { label: 'Name', type: 'text' }
+            },
+            async authorize(credentials) {
+                try {
+                    const { email, password, client, action, name } = credentials;
+
+                    if (!client) {
+                        throw new Error('Invalid request: Client mismatch.');
+                    }
+                    if (!email || !password) {
+                        throw new Error('Email and Password are required.');
+                    }
+
+                    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                    if (!emailRegex.test(email)) {
+                        throw new Error('Invalid email format.');
+                    }
+
+                    const inpEmail = email.toLowerCase();
+                    const passwordHash = atob(password);
+
+                    // Call our auth API instead of importing functions
+                    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+                    const authResponse = await fetch(`${baseUrl}/auth/api/handler`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            email: inpEmail,
+                            password: passwordHash,
+                            client,
+                            action,
+                            name
+                        })
+                    });
+
+                    if(authResponse){
+                        const res = await authResponse.json();
+
+                        if (res?.error) {
+                            return res.error;
+                        }
+
+                        return res;
+                    }
+
+                    return null;
+                } catch (error) {
+                    console.error('Auth error:', error);
+                    throw error;
+                }
+            }
+        })
+    ],
+    session: {
+        strategy: 'jwt',
+        maxAge: 30 * 24 * 60 * 60 // 30 days
+    },
+    jwt: {
+        maxAge: 30 * 24 * 60 * 60 // 30 days
+    },
+    callbacks: {
+        async jwt({ token, user }) {
+            if (user) {
+                token.id = user.id;
+                token.email = user.email;
+                token.displayName = user.displayName;
+                token.role = user.role;
+                token.client = user.client;
+                token.web3 = user.web3;
+                token.created_at = user.created_at;
+            }
+            return token;
+        },
+        async session({ session, token }) {
+            if (token) {
+                session.user.id = token.id;
+                session.user.email = token.email;
+                session.user.displayName = token.displayName;
+                session.user.role = token.role;
+                session.user.client = token.client;
+                session.user.web3 = token.web3;
+                session.user.created_at = token.created_at;
+            }
+            return session;
+        }
+    },
+    pages: {
+        signIn: '/auth/login',
+        signOut: '/auth/logout',
+        error: '/auth/error'
+    },
+    secret: process.env.NEXT_SECRET_KEY,
+    debug: process.env.NODE_ENV === 'development'
+};
+
+export const { handlers, signIn, signOut, auth } = NextAuth(authConfig)

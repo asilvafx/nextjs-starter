@@ -1,0 +1,142 @@
+@import 'tailwindcss';
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+    /* Base colors */
+    --bg-primary: #171717;        /* neutral-900 */
+    --bg-secondary: #1e293b;      /* slate-800 */
+    --text-primary: #ffffff;      /* white */
+    --text-secondary: #94a3b8;    /* slate-400 */
+    --text-muted: #64748b;        /* slate-500 */
+    --text-accent: #cbd5e1;       /* slate-300 */
+
+    /* Brand colors */
+    --primary: #252525;           /* purple-400 */
+    --primary-dark: #9333ea;      /* purple-500 */
+    --secondary: #22d3ee;         /* cyan-400 */
+    --secondary-dark: #06b6d4;    /* cyan-500 */
+    --accent: #10b981;            /* emerald-500 */
+    --accent-light: #34d399;      /* emerald-400 */
+    --accent-dark: #059669;       /* emerald-600 */
+
+    /* Surface colors */
+    --surface: rgba(255, 255, 255, 0.05);     /* white/5 */
+    --surface-hover: rgba(255, 255, 255, 0.1); /* white/10 */
+    --border: rgba(0, 0, 0, 0.2);       /* black/20 */
+    --border-focus: var(--primary);
+    --overlay: rgba(0, 0, 0, 0.05);
+
+    /* Status colors */
+    --success: #22c55e;           /* green-500 */
+    --warning: #f59e0b;           /* amber-500 */
+    --error: #ef4444;             /* red-500 */
+    --info: var(--secondary);
+
+    /* Gradients */
+    --gradient-primary: linear-gradient(to right, var(--primary), var(--secondary));
+    --gradient-surface: linear-gradient(to bottom right, var(--primary-dark), var(--secondary-dark));
+    --gradient-cta: linear-gradient(to bottom right,
+    color-mix(in srgb, var(--primary) 20%, transparent),
+    color-mix(in srgb, var(--secondary) 10%, transparent),
+    color-mix(in srgb, var(--primary) 20%, transparent));
+    --gradient-cta-auth: linear-gradient(to bottom right,
+    color-mix(in srgb, var(--accent) 20%, transparent),
+    color-mix(in srgb, var(--accent-light) 10%, transparent),
+    color-mix(in srgb, var(--accent) 20%, transparent));
+
+    /* Shadows */
+    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -2px rgb(0 0 0 / 0.05);
+}
+
+/* Google Places Autocomplete Styles */
+gmp-place-autocomplete {
+    border: 1px solid rgba(0,0,0,.2) !important;
+    color-scheme: light;
+    font-size: 16px !important;
+    height: 45px !important;
+    max-height: 45px !important;
+    position: relative;
+    border-radius: 15px !important;
+}
+gmp-place-autocomplete:focus, gmp-place-autocomplete:active {
+    font-size: 16px !important;
+}
+
+.pac-target-input, .google-places-input {
+    background-color: transparent !important;
+    color: var(--bg-primary) !important;
+    width: 100%;
+    border: 1px solid var(--border) !important;
+    font-size: smaller;
+    transition: color;
+    padding: 1rem;
+    border-radius: 15px;
+}
+
+.google-places-input:focus {
+    border-color: var(--border-focus) !important;
+    outline: none;
+}
+
+.google-places-input.error {
+    border-color: var(--error) !important;
+}
+
+/* Style the Google Places dropdown */
+.pac-container {
+    background-color: var(--bg-secondary) !important;
+    border-color: var(--border) !important;
+    border-radius: 0.5rem !important;
+    border: 1px solid var(--border) !important;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06) !important;
+    margin-top: 2px !important;
+}
+
+.pac-item {
+    background-color: transparent !important;
+    color: var(--text-primary) !important;
+    border-color: var(--border) !important;
+    padding: 12px 16px !important;
+    font-size: 16px !important;
+}
+
+.pac-item:hover {
+    background-color: var(--surface) !important;
+}
+
+.pac-item-selected {
+    background-color: var(--surface-hover) !important;
+}
+
+.pac-matched {
+    color: var(--primary) !important;
+    font-weight: 600 !important;
+}
+
+.pac-item-query {
+    color: var(--text-primary) !important;
+    font-size: 0.875rem !important;
+}
+
+.pac-icon {
+    display: none !important;
+}
+
+/* Hide the Google logo and powered by */
+.google-places-container {
+    position: relative;
+    touch-action: manipulation;
+    max-height: 400px;
+    font-size: 16px;
+}
+.google-places-container gmp-place-autocomplete {
+    padding: 0.3rem !important;
+}
+.pac-logo:after {
+    display: none !important;
+}
+
+.hdpi.pac-logo:after {
+    display: none !important;
+}

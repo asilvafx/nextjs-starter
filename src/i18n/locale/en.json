@@ -1,0 +1,136 @@
+{
+    "HomePage": {
+        "title": "Hello world!",
+        "welcome_back": "Welcome back"
+    },
+    "Shop": {
+        "shopTitle": "Shop",
+        "cart": "Cart",
+        "addToCart": "Add to Cart",
+        "addedToCart": "{productName} added to your cart.",
+        "backToHome": "Back to Home"
+    },
+    "Cart": {
+        "title": "My Cart",
+        "emptyCart": "Empty cart?",
+        "emptyCartTitle": "Your cart is empty",
+        "emptyCartMessage": "Discover our exceptional products and start shopping now.",
+        "goToShop": "Go to Shop",
+        "items": "Items ({count})",
+        "unitPrice": "Unit price: €{price}",
+        "removeItem": "Remove this item",
+        "orderSummary": "Order Summary",
+        "subtotal": "Subtotal ({count} items)",
+        "shipping": "Shipping",
+        "total": "Total",
+        "proceedToCheckout": "Proceed to Checkout",
+        "continueShopping": "Continue Shopping",
+        "securePayment": "100% secure payment",
+        "confirmEmptyCart": "Are you sure you want to empty your cart?"
+    },
+    "Checkout": {
+        "paymentSuccessTitle": "Payment Successful!",
+        "paymentSuccessMessage": "Thank you for your order. You will receive a confirmation email shortly.",
+        "sendingConfirmationEmail": "Sending confirmation email...",
+        "confirmationEmailSent": "Confirmation email sent!",
+        "orderNotFound": "Order not found",
+        "orderDataNotFound": "Order data not found",
+        "orderRetrievalError": "Error retrieving order",
+        "backToHome": "Back to Home",
+        "orderDetailsTitle": "Your Order Details",
+        "orderNumber": "Order Number",
+        "orderDate": "Date",
+        "customerInformation": "Customer Information",
+        "name": "Name",
+        "email": "Email",
+        "orderedItems": "Ordered Items",
+        "size": "Size",
+        "quantity": "Quantity",
+        "subtotal": "Subtotal",
+        "shipping": "Shipping",
+        "total": "Total",
+        "continueShopping": "Continue Shopping",
+        "viewMyOrders": "View My Orders",
+        "downloadReceipt": "Download Receipt",
+        "resendConfirmationEmail": "Resend confirmation email",
+        "noEmailReceived": "Didn't receive an email? Click here",
+        "backToShop": "Back to Shop",
+        "checkoutTitle": "Complete Your Order",
+        "emptyCartTitle": "Your cart is empty",
+        "emptyCartMessage": "Add products to your cart to continue",
+        "paymentInformation": "Payment Information",
+        "orderSummary": "Order Summary",
+        "securePayment": "100% secure payment with Stripe",
+        "modifyCart": "Modify cart",
+        "contactInformation": "Contact Information",
+        "emailAddress": "Email address",
+        "shippingInformation": "Shipping Information",
+        "firstName": "First name",
+        "lastName": "Last name",
+        "streetAddress": "Street address",
+        "apartmentUnit": "Apartment, unit, etc. (optional)",
+        "city": "City",
+        "stateProvince": "State/Province",
+        "zipPostalCode": "ZIP / Postal Code",
+        "deliveryNotes": "Delivery Notes",
+        "deliveryInstructions": "Leave instructions for the delivery (optional)",
+        "cardInformation": "Card Information",
+        "processing": "Processing",
+        "payButton": "Pay €{amount}",
+        "emailRequired": "Email is required.",
+        "paymentError": "Something went wrong with the payment",
+        "unexpectedError": "An unexpected error occurred"
+    },
+    "GDPR": {
+        "consentModal": {
+            "title": "We use cookies",
+            "description": "We use cookies to improve your experience. Manage your preferences below.",
+            "acceptAllBtn": "Accept all",
+            "acceptNecessaryBtn": "Reject all",
+            "showPreferencesBtn": "Manage Individual preferences",
+            "footer": "Privacy Policy"
+        },
+        "preferencesModal": {
+            "title": "Manage cookie preferences",
+            "acceptAllBtn": "Accept all",
+            "acceptNecessaryBtn": "Reject all",
+            "savePreferencesBtn": "Accept current selection",
+            "closeIconLabel": "Close modal",
+            "serviceCounterLabel": "Service|Services",
+            "sections": {
+                "privacyChoices": {
+                    "title": "Your Privacy Choices",
+                    "description": "In this panel you can express some preferences related to the processing of your personal information. You may review and change expressed choices at any time by resurfacing this panel via the provided link. To deny your consent to the specific processing activities described below, switch the toggles to off or use the \"Reject all\" button and confirm you want to save your choices."
+                },
+                "necessary": {
+                    "title": "Strictly Necessary",
+                    "description": "These cookies are essential for the proper functioning of the website and cannot be disabled."
+                },
+                "analytics": {
+                    "title": "Performance and Analytics",
+                    "description": "These cookies collect information about how you use our website. All of the data is anonymized and cannot be used to identify you."
+                },
+                "advertising": {
+                    "title": "Targeting and Advertising",
+                    "description": "These cookies are used to make advertising messages more relevant to you and your interests. The intention is to display ads that are relevant and engaging for the individual user and thereby more valuable for publishers and third party advertisers."
+                },
+                "moreInfo": {
+                    "title": "More information",
+                    "description": "For any queries in relation to my policy on cookies and your choices, please contact us"
+                }
+            },
+            "cookieTable": {
+                "caption": "Cookie table",
+                "headers": {
+                    "name": "Cookie",
+                    "domain": "Domain",
+                    "desc": "Description"
+                },
+                "cookies": {
+                    "ga": "Google Analytics tracking cookie",
+                    "gid": "Google Analytics identifier cookie"
+                }
+            }
+        }
+    }
+}

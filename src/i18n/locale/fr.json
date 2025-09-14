@@ -1,0 +1,158 @@
+{
+    "HomePage": {
+        "title": "Yo le monde !",
+        "welcome_back": "Content de te revoir ✌️"
+    },
+    "Shop": {
+        "shopTitle": "Boutique",
+        "cart": "Panier",
+        "addToCart": "Ajouter au panier",
+        "addedToCart": "{productName} a été balancé dans ton panier 😉",
+        "backToHome": "Retour à l'accueil"
+    },
+    "Cart": {
+        "title": "Mon Panier",
+        "emptyCart": "Vider le panier ?",
+        "emptyCartTitle": "Ton panier est vide 😅",
+        "emptyCartMessage": "Check nos produits stylés et lance ton shopping !",
+        "goToShop": "Aller à la boutique",
+        "items": "Articles ({count})",
+        "unitPrice": "Prix unitaire : €{price}",
+        "removeItem": "Retirer cet article",
+        "orderSummary": "Récap de la commande",
+        "articles": "Article|Articles",
+        "subtotal": "Sous-total",
+        "shipping": "Livraison",
+        "total": "Total",
+        "proceedToCheckout": "Passer à la caisse",
+        "continueShopping": "Continuer à shopper",
+        "securePayment": "Paiement 100% sécurisé",
+        "confirmEmptyCart": "T'es sûr de vouloir vider ton panier ?"
+    },
+    "Checkout": {
+        "paymentSuccessTitle": "Paiement validé 🎉",
+        "paymentSuccessMessage": "Merci pour ta commande ! Tu vas recevoir un mail de conf' bientôt.",
+        "sendingConfirmationEmail": "Envoi du mail de conf'...",
+        "confirmationEmailSent": "Mail de conf' envoyé ✅",
+        "orderNotFound": "Commande introuvable",
+        "orderDataNotFound": "Données de commande manquantes",
+        "orderRetrievalError": "Erreur de récupération de commande",
+        "backToHome": "Retour à l'accueil",
+        "orderDetailsTitle": "Les détails de ta commande",
+        "orderNumber": "Numéro de commande",
+        "orderDate": "Date",
+        "customerInformation": "Infos client",
+        "name": "Nom",
+        "email": "Email",
+        "orderedItems": "Articles commandés",
+        "size": "Taille",
+        "quantity": "Quantité",
+        "subtotal": "Sous-total",
+        "shipping": "Livraison",
+        "total": "Total",
+        "continueShopping": "Continuer à shopper",
+        "viewMyOrders": "Voir mes commandes",
+        "downloadReceipt": "Télécharger la facture",
+        "resendConfirmationEmail": "Renvoyer le mail de conf'",
+        "noEmailReceived": "Pas reçu de mail ? Clique ici",
+        "backToShop": "Retour à la boutique",
+
+        "checkoutTitle": "Finalise ta commande",
+        "checkoutInformation": "Infos de commande",
+        "contactInformation": "Infos de contact",
+        "shippingInformation": "Infos de livraison",
+        "shippingMethod": "Mode de livraison",
+        "deliveryNotes": "Notes de livraison",
+        "cardInformation": "Infos de paiement",
+        "orderSummary": "Récap de la commande",
+        "orderConfirmation": "Confirmation de commande",
+        "paymentInformation": "Infos de paiement",
+
+        "emailAddress": "Adresse e-mail",
+        "firstName": "Prénom",
+        "lastName": "Nom",
+        "streetAddress": "Adresse",
+        "apartmentUnit": "Appart, unité, etc. (optionnel)",
+        "city": "Ville",
+        "stateProvince": "Région/Province",
+        "zipPostalCode": "Code postal",
+        "deliveryInstructions": "Laisse des instructions pour la livraison (optionnel)",
+
+        "continueToPayment": "Passer au paiement",
+        "editInformation": "Modifier les infos",
+        "deliverTo": "Livrer à",
+        "address": "Adresse",
+
+        "quantity": "Qté",
+        "free": "Gratuit",
+
+        "payButton": "Payer €{amount}",
+        "processing": "En cours...",
+        "securePayment": "Paiement 100% secure via Stripe",
+
+        "modifyCart": "Modifier le panier",
+        "emptyCartTitle": "Ton panier est vide",
+        "emptyCartMessage": "Ajoute des articles pour continuer",
+
+        "emailRequired": "L'email est obligatoire.",
+        "pleaseCompleteAllRequiredFields": "Remplis tous les champs obligatoires stp",
+        "pleaseSelectShippingMethod": "Choisis un mode de livraison",
+        "selectCountryFirst": "Sélectionne ton pays d'abord pour voir les options de livraison",
+        "noShippingMethods": "Aucun mode de livraison dispo pour ce pays",
+        "shippingMethodsError": "Impossible de charger les modes de livraison",
+        "paymentError": "Un souci avec le paiement 😬",
+        "unexpectedError": "Oups, une erreur imprévue est arrivée"
+    },
+    "GDPR": {
+        "consentModal": {
+            "title": "On utilise des cookies 🍪",
+            "description": "C'est pour rendre ton expérience plus cool. Tu peux gérer tes prefs ci-dessous.",
+            "acceptAllBtn": "Tout accepter",
+            "acceptNecessaryBtn": "Tout refuser",
+            "showPreferencesBtn": "Gérer mes prefs",
+            "footer": "Politique de confidentialité"
+        },
+        "preferencesModal": {
+            "title": "Gère tes cookies",
+            "acceptAllBtn": "Tout accepter",
+            "acceptNecessaryBtn": "Tout refuser",
+            "savePreferencesBtn": "Valider mes choix",
+            "closeIconLabel": "Fermer",
+            "serviceCounterLabel": "Service|Services",
+            "sections": {
+                "privacyChoices": {
+                    "title": "Tes choix de vie privée",
+                    "description": "Ici tu peux dire comment tu veux qu'on gère tes infos persos. Tu peux changer ça quand tu veux avec le lien. Si tu veux rien partager, coupe les switchs ou clique sur « Tout refuser » puis confirme."
+                },
+                "necessary": {
+                    "title": "Strictement nécessaires",
+                    "description": "Ces cookies sont vitaux pour que le site marche bien, impossible de les désactiver."
+                },
+                "analytics": {
+                    "title": "Perf' et Analytics",
+                    "description": "Ces cookies servent à capter comment tu utilises le site. Tout est anonyme, t'inquiète pas, personne peut t'identifier."
+                },
+                "advertising": {
+                    "title": "Pub & ciblage",
+                    "description": "Ces cookies rendent la pub plus adaptée à toi et tes goûts. L'idée c'est de te montrer des pubs utiles et pas relou."
+                },
+                "moreInfo": {
+                    "title": "Plus d'infos",
+                    "description": "Si t'as des questions sur ma politique cookies ou tes choix, contacte-nous."
+                }
+            },
+            "cookieTable": {
+                "caption": "Table des cookies",
+                "headers": {
+                    "name": "Cookie",
+                    "domain": "Domaine",
+                    "desc": "Description"
+                },
+                "cookies": {
+                    "ga": "Cookie de suivi Google Analytics",
+                    "gid": "Cookie d'identifiant Google Analytics"
+                }
+            }
+        }
+    }
+}
