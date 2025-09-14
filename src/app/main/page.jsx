@@ -16,7 +16,6 @@ const Homepage = () => {
                 setLoading(true);
                 setError(null);
 
-                console.log("📡 Making fetch request...");
                 const controller = new AbortController();
                 const timeoutId = setTimeout(() => controller.abort(), 20000); // 20 second timeout
 
@@ -26,9 +25,7 @@ const Homepage = () => {
 
                 clearTimeout(timeoutId);
                 console.log("📨 Response received");
-                console.log("Response status:", res.status);
-                console.log("Response ok:", res.ok);
-                console.log("Response headers:", [...res.headers.entries()]);
+                console.log("Response status:", res);
 
                 const data = await res.json();
                 console.log("Response data:", data);
@@ -38,13 +35,10 @@ const Homepage = () => {
                     // Limit to 10 users
                     setUsers(data.data.slice(0, 10));
                 } else {
-                    console.error("❌ API error:", data.error);
                     setError(data.error || "Unknown API error");
                 }
             } catch (err) {
                 console.error("❌ Fetch error:", err);
-                console.error("❌ Error name:", err.name);
-                console.error("❌ Error message:", err.message);
 
                 if (err.name === 'AbortError') {
                     setError("Request timed out after 20 seconds");
@@ -53,7 +47,6 @@ const Homepage = () => {
                 }
             } finally {
                 setLoading(false);
-                console.log("🏁 fetchUsers completed");
             }
         }
 
