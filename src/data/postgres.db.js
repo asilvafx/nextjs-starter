@@ -51,7 +51,6 @@ class PostgresDBService {
         }
 
         try {
-            console.log("🏗️ Creating kv_store table if not exists...");
             const start = Date.now();
 
             await client.sql`
@@ -62,18 +61,13 @@ class PostgresDBService {
                 )
             `;
 
-            const duration = Date.now() - start;
-            console.log(`✅ kv_store table ensured in ${duration}ms`);
-
             // Verify table exists
             const tableCheck = await client.sql`
                 SELECT table_name
                 FROM information_schema.tables
                 WHERE table_name = 'kv_store'
             `;
-
-            console.log("📊 Table verification result:", tableCheck.rows.length > 0 ? "EXISTS" : "NOT FOUND");
-
+            
             this.initialized = true;
 
         } catch (err) {

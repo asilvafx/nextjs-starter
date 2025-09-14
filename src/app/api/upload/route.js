@@ -1,8 +1,36 @@
 // app/api/upload/route.js
 import { NextResponse } from 'next/server';
 import { v4 as uuidv4 } from 'uuid';
-import { withAuth } from '@/lib/auth.js';
+import { auth } from '@/auth.js';
 import dbService from '@/data/rest.db.js';
+
+// Authentication middleware for upload route
+async function withAuth(handler) {
+    return async (request) => {
+        try {
+            // Get session from NextAuth v5
+            const session = await auth();
+
+            if (!session?.user) {
+                return NextResponse.json(
+                    { error: 'Authentication required' },
+                    { status: 401 }
+                );
+            }
+
+            // Add user data to request context
+            request.user = session.user;
+
+            return await handler(request);
+        } catch (error) {
+            console.error('Upload auth middleware error:', error);
+            return NextResponse.json(
+                { error: 'Authentication failed' },
+                { status: 401 }
+            );
+        }
+    };
+}
 
 // POST handler for file uploads
 async function uploadHandler(request) {
@@ -87,6 +115,7 @@ async function uploadHandler(request) {
                     type: file.type,
                     uploadedAt: new Date().toISOString(),
                     uploadPath: uploadPath,
+                    uploadedBy: request.user.id,
                     ...uploadResult // Include any additional data from dbService
                 });
 

@@ -3,17 +3,6 @@ import { NextResponse } from 'next/server';
 import DBService from '@/data/rest.db.js';
 import { withPublicAccess } from '@/lib/auth.js';
 
-// Helper function to convert object data to array format
-const convertToArray = (data, includeKey = true) => {
-    if (!data || typeof data !== 'object') return [];
-
-    return Object.entries(data).map(([key, item]) => ({
-        ...item,
-        key: key,
-        id: item.id || key
-    }));
-};
-
 // Helper function to get request body safely
 async function getRequestBody(request) {
     try {
@@ -23,6 +12,7 @@ async function getRequestBody(request) {
         }
         return await request.json();
     } catch (error) {
+        console.error('Error parsing request body:', error);
         return null;
     }
 }
@@ -36,7 +26,7 @@ async function handlePublicGet(request, { params }) {
         const key = url.searchParams.get('key');
         const value = url.searchParams.get('value');
         const page = parseInt(url.searchParams.get('page')) || 1;
-        const limit = parseInt(url.searchParams.get('limit')) || 10;
+        const limit = Math.min(parseInt(url.searchParams.get('limit')) || 10, 100); // Max 100 items
         const search = url.searchParams.get('search');
 
         if (!slug) {
@@ -57,11 +47,15 @@ async function handlePublicGet(request, { params }) {
                     { status: 404 }
                 );
             }
+            return NextResponse.json({
+                success: true,
+                data: result
+            });
         }
         // Get items by key-value pair
         else if (key && value) {
             result = await DBService.getItemsByKeyValue(key, value, slug);
-            if (!result) {
+            if (!result || Object.keys(result).length === 0) {
                 return NextResponse.json(
                     { error: 'No records found' },
                     { status: 404 }
@@ -72,30 +66,27 @@ async function handlePublicGet(request, { params }) {
         else {
             result = await DBService.readAll(slug);
             if (!result) {
-                return NextResponse.json(
-                    { error: 'Data not found' },
-                    { status: 404 }
-                );
+                return NextResponse.json({
+                    success: true,
+                    data: [],
+                    pagination: {
+                        currentPage: page,
+                        totalItems: 0,
+                        totalPages: 0,
+                        hasNext: false,
+                        hasPrev: false
+                    }
+                });
             }
         }
 
-        const response = result;
-
-        // Handle different response formats
+        // Convert result to array format for pagination and search
         let items = [];
-        if (Array.isArray(response)) {
-            items = response;
-        } else if (response && Array.isArray(response.data)) {
-            items = response.data;
-        } else if (response && response.success && Array.isArray(response.data)) {
-            items = response.data;
-        } else if (response && typeof response === 'object') {
-            items = Object.entries(response).map(([id, item]) => ({
-                id,
-                ...item
-            }));
-        } else if (response && response.data && typeof response.data === 'object') {
-            items = Object.entries(response.data).map(([id, item]) => ({
+        if (Array.isArray(result)) {
+            items = result;
+        } else if (typeof result === 'object' && result !== null) {
+            // Handle object format where keys are IDs and values are items
+            items = Object.entries(result).map(([id, item]) => ({
                 id,
                 ...item
             }));
@@ -104,13 +95,19 @@ async function handlePublicGet(request, { params }) {
         // Search functionality
         if (search && items.length > 0) {
             const searchTerm = search.toLowerCase();
-            items = items.filter(item =>
-                    item && (
-                        (item.name && item.name.toLowerCase().includes(searchTerm)) ||
-                        (item.description && item.description.toLowerCase().includes(searchTerm)) ||
-                        (item.category && item.category.toLowerCase().includes(searchTerm))
-                    )
-            );
+            items = items.filter(item => {
+                if (!item) return false;
+
+                const searchableFields = [
+                    item.name, item.title, item.description,
+                    item.category, item.email, item.displayName
+                ];
+
+                return searchableFields.some(field =>
+                    field && typeof field === 'string' &&
+                    field.toLowerCase().includes(searchTerm)
+                );
+            });
         }
 
         // Sort by created date (newest first)
@@ -142,7 +139,10 @@ async function handlePublicGet(request, { params }) {
     } catch (error) {
         console.error('Public get data error:', error);
         return NextResponse.json(
-            { error: 'Failed to retrieve data.' },
+            {
+                error: 'Failed to retrieve data.',
+                message: error.message
+            },
             { status: 500 }
         );
     }
@@ -188,14 +188,20 @@ async function handlePublicPost(request, { params }) {
 
         return NextResponse.json({
             success: true,
-            data: convertToArray(newItem),
+            data: {
+                id: newItem.id || newItem.key || Date.now().toString(),
+                ...createData
+            },
             message: 'Record created successfully!'
         }, { status: 201 });
 
     } catch (error) {
         console.error('Public create data error:', error);
         return NextResponse.json(
-            { error: 'Failed to create record.' },
+            {
+                error: 'Failed to create record.',
+                message: error.message
+            },
             { status: 500 }
         );
     }
@@ -231,14 +237,15 @@ async function handlePublicPut(request, { params }) {
         }
 
         // Prepare update data
+        const { id, ...updateFields } = data;
         const updateData = {
             ...existingItem,
-            ...data,
+            ...updateFields,
             updatedAt: new Date().toISOString(),
             updatedBy: request.user?.id || 'anonymous'
         };
 
-        const updatedItem = await DBService.update(data.id, updateData, slug);
+        const updatedItem = await DBService.update(id, updateData, slug);
 
         if (!updatedItem) {
             return NextResponse.json(
@@ -249,14 +256,17 @@ async function handlePublicPut(request, { params }) {
 
         return NextResponse.json({
             success: true,
-            data: convertToArray(updatedItem),
+            data: { id, ...updateData },
             message: 'Record updated successfully!'
         });
 
     } catch (error) {
         console.error('Public update data error:', error);
         return NextResponse.json(
-            { error: 'Failed to update record.' },
+            {
+                error: 'Failed to update record.',
+                message: error.message
+            },
             { status: 500 }
         );
     }
@@ -310,7 +320,10 @@ async function handlePublicDelete(request, { params }) {
     } catch (error) {
         console.error('Public delete record error:', error);
         return NextResponse.json(
-            { error: 'Failed to delete record.' },
+            {
+                error: 'Failed to delete record.',
+                message: error.message
+            },
             { status: 500 }
         );
     }
@@ -318,33 +331,33 @@ async function handlePublicDelete(request, { params }) {
 
 // Export handlers with secure public access middleware and permissions
 export const GET = withPublicAccess(handlePublicGet, {
-    requireApiKey: true,
-    requireIpWhitelist: true,
+    requireApiKey: false,
+    requireIpWhitelist: false,
     skipCsrfForApiKey: true,
-    requiredPermission: 'read', // Require read permission
+    requiredPermission: null,
     logAccess: true
 });
 
 export const POST = withPublicAccess(handlePublicPost, {
-    requireApiKey: true,
-    requireIpWhitelist: true,
+    requireApiKey: false,
+    requireIpWhitelist: false,
     skipCsrfForApiKey: true,
-    requiredPermission: 'write', // Require write permission
+    requiredPermission: null,
     logAccess: true
 });
 
 export const PUT = withPublicAccess(handlePublicPut, {
-    requireApiKey: true,
-    requireIpWhitelist: true,
+    requireApiKey: false,
+    requireIpWhitelist: false,
     skipCsrfForApiKey: true,
-    requiredPermission: 'write', // Require write permission
+    requiredPermission: null,
     logAccess: true
 });
 
 export const DELETE = withPublicAccess(handlePublicDelete, {
-    requireApiKey: true,
-    requireIpWhitelist: true,
+    requireApiKey: false,
+    requireIpWhitelist: false,
     skipCsrfForApiKey: true,
-    requiredPermission: 'delete', // Require delete permission
+    requiredPermission: null,
     logAccess: true
 });

@@ -1,40 +1,27 @@
-// (old) lib/query.js
-
-import { authenticatedFetch } from '@/hooks/useAuth.js';
-import {getCsrfToken} from '@/lib/auth.js';
+// lib/query.js
+import { auth } from '@/auth.js';
 
 class QueryAPI {
     constructor() {
         this.baseURL = `/api/query`;
         this.uploadURL = `/api/upload`;
-        this.publicURL = `/api/query/public`; // Fixed: was missing /api/
+        this.publicURL = `/api/query/public`;
     }
 
     // Helper method for making authenticated API calls
     async makeRequest(url, options = {}) {
         try {
-            const response = await authenticatedFetch(url, options);
-
-            if (!response) {
-                throw new Error('No response received');
-            }
-
-            if (!response.ok) {
-                const errorData = await response.json().catch(() => ({}));
-                throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
-            }
-
-            return await response.json();
-        } catch (error) {
-            console.error('API request error:', error);
-            throw error;
-        }
-    }
-    // Helper method for making public API calls with CSRF protection
-    async makePublicRequest(url, options = {}) {
-        try {
             // Get CSRF token for public requests
-            const csrfToken = await getCsrfToken();
+            const csrfResponse = await fetch('/api/auth/csrf', {
+                credentials: 'include'
+            });
+
+            if (!csrfResponse.ok) {
+                throw new Error('Failed to fetch CSRF token');
+            }
+
+            const csrfData = await csrfResponse.json();
+            const csrfToken = csrfData.csrfToken;
 
             if (!csrfToken) {
                 throw new Error('Unable to obtain CSRF token');
@@ -57,8 +44,67 @@ class QueryAPI {
             }
 
             if (!response.ok) {
-                const errorData = await response.json().catch(() => ({}));
-                throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+                const errorText = await response.text();
+                let errorData;
+                try {
+                    errorData = JSON.parse(errorText);
+                } catch {
+                    errorData = { error: errorText };
+                }
+                throw new Error(errorData.error || errorData.message || `HTTP error! status: ${response.status}`);
+            }
+
+            return await response.json();
+        } catch (error) {
+            console.error('API request error:', error);
+            throw error;
+        }
+    }
+
+    // Helper method for making public API calls with CSRF protection
+    async makePublicRequest(url, options = {}) {
+        try {
+            // Get CSRF token for public requests
+            const csrfResponse = await fetch('/api/auth/csrf', {
+                credentials: 'include'
+            });
+
+            if (!csrfResponse.ok) {
+                throw new Error('Failed to fetch CSRF token');
+            }
+
+            const csrfData = await csrfResponse.json();
+            const csrfToken = csrfData.csrfToken;
+
+            if (!csrfToken) {
+                throw new Error('Unable to obtain CSRF token');
+            }
+
+            const defaultOptions = {
+                credentials: 'include',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'x-csrf-token': csrfToken,
+                    ...options.headers
+                },
+                ...options
+            };
+
+            const response = await fetch(url, defaultOptions);
+
+            if (!response) {
+                throw new Error('No response received');
+            }
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                let errorData;
+                try {
+                    errorData = JSON.parse(errorText);
+                } catch {
+                    errorData = { error: errorText };
+                }
+                throw new Error(errorData.error || errorData.message || `HTTP error! status: ${response.status}`);
             }
 
             return await response.json();
@@ -69,14 +115,14 @@ class QueryAPI {
     }
 
     // GET all items from a collection (authenticated)
-    async getAll(collection, params={}) {
+    async getAll(collection, params = {}) {
         const queryString = new URLSearchParams(params).toString();
         const url = `${this.baseURL}/${collection}${queryString ? `?${queryString}` : ''}`;
         return await this.makeRequest(url);
     }
 
     // GET all items from a collection (public access)
-    async getAllPublic(collection, params={}) {
+    async getAllPublic(collection, params = {}) {
         const queryString = new URLSearchParams(params).toString();
         const url = `${this.publicURL}/${collection}${queryString ? `?${queryString}` : ''}`;
         return await this.makePublicRequest(url);
@@ -164,36 +210,54 @@ class QueryAPI {
 
     // UPLOAD file (authenticated)
     async upload(files, path = 'uploads') {
-        const formData = new FormData();
+        try {
+            const session = await auth();
 
-        // Handle single file or multiple files
-        if (Array.isArray(files)) {
-            files.forEach(file => formData.append('files', file));
-        } else {
-            formData.append('files', files);
+            if (!session?.user) {
+                throw new Error('Not authenticated');
+            }
+
+            const formData = new FormData();
+
+            // Handle single file or multiple files
+            if (Array.isArray(files)) {
+                files.forEach((file) => formData.append('files', file));
+            } else {
+                formData.append('files', files);
+            }
+
+            const options = {
+                method: 'POST',
+                credentials: 'include',
+                body: formData
+            };
+
+            const response = await fetch(this.uploadURL, options);
+
+            if (!response) {
+                throw new Error('No response received');
+            }
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                let errorData;
+                try {
+                    errorData = JSON.parse(errorText);
+                } catch {
+                    errorData = { error: errorText };
+                }
+                throw new Error(errorData.error || errorData.message || `HTTP error! status: ${response.status}`);
+            }
+
+            const result = await response.json();
+            return result.data;
+        } catch (error) {
+            console.error('Upload error:', error);
+            throw error;
         }
-
-        const options = {
-            method: 'POST',
-            body: formData
-        };
-
-        const response = await authenticatedFetch(this.uploadURL, options);
-
-        if (!response) {
-            throw new Error('No response received');
-        }
-
-        if (!response.ok) {
-            const errorData = await response.json().catch(() => ({}));
-            throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
-        }
-
-        const result = await response.json();
-        return result.data;
     }
 
-    // Batch operations remain the same...
+    // Batch operations
     async batchCreate(items, collection) {
         const results = [];
         for (const item of items) {
@@ -220,7 +284,31 @@ class QueryAPI {
         return results;
     }
 
-    // ... other batch methods remain the same
+    async batchUpdate(updates, collection) {
+        const results = [];
+        for (const { id, data } of updates) {
+            try {
+                const result = await this.update(id, data, collection);
+                results.push({ success: true, data: result, id });
+            } catch (error) {
+                results.push({ success: false, error: error.message, id });
+            }
+        }
+        return results;
+    }
+
+    async batchDelete(ids, collection) {
+        const results = [];
+        for (const id of ids) {
+            try {
+                const result = await this.delete(id, collection);
+                results.push({ success: true, data: result, id });
+            } catch (error) {
+                results.push({ success: false, error: error.message, id });
+            }
+        }
+        return results;
+    }
 }
 
 // Create and export a singleton instance
@@ -244,6 +332,8 @@ export const removePublic = (id, collection) => queryAPI.deletePublic(id, collec
 // Export batch operations
 export const batchCreate = (items, collection) => queryAPI.batchCreate(items, collection);
 export const batchCreatePublic = (items, collection) => queryAPI.batchCreatePublic(items, collection);
+export const batchUpdate = (updates, collection) => queryAPI.batchUpdate(updates, collection);
+export const batchDelete = (ids, collection) => queryAPI.batchDelete(ids, collection);
 
 // Export the main class instance
 export default queryAPI;
