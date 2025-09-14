@@ -1,10 +1,12 @@
 "use client"
 
 import { useEffect, useState } from "react";
-import { useSession } from 'next-auth/react';
+import { useAuth } from '@/hooks/useAuth';
+import ThemeSwitch from './components/ThemeSwitch';
+import Link from 'next/link';
 
 const Homepage = () => {
-    const { data: session } = useSession() || {};
+    const { isAuthenticated, user, status, logout } = useAuth();
     const [users, setUsers] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -116,9 +118,47 @@ const Homepage = () => {
         }
     };
 
+    const handleSignOut = async() => {
+        await logout({ callbackUrl: '/auth/login' });
+    };
+
     return (
         <div className="section">
-            <h1 className="text-3xl font-bold mb-6">Database Test Page</h1>
+
+            <div className="w-full flex items-center justify-between mb-6">
+                <h1 className="text-3xl font-bold mb-6">Test Page</h1>
+                <ThemeSwitch />
+            </div>
+
+            {/* User Auth */}
+            <div className="border border-gray-700 p-4 mb-6 rounded bg-white/5">
+
+                <h3 className="font-bold mb-2">Auth Info:</h3>
+
+                {status === 'loading' ? (
+                    <div className="flex">Loading...</div>
+                ) : isAuthenticated ? (
+                    <div className="flex gap-2">
+                        <p>
+                            Welcome, {user?.displayName || user?.email}!
+                        </p>
+                        <button
+                            onClick={handleSignOut}
+                            className="button px-4 py-2 rounded-sm relative ml-2"
+                        >
+                            Sign Out
+                        </button>
+                    </div>
+
+                ) : (
+                    <Link
+                        href="/auth/login"
+                        className="bg-white text-black px-4 py-2 rounded-sm relative"
+                    >
+                        Login
+                    </Link>
+                )}
+            </div>
 
             {/* Environment Info */}
             <div className="border border-gray-700 p-4 mb-6 rounded bg-white/5">
@@ -126,12 +166,6 @@ const Homepage = () => {
                 <p>Postgres URL configured: {process.env.POSTGRES_URL ? 'Yes' : 'No'}</p>
                 <p>Current time: {new Date().toISOString()}</p>
             </div>
-
-            {session && (
-                <div className="mb-4 p-4 bg-green-800 rounded">
-                    <p>Logged in as: {session.user?.email}</p>
-                </div>
-            )}
 
             <div className="mb-6 flex gap-4">
                 <button
