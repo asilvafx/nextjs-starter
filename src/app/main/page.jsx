@@ -11,6 +11,7 @@ import { getAllPublic } from '@/lib/query.js';
 const Homepage = () => {
     const { isAuthenticated, user, status, logout } = useAuth();
     const [users, setUsers] = useState([]);
+    const [setupData, setSetupData] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
@@ -22,15 +23,13 @@ const Homepage = () => {
                 setLoading(true);
                 setError(null);
 
-                // Get all users
-                const result = await getAllPublic('users');
+                // Get all users, limit to 10 users
+                const result = await getAllPublic('users', {limit: 10});
 
                 console.log("📨 Response received:", result);
 
                 if (result.success) {
-                    console.log("✅ Success! Users count:", result.data?.length || 0);
-                    // Limit to 10 users
-                    setUsers(result.data.slice(0, 10));
+                    setUsers(result.data);
                 } else {
                     setError(result.error || "Unknown API error");
                 }
@@ -50,54 +49,33 @@ const Homepage = () => {
         }
     }, [isAuthenticated, status]);
 
-    // Function to create a test user using the create function
-    const createTestUser = async () => {
-        if (!isAuthenticated) {
-            toast.error("Please sign in to create users");
-            return;
-        }
-
-        toast("🚀 Creating test user...");
+    // Function to check setup
+    useEffect(() => {
+        const setupDbEnv = async () => {
         try {
-            const testUser = {
-                displayName: `Test User ${Date.now()}`,
-                email: `test${Date.now()}@example.com`,
-                role: 'user',
-                createdAt: new Date().toISOString()
-            };
-
-            console.log("📤 Creating user with data:", testUser);
-
-            // Use the direct fetch to test endpoint for now
-            const res = await fetch("/api/test/users", {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(testUser),
+        fetch('/api/setup')
+            .then(res => res.json())
+            .then(data => {
+                setSetupData(data);
+                setLoading(false);
+            })
+            .catch(error => {
+                console.error('Setup check failed:', error);
+                setLoading(false);
             });
-
-            const data = await res.json();
-            console.log("Create user response:", data);
-
-            if (data.success) {
-                console.log("✅ User created successfully!");
-                toast.success("User created successfully!");
-                // Refetch users to update the list
-                window.location.reload();
-            } else {
-                console.error("❌ Failed to create user:", data.error);
-                toast.error(`Failed to create user: ${data.error}`);
-            }
         } catch (err) {
-            console.error("❌ Error creating test user:", err);
-            toast.error(`Error creating user: ${err.message}`);
+            console.error("❌ Error loading setup:", err);
+            toast.error(`Error loading setup: ${err.message}`);
         }
-    };
+        }
+        setupDbEnv();
+    }, []);
 
     const handleSignOut = async() => {
         await logout();
     };
+
+    if (loading) return <div>Loading...</div>;
 
     return (
         <div className="section">
@@ -105,24 +83,43 @@ const Homepage = () => {
                 <h1 className="text-3xl font-bold">Test Page</h1>
                 <ThemeSwitch />
             </div>
+            <div className="border border-gray-300 dark:border-gray-700 p-4 mb-6 rounded bg-black/5 dark:bg-white/5">
+                <h1>Environment Setup Status</h1>
+                {setupData?.setupComplete ? (
+                    <p className="text-green-600">✅ Setup is complete!</p>
+                ) : (
+                    <div>
+                        <p className="text-red-600">❌ Setup incomplete</p>
+                        <p>Progress: {setupData?.setupPercentage}%</p>
+                        <p>Missing: {setupData?.status?.missing?.join(', ')}</p>
+                        <p>Empty: {setupData?.status?.empty?.join(', ')}</p>
+                    </div>
+                )}
+            </div>
 
             {/* User Auth */}
-            <div className="border border-gray-700 p-4 mb-6 rounded bg-white/5">
-                <h3 className="font-bold mb-2">Auth Info:</h3>
-
+            <div className="border border-gray-300 dark:border-gray-700 p-4 mb-6 rounded bg-black/5 dark:bg-white/5">
                 {status === 'loading' ? (
                     <div className="flex">Loading...</div>
                 ) : isAuthenticated ? (
-                    <div className="flex gap-2">
-                        <p>
-                            Welcome, {user?.displayName || user?.email}! Role: {user?.role}
-                        </p>
-                        <button
-                            onClick={handleSignOut}
-                            className="button px-4 py-2 rounded-sm relative ml-2"
-                        >
-                            Sign Out
-                        </button>
+                    <div className="flex tems-center justify-between gap-2">
+                        <div className="flex flex-col gap-2">
+                            <span>
+                                Welcome, {user?.displayName || user?.email}!
+                            </span>
+                            <span>
+                                  Role: {user?.role}
+                            </span>
+                        </div>
+                        <div className="my-auto">
+                            <button
+                                onClick={handleSignOut}
+                                className="bg-black text-white dark:bg-white dark:text-black px-4 py-2 rounded-sm relative"
+                            >
+                                Sign Out
+                            </button>
+                        </div>
+
                     </div>
                 ) : (
                     <div className="flex gap-2">
@@ -142,23 +139,6 @@ const Homepage = () => {
                 )}
             </div>
 
-            <div className="mb-6 flex gap-4">
-                <button
-                    onClick={createTestUser}
-                    className="bg-blue-700 text-white px-4 py-2 rounded hover:bg-blue-600"
-                    disabled={loading || !isAuthenticated}
-                >
-                    {loading ? 'Loading...' : 'Create Test User'}
-                </button>
-
-                <button
-                    onClick={() => window.location.reload()}
-                    className="bg-gray-700 text-white px-4 py-2 rounded hover:bg-gray-600"
-                >
-                    Reload Page
-                </button>
-            </div>
-
             <div className="mb-6">
                 <h2 className="text-2xl font-semibold mb-4">Users ({users.length})</h2>
 
@@ -169,7 +149,7 @@ const Homepage = () => {
                 )}
 
                 {loading && isAuthenticated && (
-                    <div className="text-blue-600 p-4 bg-white/5 rounded">
+                    <div className="text-blue-600 p-4 bg-black/5 dark:bg-white/5 rounded">
                         <div className="animate-pulse">Loading users...</div>
                     </div>
                 )}
@@ -198,7 +178,7 @@ const Homepage = () => {
                 {users.length > 0 && (
                     <div className="grid gap-4">
                         {users.map((user, index) => (
-                            <div key={user.id || index} className="border border-gray-700 p-4 mb-2 rounded bg-white/5">
+                            <div key={user.id || index} className="border border-gray-300 dark:border-gray-700 p-4 mb-2 rounded bg-black/5 dark:bg-white/5">
                                 <div className="font-semibold">ID: {user.id}</div>
                                 <div>Name: {user.name || user.displayName || 'N/A'}</div>
                                 <div>Email: {user.email || 'N/A'}</div>

@@ -49,6 +49,17 @@
     --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -2px rgb(0 0 0 / 0.05);
 }
 
+a, button, .button {
+    pointer-events: auto;
+    cursor: pointer;
+}
+
+a:disabled, button:disabled, .button:disabled {
+    opacity: 0.5;
+    pointer-events: none;
+    cursor: progress;
+}
+
 /* Google Places Autocomplete Styles */
 gmp-place-autocomplete {
     border: 1px solid rgba(0,0,0,.2) !important;
