@@ -2,7 +2,7 @@
 import { NextResponse } from 'next/server';
 import { v4 as uuidv4 } from 'uuid';
 import { auth } from '@/auth.js';
-import dbService from '@/data/rest.db.js';
+import DBService from '@/data/rest.db.js';
 
 // Authentication middleware for upload route
 async function withAuth(handler) {
@@ -99,7 +99,7 @@ async function uploadHandler(request) {
                 };
 
                 // Upload using dbService
-                const uploadResult = await dbService.upload(fileForUpload, uploadPath);
+                const uploadResult = await DBService.upload(fileForUpload, uploadPath);
 
                 if (!uploadResult) {
                     throw new Error(`Failed to upload ${file.name}`);
