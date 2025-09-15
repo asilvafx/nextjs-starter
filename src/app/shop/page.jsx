@@ -248,7 +248,7 @@ function Shop() {
                 {/* Back link */}
                 <div className="mt-10 text-center">
                     <Link
-                        href="/public"
+                        href="/"
                         className="text-blue-600 dark:text-blue-400 hover:underline"
                     >
                         ← {t('backToHome')}
