@@ -95,20 +95,6 @@ const Homepage = () => {
         }
     };
 
-    // Test database connection
-    const testConnection = async () => {
-        toast("🧪 Testing database connection...");
-        try {
-            const res = await fetch("/api/test/connection");
-            const data = await res.json();
-            console.log("Connection test result:", data);
-            toast.success("Connection test completed - check console for details");
-        } catch (err) {
-            console.error("Connection test failed:", err);
-            toast.error(`Connection test failed: ${err.message}`);
-        }
-    };
-
     const handleSignOut = async() => {
         await logout();
     };
@@ -163,13 +149,6 @@ const Homepage = () => {
                     disabled={loading || !isAuthenticated}
                 >
                     {loading ? 'Loading...' : 'Create Test User'}
-                </button>
-
-                <button
-                    onClick={testConnection}
-                    className="bg-purple-700 text-white px-4 py-2 rounded hover:bg-purple-600"
-                >
-                    Test DB Connection
                 </button>
 
                 <button

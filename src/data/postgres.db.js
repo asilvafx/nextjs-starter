@@ -23,27 +23,6 @@ class PostgresDBService {
         this.initialized = false;
     }
 
-    // Test database connection
-    async testConnection() {
-        console.log("🧪 Testing database connection...");
-        try {
-            const start = Date.now();
-            const result = await client.sql`SELECT NOW() as current_time`;
-            const duration = Date.now() - start;
-            console.log(`✅ Database connection successful in ${duration}ms`);
-            console.log("📅 Current database time:", result.rows[0]?.current_time);
-            return {
-                success: true,
-                duration: duration,
-                dbTime: result.rows[0]?.current_time
-            };
-        } catch (err) {
-            console.error("❌ Database connection failed:", err.message);
-            console.error("❌ Full error:", err);
-            throw err;
-        }
-    }
-
     // Ensure table exists with better logging
     async ensureTable() {
         if (this.initialized) {
@@ -67,7 +46,7 @@ class PostgresDBService {
                 FROM information_schema.tables
                 WHERE table_name = 'kv_store'
             `;
-            
+
             this.initialized = true;
 
         } catch (err) {
@@ -374,19 +353,6 @@ class PostgresDBService {
             console.error('Error in upload:', error);
             throw error;
         }
-    }
-
-    // Helper method to create test data
-    async createTestUser(id, userData = {}) {
-        console.log(`👤 Creating test user with id: ${id}`);
-        const defaultUser = {
-            name: `Test User ${id}`,
-            email: `test${id}@example.com`,
-            role: 'user',
-            createdAt: new Date().toISOString(),
-            ...userData
-        };
-        return await this.create(defaultUser, 'users');
     }
 }
 
