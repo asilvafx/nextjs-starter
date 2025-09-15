@@ -24,7 +24,7 @@ button, .button {
     align-items: center;
 }
 .auth-section {
-    width: 100%;
+    width: 95%;
     max-width: 450px;
     position: relative;
     margin: auto;
