@@ -215,7 +215,7 @@ const RegisterPage = () => {
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
                     disabled={loading || (TurnstileKey && !isTurnstileVerified)}
-                    className="w-full bg-black text-white dark:bg-white dark:text-white"
+                    className="w-full bg-black text-white"
                 >
                     {loading ? "Please wait..." : "Create Account"}
                 </motion.button>

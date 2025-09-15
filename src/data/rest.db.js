@@ -6,9 +6,6 @@ import PostgresService from './postgres.db.js';
 // import MongoService from './mongo.db.js';
 // import MySQLService from './mysql.db.js';
 
-// Configuration - Set your preferred database here (redis/firebase/postgres)
-const DATABASE_PROVIDER = process.env.DATABASE_PROVIDER || 'postgres';
-
 class DBService {
     constructor() {
         // Database providers registry
@@ -21,6 +18,16 @@ class DBService {
             // mysql: MySQLService,
         };
 
+        let DATABASE_PROVIDER;
+        if(process.env.POSTGRES_URL){
+            DATABASE_PROVIDER = "postgres"
+        } else
+        if(process.env.REDIS_URL){
+            DATABASE_PROVIDER = "redis"
+        } else
+        if(process.env.FIREBASE_DATABASE_URL){
+            DATABASE_PROVIDER = "firebase"
+        }
         this.provider = DATABASE_PROVIDER.toLowerCase();
         this.service = this.getProviderService(this.provider);
 

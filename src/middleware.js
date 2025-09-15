@@ -2,8 +2,8 @@
 import { NextResponse } from "next/server"
 import { auth } from "@/auth"
 
-const privateRoutes = ["/profile"];
-const adminRoutes = ["/dashboard"];
+const privateRoutes = ["/account/profile"];
+const adminRoutes = ["/dashboard", "/admin"];
 
 export default auth((req) => {
     const { pathname } = req.nextUrl

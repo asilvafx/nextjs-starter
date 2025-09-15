@@ -59,6 +59,7 @@ const mockWhitelist = [
     }
 ];
 
+
 export async function verifyToken(request) {
     try {
         // Get session from NextAuth v5

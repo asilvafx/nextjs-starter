@@ -5,7 +5,6 @@ export async function GET() {
     try {
         // Define required environment variables
         const requiredEnvVars = {
-            'DATABASE_PROVIDER': process.env.DATABASE_PROVIDER,
             'POSTGRES_URL': process.env.POSTGRES_URL,
             'REDIS_URL': process.env.REDIS_URL,
             'BLOB_READ_WRITE_TOKEN': process.env.BLOB_READ_WRITE_TOKEN,
@@ -79,7 +78,6 @@ export async function POST(request) {
 
         // Basic env check (same as GET)
         const requiredEnvVars = {
-            'DATABASE_PROVIDER': process.env.DATABASE_PROVIDER,
             'POSTGRES_URL': process.env.POSTGRES_URL,
             'REDIS_URL': process.env.REDIS_URL,
             'BLOB_READ_WRITE_TOKEN': process.env.BLOB_READ_WRITE_TOKEN,

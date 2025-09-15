@@ -1,9 +1,9 @@
 // auth.js
 import NextAuth from 'next-auth';
-import CredentialsProvider from 'next-auth/providers/credentials';
+import CredentialsProvider from 'next-auth/providers/credentials'; 
 
 // Utility function to get base URL from various sources
-function getBaseUrl(req = null) {
+export function getBaseUrl(req = null) {
 
     // 1. Try NEXTAUTH_URL (NextAuth's standard env var)
     if (process.env.NEXTAUTH_URL) {

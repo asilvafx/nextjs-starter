@@ -1,8 +1,14 @@
 // app/auth/api/handler/route.js
 import { NextResponse } from 'next/server';
+
 import DBService from '@/data/rest.db.js';
+import { encryptPassword, generateSalt, validatePassword } from '@/lib/crypt';
 import EmailService from '@/lib/email';
 import { createWallet, loadConfig } from '@/lib/web3';
+
+
+
+
 
 // Force Node.js runtime
 export const runtime = 'nodejs';
@@ -30,22 +36,9 @@ async function handleLogin(email, passwordHash, { client }) {
             throw new Error('Invalid credentials.');
         }
 
-        // Call crypto API for password validation
-        const cryptoResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/crypto`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                action: 'validate',
-                password: passwordHash,
-                salt: user.salt,
-                hashedPassword: user.password
-            })
-        });
+        const cryptoResult = await validatePassword(passwordHash, user.salt, user.password);
 
-        const cryptoResult = await cryptoResponse.json();
-        if (!cryptoResult.isValid) {
+        if (!cryptoResult) {
             throw new Error('Invalid credentials.');
         }
 
@@ -57,36 +50,18 @@ async function handleLogin(email, passwordHash, { client }) {
                 const web3user = user.web3_pk || user.web3 || null;
                 if (!web3user) {
                     // Generate salt for web3
-                    const saltResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/crypto`, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({ action: 'generateSalt' })
-                    });
-                    const saltResult = await saltResponse.json();
-                    const salt = saltResult.salt;
+                    const salt = await generateSalt();
 
                     const web3create = await createWallet();
                     if (web3create?.web3?.address && web3create?.web3?.privateKey) {
                         // Encrypt web3 private key
-                        const encryptResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/crypto`, {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                            },
-                            body: JSON.stringify({
-                                action: 'encrypt',
-                                password: web3create.web3.privateKey,
-                                salt: salt
-                            })
-                        });
-                        const encryptResult = await encryptResponse.json();
+
+                        const encryptResult = await encryptPassword(web3create.web3.privateKey, salt);
 
                         const web3data = {
                             salt: salt,
                             public_key: web3create.web3.address,
-                            private_key: encryptResult.hash
+                            private_key: encryptResult
                         };
                         userLoginData = { ...userLoginData, web3: web3data };
                         const userId = await DBService.getItemKey('email', user.email, 'users');
@@ -147,30 +122,10 @@ async function handleRegistration(email, passwordHash, { name, client }) {
         }
 
         // Generate salt via crypto API
-        const saltResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/crypto`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ action: 'generateSalt' })
-        });
-        const saltResult = await saltResponse.json();
-        const salt = saltResult.salt;
+        const salt = await generateSalt();
 
         // Encrypt password via crypto API
-        const encryptResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/crypto`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                action: 'encrypt',
-                password: passwordHash,
-                salt: salt
-            })
-        });
-        const encryptResult = await encryptResponse.json();
-        const encryptedPassword = encryptResult.hash;
+        const encryptedPassword = await encryptPassword(passwordHash, salt);
 
         const timeNow = new Date().toISOString();
 
@@ -187,36 +142,17 @@ async function handleRegistration(email, passwordHash, { name, client }) {
             const web3load = await loadConfig;
             if (web3load?.WEB3_ACTIVE > 0) {
                 // Generate salt for web3
-                const web3SaltResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/crypto`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ action: 'generateSalt' })
-                });
-                const web3SaltResult = await web3SaltResponse.json();
-                const web3Salt = web3SaltResult.salt;
+                const web3Salt = await generateSalt();
 
                 const web3create = await createWallet();
                 if (web3create?.web3?.address && web3create?.web3?.privateKey) {
                     // Encrypt web3 private key
-                    const web3EncryptResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/crypto`, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({
-                            action: 'encrypt',
-                            password: web3create.web3.privateKey,
-                            salt: web3Salt
-                        })
-                    });
-                    const web3EncryptResult = await web3EncryptResponse.json();
+                    const web3EncryptResult = await encryptPassword(web3create.web3.privateKey, web3Salt);
 
                     const web3data = {
                         salt: web3Salt,
                         public_key: web3create.web3.address,
-                        private_key: web3EncryptResult.hash
+                        private_key: web3EncryptResult
                     };
                     userRegisterData = { ...userRegisterData, web3: web3data };
                 }
@@ -253,4 +189,3 @@ async function handleRegistration(email, passwordHash, { name, client }) {
         throw error;
     }
 }
-

@@ -15,6 +15,8 @@ const Homepage = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
+    console.log(user);
+    
     useEffect(() => {
         async function fetchUsers() {
             console.log("🚀 Starting fetchUsers...");
@@ -102,7 +104,7 @@ const Homepage = () => {
                 {status === 'loading' ? (
                     <div className="flex">Loading...</div>
                 ) : isAuthenticated ? (
-                    <div className="flex tems-center justify-between gap-2">
+                    <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-2">
                         <div className="flex flex-col gap-2">
                             <span>
                                 Welcome, {user?.displayName || user?.email}!
@@ -111,10 +113,17 @@ const Homepage = () => {
                                   Role: {user?.role}
                             </span>
                         </div>
-                        <div className="my-auto">
+                        <div className="my-auto w-full md:w-auto grid grid-cols-2 md:flex gap-2 items-center">
+                            <Link href="/account/profile">
+                            <button
+                                className="w-full md:w-auto bg-white/10 text-black dark:bg-black/10 dark:text-white border border-black/50 dark:border-white/50 px-4 py-2 rounded-sm relative inline-flex flex-nowrap justify-center items-center truncate"
+                            >
+                                Edit Profile
+                            </button>
+                            </Link>
                             <button
                                 onClick={handleSignOut}
-                                className="bg-black text-white dark:bg-white dark:text-black px-4 py-2 rounded-sm relative inline-flex flex-nowrap justify-center items-center truncate"
+                                className="w-full md:w-auto bg-black text-white dark:bg-white dark:text-black px-4 py-2 rounded-sm relative inline-flex flex-nowrap justify-center items-center truncate"
                             >
                                 Sign Out
                             </button>
@@ -127,7 +136,7 @@ const Homepage = () => {
                             href="/auth/login"
                             className="bg-black text-white dark:bg-white dark:text-black px-4 py-2 rounded-sm relative inline-flex flex-nowrap justify-center items-center truncate"
                         >
-                            Sign in
+                        Sign in
                         </Link>
                         <Link
                             href="/auth/register"
