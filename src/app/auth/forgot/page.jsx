@@ -152,7 +152,7 @@ const ForgotPasswordPage = () => {
                                 whileTap={{ scale: 0.98 }}
                                 whileHover={{ scale: 1.02 }}
                                 disabled={loading || (TurnstileKey && !isTurnstileVerified)}
-                                className="w-full primary"
+                                className="w-full bg-black text-white dark:bg-white dark:text-black"
                             >
                                 {loading ? "Sending..." : "Send Reset Code"}
                             </motion.button>
@@ -207,7 +207,7 @@ const ForgotPasswordPage = () => {
                                     whileTap={{ scale: 0.98 }}
                                     whileHover={{ scale: 1.02 }}
                                     disabled={loading || code.length !== 6}
-                                    className="flex-1 primary"
+                                    className="flex-1 w-full bg-black text-white dark:bg-white dark:text-black"
                                 >
                                     {loading ? "Verifying..." : "Verify Code"}
                                 </motion.button>

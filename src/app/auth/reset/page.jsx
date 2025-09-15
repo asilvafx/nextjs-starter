@@ -198,7 +198,7 @@ const ResetPasswordPage = () => {
                             !passwordValid(newPassword) ||
                             newPassword !== confirmPassword
                         }
-                        className="w-full primary"
+                        className="w-full w-full bg-black text-white dark:bg-white dark:text-black"
                     >
                         {loading ? "Updating Password..." : "Reset Password"}
                     </motion.button>

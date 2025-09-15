@@ -144,13 +144,13 @@ const Homepage = () => {
 
                 {!isAuthenticated && status !== 'loading' && (
                     <div className="text-red-600 bg-red-50/90 dark:text-red-100 dark:bg-red-50/10 rounded p-4 mb-4">
-                        Please sign in to view users data.
+                        Please sign in to view data.
                     </div>
                 )}
 
                 {loading && isAuthenticated && (
                     <div className="text-blue-600 p-4 bg-black/5 dark:bg-white/5 rounded">
-                        <div className="animate-pulse">Loading users...</div>
+                        <div className="animate-pulse">Loading data...</div>
                     </div>
                 )}
 
@@ -171,7 +171,7 @@ const Homepage = () => {
 
                 {!loading && !error && users.length === 0 && isAuthenticated && (
                     <div className="text-gray-500 italic p-4 bg-gray-50 rounded">
-                        No users found. Try creating a test user first.
+                        No data found. Try creating a new record first.
                     </div>
                 )}
 

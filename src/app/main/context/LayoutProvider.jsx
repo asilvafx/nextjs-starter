@@ -23,7 +23,7 @@ export const LayoutProvider = ({ children }) => {
     return (
         <LayoutContext.Provider value={layoutValue}>
             <Header />
-            <div className="container">
+            <div className="container w-full sm:max-w-3xl md:max-w-4xl lg:max-w-5xl xl:max-w-6xl">
                 <div className="screen">
                     {children}
                 </div>

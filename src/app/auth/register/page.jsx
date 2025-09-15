@@ -158,7 +158,7 @@ const RegisterPage = () => {
                         />
                         <span
                             onClick={showPassword}
-                            className="button absolute end-0 top-0 bottom-0 ml-2 border-none bg-transparent text-sm hover:text-gray-600"
+                            className="button absolute end-0 top-0 bottom-0 flex items-center mr-2 border-none bg-transparent text-sm hover:text-gray-600"
                         >
                             {showPwd ? <IoMdEyeOff size={22} /> : <IoMdEye size={22} />}
                         </span>
@@ -192,7 +192,7 @@ const RegisterPage = () => {
                         />
                         <span
                             onClick={showPassword}
-                            className="button absolute end-0 top-0 bottom-0 ml-2 border-none bg-transparent text-sm hover:text-gray-600"
+                            className="button absolute end-0 top-0 bottom-0 flex items-center mr-2 border-none bg-transparent text-sm hover:text-gray-600"
                         >
                             {showPwd ? <IoMdEyeOff size={22}/> : <IoMdEye size={22}/>}
                         </span>
@@ -215,7 +215,7 @@ const RegisterPage = () => {
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
                     disabled={loading || (TurnstileKey && !isTurnstileVerified)}
-                    className="w-full primary"
+                    className="w-full bg-black text-white dark:bg-white dark:text-white"
                 >
                     {loading ? "Please wait..." : "Create Account"}
                 </motion.button>

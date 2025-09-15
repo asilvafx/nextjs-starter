@@ -135,7 +135,7 @@ const LoginPage = () => {
                         />
                         <span
                             onClick={showPassword}
-                            className='button absolute end-0 top-0 bottom-0 ml-2 border-none bg-transparent text-sm hover:text-gray-600'>
+                            className='button absolute end-0 top-0 bottom-0 flex items-center mr-2 border-none bg-transparent text-sm hover:text-gray-600'>
                             {showPwd ? <IoMdEyeOff size={22} /> : <IoMdEye size={22} />}
                         </span>
                     </div>
