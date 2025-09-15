@@ -4,37 +4,19 @@ import { v4 as uuidv4 } from 'uuid';
 import { auth } from '@/auth.js';
 import DBService from '@/data/rest.db.js';
 
-// Authentication middleware for upload route
-async function withAuth(handler) {
-    return async (request) => {
-        try {
-            // Get session from NextAuth v5
-            const session = await auth();
+// POST handler for file uploads with inline authentication
+export async function POST(request) {
+    try {
+        // Authentication check
+        const session = await auth();
 
-            if (!session?.user) {
-                return NextResponse.json(
-                    { error: 'Authentication required' },
-                    { status: 401 }
-                );
-            }
-
-            // Add user data to request context
-            request.user = session.user;
-
-            return await handler(request);
-        } catch (error) {
-            console.error('Upload auth middleware error:', error);
+        if (!session?.user) {
             return NextResponse.json(
-                { error: 'Authentication failed' },
+                { error: 'Authentication required' },
                 { status: 401 }
             );
         }
-    };
-}
 
-// POST handler for file uploads
-async function uploadHandler(request) {
-    try {
         const formData = await request.formData();
         const files = formData.getAll('files');
 
@@ -115,7 +97,7 @@ async function uploadHandler(request) {
                     type: file.type,
                     uploadedAt: new Date().toISOString(),
                     uploadPath: uploadPath,
-                    uploadedBy: request.user.id,
+                    uploadedBy: session.user.id,
                     ...uploadResult // Include any additional data from dbService
                 });
 
@@ -129,7 +111,7 @@ async function uploadHandler(request) {
         }
 
         // Log successful upload
-        console.log(`Successfully uploaded ${uploadedFiles.length} file(s) for user:`, request.user?.email || 'Unknown');
+        console.log(`Successfully uploaded ${uploadedFiles.length} file(s) for user:`, session.user?.email || 'Unknown');
 
         return NextResponse.json({
             success: true,
@@ -148,6 +130,3 @@ async function uploadHandler(request) {
         );
     }
 }
-
-// Export with authentication
-export const POST = withAuth(uploadHandler);
