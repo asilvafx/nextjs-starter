@@ -11,7 +11,7 @@ const Header = () => {
 
     return (
         <header>
-            <nav className="bg-white/90 dark:bg-neutral-900/90 h-20 backdrop-blur-sm fixed w-full top-0 left-0 right-0 bg-light z-50 border-gray-200 p-4 lg:p-6">
+            <nav className="bg-white/90 dark:bg-neutral-950/90 backdrop-blur-sm h-20 fixed w-full top-0 left-0 right-0 bg-light z-50 border-gray-200 p-4 lg:p-6">
                 <div className="w-full max-w-5xl h-full px-0 md:px-4 mx-auto flex flex-wrap gap-4 justify-between items-center h-10">
                     <Link href="/">
                         <Image

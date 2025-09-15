@@ -114,7 +114,7 @@ const Homepage = () => {
                         <div className="my-auto">
                             <button
                                 onClick={handleSignOut}
-                                className="bg-black text-white dark:bg-white dark:text-black px-4 py-2 rounded-sm relative"
+                                className="bg-black text-white dark:bg-white dark:text-black px-4 py-2 rounded-sm relative inline-flex flex-nowrap justify-center items-center truncate"
                             >
                                 Sign Out
                             </button>
@@ -125,13 +125,13 @@ const Homepage = () => {
                     <div className="flex gap-2">
                         <Link
                             href="/auth/login"
-                            className="bg-white text-black px-4 py-2 rounded-sm relative"
+                            className="bg-black text-white dark:bg-white dark:text-black px-4 py-2 rounded-sm relative inline-flex flex-nowrap justify-center items-center truncate"
                         >
                             Sign in
                         </Link>
                         <Link
                             href="/auth/register"
-                            className="bg-black/10 text-white border px-4 py-2 rounded-sm relative"
+                            className="bg-white/10 text-black dark:bg-black/10 dark:text-white border border-black/50 dark:border-white/50 px-4 py-2 rounded-sm relative inline-flex flex-nowrap justify-center items-center truncate"
                         >
                             Create new account
                         </Link>
@@ -143,7 +143,7 @@ const Homepage = () => {
                 <h2 className="text-2xl font-semibold mb-4">Users ({users.length})</h2>
 
                 {!isAuthenticated && status !== 'loading' && (
-                    <div className="text-yellow-600 p-4 bg-yellow-50 rounded mb-4">
+                    <div className="text-red-600 bg-red-50/90 dark:text-red-100 dark:bg-red-50/10 rounded p-4 mb-4">
                         Please sign in to view users data.
                     </div>
                 )}
