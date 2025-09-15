@@ -261,7 +261,14 @@ const Cart = () => {
                         </div>
                         </>
                 )}
-
+                    <div className="w-full flex justify-center">
+                        <Link
+                            href="/"
+                            className="text-gray-600 hover:text-primary transition-colors duration-200"
+                        >
+                            ← {t('backToHome')}
+                        </Link>
+                    </div>
                 </motion.div>
             </div>
         </>

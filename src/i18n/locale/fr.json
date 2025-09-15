@@ -27,7 +27,8 @@
         "proceedToCheckout": "Passer à la caisse",
         "continueShopping": "Continuer à shopper",
         "securePayment": "Paiement 100% sécurisé",
-        "confirmEmptyCart": "T'es sûr de vouloir vider ton panier ?"
+        "confirmEmptyCart": "T'es sûr de vouloir vider ton panier ?",
+        "backToHome": "Retour à l'accueil"
     },
     "Checkout": {
         "paymentSuccessTitle": "Paiement validé 🎉",
