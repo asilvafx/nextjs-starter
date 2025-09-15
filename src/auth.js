@@ -2,6 +2,28 @@
 import NextAuth from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
 
+// Utility function to get base URL from various sources
+function getBaseUrl(req = null) {
+
+    // 1. Try NEXTAUTH_URL (NextAuth's standard env var)
+    if (process.env.NEXTAUTH_URL) {
+        return process.env.NEXTAUTH_URL;
+    }
+
+    // 2. If we have a request object (rare in NextAuth context)
+    if (req) {
+        const headers = req.headers;
+        const host = headers.get?.('host') || headers.host;
+        const protocol = headers.get?.('x-forwarded-proto') ||
+            headers['x-forwarded-proto'] ||
+            (host?.includes('localhost') ? 'http' : 'https');
+        return `${protocol}://${host}`;
+    }
+
+    // 6. Last resort - throw error
+    throw new Error('Unable to determine base URL. Please set NEXTAUTH_URL environment variable.');
+}
+
 const authConfig = {
     providers: [
         CredentialsProvider({
@@ -14,7 +36,7 @@ const authConfig = {
                 action: { label: 'Action', type: 'text' },
                 name: { label: 'Name', type: 'text' }
             },
-            async authorize(credentials) {
+            async authorize(credentials, req) {
                 try {
                     const { email, password, client, action, name } = credentials;
 
@@ -33,8 +55,11 @@ const authConfig = {
                     const inpEmail = email.toLowerCase();
                     const passwordHash = atob(password);
 
-                    // Call our auth API instead of importing functions
-                    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+                    // Get base URL automatically
+                    const baseUrl = getBaseUrl(req);
+
+                    console.log('Using base URL:', baseUrl); // For debugging
+
                     const authResponse = await fetch(`${baseUrl}/auth/api/handler`, {
                         method: 'POST',
                         headers: {

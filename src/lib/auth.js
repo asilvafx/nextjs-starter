@@ -98,7 +98,12 @@ export async function verifyCsrfToken(request) {
         }
 
         const cookieStore = await cookies();
-        const csrfCookie = cookieStore.get("authjs.csrf-token")?.value || cookieStore.get("__Host-authjs.csrf-token")?.value;
+
+        // Get all cookies and find the one that contains "authjs.csrf-token"
+        const allCookies = cookieStore.getAll();
+        const csrfCookie = allCookies.find(cookie =>
+            cookie.name.includes('authjs.csrf-token')
+        )?.value;
 
         if (!csrfCookie) {
             return { error: 'CSRF token not provided in cookies.', status: 403 };
