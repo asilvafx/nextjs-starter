@@ -148,7 +148,7 @@ const Homepage = () => {
                     </div>
                 )}
 
-                {loading && isAuthenticated && (
+                {loading && (
                     <div className="text-blue-600 p-4 bg-black/5 dark:bg-white/5 rounded">
                         <div className="animate-pulse">Loading data...</div>
                     </div>
