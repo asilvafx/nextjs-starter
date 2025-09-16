@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import {getAll, create, update, remove} from '@/lib/query.js';
 import ProductModal from '../modals/ProductModal';
 import { DataTable, StatusBadge, ActionButtons, EmptyState } from '../common/Common';
-import toast from 'react-hot-toast';
+import {toast} from 'sonner';
 import { Box } from 'lucide-react';
 import SkeletonItems from '../skeletons/SkeletonItems';
 import SkeletonSearch from '../skeletons/SkeletonSearch';

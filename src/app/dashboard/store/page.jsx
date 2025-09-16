@@ -5,7 +5,7 @@ import { getAll } from '@/lib/query.js';
 import CatalogManagement from '../components/sections/CatalogManagement';
 import CategoriesManagement from '../components/sections/CategoriesManagement';
 import CollectionsManagement from '../components/sections/CollectionsManagement';
-import toast, { Toaster } from 'react-hot-toast';
+import { toast } from 'sonner';
 import {
     Package,
     Tags,

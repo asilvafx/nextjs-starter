@@ -3,7 +3,7 @@
 import { useCart } from 'react-use-cart';
 import Image from 'next/image';
 import Link from 'next/link';
-import { toast } from "react-hot-toast";
+import { toast } from "sonner";
 import { motion } from 'framer-motion';
 import { FaSpinner } from 'react-icons/fa';
 import { useTranslations } from 'next-intl';
