@@ -2,15 +2,14 @@
 import {NextIntlClientProvider} from 'next-intl';
 import {getLocale, getMessages} from 'next-intl/server'; 
 import { Toaster } from "@/components/ui/sonner"
-import { Bebas_Neue } from "next/font/google";
+import { Inter } from "next/font/google";
 import Providers from "@/context/providers";
 import CookieConsentComponent from "@/ui/CookieConsent";
 import ScrollToTop from '@/ui/ScrollToTop';
 import "@/app/globals.css";
 
-const font = Bebas_Neue({
-    subsets: ["latin"],
-    weight: "400",
+const font = Inter({
+    subsets: ["latin"]
 });
 
 export const metadata = {

@@ -158,17 +158,26 @@
     body {
         @apply bg-background text-foreground;
     }
-}
+    
+    html, body {
+        font-size: 16px;
+        scroll-behavior: smooth;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+        font-feature-settings: "liga" 1, "kern" 1;
+    }
 
-a, button, .button {
-    pointer-events: auto;
-    cursor: pointer;
-}
+    a, button, .button {
+        pointer-events: auto;
+        cursor: pointer;
+    }
 
-a:disabled, button:disabled, .button:disabled {
-    opacity: 0.5;
-    pointer-events: none;
-    cursor: progress;
+    a:disabled, button:disabled, .button:disabled {
+        opacity: 0.5;
+        pointer-events: none;
+        cursor: progress;
+    }  
+
 }
 
 /* Google Places Autocomplete Styles */

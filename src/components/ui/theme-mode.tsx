@@ -107,7 +107,7 @@ export const ThemeSwitchButton = () => {
   };
 
   return (
-    <Button variant="ghost" size="icon" onClick={toggleTheme}>
+    <Button variant="ghost" onClick={toggleTheme}>
       {theme === 'dark' ? (
         <Sun className="h-5 w-5" />
       ) : (

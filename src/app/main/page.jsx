@@ -3,6 +3,13 @@
 
 import { useEffect, useState } from "react"; 
 import { toast } from 'sonner'; 
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card"
  
 const Homepage = () => { 
     const [setupData, setSetupData] = useState(null);
@@ -34,8 +41,12 @@ const Homepage = () => {
 
     return (
         <div className="section"> 
-            <div className="border border-gray-300 dark:border-gray-700 p-4 mb-6 rounded bg-black/5 dark:bg-white/5">
-                <h1>Environment Setup Status</h1>
+        <Card>
+            <CardHeader>
+                <CardTitle>Welcome to Next.js Starter!</CardTitle>
+                <CardDescription>Your go-to boilerplate for Next.js projects.</CardDescription>
+            </CardHeader>
+            <CardContent>
                 {setupData?.setupComplete ? (
                     <p className="text-green-600">✅ Setup is complete!</p>
                 ) : (
@@ -46,8 +57,8 @@ const Homepage = () => {
                         <p>Empty: {setupData?.status?.empty?.join(', ')}</p>
                     </div>
                 )}
-            </div>
- 
+            </CardContent>
+        </Card> 
         </div>
     );
 };

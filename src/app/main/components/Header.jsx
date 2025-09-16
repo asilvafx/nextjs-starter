@@ -44,7 +44,7 @@ export default function Header() {
                         href="/auth/register" 
                         prefetch={false}
                     >
-                    <Button className="justify-self-end">Sign Up</Button>
+                    <Button className="justify-self-end">Create account</Button>
                     </Link>
                     </>
                 ) : (
