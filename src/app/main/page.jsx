@@ -1,14 +1,10 @@
 // app/main/page.jsx (homepage)
 "use client"
 
-import { useEffect, useState } from "react";
-import { useAuth } from '@/hooks/useAuth';
-import { toast } from 'sonner';
-import Link from 'next/link';
-import {ThemeSwitchGroup} from '@/components/ui/theme-mode';
+import { useEffect, useState } from "react"; 
+import { toast } from 'sonner'; 
  
-const Homepage = () => {
-    const { isAuthenticated, user, status, logout } = useAuth();
+const Homepage = () => { 
     const [setupData, setSetupData] = useState(null);
     const [loading, setLoading] = useState(true);
 
@@ -32,11 +28,7 @@ const Homepage = () => {
         }
         }
         setupDbEnv();
-    }, []);
-
-    const handleSignOut = async() => {
-        await logout();
-    };
+    }, []); 
 
     if (loading) return <div className="section"><span>Loading...</span></div>;
 

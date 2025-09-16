@@ -1,4 +1,5 @@
 import Link from "next/link"
+import Image from "next/image";
 import { useAuth } from '@/hooks/useAuth';
 import { useCart } from 'react-use-cart';
 import { FaCartShopping } from "react-icons/fa6"; 
@@ -6,13 +7,24 @@ import { Button } from "@/components/ui/button"
 import { ThemeSwitchButton } from '@/components/ui/theme-mode';
 
 export default function Header() {
-    const { isAuthenticated, user, status } = useAuth();
+    const { isAuthenticated, user, status, logout } = useAuth();
     const { totalItems } = useCart();
+
+    const handleSignOut = async() => {
+    await logout();
+    };
+
     return (
         <header className="flex h-20 w-full shrink-0 items-center px-4 md:px-6">
-            <Link href="#" className="mr-6 hidden lg:flex" prefetch={false}>
-                <ShirtIcon className="h-6 w-6" />
-                <span className="sr-only">ShadCN</span>
+            <Link href="/" className="mr-6 hidden lg:flex" prefetch={false}>
+                <Image 
+                alt="Logo"
+                src="/next.svg"
+                width={0}
+                height={30}
+                className="h-6 w-auto dark:invert"
+                priority={true}
+                />  
             </Link>
             <div className="ml-auto flex gap-2"> 
  
@@ -36,12 +48,11 @@ export default function Header() {
                     </Link>
                     </>
                 ) : (
-                    <Link 
-                        href="/auth/logout" 
-                        prefetch={false}
-                    >
-                    <Button className="justify-self-end">Logout</Button>
-                    </Link>
+                    <Button 
+                        onClick={handleSignOut}
+                        className="justify-self-end" 
+                    > Sign Out
+                    </Button>
                 )} 
                 
                 <Link
