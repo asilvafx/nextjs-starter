@@ -200,7 +200,7 @@ export function RegisterForm({
               <div className="flex flex-col gap-3">
                 <Button 
                   type="submit"
-                  disabled={loading || (TurnstileKey && !isTurnstileVerified)}
+                  disabled={loading || (!!TurnstileKey && !isTurnstileVerified)}
                   className="w-full"
                 >
                   {loading ? 'Please wait...' : 'Create Account'}
