@@ -18,7 +18,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 
-const TurnstileKey = process.env.NEXT_PUBLIC_CF_TURNSTILE_API || null;
+const TurnstileKey: string | undefined = process.env.NEXT_PUBLIC_CF_TURNSTILE_API || undefined;
 
 export function LoginForm({
   className,
@@ -142,7 +142,7 @@ export function LoginForm({
               <div className="flex flex-col gap-3">
                 <Button 
                   type="submit"
-                  disabled={loading || (TurnstileKey && !isTurnstileVerified)}
+                  disabled={loading || (!!TurnstileKey && !isTurnstileVerified)}
                   className="w-full"
                 >
                   {loading ? 'Please wait...' : 'Sign In'}
