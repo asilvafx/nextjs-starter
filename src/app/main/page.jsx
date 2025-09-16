@@ -4,9 +4,9 @@
 import { useEffect, useState } from "react";
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
-import ThemeSwitch from './components/ThemeSwitch';
-import { Button } from "@/ui/components/button"
 import Link from 'next/link';
+import {ThemeSwitchGroup} from '@/components/ui/theme-mode';
+import { Button } from "@/components/ui/button"
 import {
   Dialog,
   DialogContent,
@@ -17,7 +17,18 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label" 
-
+import {
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { PhoneInput } from "@/components/ui/phone-input";
+import { Country, CountryDropdown } from "@/components/ui/country-dropdown";
+ 
 const Homepage = () => {
     const { isAuthenticated, user, status, logout } = useAuth();
     const [setupData, setSetupData] = useState(null);
@@ -55,7 +66,7 @@ const Homepage = () => {
         <div className="section">
             <div className="w-full flex items-center justify-between mb-6">
                 <h1 className="text-3xl font-bold">Test Page</h1>
-                <ThemeSwitch />
+                <ThemeSwitchGroup />
             </div>
             <div className="border border-gray-300 dark:border-gray-700 p-4 mb-6 rounded bg-black/5 dark:bg-white/5">
                 <h1>Environment Setup Status</h1>

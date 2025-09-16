@@ -1,7 +1,7 @@
 // app/layout.jsx
 import {NextIntlClientProvider} from 'next-intl';
-import {getLocale, getMessages} from 'next-intl/server';
-import { Toaster } from "sonner";
+import {getLocale, getMessages} from 'next-intl/server'; 
+import { Toaster } from "@/components/ui/sonner"
 import { Bebas_Neue } from "next/font/google";
 import Providers from "@/context/providers";
 import CookieConsentComponent from "@/ui/CookieConsent";
