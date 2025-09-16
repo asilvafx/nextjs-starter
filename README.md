@@ -9,28 +9,32 @@ Welcome to the **Next.js 15 Boilerplate** repository! This starter template is b
 ## 🚀 What's Included
 
 - **Next.js 15**
+- **Next Auth 5**
 - **React 19**
 - **Javascript/TypeScript 5**
 - **ESLint 9**
 - **Redux 9**
 - **Prettier 3**
 - **Tailwind CSS 4**
-- **JS-Cookie for Session Management**
-- **Next Intl for Locale Translations**
-- **React Icons & Lucide React**
-- **React Email, Nodemailer & Resend**
 - **App Directory**
+- **Shadcn for Design Library **
+- **JS-Cookie for Session Management**
+- **Next Intl for Internationalization**
+- **React Icons & Lucide React**
+- **React Email & Nodemailer**
 - **Web3.js Create Account, Account Balance & Transactions**
-- **Stripe Online Payments**
-- **Google Maps (Places)**
+- **Stripe for Online Payments**
+- **Google Maps (Autocomplete Places)**
 - **React Turnstile (Cloudflare)
 - **Firebase & Vercel, ready for fast deployment**
-- **Firebase Realtime Database & Vercel Redis, ready for data storage**
+- **Firebase Realtime Database, Postgres & Redis, ready for data storage**
 - **Firebase Hosting & Vercel Blob, ready for file storage**
+- **ORM for Database queries**
 - **JWT Tokens & Data encryption**
 - **GDPR Cookie Consent**
+- **Sonner Toast for Alerts and Notifications**
 - **React Use Cart for Online Store**
-- **System, Light & Dark Mode**
+- **Next Themes for Theme Mode**
 - **Next.js Bundle Analyzer**
 - **Dockerfile** with Node.js 22.18.0 (Alpine)
 - **Dockerfile.bun** with Bun 1.2.20 (Alpine)
