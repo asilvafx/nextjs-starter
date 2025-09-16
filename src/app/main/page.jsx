@@ -6,28 +6,6 @@ import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
 import Link from 'next/link';
 import {ThemeSwitchGroup} from '@/components/ui/theme-mode';
-import { Button } from "@/components/ui/button"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label" 
-import {
-  Form,
-  FormControl,
-  FormDescription,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
-import { PhoneInput } from "@/components/ui/phone-input";
-import { Country, CountryDropdown } from "@/components/ui/country-dropdown";
  
 const Homepage = () => {
     const { isAuthenticated, user, status, logout } = useAuth();
@@ -60,14 +38,10 @@ const Homepage = () => {
         await logout();
     };
 
-    if (loading) return <div>Loading...</div>;
+    if (loading) return <div className="section"><span>Loading...</span></div>;
 
     return (
-        <div className="section">
-            <div className="w-full flex items-center justify-between mb-6">
-                <h1 className="text-3xl font-bold">Test Page</h1>
-                <ThemeSwitchGroup />
-            </div>
+        <div className="section"> 
             <div className="border border-gray-300 dark:border-gray-700 p-4 mb-6 rounded bg-black/5 dark:bg-white/5">
                 <h1>Environment Setup Status</h1>
                 {setupData?.setupComplete ? (
@@ -81,55 +55,7 @@ const Homepage = () => {
                     </div>
                 )}
             </div>
-
-            {/* User Auth */}
-            <div className="border border-gray-300 dark:border-gray-700 p-4 mb-6 rounded bg-black/5 dark:bg-white/5">
-                {status === 'loading' ? (
-                    <div className="flex">Loading...</div>
-                ) : isAuthenticated ? (
-                    <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-2">
-                        <div className="flex flex-col gap-2">
-                            <span>
-                                Welcome, {user?.displayName || user?.email}!
-                            </span>
-                            <span>
-                                  Role: {user?.role}
-                            </span>
-                        </div>
-                        <div className="my-auto w-full md:w-auto grid grid-cols-2 md:flex gap-2 items-center">
-                            <Link href="/account/profile">
-                                <Button>
-                                    Edit Profile
-                                </Button>
-                            </Link>
-                            <Button
-                                variant="outline"
-                                onClick={handleSignOut}
-                            >
-                                Sign Out
-                            </Button>
-                        </div>
-
-                    </div>
-                ) : (
-                    <div className="flex gap-2">
-                        <Link
-                            href="/auth/login"
-                        >
-                            <Button>
-                            Sign in
-                            </Button>
-                        </Link>
-                        <Link
-                            href="/auth/register"
-                       >
-                            <Button variant="outline">
-                            Create new account
-                            </Button>
-                        </Link>
-                    </div>
-                )}
-            </div>
+ 
         </div>
     );
 };
