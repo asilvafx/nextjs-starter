@@ -10,7 +10,7 @@ import Fingerprint from '@/utils/fingerprint.js';
 
 import { motion } from 'framer-motion';
 import { signIn, useSession } from 'next-auth/react';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui/sonner';
 import { IoMdEye, IoMdEyeOff } from 'react-icons/io';
 import Turnstile from 'react-turnstile';
 
