@@ -85,4 +85,19 @@ const ThemeSwitch = () => {
     );
 };
 
+export const ThemeSwitchButton = () => {
+    const { theme, setTheme } = useTheme();
+    const [mounted, setMounted] = useState(false);
+
+    useEffect(() => setMounted(true), []);
+
+    console.log(theme);
+
+    return (
+        <span>
+            {theme}
+        </span>
+    );
+};
+
 export default ThemeSwitch;

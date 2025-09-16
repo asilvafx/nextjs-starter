@@ -5,49 +5,13 @@ import { useEffect, useState } from "react";
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
 import ThemeSwitch from './components/ThemeSwitch';
+import { Button } from "@/ui/components/button"
 import Link from 'next/link';
-import { getAllPublic } from '@/lib/query.js';
 
 const Homepage = () => {
     const { isAuthenticated, user, status, logout } = useAuth();
-    const [users, setUsers] = useState([]);
     const [setupData, setSetupData] = useState(null);
     const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null);
-    
-    useEffect(() => {
-        async function fetchUsers() {
-            console.log("🚀 Starting fetchUsers...");
-            toast("🚀 Starting fetchUsers...");
-            try {
-                setLoading(true);
-                setError(null);
-
-                // Get all users, limit to 10 users
-                const result = await getAllPublic('users', {limit: 10});
-
-                console.log("📨 Response received:", result);
-
-                if (result.success) {
-                    setUsers(result.data);
-                } else {
-                    setError(result.error || "Unknown API error");
-                }
-            } catch (err) {
-                console.error("❌ Fetch error:", err);
-                setError(err.message || "Network error");
-            } finally {
-                setLoading(false);
-            }
-        }
-
-        // Only fetch if authenticated
-        if (isAuthenticated) {
-            fetchUsers();
-        } else if (!isAuthenticated && status !== 'loading') {
-            setLoading(false);
-        }
-    }, [isAuthenticated, status]);
 
     // Function to check setup
     useEffect(() => {
@@ -113,18 +77,16 @@ const Homepage = () => {
                         </div>
                         <div className="my-auto w-full md:w-auto grid grid-cols-2 md:flex gap-2 items-center">
                             <Link href="/account/profile">
-                            <button
-                                className="w-full md:w-auto bg-white/10 text-black dark:bg-black/10 dark:text-white border border-black/50 dark:border-white/50 px-4 py-2 rounded-sm relative inline-flex flex-nowrap justify-center items-center truncate"
-                            >
-                                Edit Profile
-                            </button>
+                                <Button>
+                                    Edit Profile
+                                </Button>
                             </Link>
-                            <button
+                            <Button
+                                variant="outline"
                                 onClick={handleSignOut}
-                                className="w-full md:w-auto bg-black text-white dark:bg-white dark:text-black px-4 py-2 rounded-sm relative inline-flex flex-nowrap justify-center items-center truncate"
                             >
                                 Sign Out
-                            </button>
+                            </Button>
                         </div>
 
                     </div>
@@ -132,71 +94,18 @@ const Homepage = () => {
                     <div className="flex gap-2">
                         <Link
                             href="/auth/login"
-                            className="bg-black text-white dark:bg-white dark:text-black px-4 py-2 rounded-sm relative inline-flex flex-nowrap justify-center items-center truncate"
                         >
-                        Sign in
+                            <Button>
+                            Sign in
+                            </Button>
                         </Link>
                         <Link
                             href="/auth/register"
-                            className="bg-white/10 text-black dark:bg-black/10 dark:text-white border border-black/50 dark:border-white/50 px-4 py-2 rounded-sm relative inline-flex flex-nowrap justify-center items-center truncate"
-                        >
+                       >
+                            <Button variant="outline">
                             Create new account
+                            </Button>
                         </Link>
-                    </div>
-                )}
-            </div>
-
-            <div className="mb-6">
-                <h2 className="text-2xl font-semibold mb-4">Users ({users.length})</h2>
-
-                {!isAuthenticated && status !== 'loading' && (
-                    <div className="text-red-600 bg-red-50/90 dark:text-red-100 dark:bg-red-50/10 rounded p-4 mb-4">
-                        Please sign in to view data.
-                    </div>
-                )}
-
-                {loading && (
-                    <div className="text-blue-600 p-4 bg-black/5 dark:bg-white/5 rounded">
-                        <div className="animate-pulse">Loading data...</div>
-                    </div>
-                )}
-
-                {error && isAuthenticated && (
-                    <div className="text-red-600 bg-red-50 p-4 rounded">
-                        <strong>Error:</strong> {error}
-                        <details className="mt-2">
-                            <summary className="cursor-pointer">Debug Details</summary>
-                            <pre className="mt-2 text-xs">{JSON.stringify({
-                                timestamp: new Date().toISOString(),
-                                isAuthenticated,
-                                userRole: user?.role,
-                                error: error
-                            }, null, 2)}</pre>
-                        </details>
-                    </div>
-                )}
-
-                {!loading && !error && users.length === 0 && isAuthenticated && (
-                    <div className="text-gray-500 italic p-4 bg-gray-50 rounded">
-                        No data found. Try creating a new record first.
-                    </div>
-                )}
-
-                {users.length > 0 && (
-                    <div className="grid gap-4">
-                        {users.map((user, index) => (
-                            <div key={user.id || index} className="border border-gray-300 dark:border-gray-700 p-4 mb-2 rounded bg-black/5 dark:bg-white/5">
-                                <div className="font-semibold">ID: {user.id}</div>
-                                <div>Name: {user.name || user.displayName || 'N/A'}</div>
-                                <div>Email: {user.email || 'N/A'}</div>
-                                <div>Role: {user.role || 'N/A'}</div>
-                                {user.createdAt && (
-                                    <div className="text-sm text-gray-600">
-                                        Created: {new Date(user.createdAt).toLocaleString()}
-                                    </div>
-                                )}
-                            </div>
-                        ))}
                     </div>
                 )}
             </div>
