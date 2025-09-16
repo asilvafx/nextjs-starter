@@ -156,7 +156,7 @@ export function ForgotForm({
 
                 <Button
                   type="submit"
-                  disabled={loading || (TurnstileKey && !isTurnstileVerified)}
+                  disabled={loading || (!!TurnstileKey && !isTurnstileVerified)}
                   className="w-full"
                 >
                   {loading ? "Sending..." : "Send Reset Code"}
