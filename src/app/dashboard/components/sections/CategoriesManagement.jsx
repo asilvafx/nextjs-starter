@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { create, getAll } from '@/lib/query.js';
 import { DataTable, StatusBadge, ActionButtons, EmptyState } from '../common/Common';
-import toast, { Toaster } from 'react-hot-toast';
+import { toast } from 'sonner';
 import {
     Tags,
     Plus,

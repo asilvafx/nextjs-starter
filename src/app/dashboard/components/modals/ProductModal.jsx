@@ -2,7 +2,7 @@
 "use client"
 import { useState, useEffect, useRef } from 'react';
 import Select from 'react-select';
-import toast from 'react-hot-toast';
+import {toast} from 'sonner';
 import { X, Upload, Image as ImageIcon, Star, Trash2, Plus } from 'lucide-react';
 
 const ProductModal = ({

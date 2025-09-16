@@ -20,6 +20,8 @@ pnpm-lock.yaml
 
 # misc
 .DS_Store
+.idea
+.vscode
 *.pem
 .firebaserc
 .firebase
