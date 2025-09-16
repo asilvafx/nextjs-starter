@@ -1,5 +1,5 @@
 import Link from "next/link"
-import { Button } from "@/ui/components/button"
+import { Button } from "@/components/ui/button"
 import { useCart } from 'react-use-cart';
 import { FaCartShopping } from "react-icons/fa6";
 import {ThemeSwitchButton} from "./ThemeSwitch";

@@ -7,6 +7,16 @@ import { toast } from 'sonner';
 import ThemeSwitch from './components/ThemeSwitch';
 import { Button } from "@/ui/components/button"
 import Link from 'next/link';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label" 
 
 const Homepage = () => {
     const { isAuthenticated, user, status, logout } = useAuth();
