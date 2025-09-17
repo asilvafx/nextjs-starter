@@ -1,7 +1,7 @@
 // app/auth/api/reset/route.js
 import { NextResponse } from 'next/server';
 import DBService from '@/data/rest.db.js';
-import { encryptPassword, generateSalt } from '@/lib/crypto.js';
+import { encryptPassword, generateSalt } from '@/lib/crypt.js';
 
 const passwordValid = (pwd) => {
     return (

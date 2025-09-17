@@ -1,7 +1,7 @@
 // app/auth/api/forgot/route.js
 import { NextResponse } from 'next/server';
 import DBService from '@/data/rest.db.js';
-import { encryptHash } from '@/lib/crypto.js';
+import { encryptHash } from '@/lib/crypt.js';
 import EmailService from '@/lib/email.js';
 
 // Use API route for sending emails instead of direct import to avoid issues
