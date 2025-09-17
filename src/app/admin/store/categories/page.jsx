@@ -23,30 +23,14 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
 import { Plus, Pencil, Trash2 } from "lucide-react";
 
-interface Category {
-  id: string;
-  name: string;
-  slug: string;
-  description: string;
-  parentId: string | null;
-  createdAt: string;
-}
-
-interface FormData {
-  name: string;
-  slug: string;
-  description: string;
-  parentId: string | null;
-}
-
-const initialFormData: FormData = {
+const initialFormData = {
   name: "",
   slug: "",
   description: "",
   parentId: null,
 };
 
-const generateSlug = (name: string) => {
+const generateSlug = (name) => {
   return name
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
@@ -54,11 +38,11 @@ const generateSlug = (name: string) => {
 };
 
 export default function CategoriesPage() {
-  const [categories, setCategories] = useState<Category[]>([]);
+  const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isOpen, setIsOpen] = useState(false);
-  const [editCategory, setEditCategory] = useState<Category | null>(null);
-  const [formData, setFormData] = useState<FormData>(initialFormData);
+  const [editCategory, setEditCategory] = useState(null);
+  const [formData, setFormData] = useState(initialFormData);
 
   const fetchCategories = async () => {
     try {
@@ -78,7 +62,7 @@ export default function CategoriesPage() {
     fetchCategories();
   }, []);
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     try {
       if (editCategory) {
@@ -101,7 +85,7 @@ export default function CategoriesPage() {
     }
   };
 
-  const handleEdit = (category: Category) => {
+  const handleEdit = (category) => {
     setEditCategory(category);
     setFormData({
       name: category.name,
@@ -112,7 +96,7 @@ export default function CategoriesPage() {
     setIsOpen(true);
   };
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = async (id) => {
     if (window.confirm("Are you sure you want to delete this category?")) {
       try {
         await remove(id, "categories");

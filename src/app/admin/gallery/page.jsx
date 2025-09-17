@@ -30,25 +30,15 @@ import {
   Filter,
 } from "lucide-react";
 
-interface MediaItem {
-  id: string;
-  name: string;
-  url: string;
-  type: string;
-  size: number;
-  tags: string[];
-  createdAt: string;
-}
-
 export default function GalleryPage() {
-  const [media, setMedia] = useState<MediaItem[]>([]);
+  const [media, setMedia] = useState([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [search, setSearch] = useState("");
-  const [selectedType, setSelectedType] = useState<string>("all");
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [selectedType, setSelectedType] = useState("all");
+  const [selectedFile, setSelectedFile] = useState(null);
   const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false);
-  const [tags, setTags] = useState<string>("");
+  const [tags, setTags] = useState("");
 
   const fetchMedia = async () => {
     try {
@@ -68,7 +58,7 @@ export default function GalleryPage() {
     fetchMedia();
   }, []);
 
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = (e) => {
     if (e.target.files && e.target.files[0]) {
       setSelectedFile(e.target.files[0]);
     }
@@ -111,7 +101,7 @@ export default function GalleryPage() {
     }
   };
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = async (id) => {
     if (window.confirm("Are you sure you want to delete this file?")) {
       try {
         await remove(id, "media");
@@ -123,12 +113,12 @@ export default function GalleryPage() {
     }
   };
 
-  const copyToClipboard = (url: string) => {
+  const copyToClipboard = (url) => {
     navigator.clipboard.writeText(url);
     toast.success("URL copied to clipboard");
   };
 
-  const formatSize = (bytes: number) => {
+  const formatSize = (bytes) => {
     const sizes = ["Bytes", "KB", "MB", "GB"];
     if (bytes === 0) return "0 Bytes";
     const i = Math.floor(Math.log(bytes) / Math.log(1024));

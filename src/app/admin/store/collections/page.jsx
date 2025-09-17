@@ -23,27 +23,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
 import { Plus, Pencil, Trash2 } from "lucide-react";
 
-interface Collection {
-  id: string;
-  name: string;
-  slug: string;
-  description: string;
-  imageUrl: string;
-  isActive: boolean;
-  createdAt: string;
-  products: string[];
-}
-
-interface FormData {
-  name: string;
-  slug: string;
-  description: string;
-  imageUrl: string;
-  isActive: boolean;
-  products: string[];
-}
-
-const initialFormData: FormData = {
+const initialFormData = {
   name: "",
   slug: "",
   description: "",
@@ -52,7 +32,7 @@ const initialFormData: FormData = {
   products: [],
 };
 
-const generateSlug = (name: string) => {
+const generateSlug = (name) => {
   return name
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
@@ -60,12 +40,12 @@ const generateSlug = (name: string) => {
 };
 
 export default function CollectionsPage() {
-  const [collections, setCollections] = useState<Collection[]>([]);
-  const [products, setProducts] = useState<any[]>([]);
+  const [collections, setCollections] = useState([]);
+  const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isOpen, setIsOpen] = useState(false);
-  const [editCollection, setEditCollection] = useState<Collection | null>(null);
-  const [formData, setFormData] = useState<FormData>(initialFormData);
+  const [editCollection, setEditCollection] = useState(null);
+  const [formData, setFormData] = useState(initialFormData);
 
   const fetchData = async () => {
     try {
@@ -88,7 +68,7 @@ export default function CollectionsPage() {
     fetchData();
   }, []);
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     try {
       if (editCollection) {
@@ -111,7 +91,7 @@ export default function CollectionsPage() {
     }
   };
 
-  const handleEdit = (collection: Collection) => {
+  const handleEdit = (collection) => {
     setEditCollection(collection);
     setFormData({
       name: collection.name,
@@ -124,7 +104,7 @@ export default function CollectionsPage() {
     setIsOpen(true);
   };
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = async (id) => {
     if (window.confirm("Are you sure you want to delete this collection?")) {
       try {
         await remove(id, "collections");
