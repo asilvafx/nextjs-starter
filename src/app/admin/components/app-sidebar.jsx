@@ -1,6 +1,6 @@
 "use client"
-
-import * as React from "react"
+import Link from "next/link"
+import Image from "next/image"
 import {
   AudioWaveform,
   BookOpen,
@@ -95,7 +95,19 @@ export function AppSidebar(props) {
   return (
     <Sidebar collapsible="icon" {...props}>
       <SidebarHeader>
-        Brand
+        <Link
+            href="/admin"
+        >
+        <Image 
+            src="/images/logo.png"
+            alt="Logo"
+            width={50}
+            height={50} 
+            className="max-h-8" 
+            style={{ width: 'auto' }}
+            priority={true} 
+        />
+        </Link>
       </SidebarHeader>
       <SidebarContent>
         <NavMain navMain={data.navMain} navHome={data.navHome} /> 

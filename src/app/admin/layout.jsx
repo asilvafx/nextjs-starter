@@ -17,6 +17,7 @@ import {
   SidebarProvider,
   SidebarTrigger,
 } from '@/components/ui/sidebar'
+import { ThemeSwitchGroup } from "@/components/ui/theme-mode";
 import { cn } from "@/lib/utils";
 
 export default function AdminLayout({ children }) {
@@ -32,7 +33,7 @@ export default function AdminLayout({ children }) {
       <AppSidebar />
       <SidebarInset>
         <header className="flex h-16 shrink-0 items-center gap-2 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
-          <div className="flex items-center gap-2 px-4">
+          <div className="w-full flex items-center gap-2 px-4">
             <SidebarTrigger className="-ml-1" />
             <Separator
               orientation="vertical"
@@ -51,6 +52,9 @@ export default function AdminLayout({ children }) {
                 </BreadcrumbItem>
               </BreadcrumbList>
             </Breadcrumb>
+            <div className="ms-auto"> 
+            <ThemeSwitchGroup />
+            </div>
           </div>
         </header>
         <div className="flex flex-1 flex-col gap-4 p-4 pt-0"> 

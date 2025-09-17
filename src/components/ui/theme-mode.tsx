@@ -76,14 +76,14 @@ export const ThemeSwitchGroup = () => {
       type="single"
       value={theme}
       onValueChange={(val) => val && setTheme(val as 'system' | 'light' | 'dark')}
-      className="border border-black/30 dark:border-white/30 rounded-md p-1 gap-1"
+      className="border border-black/30 dark:border-white/30 rounded-md p-0 gap-0"
     >
       {SWITCH_DATA.map((data) => (
         <ToggleGroupItem
           key={data.value}
           value={data.value}
           className={cn(
-            'flex items-center gap-2 px-4 py-1 text-sm rounded',
+            'flex items-center gap-2 px-4 py-1 text-xs rounded',
             theme === data.value && 'bg-neutral-200 dark:bg-neutral-700'
           )}
         >
