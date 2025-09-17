@@ -34,7 +34,7 @@ const SWITCH_DATA: SwitchOption[] = [
     name: 'Light',
     value: 'light',
     iconSvg: (
-      <svg xmlns="http://www.w3.org/2000/svg" className="size-5" viewBox="0 0 24 24">
+      <svg xmlns="http://www.w3.org/2000/svg" className="size-3" viewBox="0 0 24 24">
         <path
           fill="none"
           stroke="currentColor"
