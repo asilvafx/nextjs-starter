@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
-import { getAllPublic } from '@/lib/query.js';
+import { getAllPublic } from '@/lib/client/query.js';
 
 const Page = () => {
 

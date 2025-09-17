@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { COUNTRIES } from "@/lib/countries.js";
+import { COUNTRIES } from "@/lib/client/countries.js";
 
 export default function CountrySelector({
                                             id,

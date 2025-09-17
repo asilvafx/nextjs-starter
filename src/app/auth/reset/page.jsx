@@ -14,11 +14,13 @@ const ResetPasswordPage = () => {
 
   useEffect(() => {
     const emailParam = searchParams.get('email');
+    const codeParam = searchParams.get('code');
     const tokenParam = searchParams.get('token');
 
-    if (emailParam && tokenParam) {
+    if (emailParam && codeParam && tokenParam) {
       setValidParams({
         email: decodeURIComponent(emailParam),
+        code: decodeURIComponent(codeParam),
         token: decodeURIComponent(tokenParam)
       });
     }
@@ -45,6 +47,7 @@ const ResetPasswordPage = () => {
     >
       <ResetForm 
         initialEmail={validParams.email}
+        initialCode={validParams.code}
         initialToken={validParams.token}
       />
       <div className='mt-6 text-center'>

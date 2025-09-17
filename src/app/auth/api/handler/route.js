@@ -2,9 +2,9 @@
 import { NextResponse } from 'next/server';
 
 import DBService from '@/data/rest.db.js';
-import { encryptPassword, generateSalt, validatePassword } from '@/lib/crypt';
-import EmailService from '@/lib/email';
-import { createWallet, loadConfig } from '@/lib/web3';
+import { encryptPassword, generateSalt, validatePassword } from '@/lib/server/crypt';
+import EmailService from '@/lib/server/email';
+import { createWallet, loadConfig } from '@/lib/server/web3';
 
 
 

@@ -1,8 +1,8 @@
 // app/auth/api/forgot/route.js
 import { NextResponse } from 'next/server';
-import DBService from '@/data/rest.db.js';
-import { encryptHash } from '@/lib/crypt.js';
-import EmailService from '@/lib/email.js';
+import DBService from '@/data/rest.db';
+import { encryptHash } from '@/lib/server/crypt';
+import EmailService from '@/lib/server/email';
 
 // Use API route for sending emails instead of direct import to avoid issues
 async function sendPasswordResetEmailAsync(email, code, name) {

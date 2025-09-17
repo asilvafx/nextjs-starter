@@ -1,7 +1,7 @@
 // app/auth/api/verify/route.js
 import { NextResponse } from 'next/server';
 import DBService from '@/data/rest.db.js';
-import { decryptHash } from '@/lib/crypt.js';
+import { decryptHash } from '@/lib/server/crypt.js';
 
 export async function POST(request) {
 

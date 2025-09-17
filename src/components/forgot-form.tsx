@@ -101,9 +101,9 @@ export function ForgotForm({
     } catch (error) {
       console.error('Verify code error:', error);
       toast.error("Error verifying code.");
+      setLoading(false);
     }
 
-    setLoading(false);
   };
 
   return (

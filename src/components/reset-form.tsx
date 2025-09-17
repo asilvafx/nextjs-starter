@@ -17,17 +17,20 @@ import { Label } from "@/components/ui/label"
 
 interface ResetFormProps extends React.ComponentProps<"div"> {
   initialEmail?: string;
+  initialCode?: string;
   initialToken?: string;
 }
 
 export function ResetForm({
   className,
   initialEmail = "",
+  initialCode = "",
   initialToken = "",
   ...props
 }: ResetFormProps) {
   const router = useRouter();
   const [email, setEmail] = useState(initialEmail);
+  const [code, setCode] = useState(initialCode);
   const [token, setToken] = useState(initialToken);
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -35,11 +38,11 @@ export function ResetForm({
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (!email || !token) {
+    if (!email || !code || !token) {
       toast.error('Invalid reset link. Please try again.');
       router.push('/auth/forgot');
     }
-  }, [email, token, router]);
+  }, [email, code, token, router]);
 
   const showPassword = () => setShowPwd((prev) => !prev);
 
@@ -79,6 +82,7 @@ export function ResetForm({
           email,
           newPassword,
           confirmPassword,
+          code, 
           token, // Pass the encrypted code as token
         }),
       });

@@ -9,7 +9,7 @@ const withBundleAnalyzer = initializeBundleAnalyzer({
 
 // Intl
 const withNextIntl = createNextIntlPlugin(
-    './src/i18n/requests.js'
+    './src/locale/requests.js'
 );
 
 // Base config

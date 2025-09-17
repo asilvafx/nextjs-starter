@@ -1,7 +1,7 @@
 // app/auth/api/reset/route.js
 import { NextResponse } from 'next/server';
 import DBService from '@/data/rest.db.js';
-import { encryptPassword, generateSalt } from '@/lib/crypt.js';
+import { decryptHash, encryptPassword, generateSalt } from '@/lib/server/crypt.js';
 
 const passwordValid = (pwd) => {
     return (
@@ -15,7 +15,18 @@ const passwordValid = (pwd) => {
 export async function POST(request) {
 
     try {
-        const { email, newPassword, confirmPassword, token } = await request.json();
+        const { email, newPassword, confirmPassword, code, token } = await request.json();
+
+        // Verify Token
+        if (!code || !token) {
+            return NextResponse.json(
+                { error: 'Token invalid. Please, refresh your browser and try again later.' }
+            );
+        } else if (code !== decryptHash(token)) {
+            return NextResponse.json(
+                { error: 'Token mismatch. Please, refresh your browser and try again later.' }
+            );
+        }
 
         // Validation
         if (!email || !newPassword || !confirmPassword) {
