@@ -36,7 +36,6 @@
         "clsx": "^2.1.1",
         "cmdk": "^1.1.1",
         "country-data-list": "^1.5.5",
-        "crypto-js": "^4.2.0",
         "firebase": "^12.1.0",
         "framer-motion": "^12.23.12",
         "js-cookie": "^3.0.5",
