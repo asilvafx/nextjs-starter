@@ -1,6 +1,6 @@
 "use client"
 
-import Link from 'next/link'
+import Link from 'next/link' 
 import { ChevronRight } from "lucide-react"
 
 import {
@@ -19,27 +19,31 @@ import {
   SidebarMenuSubItem,
 } from "@/components/ui/sidebar"
 
-export function NavMain({ items }) {
+export function NavMain({ navMain, navHome }) {
   return (
     <>
 
     <SidebarGroup>
       <SidebarGroupLabel>Dashboard</SidebarGroupLabel>
       <SidebarMenu>
+
+        {navHome.map((item) => (
              <SidebarMenuItem>
-              <SidebarMenuButton tooltip={`Overview`} asChild> 
-              <Link href="/admin">
-                <ChevronRight />
-                <span>Overview</span>
+              <SidebarMenuButton tooltip={item.title} asChild> 
+              <Link href={item.url}> 
+                <item.icon className="mr-2 size-4" />
+                <span>{item.title}</span>
               </Link> 
               </SidebarMenuButton>
              </SidebarMenuItem>
+        ))}
+        
       </SidebarMenu>
     </SidebarGroup>
     <SidebarGroup>
       <SidebarGroupLabel>Platform</SidebarGroupLabel>
       <SidebarMenu>
-        {items.map((item) => (
+        {navMain.map((item) => (
           <Collapsible
             key={item.title}
             asChild

@@ -1,5 +1,5 @@
 "use client"
-
+import Link from 'next/link'
 import {
   BadgeCheck,
   Bell,
@@ -94,10 +94,12 @@ export function NavUser({ user }) {
               </DropdownMenuItem>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
+            <Link href={'/auth/logout'}>
             <DropdownMenuItem>
               <LogOut />
               Log out
             </DropdownMenuItem>
+            </Link>
           </DropdownMenuContent>
         </DropdownMenu>
       </SidebarMenuItem>

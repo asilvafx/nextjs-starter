@@ -77,21 +77,16 @@ const data = {
       icon: Frame,
     },
   ],
-  projects: [
+  navHome: [
     {
-      name: "Design Engineering",
+      title: "Overview",
       url: "#",
       icon: Frame,
     },
     {
-      name: "Sales & Marketing",
+      title: "Analytics",
       url: "#",
       icon: PieChart,
-    },
-    {
-      name: "Travel",
-      url: "#",
-      icon: Map,
     },
   ],
 }
@@ -103,7 +98,7 @@ export function AppSidebar(props) {
         Brand
       </SidebarHeader>
       <SidebarContent>
-        <NavMain items={data.navMain} /> 
+        <NavMain navMain={data.navMain} navHome={data.navHome} /> 
       </SidebarContent>
       <SidebarFooter>
         <NavUser user={data.user} />
