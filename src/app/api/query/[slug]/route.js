@@ -1,7 +1,7 @@
 // app/api/query/[slug]/route.js
 import { NextResponse } from 'next/server';
 import DBService from '@/data/rest.db.js';
-import { withAuth, withAdminAuth } from '@/lib/auth.js';
+import { withAuth, withAdminAuth } from '@/lib/server/auth.js';
 
 // Helper function to get request body safely
 async function getRequestBody(request) {

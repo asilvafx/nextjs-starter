@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import EmailService from '@/lib/email';
+import EmailService from '@/lib/server/email';
 import DBService from '@/data/rest.db.js';
 
 export async function POST(request) {
