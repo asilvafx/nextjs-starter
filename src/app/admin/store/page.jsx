@@ -23,27 +23,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
 import { Plus, Pencil, Trash2, Image } from "lucide-react";
 
-interface Product {
-  id: string;
-  name: string;
-  description: string;
-  price: number;
-  imageUrl: string;
-  categoryId: string;
-  inStock: boolean;
-  createdAt: string;
-}
-
-interface FormData {
-  name: string;
-  description: string;
-  price: number;
-  imageUrl: string;
-  categoryId: string;
-  inStock: boolean;
-}
-
-const initialFormData: FormData = {
+const initialFormData = {
   name: "",
   description: "",
   price: 0,
@@ -53,12 +33,12 @@ const initialFormData: FormData = {
 };
 
 export default function ProductsPage() {
-  const [products, setProducts] = useState<Product[]>([]);
-  const [categories, setCategories] = useState<any[]>([]);
+  const [products, setProducts] = useState([]);
+  const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isOpen, setIsOpen] = useState(false);
-  const [editProduct, setEditProduct] = useState<Product | null>(null);
-  const [formData, setFormData] = useState<FormData>(initialFormData);
+  const [editProduct, setEditProduct] = useState(null);
+  const [formData, setFormData] = useState(initialFormData);
 
   const fetchData = async () => {
     try {
@@ -81,7 +61,7 @@ export default function ProductsPage() {
     fetchData();
   }, []);
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     try {
       const data = { ...formData, price: Number(formData.price) };
@@ -106,7 +86,7 @@ export default function ProductsPage() {
     }
   };
 
-  const handleEdit = (product: Product) => {
+  const handleEdit = (product) => {
     setEditProduct(product);
     setFormData({
       name: product.name,
@@ -119,7 +99,7 @@ export default function ProductsPage() {
     setIsOpen(true);
   };
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = async (id) => {
     if (window.confirm("Are you sure you want to delete this product?")) {
       try {
         await remove(id, "products");
@@ -135,7 +115,7 @@ export default function ProductsPage() {
     }
   };
 
-  const formatPrice = (price: number) => {
+  const formatPrice = (price) => {
     return new Intl.NumberFormat("en-US", {
       style: "currency",
       currency: "USD",
