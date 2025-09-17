@@ -2,7 +2,7 @@
 
 import { useAuth } from "@/hooks/useAuth"; 
 import { redirect } from "next/navigation"; 
-import { AppSidebar } from "@/components/app-sidebar"
+import { AppSidebar } from "./components/app-sidebar"
 import {
   Breadcrumb,
   BreadcrumbItem,

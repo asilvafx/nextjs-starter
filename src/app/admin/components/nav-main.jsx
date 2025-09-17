@@ -1,6 +1,7 @@
 "use client"
 
-import { ChevronRight, type LucideIcon } from "lucide-react"
+import Link from 'next/link'
+import { ChevronRight } from "lucide-react"
 
 import {
   Collapsible,
@@ -18,21 +19,23 @@ import {
   SidebarMenuSubItem,
 } from "@/components/ui/sidebar"
 
-export function NavMain({
-  items,
-}: {
-  items: {
-    title: string
-    url: string
-    icon?: LucideIcon
-    isActive?: boolean
-    items?: {
-      title: string
-      url: string
-    }[]
-  }[]
-}) {
+export function NavMain({ items }) {
   return (
+    <>
+
+    <SidebarGroup>
+      <SidebarGroupLabel>Dashboard</SidebarGroupLabel>
+      <SidebarMenu>
+             <SidebarMenuItem>
+              <SidebarMenuButton tooltip={`Overview`} asChild> 
+              <Link href="/admin">
+                <ChevronRight />
+                <span>Overview</span>
+              </Link> 
+              </SidebarMenuButton>
+             </SidebarMenuItem>
+      </SidebarMenu>
+    </SidebarGroup>
     <SidebarGroup>
       <SidebarGroupLabel>Platform</SidebarGroupLabel>
       <SidebarMenu>
@@ -56,9 +59,9 @@ export function NavMain({
                   {item.items?.map((subItem) => (
                     <SidebarMenuSubItem key={subItem.title}>
                       <SidebarMenuSubButton asChild>
-                        <a href={subItem.url}>
+                        <Link href={subItem.url}>
                           <span>{subItem.title}</span>
-                        </a>
+                        </Link>
                       </SidebarMenuSubButton>
                     </SidebarMenuSubItem>
                   ))}
@@ -69,5 +72,6 @@ export function NavMain({
         ))}
       </SidebarMenu>
     </SidebarGroup>
+    </>
   )
 }
