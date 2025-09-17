@@ -1,7 +1,7 @@
 // app/api/query/public/[slug]/route.js
 import { NextResponse } from 'next/server';
 import DBService from '@/data/rest.db.js';
-import { withPublicAccess } from '@/lib/auth.js';
+import { withPublicAccess } from '@/lib/server/auth.js';
 
 // Helper function to get request body safely
 async function getRequestBody(request) {
