@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { getAll, get, update, remove, create } from '@/lib/query.js';
+import { getAll, get, update, remove, create } from '@/lib/client/query.js';
 import { AlertTriangle, X } from 'lucide-react';
 
 // Import the new components
