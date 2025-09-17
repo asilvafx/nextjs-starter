@@ -1,7 +1,7 @@
 // app/dashboard/components/sections/CatalogManagement.jsx
 "use client"
 import { useState, useEffect, useRef, useCallback } from 'react';
-import {getAll, create, update, remove} from '@/lib/query.js';
+import {getAll, create, update, remove} from '@/lib/client/query.js';
 import ProductModal from '../modals/ProductModal';
 import { DataTable, StatusBadge, ActionButtons, EmptyState } from '../common/Common';
 import {toast} from 'sonner';

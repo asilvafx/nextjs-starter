@@ -1,7 +1,7 @@
 // app/dashboard/components/sections/CollectionsManagement.jsx
 "use client"
 import { useState, useEffect } from 'react';
-import { create, getAll } from '@/lib/query.js';
+import { create, getAll } from '@/lib/client/query.js';
 import { DataTable, StatusBadge, ActionButtons, EmptyState } from '../common/Common';
 import { toast } from 'sonner';
 import {

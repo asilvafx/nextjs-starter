@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { ActionButtons, DataTable, StatusBadge } from '../components/common/Common';
 import SkeletonRow from '../components/skeletons/SkeletonRow';
-import { getAll } from '@/lib/query';
+import { getAll } from '@/lib/client/query';
 
 const DashboardUsers = () => {
     const [searchTerm, setSearchTerm] = useState('');

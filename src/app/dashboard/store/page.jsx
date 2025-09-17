@@ -1,7 +1,7 @@
 // app/dashboard/shop/page.jsx
 "use client"
 import { useState, useEffect, useMemo } from 'react';
-import { getAll } from '@/lib/query.js';
+import { getAll } from '@/lib/client/query.js';
 import CatalogManagement from '../components/sections/CatalogManagement';
 import CategoriesManagement from '../components/sections/CategoriesManagement';
 import CollectionsManagement from '../components/sections/CollectionsManagement';
