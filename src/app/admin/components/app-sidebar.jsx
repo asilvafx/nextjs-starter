@@ -103,7 +103,7 @@ export function AppSidebar(props) {
             alt="Logo"
             width={50}
             height={50} 
-            className="max-h-8" 
+            className="max-h-8 dark:invert" 
             style={{ width: 'auto' }}
             priority={true} 
         />
