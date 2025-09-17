@@ -83,7 +83,7 @@ export const ThemeSwitchGroup = () => {
           key={data.value}
           value={data.value}
           className={cn(
-            'flex items-center gap-2 px-4 py-1 text-xs rounded',
+            'flex items-center gap-2 px-2 py-1 text-xs rounded',
             theme === data.value && 'bg-neutral-200 dark:bg-neutral-700'
           )}
         >
