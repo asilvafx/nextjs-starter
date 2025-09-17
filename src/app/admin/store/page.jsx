@@ -32,23 +32,23 @@ const initialFormData = {
   inStock: true,
 };
 
-export default function ProductsPage() {
-  const [products, setProducts] = useState([]);
+export default function CatalogPage() {
+  const [catalog, setCatalog] = useState([]);
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isOpen, setIsOpen] = useState(false);
-  const [editProduct, setEditProduct] = useState(null);
+  const [editItem, setEditItem] = useState(null);
   const [formData, setFormData] = useState(initialFormData);
 
   const fetchData = async () => {
     try {
       setLoading(true);
-      const [productsRes, categoriesRes] = await Promise.all([
-        getAll("products"),
+      const [catalogRes, categoriesRes] = await Promise.all([
+        getAll("catalog"),
         getAll("categories"),
       ]);
       
-      if (productsRes.success) setProducts(productsRes.data);
+      if (catalogRes.success) setCatalog(catalogRes.data);
       if (categoriesRes.success) setCategories(categoriesRes.data);
     } catch (error) {
       toast.error("Failed to fetch data");
@@ -66,15 +66,15 @@ export default function ProductsPage() {
     try {
       const data = { ...formData, price: Number(formData.price) };
       
-      if (editProduct) {
-        await update(editProduct.id, data, "products");
-        toast.success("Product updated successfully");
+      if (editItem) {
+        await update(editItem.id, data, "catalog");
+        toast.success("Item updated successfully");
       } else {
-        await create(data, "products");
-        toast.success("Product created successfully");
+        await create(data, "catalog");
+        toast.success("Item created successfully");
       }
       setIsOpen(false);
-      setEditProduct(null);
+      setEditItem(null);
       setFormData(initialFormData);
       fetchData();
     } catch (error) {
@@ -87,7 +87,7 @@ export default function ProductsPage() {
   };
 
   const handleEdit = (product) => {
-    setEditProduct(product);
+    setEditItem(product);
     setFormData({
       name: product.name,
       description: product.description,
@@ -102,8 +102,8 @@ export default function ProductsPage() {
   const handleDelete = async (id) => {
     if (window.confirm("Are you sure you want to delete this product?")) {
       try {
-        await remove(id, "products");
-        toast.success("Product deleted successfully");
+        await remove(id, "catalog");
+        toast.success("Item deleted successfully");
         fetchData();
       } catch (error) {
         if (error instanceof Error) {
@@ -126,27 +126,27 @@ export default function ProductsPage() {
     <div className="space-y-4">
       <div className="flex justify-between items-center">
         <div>
-          <h2 className="text-2xl font-semibold">Products</h2>
+          <h2 className="text-2xl font-semibold">Catalog</h2>
           <p className="text-muted-foreground">Manage your product catalog</p>
         </div>
         <Dialog open={isOpen} onOpenChange={setIsOpen}>
           <DialogTrigger asChild>
             <Button>
               <Plus className="w-4 h-4 mr-2" />
-              Add Product
+              Add Item
             </Button>
           </DialogTrigger>
           <DialogContent className="max-w-2xl">
             <DialogHeader>
               <DialogTitle>
-                {editProduct ? "Edit Product" : "Add New Product"}
+                {editItem ? "Edit Item" : "Add New Item"}
               </DialogTitle>
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Input
-                    placeholder="Product Name"
+                    placeholder="Item Name"
                     value={formData.name}
                     onChange={(e) =>
                       setFormData({ ...formData, name: e.target.value })
@@ -224,7 +224,7 @@ export default function ProductsPage() {
                 </div>
               </div>
               <Button type="submit" className="w-full">
-                {editProduct ? "Update Product" : "Create Product"}
+                {editItem ? "Update Item" : "Create Item"}
               </Button>
             </form>
           </DialogContent>
@@ -250,14 +250,14 @@ export default function ProductsPage() {
                   Loading...
                 </TableCell>
               </TableRow>
-            ) : products.length === 0 ? (
+            ) : catalog.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={6} className="text-center">
-                  No products found
+                  No catalog found
                 </TableCell>
               </TableRow>
             ) : (
-              products.map((product) => (
+              catalog.map((product) => (
                 <TableRow key={product.id}>
                   <TableCell>
                     {product.imageUrl ? (

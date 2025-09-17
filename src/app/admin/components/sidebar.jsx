@@ -1,10 +1,16 @@
 "use client";
 
-import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { usePathname } from "next/navigation";
-import Link from "next/link";
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarProvider,
+} from "@/components/ui/sidebar";
 import {
   LayoutDashboard,
   Users,
@@ -13,97 +19,107 @@ import {
   Image,
   BarChart,
   Settings,
-  LogOut
+  LogOut,
 } from "lucide-react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { cn } from "@/lib/utils";
 
-const routes = [
+const menuItems = [
   {
-    label: "Dashboard",
+    title: "Dashboard",
+    url: "/admin",
     icon: LayoutDashboard,
-    href: "/admin",
     color: "text-sky-500"
   },
   {
-    label: "Access",
+    title: "Access",
+    url: "/admin/access",
     icon: Users,
-    href: "/admin/access",
     color: "text-violet-500"
   },
   {
-    label: "Store",
+    title: "Store",
+    url: "/admin/store",
     icon: Store,
-    href: "/admin/store",
     color: "text-pink-700"
   },
   {
-    label: "Orders",
+    title: "Orders",
+    url: "/admin/orders",
     icon: ShoppingCart,
-    href: "/admin/orders",
     color: "text-orange-700"
   },
   {
-    label: "Gallery",
+    title: "Gallery",
+    url: "/admin/gallery",
     icon: Image,
-    href: "/admin/gallery",
     color: "text-emerald-500"
   },
   {
-    label: "Analytics",
+    title: "Analytics",
+    url: "/admin/analytics",
     icon: BarChart,
-    href: "/admin/analytics",
     color: "text-green-700"
   },
   {
-    label: "Settings",
+    title: "Settings",
+    url: "/admin/settings",
     icon: Settings,
-    href: "/admin/settings",
     color: "text-gray-500"
   }
 ];
 
-const Sidebar = () => {
+function AdminSidebar() {
   const pathname = usePathname();
 
   return (
-    <div className="space-y-4 py-4 flex flex-col h-full bg-slate-900 text-white">
-      <div className="px-3 py-2 flex-1">
-        <Link href="/admin" className="flex items-center pl-3 mb-14">
-          <h1 className="text-2xl font-bold">
-            Admin Panel
-          </h1>
-        </Link>
-        <ScrollArea className="flex-1">
-          <div className="space-y-1">
-            {routes.map((route) => (
-              <Link
-                key={route.href}
-                href={route.href}
-                className={cn(
-                  "text-sm group flex p-3 w-full justify-start font-medium cursor-pointer hover:text-white hover:bg-white/10 rounded-lg transition",
-                  pathname === route.href ? "text-white bg-white/10" : "text-zinc-400",
-                )}
-              >
-                <div className="flex items-center flex-1">
-                  <route.icon className={cn("h-5 w-5 mr-3", route.color)} />
-                  {route.label}
-                </div>
-              </Link>
-            ))}
+    <SidebarProvider defaultOpen={true}>
+      <Sidebar className="h-full border-r">
+        <SidebarContent>
+          <div className="px-3 py-4">
+            <Link href="/admin" className="flex items-center mb-10">
+              <h1 className="text-2xl font-bold">Admin Panel</h1>
+            </Link>
           </div>
-        </ScrollArea>
-      </div>
-      <div className="px-3 py-2">
-        <Button
-          variant="ghost"
-          className="w-full justify-start text-zinc-400 hover:text-white hover:bg-white/10"
-          onClick={() => {/* Add logout handler */}}
-        >
-          <LogOut className="h-5 w-5 mr-3" />
-          Logout
-        </Button>
-      </div>
-    </div>
+          <SidebarGroup>
+            <SidebarGroupLabel>Menu</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {menuItems.map((item) => (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton
+                      asChild
+                      className={cn(
+                        "w-full flex items-center gap-3 p-2 rounded-lg transition-colors",
+                        pathname === item.url
+                          ? "bg-accent text-accent-foreground"
+                          : "hover:bg-accent/50"
+                      )}
+                    >
+                      <Link href={item.url} className="flex items-center gap-3">
+                        <item.icon className={cn("h-5 w-5", item.color)} />
+                        <span>{item.title}</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    className="w-full flex items-center gap-3 p-2 rounded-lg text-red-500 hover:bg-accent/50 mt-4"
+                    onClick={() => {/* Add logout handler */}}
+                  >
+                    <LogOut className="h-5 w-5" />
+                    <span>Logout</span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        </SidebarContent>
+      </Sidebar>
+    </SidebarProvider>
   );
-};
+}
 
-export default Sidebar;
+export default AdminSidebar;

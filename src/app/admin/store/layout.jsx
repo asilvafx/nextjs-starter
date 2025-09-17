@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 
 const sections = [
   {
-    label: "Products",
+    label: "Catalog",
     href: "/admin/store",
   },
   {
@@ -21,6 +21,8 @@ const sections = [
 ];
 
 export default function StoreLayout({ children }) {
+
+  const pathname = usePathname();
 
   return (
     <div className="space-y-6">
