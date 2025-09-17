@@ -1,7 +1,7 @@
 // app/api/shop/search/route.js
 import { NextResponse } from 'next/server';
 import DBService from '@/data/rest.db.js';
-import { withAuth } from '@/lib/auth.js';
+import { withAuth } from '@/lib/server/auth.js';
 
 // GET advanced search - accessible to all authenticated users
 async function searchItemsHandler(request) {

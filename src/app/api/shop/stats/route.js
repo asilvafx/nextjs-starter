@@ -1,7 +1,7 @@
 // app/api/shop/stats/route.js
 import { NextResponse } from 'next/server';
 import DBService from '@/data/rest.db.js';
-import { withAdminAuth } from '@/lib/auth.js';
+import { withAdminAuth } from '@/lib/server/auth.js';
 
 // GET shop statistics - admin only
 async function getStatsHandler(request) {

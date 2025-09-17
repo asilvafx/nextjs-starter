@@ -8,7 +8,7 @@ import { motion } from 'framer-motion';
 import { FaSpinner } from 'react-icons/fa';
 import { useTranslations } from 'next-intl';
 import { useState, useEffect } from 'react';
-import { getAllPublic } from '@/lib/query.js';
+import { getAllPublic } from '@/lib/client/query.js';
 
 function Shop() {
     const t = useTranslations('Shop');
