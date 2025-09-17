@@ -1,111 +1,97 @@
-// app/admin/page.jsx
-"use client"
-import { useEffect, useState } from 'react';
-import { toast } from 'sonner';
-import { useAuth } from '@/hooks/useAuth';
-import { getAllPublic } from '@/lib/client/query.js';
+"use client";
 
-const Page = () => {
+import { useEffect, useState } from "react";
+import { Card } from "@/components/ui/card";
+import { getAll } from "@/lib/client/query";
+import { 
+  Users,
+  ShoppingCart,
+  Package,
+  DollarSign
+} from "lucide-react";
 
-    const { isAuthenticated, user, status } = useAuth();
-    const [users, setUsers] = useState([]);
-    const [error, setError] = useState(null);
-    const [loading, setLoading] = useState(true);
+const DashboardCard = ({ label, value, icon: Icon, description }) => (
+  <Card className="p-4 border-none shadow-lg">
+    <div className="flex items-center gap-4">
+      <div className="p-4 rounded-full bg-slate-900 text-white">
+        <Icon className="w-6 h-6" />
+      </div>
+      <div>
+        <p className="text-sm text-muted-foreground">{label}</p>
+        <h3 className="text-2xl font-bold">{value}</h3>
+        <p className="text-xs text-muted-foreground mt-1">{description}</p>
+      </div>
+    </div>
+  </Card>
+);
 
-    useEffect(() => {
-        async function fetchUsers() {
-            console.log("🚀 Starting fetchUsers...");
-            toast("🚀 Starting fetchUsers...");
-            try {
-                setLoading(true);
-                setError(null);
+export default function AdminDashboard() {
+  const [stats, setStats] = useState({
+    users: 0,
+    orders: 0,
+    products: 0,
+    revenue: 0,
+  });
 
-                // Get all users, limit to 10 users
-                const result = await getAllPublic('users', {limit: 10});
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const [users, orders, products] = await Promise.all([
+          getAll("users", { count: true }),
+          getAll("orders", { count: true }),
+          getAll("products", { count: true }),
+        ]);
 
-                console.log("📨 Response received:", result);
+        const revenue = orders?.data?.reduce((acc, order) => 
+          acc + (order.total || 0), 0) || 0;
 
-                if (result.success) {
-                    setUsers(result.data);
-                } else {
-                    setError(result.error || "Unknown API error");
-                }
-            } catch (err) {
-                console.error("❌ Fetch error:", err);
-                setError(err.message || "Network error");
-            } finally {
-                setLoading(false);
-            }
-        }
+        setStats({
+          users: users?.data?.length || 0,
+          orders: orders?.data?.length || 0,
+          products: products?.data?.length || 0,
+          revenue: revenue,
+        });
+      } catch (error) {
+        console.error("Error fetching stats:", error);
+      }
+    };
 
-        // Only fetch if authenticated
-        if (isAuthenticated) {
-            fetchUsers();
-        } else if (!isAuthenticated && status !== 'loading') {
-            setLoading(false);
-        }
-    }, [isAuthenticated, status]);
+    fetchStats();
+  }, []);
 
-    
-    return (
-        <div className="section">
-            <div className="mb-6">
-                <h2 className="text-2xl font-semibold mb-4">Users ({users.length})</h2>
-
-                {!isAuthenticated && status !== 'loading' && (
-                    <div className="text-red-600 bg-red-50/90 dark:text-red-100 dark:bg-red-50/10 rounded p-4 mb-4">
-                        Please sign in to view data.
-                    </div>
-                )}
-
-                {loading && (
-                    <div className="text-blue-600 p-4 bg-black/5 dark:bg-white/5 rounded">
-                        <div className="animate-pulse">Loading data...</div>
-                    </div>
-                )}
-
-                {error && isAuthenticated && (
-                    <div className="text-red-600 bg-red-50 p-4 rounded">
-                        <strong>Error:</strong> {error}
-                        <details className="mt-2">
-                            <summary className="cursor-pointer">Debug Details</summary>
-                            <pre className="mt-2 text-xs">{JSON.stringify({
-                                timestamp: new Date().toISOString(),
-                                isAuthenticated,
-                                userRole: user?.role,
-                                error: error
-                            }, null, 2)}</pre>
-                        </details>
-                    </div>
-                )}
-
-                {!loading && !error && users.length === 0 && isAuthenticated && (
-                    <div className="text-gray-500 italic p-4 bg-gray-50 rounded">
-                        No data found. Try creating a new record first.
-                    </div>
-                )}
-
-                {users.length > 0 && (
-                    <div className="grid gap-4">
-                        {users.map((user, index) => (
-                            <div key={user.id || index}
-                                 className="border border-gray-300 dark:border-gray-700 p-4 mb-2 rounded bg-black/5 dark:bg-white/5">
-                                <div className="font-semibold">ID: {user.id}</div>
-                                <div>Name: {user.name || user.displayName || 'N/A'}</div>
-                                <div>Email: {user.email || 'N/A'}</div>
-                                <div>Role: {user.role || 'N/A'}</div>
-                                {user.createdAt && (
-                                    <div className="text-sm text-gray-600">
-                                        Created: {new Date(user.createdAt).toLocaleString()}
-                                    </div>
-                                )}
-                            </div>
-                        ))}
-                    </div>
-                )}
-            </div>
-        </div>
-    );
-};
-
-export default Page;
+  return (
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-3xl font-bold">Dashboard</h1>
+        <p className="text-muted-foreground">Welcome to your admin dashboard</p>
+      </div>
+      
+      <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-4">
+        <DashboardCard
+          label="Total Users"
+          value={stats.users}
+          icon={Users}
+          description="Total registered users"
+        />
+        <DashboardCard
+          label="Total Orders"
+          value={stats.orders}
+          icon={ShoppingCart}
+          description="Orders processed"
+        />
+        <DashboardCard
+          label="Products"
+          value={stats.products}
+          icon={Package}
+          description="Products in catalog"
+        />
+        <DashboardCard
+          label="Revenue"
+          value={`$${stats.revenue.toFixed(2)}`}
+          icon={DollarSign}
+          description="Total revenue"
+        />
+      </div>
+    </div>
+  );
+}

@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FaPlus, FaMinus, FaTrash, FaShoppingBag } from 'react-icons/fa';
 import FreeShippingProgressBar from '../components/FreeShippingProgressBar';
+import { Button } from '@/components/ui/button';
 
 const Cart = () => {
     const t = useTranslations('Cart');
@@ -83,11 +84,12 @@ const Cart = () => {
                                 {t('emptyCartMessage')}
                             </p>
                             <Link
-                                href="/shop"
-                                className="button"
+                                href="/shop" 
                             >
-                                <FaShoppingBag className="mr-2" />
-                                {t('goToShop')}
+                                <Button>
+                                    <FaShoppingBag className="mr-2" />
+                                    {t('goToShop')}
+                                </Button> 
                             </Link>
                         </motion.div>
                     ) : (
