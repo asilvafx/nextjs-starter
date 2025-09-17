@@ -12,7 +12,7 @@ import PhoneInput from 'react-phone-input-2'
 import { useCart } from 'react-use-cart';
 import { useTranslations } from 'next-intl';
 import { useSession } from "next-auth/react";
-import { COUNTRIES } from '@/lib/countries.js';
+import { COUNTRIES } from '@/lib/client/countries.js';
 import CountrySelector from '@/ui/CountrySelector';
 import ShippingMethodSelector from './ShippingMethodSelector.jsx';
 import GooglePlacesAutoComplete from '@/ui/GooglePlacesAutoComplete';
