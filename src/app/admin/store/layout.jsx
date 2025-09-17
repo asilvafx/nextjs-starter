@@ -20,12 +20,7 @@ const sections = [
   },
 ];
 
-export default function StoreLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
-  const pathname = usePathname();
+export default function StoreLayout({ children }) {
 
   return (
     <div className="space-y-6">
