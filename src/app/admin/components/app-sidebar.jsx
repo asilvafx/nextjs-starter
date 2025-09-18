@@ -15,7 +15,7 @@ import {
   Users,
   SquareTerminal,
 } from "lucide-react"
- 
+
 import { NavMain } from "./nav-main" 
 import { NavUser } from "./nav-user" 
 import {
@@ -27,11 +27,17 @@ import {
 } from "@/components/ui/sidebar"
 import { Button } from "@/components/ui/button"
 
+import { useAuth } from "@/hooks/useAuth";
+
+export function AppSidebar(props) {
+
+const { isAuthenticated, user, status } = useAuth();
+
 // This is sample data.
 const data = {
   user: {
-    name: "shadcn",
-    email: "m@example.com",
+    name: user?.displayName || "NA",
+    email: user?.email || "-",
     avatar: "/images/avatar.webp",
   }, 
   navMain: [
@@ -93,38 +99,37 @@ const data = {
   ],
 }
 
-export function AppSidebar(props) {
-  return (
-    <Sidebar collapsible="icon" {...props}>
-      <SidebarHeader> 
-        <span 
-            className="w-full flex items-center justify-start gap-1 px-0"
-        >
-        <Image 
-            src="/images/logo.png"
-            alt="Logo"
-            width={50}
-            height={50} 
-            className="max-h-8 dark:invert" 
-            style={{ width: 'auto' }}
-            priority={true} 
-        /> 
-        <span className="ms-auto group-data-[collapsible=icon]:hidden peer-[[data-collapsible=icon]_&]:hidden"> 
-        <Link href="/" target="_blank" rel="noopener noreferrer">
-        <Button variant="outline" size="sm">
-          <Globe />
-        </Button>
-        </Link>
-        </span>
-        </span> 
-      </SidebarHeader>
-      <SidebarContent>
-        <NavMain navMain={data.navMain} navHome={data.navHome} /> 
-      </SidebarContent>
-      <SidebarFooter>
-        <NavUser user={data.user} />
-      </SidebarFooter>
-      <SidebarRail />
-    </Sidebar>
-  )
+return (
+  <Sidebar collapsible="icon" {...props}>
+    <SidebarHeader> 
+      <span 
+          className="w-full flex items-center justify-start gap-1 px-0"
+      >
+      <Image 
+          src="/images/logo.png"
+          alt="Logo"
+          width={50}
+          height={50} 
+          className="max-h-8 dark:invert" 
+          style={{ width: 'auto' }}
+          priority={true} 
+      /> 
+      <span className="ms-auto group-data-[collapsible=icon]:hidden peer-[[data-collapsible=icon]_&]:hidden"> 
+      <Link href="/" target="_blank" rel="noopener noreferrer">
+      <Button variant="outline" size="sm">
+        <Globe />
+      </Button>
+      </Link>
+      </span>
+      </span> 
+    </SidebarHeader>
+    <SidebarContent>
+      <NavMain navMain={data.navMain} navHome={data.navHome} /> 
+    </SidebarContent>
+    <SidebarFooter>
+      <NavUser user={user} />
+    </SidebarFooter>
+    <SidebarRail />
+  </Sidebar>
+)
 }

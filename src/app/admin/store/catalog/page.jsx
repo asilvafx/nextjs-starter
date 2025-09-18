@@ -126,8 +126,8 @@ export default function CatalogPage() {
     <div className="space-y-4">
       <div className="flex justify-between items-center">
         <div>
-          <h2 className="text-2xl font-semibold">Catalog</h2>
-          <p className="text-muted-foreground">Manage your product catalog</p>
+          <h2 className="text-2xl font-semibold">Items</h2>
+          <p className="text-muted-foreground">Manage your catalog items</p>
         </div>
         <Dialog open={isOpen} onOpenChange={setIsOpen}>
           <DialogTrigger asChild>
