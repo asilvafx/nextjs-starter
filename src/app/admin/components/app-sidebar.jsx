@@ -114,20 +114,17 @@ const data = {
 
 return (
   <Sidebar collapsible="icon" {...props}>
-    <SidebarHeader> 
-      <span 
-          className="w-full flex items-center justify-start gap-1 px-0"
-      >
+    <SidebarHeader className="flex-row items-center justify-start">  
       <Image 
           src="/next.svg"
           alt="Logo"
           width={150}
           height={150}
           className="dark:invert" 
-          style={{ width: 'auto', height: 'auto', maxHeight: '20px', maxWidth: '100px' }}
+          style={{ height: 'auto', maxHeight: '20px', maxWidth: '100px', minWidth: '30px' }}
           priority={true} 
       /> 
-      <span className="ms-auto group-data-[collapsible=icon]:hidden peer-[[data-collapsible=icon]_&]:hidden"> 
+      <div className="ms-auto group-data-[collapsible=icon]:hidden peer-[[data-collapsible=icon]_&]:hidden"> 
       <Link href="/" target="_blank" rel="noopener noreferrer">
       <Button variant="outline" size="sm">
         <Globe />
@@ -136,8 +133,7 @@ return (
       <span className="md:hidden">
       <SidebarTrigger /> 
       </span>
-      </span>
-      </span> 
+      </div> 
     </SidebarHeader>
     <SidebarContent>
       <NavMain nav={data} /> 
