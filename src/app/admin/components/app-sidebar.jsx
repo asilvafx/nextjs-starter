@@ -29,87 +29,19 @@ import {
 import { Button } from "@/components/ui/button"
 
 import { useAuth } from "@/hooks/useAuth";
+import { navigation } from "../config/navigation";
 
 export function AppSidebar(props) {
 
 const { isAuthenticated, user, status } = useAuth();
 
-// This is sample data.
 const data = {
   user: {
     name: user?.displayName || "NA",
     email: user?.email || "-",
     avatar: "/images/avatar.webp",
-  }, 
-  Main: [
-    {
-      title: "Access",
-      url: "#",
-      icon: Users, 
-      items: [
-        {
-          title: "Users",
-          url: "/admin/access/users",
-        },
-        {
-          title: "Roles",
-          url: "#",
-        },
-      ],
-    },
-    {
-      title: "Store",
-      url: "#",
-      icon: Frame,
-      items: [
-        {
-          title: "Orders",
-          url: "/admin/store/orders",
-        },
-        {
-          title: "Catalog",
-          url: "/admin/store/catalog",
-        },
-        {
-          title: "Customers",
-          url: "#",
-        },
-        {
-          title: "Settings",
-          url: "#",
-        },
-      ],
-    }, 
-    {
-      title: "Gallery",
-      url: "/admin/gallery",
-      icon: Frame,
-    },
-  ],
-  Home: [
-    {
-      title: "Overview",
-      url: "#",
-      icon: Frame,
-    },
-    {
-      title: "Analytics",
-      url: "#",
-      icon: PieChart,
-    },
-  ],
-  System: [
-    {
-      title: "Administration",
-      url: "#",
-      icon: Frame,
-    },
-    {
-      title: "Maintenance",
-      url: "#",
-      icon: PieChart,
-    },
-  ],
+  },
+  ...navigation
 }
 
 return (
@@ -130,7 +62,7 @@ return (
         <Globe />
       </Button>
       </Link> 
-      <span className="md:hidden">
+      <span className="md:hidden ms-2">
       <SidebarTrigger /> 
       </span>
       </div> 

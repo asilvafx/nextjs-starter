@@ -1,13 +1,14 @@
 "use client"
 
 import Link from 'next/link' 
+import { usePathname } from 'next/navigation'
 import { ChevronRight } from "lucide-react"
-
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible"
+import { useSidebar } from "@/components/ui/sidebar"
 import {
   SidebarGroup,
   SidebarGroupLabel,
@@ -20,6 +21,15 @@ import {
 } from "@/components/ui/sidebar"
 
 export function NavMain({ nav }) {
+  const { collapsed, setCollapsed, isMobile } = useSidebar();
+  const pathname = usePathname();
+
+  const handleLinkClick = () => {
+    if (isMobile) {
+      setCollapsed(true);
+    }
+  };
+
   return (
     <>
 
@@ -29,8 +39,8 @@ export function NavMain({ nav }) {
 
         {nav.Home.map((item) => (
              <SidebarMenuItem key={item.title}>
-              <SidebarMenuButton tooltip={item.title} asChild> 
-              <Link href={item.url}> 
+              <SidebarMenuButton tooltip={item.title} isActive={pathname === item.url} asChild> 
+              <Link href={item.url} onClick={handleLinkClick}> 
                 <item.icon className="mr-2 size-4" />
                 <span>{item.title}</span>
               </Link> 
@@ -52,7 +62,10 @@ export function NavMain({ nav }) {
           >
             <SidebarMenuItem>
               <CollapsibleTrigger asChild>
-                <SidebarMenuButton tooltip={item.title}>
+                <SidebarMenuButton 
+                  tooltip={item.title}
+                  isActive={item.items?.some(subItem => pathname === subItem.url)}
+                >
                   {item.icon && <item.icon />}
                   <span>{item.title}</span>
                   <ChevronRight className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
@@ -62,8 +75,8 @@ export function NavMain({ nav }) {
                 <SidebarMenuSub>
                   {item.items?.map((subItem) => (
                     <SidebarMenuSubItem key={subItem.title}>
-                      <SidebarMenuSubButton asChild>
-                        <Link href={subItem.url}>
+                      <SidebarMenuSubButton asChild isActive={pathname === subItem.url}>
+                        <Link href={subItem.url} onClick={handleLinkClick}>
                           <span>{subItem.title}</span>
                         </Link>
                       </SidebarMenuSubButton>
@@ -82,8 +95,8 @@ export function NavMain({ nav }) {
 
       {nav.System.map((item) => (
             <SidebarMenuItem key={item.title}>
-            <SidebarMenuButton tooltip={item.title} asChild> 
-            <Link href={item.url}> 
+            <SidebarMenuButton tooltip={item.title} isActive={pathname === item.url} asChild> 
+            <Link href={item.url} onClick={handleLinkClick}> 
               <item.icon className="mr-2 size-4" />
               <span>{item.title}</span>
             </Link> 

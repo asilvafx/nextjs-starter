@@ -1,0 +1,122 @@
+import {
+  Frame,
+  PieChart,
+  Users,
+} from "lucide-react"
+
+export const navigation = {
+  Home: [
+    {
+      title: "Overview",
+      url: "/admin",
+      icon: Frame, 
+    },
+    {
+      title: "Analytics",
+      url: "/admin/analytics",
+      icon: PieChart, 
+    },
+  ],
+  Main: [
+    {
+      title: "Access",
+      url: "#",
+      icon: Users, 
+      items: [
+        {
+          title: "Users",
+          url: "/admin/access/users", 
+        },
+        {
+          title: "Roles",
+          url: "/admin/access/roles", 
+        },
+      ],
+    },
+    {
+      title: "Store",
+      url: "#",
+      icon: Frame, 
+      items: [
+        {
+          title: "Orders",
+          url: "/admin/store/orders", 
+        },
+        {
+          title: "Catalog",
+          url: "/admin/store/catalog", 
+        },
+        {
+          title: "Customers",
+          url: "/admin/store/customers", 
+        },
+        {
+          title: "Settings",
+          url: "/admin/store/settings", 
+        },
+      ],
+    },
+    {
+      title: "Gallery",
+      url: "/admin/gallery",
+      icon: Frame, 
+    },
+  ],
+  System: [
+    {
+      title: "Administration",
+      url: "/admin/system/administration",
+      icon: Frame, 
+    },
+    {
+      title: "Maintenance",
+      url: "/admin/system/maintenance",
+      icon: PieChart, 
+    },
+  ],
+}
+
+export const findBreadcrumbPath = (pathname) => {
+  const paths = []; 
+
+  // Function to search for matching routes
+  const findRoute = (items) => {
+    for (const section in items) {
+      const sectionItems = items[section];
+      for (const item of sectionItems) {
+        // Check main item 
+        if (item.url === pathname ) {
+          paths.push({
+            title: item.title,
+            url: item.url
+          });
+          return true;
+        }
+        // Check subitems
+        if (item.items) {
+          for (const subItem of item.items) {
+            if (subItem.url === pathname) {
+              // Add parent item first if it's not a placeholder URL
+              if (item.url !== '#') {
+                paths.push({
+                  title: item.title,
+                  url: item.url
+                });
+              }
+              // Add the matching subitem
+              paths.push({
+                title: subItem.title,
+                url: subItem.url
+              });
+              return true;
+            }
+          }
+        }
+      }
+    }
+    return false;
+  };
+
+  findRoute(navigation);
+  return paths;
+};

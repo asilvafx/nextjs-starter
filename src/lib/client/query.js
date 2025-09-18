@@ -10,28 +10,11 @@ class QueryAPI {
 
     // Helper method for making authenticated API calls
     async makeRequest(url, options = {}) {
-        try {
-            // Get CSRF token for public requests
-            const csrfResponse = await fetch('/api/auth/csrf', {
-                credentials: 'include'
-            });
-
-            if (!csrfResponse.ok) {
-                throw new Error('Failed to fetch CSRF token');
-            }
-
-            const csrfData = await csrfResponse.json();
-            const csrfToken = csrfData.csrfToken;
-
-            if (!csrfToken) {
-                throw new Error('Unable to obtain CSRF token');
-            }
-
+        try { 
             const defaultOptions = {
                 credentials: 'include',
                 headers: {
                     'Content-Type': 'application/json',
-                    'x-csrf-token': csrfToken,
                     ...options.headers
                 },
                 ...options

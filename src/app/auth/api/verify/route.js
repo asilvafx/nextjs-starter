@@ -19,14 +19,23 @@ export async function POST(request) {
         // Verify the code matches the encrypted version
         const decryptedCode = decryptHash(encryptedCode);
 
-        if (code !== decryptedCode) {
+        if (code !== decryptedCode.code) {
             return NextResponse.json(
                 { error: 'Invalid verification code.' },
                 { status: 400 }
             );
         }
 
-        // TO DO - Check if code has expired (15 minutes)
+        // Check if code has expired (15 minutes)
+        const now = new Date();
+        const expiresAt = new Date(decryptedCode.expiresAt);
+        
+        if (now > expiresAt) {
+            return NextResponse.json(
+                { error: 'Verification code has expired. Please request a new code.' },
+                { status: 400 }
+            );
+        }
 
         return NextResponse.json({
             success: true,

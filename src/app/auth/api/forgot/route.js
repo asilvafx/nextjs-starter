@@ -64,7 +64,6 @@ export async function POST(request) {
         const codeData = { 
             email: address,
             code: randomCode,
-            createdAt: new Date().toISOString(),
             expiresAt: new Date(Date.now() + 15 * 60 * 1000).toISOString() 
         };
 

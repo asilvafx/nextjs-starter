@@ -22,9 +22,14 @@ import { Button } from "@/components/ui/button";
 import { ThemeSwitchGroup } from "@/components/ui/theme-mode";
 import { LanguageSelector } from "@/components/ui/language-selector";
 import { cn } from "@/lib/utils";
+import { usePathname } from "next/navigation";
+import { findBreadcrumbPath } from "./config/navigation";
+import React from "react";
 
 export default function AdminLayout({ children }) {
   const { isAuthenticated, user, status } = useAuth();
+  const pathname = usePathname();
+  const breadcrumbs = findBreadcrumbPath(pathname);
 
   // Protect admin routes
   if (!isAuthenticated && status !== "loading") {
@@ -44,15 +49,25 @@ export default function AdminLayout({ children }) {
             />
             <Breadcrumb>
               <BreadcrumbList>
-                <BreadcrumbItem className="hidden md:block">
-                  <BreadcrumbLink href="#">
-                    Dashboard
-                  </BreadcrumbLink>
-                </BreadcrumbItem>
-                <BreadcrumbSeparator className="hidden md:block" />
-                <BreadcrumbItem>
-                  <BreadcrumbPage>Overview</BreadcrumbPage>
-                </BreadcrumbItem>
+                {breadcrumbs.map((crumb, index) => (
+                  <React.Fragment key={index}>
+                    {index >= 0 && (
+                      <BreadcrumbSeparator className="hidden md:block">
+                        {">"}
+                      </BreadcrumbSeparator>
+                    )}
+                    <BreadcrumbItem className="hidden md:block">
+                      {index === breadcrumbs.length - 1 ? (
+                        <BreadcrumbPage>{crumb.title}</BreadcrumbPage>
+                      ) : (
+                        <BreadcrumbLink href={crumb.url}>
+                          {crumb.title}
+                        </BreadcrumbLink>
+                      )}
+                      
+                    </BreadcrumbItem>
+                  </React.Fragment>
+                ))}
               </BreadcrumbList>
             </Breadcrumb>
             <div className="ms-auto flex items-center gap-2"> 
