@@ -286,7 +286,7 @@ table caption {
 }
 
 table tr {
-    background-color: rgba(255, 255, 255, .05);
+    background-color: var(--border);
     border: 1px solid rgba(255, 255, 255, .1);
     padding: .35em;
     border-radius: 1rem;

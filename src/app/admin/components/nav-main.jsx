@@ -19,7 +19,7 @@ import {
   SidebarMenuSubItem,
 } from "@/components/ui/sidebar"
 
-export function NavMain({ navMain, navHome }) {
+export function NavMain({ nav }) {
   return (
     <>
 
@@ -27,7 +27,7 @@ export function NavMain({ navMain, navHome }) {
       <SidebarGroupLabel>Dashboard</SidebarGroupLabel>
       <SidebarMenu>
 
-        {navHome.map((item) => (
+        {nav.Home.map((item) => (
              <SidebarMenuItem key={item.title}>
               <SidebarMenuButton tooltip={item.title} asChild> 
               <Link href={item.url}> 
@@ -43,7 +43,7 @@ export function NavMain({ navMain, navHome }) {
     <SidebarGroup>
       <SidebarGroupLabel>Platform</SidebarGroupLabel>
       <SidebarMenu>
-        {navMain.map((item) => (
+        {nav.Main.map((item) => (
           <Collapsible
             key={item.title}
             asChild
@@ -75,6 +75,23 @@ export function NavMain({ navMain, navHome }) {
           </Collapsible>
         ))}
       </SidebarMenu>
+    </SidebarGroup>
+    <SidebarGroup>
+    <SidebarGroupLabel>System</SidebarGroupLabel>
+    <SidebarMenu>
+
+      {nav.System.map((item) => (
+            <SidebarMenuItem key={item.title}>
+            <SidebarMenuButton tooltip={item.title} asChild> 
+            <Link href={item.url}> 
+              <item.icon className="mr-2 size-4" />
+              <span>{item.title}</span>
+            </Link> 
+            </SidebarMenuButton>
+            </SidebarMenuItem>
+      ))}
+      
+    </SidebarMenu>
     </SidebarGroup>
     </>
   )

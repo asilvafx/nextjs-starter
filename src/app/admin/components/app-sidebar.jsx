@@ -24,6 +24,7 @@ import {
   SidebarFooter,
   SidebarHeader,
   SidebarRail,
+  SidebarTrigger,
 } from "@/components/ui/sidebar"
 import { Button } from "@/components/ui/button"
 
@@ -40,7 +41,7 @@ const data = {
     email: user?.email || "-",
     avatar: "/images/avatar.webp",
   }, 
-  navMain: [
+  Main: [
     {
       title: "Access",
       url: "#",
@@ -59,7 +60,7 @@ const data = {
     {
       title: "Store",
       url: "#",
-      icon: Bot,
+      icon: Frame,
       items: [
         {
           title: "Orders",
@@ -85,7 +86,7 @@ const data = {
       icon: Frame,
     },
   ],
-  navHome: [
+  Home: [
     {
       title: "Overview",
       url: "#",
@@ -93,6 +94,18 @@ const data = {
     },
     {
       title: "Analytics",
+      url: "#",
+      icon: PieChart,
+    },
+  ],
+  System: [
+    {
+      title: "Administration",
+      url: "#",
+      icon: Frame,
+    },
+    {
+      title: "Maintenance",
       url: "#",
       icon: PieChart,
     },
@@ -108,10 +121,10 @@ return (
       <Image 
           src="/next.svg"
           alt="Logo"
-          width={250}
-          height={250} 
-          className="max-h-5 dark:invert" 
-          style={{ width: 'auto' }}
+          width={150}
+          height={150}
+          className="dark:invert" 
+          style={{ width: 'auto', height: 'auto', maxHeight: '20px', maxWidth: '100px' }}
           priority={true} 
       /> 
       <span className="ms-auto group-data-[collapsible=icon]:hidden peer-[[data-collapsible=icon]_&]:hidden"> 
@@ -119,12 +132,15 @@ return (
       <Button variant="outline" size="sm">
         <Globe />
       </Button>
-      </Link>
+      </Link> 
+      <span className="md:hidden">
+      <SidebarTrigger /> 
+      </span>
       </span>
       </span> 
     </SidebarHeader>
     <SidebarContent>
-      <NavMain navMain={data.navMain} navHome={data.navHome} /> 
+      <NavMain nav={data} /> 
     </SidebarContent>
     <SidebarFooter>
       <NavUser user={user} />
