@@ -98,7 +98,7 @@ export function AppSidebar(props) {
     <Sidebar collapsible="icon" {...props}>
       <SidebarHeader> 
         <span 
-            className="w-full flex items-center justify-start gap-1 px-0 hover:bg-transparent !ring-0 cursor-default"
+            className="w-full flex items-center justify-start gap-1 px-0"
         >
         <Image 
             src="/images/logo.png"
@@ -109,13 +109,13 @@ export function AppSidebar(props) {
             style={{ width: 'auto' }}
             priority={true} 
         /> 
-        <div className="ms-auto"> 
+        <span className="ms-auto group-data-[collapsible=icon]:hidden peer-[[data-collapsible=icon]_&]:hidden"> 
         <Link href="/" target="_blank" rel="noopener noreferrer">
-        <Button variant="outline">
+        <Button variant="outline" size="sm">
           <Globe />
         </Button>
         </Link>
-        </div>
+        </span>
         </span> 
       </SidebarHeader>
       <SidebarContent>

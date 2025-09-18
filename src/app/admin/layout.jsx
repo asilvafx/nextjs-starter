@@ -53,7 +53,7 @@ export default function AdminLayout({ children }) {
               </BreadcrumbList>
             </Breadcrumb>
             <div className="ms-auto"> 
-            <ThemeSwitchGroup />
+            <ThemeSwitchGroup compact={true} />
             </div>
           </div>
         </header>

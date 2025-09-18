@@ -18,7 +18,7 @@ const SWITCH_DATA: SwitchOption[] = [
     name: 'System',
     value: 'system',
     iconSvg: (
-      <svg xmlns="http://www.w3.org/2000/svg" className="size-4" viewBox="0 0 24 24">
+      <svg xmlns="http://www.w3.org/2000/svg" className="size-3" viewBox="0 0 24 24">
         <path
           fill="currentColor"
           d="M1 2h22v8.25h-2V4H3v12h8.5v2H1zm2 18h8.5v2H3z"
@@ -50,7 +50,7 @@ const SWITCH_DATA: SwitchOption[] = [
     name: 'Dark',
     value: 'dark',
     iconSvg: (
-      <svg xmlns="http://www.w3.org/2000/svg" className="size-4" viewBox="0 0 24 24">
+      <svg xmlns="http://www.w3.org/2000/svg" className="size-3" viewBox="0 0 24 24">
         <path
           fill="none"
           stroke="currentColor"
@@ -64,7 +64,7 @@ const SWITCH_DATA: SwitchOption[] = [
   },
 ];
 
-export const ThemeSwitchGroup = () => {
+export const ThemeSwitchGroup = ({compact=false}) => {
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
 
@@ -88,7 +88,7 @@ export const ThemeSwitchGroup = () => {
           )}
         >
           {data.iconSvg}
-          <span className="hidden sm:block">{data.name}</span>
+          <span className={`hidden ${!compact && 'sm:block'}`}>{data.name}</span>
         </ToggleGroupItem>
       ))}
     </ToggleGroup>
