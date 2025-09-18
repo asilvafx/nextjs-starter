@@ -209,7 +209,7 @@ export default function UsersPage() {
                   </TableCell>
                   <TableCell className="text-right space-x-2">
                     <Button  
-                      className="w-1/5"
+                      className="w-1/5 sm:w-auto px-2"
                       variant="outline"
                       size="icon"
                       onClick={() => handleEdit(user)}

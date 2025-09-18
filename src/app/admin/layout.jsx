@@ -3,6 +3,7 @@
 import { useAuth } from "@/hooks/useAuth"; 
 import { redirect } from "next/navigation"; 
 import { AppSidebar } from "./components/app-sidebar"
+import { NotificationsPopover } from "@/components/ui/notifications";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -17,7 +18,9 @@ import {
   SidebarProvider,
   SidebarTrigger,
 } from '@/components/ui/sidebar'
+import { Button } from "@/components/ui/button";
 import { ThemeSwitchGroup } from "@/components/ui/theme-mode";
+import { LanguageSelector } from "@/components/ui/language-selector";
 import { cn } from "@/lib/utils";
 
 export default function AdminLayout({ children }) {
@@ -43,16 +46,18 @@ export default function AdminLayout({ children }) {
               <BreadcrumbList>
                 <BreadcrumbItem className="hidden md:block">
                   <BreadcrumbLink href="#">
-                    Building Your Application
+                    Dashboard
                   </BreadcrumbLink>
                 </BreadcrumbItem>
                 <BreadcrumbSeparator className="hidden md:block" />
                 <BreadcrumbItem>
-                  <BreadcrumbPage>Data Fetching</BreadcrumbPage>
+                  <BreadcrumbPage>Overview</BreadcrumbPage>
                 </BreadcrumbItem>
               </BreadcrumbList>
             </Breadcrumb>
-            <div className="ms-auto"> 
+            <div className="ms-auto flex items-center gap-2"> 
+            <NotificationsPopover />
+            <LanguageSelector slim={true} />
             <ThemeSwitchGroup compact={true} />
             </div>
           </div>
