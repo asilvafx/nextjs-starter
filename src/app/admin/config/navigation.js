@@ -77,7 +77,15 @@ export const navigation = {
 }
 
 export const findBreadcrumbPath = (pathname) => {
-  const paths = []; 
+  const paths = [];
+
+  // Always start with Dashboard for any admin route
+  if (pathname.startsWith('/admin')) {
+    paths.push({
+      title: 'Dashboard',
+      url: '/admin'
+    }); 
+  }  
 
   // Function to search for matching routes
   const findRoute = (items) => {
@@ -85,7 +93,7 @@ export const findBreadcrumbPath = (pathname) => {
       const sectionItems = items[section];
       for (const item of sectionItems) {
         // Check main item 
-        if (item.url === pathname ) {
+        if (item.url === pathname) {
           paths.push({
             title: item.title,
             url: item.url

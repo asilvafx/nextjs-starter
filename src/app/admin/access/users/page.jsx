@@ -46,10 +46,13 @@ const initialFormData = {
   changePassword: false,
 };
 
+import TableSkeleton from "./table-skeleton";
+
 export default function UsersPage() {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isOpen, setIsOpen] = useState(false);
+  const { user: currentUser, status } = useAuth();
   const [editUser, setEditUser] = useState(null);
   const [search, setSearch] = useState("");
   const [sortConfig, setSortConfig] = useState({ key: null, direction: "asc" });
@@ -58,8 +61,7 @@ export default function UsersPage() {
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [userToDelete, setUserToDelete] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [currentPage, setCurrentPage] = useState(1);
-  const { user: currentUser } = useAuth(); 
+  const [currentPage, setCurrentPage] = useState(1); 
 
   const fetchUsers = async () => {
     try {
@@ -328,6 +330,11 @@ export default function UsersPage() {
   }
 
 
+  // If auth is still loading, don't render anything
+  if (status === "loading") {
+    return null;
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
@@ -479,13 +486,16 @@ export default function UsersPage() {
             />
           </div> 
         </div>
-        <Button onClick={openCreateDialog}>
+        <Button 
+          onClick={openCreateDialog} 
+          disabled={status === "loading" || loading}
+        >
           <Plus className="w-4 h-4 mr-2" />
           Create User
         </Button>
       </div>
 
-      <ScrollArea className="h-[calc(100vh-200px)]">
+      <ScrollArea className="h-[calc(100vh-200px)]"> 
         <Table>
           <TableHeader>
             <TableRow>
@@ -522,11 +532,7 @@ export default function UsersPage() {
           </TableHeader>
           <TableBody>
             {loading ? (
-              <TableRow>
-                <TableCell colSpan={5} className="text-center">
-                  Loading...
-                </TableCell>
-              </TableRow>
+              <TableSkeleton />
             ) : users.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={5} className="text-center">
