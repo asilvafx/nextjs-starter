@@ -15,6 +15,7 @@ import { Input } from "@/components/ui/input";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -26,7 +27,7 @@ import { Plus, Pencil, Trash2 } from "lucide-react";
 const ROLES = ["user", "admin", "editor", "moderator"];
 
 const initialFormData = {
-  name: "",
+  displayName: "",
   email: "",
   role: "user",
 };
@@ -78,7 +79,7 @@ export default function UsersPage() {
   const handleEdit = (user) => {
     setEditUser(user);
     setFormData({
-      name: user.name,
+      displayName: user.displayName,
       email: user.email,
       role: user.role,
     });
@@ -104,7 +105,16 @@ export default function UsersPage() {
           <h1 className="text-3xl font-bold">Users Management</h1>
           <p className="text-muted-foreground">Manage your users and their roles</p>
         </div>
-        <Dialog open={isOpen} onOpenChange={setIsOpen}>
+        <Dialog 
+            open={isOpen} 
+            onOpenChange={(open) => {
+              setIsOpen(open);
+              if (!open) {
+                setEditUser(null);
+                setFormData(initialFormData);
+              }
+            }}
+          >
           <DialogTrigger asChild>
             <Button>
               <Plus className="w-4 h-4 mr-2" />
@@ -114,13 +124,18 @@ export default function UsersPage() {
           <DialogContent>
             <DialogHeader>
               <DialogTitle>{editUser ? "Edit User" : "Add New User"}</DialogTitle>
+              <DialogDescription>
+                {editUser 
+                  ? "Update the user's information using the form below."
+                  : "Fill in the user's details to create a new account."}
+              </DialogDescription>
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <Input
                   placeholder="Name"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  value={formData.displayName || ""}
+                  onChange={(e) => setFormData({ ...formData, displayName: e.target.value })}
                   required
                 />
               </div>
@@ -128,7 +143,7 @@ export default function UsersPage() {
                 <Input
                   type="email"
                   placeholder="Email"
-                  value={formData.email}
+                  value={formData.email || ""}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                   required
                 />
@@ -182,30 +197,32 @@ export default function UsersPage() {
             ) : (
               users.map((user) => (
                 <TableRow key={user.id}>
-                  <TableCell>{user.name}</TableCell>
-                  <TableCell>{user.email}</TableCell>
-                  <TableCell>
-                    <span className="px-2 py-1 rounded-full text-xs bg-slate-100">
+                  <TableCell data-label="Name" className="capitalize">{user.displayName}</TableCell>
+                  <TableCell data-label="Email">{user.email}</TableCell>
+                  <TableCell data-label="Role">
+                    <span className="px-2 py-1 rounded-full text-xs bg-slate-100 text-black capitalize">
                       {user.role}
                     </span>
                   </TableCell>
-                  <TableCell>
+                  <TableCell data-label="Created at">
                     {new Date(user.createdAt).toLocaleDateString()}
                   </TableCell>
                   <TableCell className="text-right space-x-2">
-                    <Button
+                    <Button  
+                      className="w-1/5"
                       variant="outline"
                       size="icon"
                       onClick={() => handleEdit(user)}
                     >
                       <Pencil className="w-4 h-4" />
+                      <span className="sm:hidden">Edit</span>
                     </Button>
                     <Button
                       variant="outline"
                       size="icon"
                       onClick={() => handleDelete(user.id)}
                     >
-                      <Trash2 className="w-4 h-4" />
+                      <Trash2 color="red" className="w-4 h-4" />
                     </Button>
                   </TableCell>
                 </TableRow>
