@@ -22,7 +22,7 @@ export async function POST(request) {
             return NextResponse.json(
                 { error: 'Token invalid. Please, refresh your browser and try again later.' }
             );
-        } else if (code !== decryptHash(token)) {
+        } else if (code !== decryptHash(token).code) {
             return NextResponse.json(
                 { error: 'Token mismatch. Please, refresh your browser and try again later.' }
             );

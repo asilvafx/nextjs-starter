@@ -120,9 +120,14 @@ async function handleGet(request, { params }) {
         }
 
         // Pagination
-        const startIndex = (page - 1) * limit;
-        const endIndex = startIndex + limit;
-        const paginatedItems = items.slice(startIndex, endIndex);
+        let paginatedItems = items;
+        let startIndex = 1;
+        let endIndex = startIndex;
+        if(limit > 0){
+            startIndex = (page - 1) * limit;
+            endIndex = startIndex + limit;
+            paginatedItems = items.slice(startIndex, endIndex);
+        } 
 
         return NextResponse.json({
             success: true,

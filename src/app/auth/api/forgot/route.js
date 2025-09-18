@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 import DBService from '@/data/rest.db';
 import { encryptHash } from '@/lib/server/crypt';
 import EmailService from '@/lib/server/email';
+import { time } from 'console';
 
 // Use API route for sending emails instead of direct import to avoid issues
 async function sendPasswordResetEmailAsync(email, code, name) {
@@ -56,25 +57,18 @@ export async function POST(request) {
             });
         }
 
+        
         // Generate 6-digit code
-        const randomCode = Math.floor(100000 + Math.random() * 900000).toString();
-        const encryptedCode = encryptHash(randomCode);
+        const randomCode = Math.floor(100000 + Math.random() * 900000).toString(); 
 
-        // Store the code with timestamp for expiration (optional - you can also set a TTL)
-        const resetData = {
-            code: encryptedCode,
+        const codeData = { 
             email: address,
+            code: randomCode,
             createdAt: new Date().toISOString(),
-            expiresAt: new Date(Date.now() + 15 * 60 * 1000).toISOString() // 15 minutes
+            expiresAt: new Date(Date.now() + 15 * 60 * 1000).toISOString() 
         };
 
-        // You might want to store this in a separate reset_codes table or add to user record
-        // For now, let's assume you add it to the user record temporarily
-        const userKey = await DBService.getItemKey("email", address, "users");
-        await DBService.update(userKey, {
-            ...user,
-            resetCode: resetData
-        }, "users");
+        const codeDataEncrypted = encryptHash(codeData); 
 
         // Send password reset email
         try {
@@ -98,7 +92,7 @@ export async function POST(request) {
             message: `Code sent to ${address}. Please check your email inbox and spam folders.`,
             // Remove this in production - only for demo
             demoCode: process.env.NODE_ENV === 'development' ? randomCode : undefined,
-            encryptedCode: encryptedCode
+            encryptedCode: codeDataEncrypted
         });
 
     } catch (error) {

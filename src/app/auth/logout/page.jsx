@@ -6,6 +6,7 @@ import { signOut, useSession } from "next-auth/react";
 import { motion } from "framer-motion";
 import Link from "next/link";
 import {useRouter} from "next/navigation";
+import { Button } from "@/components/ui/button";
 
 export default function LogoutPage() {
     const { status } = useSession();
@@ -68,18 +69,14 @@ export default function LogoutPage() {
                     <p className="text-gray-600 mb-6">
                         You have been signed out of your account.
                     </p>
-                    <div className="space-y-3">
-                        <Link
-                            href="/src/auth.js/login"
-                            className="block w-full bg-blue-500 text-white py-2 px-4 rounded-lg hover:bg-blue-600 transition-colors"
-                        >
-                            Sign In Again
-                        </Link>
+                    <div className="space-y-3"> 
                         <Link
                             href="/"
-                            className="block w-full text-blue-500 hover:underline"
+                            className="block"
                         >
+                            <Button> 
                             Back to Home
+                            </Button>
                         </Link>
                     </div>
                 </motion.div>

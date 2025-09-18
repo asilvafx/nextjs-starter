@@ -1,6 +1,6 @@
 // lib/email.js
 import { render } from '@react-email/render';
-import nodemailer from 'nodemailer';
+import nodemailer from 'nodemailer'; 
 
 const emailFrom = process.env.NODEMAILER_USER;
 const emailName = process.env.NEXT_PUBLIC_APP_NAME;

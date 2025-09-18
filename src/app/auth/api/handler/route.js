@@ -5,10 +5,7 @@ import DBService from '@/data/rest.db.js';
 import { encryptPassword, generateSalt, validatePassword } from '@/lib/server/crypt';
 import EmailService from '@/lib/server/email';
 import { createWallet, loadConfig } from '@/lib/server/web3';
-
-
-
-
+import { v6 as uuidv6 } from 'uuid';
 
 // Force Node.js runtime
 export const runtime = 'nodejs';
@@ -129,7 +126,10 @@ async function handleRegistration(email, passwordHash, { name, client }) {
 
         const timeNow = new Date().toISOString();
 
-        let userRegisterData = {
+        const uid = uuidv6();
+
+        let userRegisterData = { 
+            uid: uid,
             displayName: name,
             email: email,
             password: encryptedPassword,
@@ -174,7 +174,7 @@ async function handleRegistration(email, passwordHash, { name, client }) {
         const { salt: _salt, password: _password, ...userWithoutPassword } = userRegisterData;
 
         const userData = {
-            id: userWithoutPassword.id || email,
+            uid: userWithoutPassword.uid,
             email: userWithoutPassword.email,
             displayName: userWithoutPassword.displayName,
             role: userWithoutPassword.role || 'user',
