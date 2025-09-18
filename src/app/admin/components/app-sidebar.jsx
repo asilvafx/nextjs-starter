@@ -106,11 +106,11 @@ return (
           className="w-full flex items-center justify-start gap-1 px-0"
       >
       <Image 
-          src="/images/logo.png"
+          src="/next.svg"
           alt="Logo"
-          width={50}
-          height={50} 
-          className="max-h-8 dark:invert" 
+          width={250}
+          height={250} 
+          className="max-h-5 dark:invert" 
           style={{ width: 'auto' }}
           priority={true} 
       /> 
