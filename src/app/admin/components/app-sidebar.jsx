@@ -2,6 +2,7 @@
 import Link from "next/link"
 import Image from "next/image"
 import {
+  Globe,
   AudioWaveform,
   BookOpen,
   Bot,
@@ -14,7 +15,7 @@ import {
   Users,
   SquareTerminal,
 } from "lucide-react"
-
+ 
 import { NavMain } from "./nav-main" 
 import { NavUser } from "./nav-user" 
 import {
@@ -24,13 +25,14 @@ import {
   SidebarHeader,
   SidebarRail,
 } from "@/components/ui/sidebar"
+import { Button } from "@/components/ui/button"
 
 // This is sample data.
 const data = {
   user: {
     name: "shadcn",
     email: "m@example.com",
-    avatar: "/avatars/shadcn.jpg",
+    avatar: "/images/avatar.webp",
   }, 
   navMain: [
     {
@@ -94,9 +96,9 @@ const data = {
 export function AppSidebar(props) {
   return (
     <Sidebar collapsible="icon" {...props}>
-      <SidebarHeader>
-        <Link
-            href="/admin"
+      <SidebarHeader> 
+        <span 
+            className="w-full flex items-center justify-start gap-1 px-0 hover:bg-transparent !ring-0 cursor-default"
         >
         <Image 
             src="/images/logo.png"
@@ -106,8 +108,15 @@ export function AppSidebar(props) {
             className="max-h-8 dark:invert" 
             style={{ width: 'auto' }}
             priority={true} 
-        />
+        /> 
+        <div className="ms-auto"> 
+        <Link href="/" target="_blank" rel="noopener noreferrer">
+        <Button variant="outline">
+          <Globe />
+        </Button>
         </Link>
+        </div>
+        </span> 
       </SidebarHeader>
       <SidebarContent>
         <NavMain navMain={data.navMain} navHome={data.navHome} /> 
