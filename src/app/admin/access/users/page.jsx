@@ -46,7 +46,7 @@ const initialFormData = {
   changePassword: false,
 };
 
-import TableSkeleton from "./table-skeleton";
+import { TableSkeleton } from "@/components/ui/skeleton";
 
 export default function UsersPage() {
   const [users, setUsers] = useState([]);
@@ -495,45 +495,46 @@ export default function UsersPage() {
         </Button>
       </div>
 
-      <ScrollArea className="h-[calc(100vh-200px)]"> 
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead 
-                className="cursor-pointer hover:bg-accent/50"
-                onClick={() => handleSort("displayName")}
-              >
-                <div className="flex items-center justify-center">
-                  Name
-                  <ArrowUpDown className="ml-2 h-3 w-3" /> 
-                </div>
-              </TableHead>
-              <TableHead>Email</TableHead>
-              <TableHead 
-                className="cursor-pointer hover:bg-accent/50"
-                onClick={() => handleSort("role")}
-              >
-                <div className="flex items-center justify-center">
-                  Role 
-                  <ArrowUpDown className="ml-2 h-3 w-3" /> 
-                </div>
-              </TableHead>
-              <TableHead 
-                className="cursor-pointer hover:bg-accent/50"
-                onClick={() => handleSort("createdAt")}
-              >
-                <div className="flex items-center justify-center">
-                  Created At 
-                  <ArrowUpDown className="ml-2 h-3 w-3" /> 
-                </div>
-              </TableHead>
-              <TableHead className="text-right">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {loading ? (
-              <TableSkeleton />
-            ) : users.length === 0 ? (
+      <ScrollArea className="h-[calc(100vh-200px)]">
+        {loading ? (
+          <TableSkeleton />
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead 
+                  className="cursor-pointer hover:bg-accent/50"
+                  onClick={() => handleSort("displayName")}
+                >
+                  <div className="flex items-center justify-center">
+                    Name
+                    <ArrowUpDown className="ml-2 h-3 w-3" /> 
+                  </div>
+                </TableHead>
+                <TableHead>Email</TableHead>
+                <TableHead 
+                  className="cursor-pointer hover:bg-accent/50"
+                  onClick={() => handleSort("role")}
+                >
+                  <div className="flex items-center justify-center">
+                    Role 
+                    <ArrowUpDown className="ml-2 h-3 w-3" /> 
+                  </div>
+                </TableHead>
+                <TableHead 
+                  className="cursor-pointer hover:bg-accent/50"
+                  onClick={() => handleSort("createdAt")}
+                >
+                  <div className="flex items-center justify-center">
+                    Created At 
+                    <ArrowUpDown className="ml-2 h-3 w-3" /> 
+                  </div>
+                </TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {users.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={5} className="text-center">
                   No users found
@@ -577,6 +578,7 @@ export default function UsersPage() {
             )}
           </TableBody>
         </Table>
+        )}
       </ScrollArea>
 
       {/* Pagination */}

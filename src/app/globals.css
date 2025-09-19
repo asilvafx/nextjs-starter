@@ -159,8 +159,7 @@
     }
 
     html, body {
-        font-size: 16px;
-        scroll-behavior: smooth;
+        font-size: 16px; 
         -webkit-font-smoothing: antialiased;
         -moz-osx-font-smoothing: grayscale;
         font-feature-settings: "liga" 1, "kern" 1;
@@ -286,12 +285,15 @@ table caption {
 }
 
 table tr {
-    background-color: var(--border);
-    border: 1px solid rgba(255, 255, 255, .1);
+    background-color: rgba(27, 27, 27, 0.01);
+    border: 1px solid rgba(0, 0, 0, .1); 
     padding: .35em;
     border-radius: 1rem;
 }
-
+.dark table tr {
+    background-color: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, .1);
+}
 table th,
 table td {
     padding: .625em;

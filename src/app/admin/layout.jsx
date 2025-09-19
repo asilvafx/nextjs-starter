@@ -50,8 +50,8 @@ export default function AdminLayout({ children }) {
               className="mr-2 data-[orientation=vertical]:h-4"
             />
             <Breadcrumb className={cn(
-              "transition-opacity duration-200",
-              showMobileActions && "opacity-0 md:opacity-100"
+              "md:block",
+              showMobileActions && "hidden"
             )}>
               <BreadcrumbList>
                 {breadcrumbs.map((crumb, index) => (
@@ -91,13 +91,13 @@ export default function AdminLayout({ children }) {
             </div>
 
             {/* Layout Actions */}
-            <div className={`transition-transform duration-200 translate-x-0 ms-auto items-center gap-2 ${showMobileActions ? 'flex' : 'hidden'} md:flex`}> 
+            <div className={`ms-auto items-center gap-2 ${showMobileActions ? 'flex' : 'hidden'} md:flex`}> 
               <Button  
                   variant="outline" 
                   size="icon"
                   onClick={() => setShowMobileActions(!showMobileActions)}
                   className={cn(
-                    "transition-transform duration-200 md:hidden",
+                    "md:hidden",
                     !showMobileActions && "hidden"
                   )}
                 > 

@@ -21,12 +21,12 @@ import {
 } from "@/components/ui/sidebar"
 
 export function NavMain({ nav }) {
-  const { collapsed, setCollapsed, isMobile } = useSidebar();
+  const { isMobile, setOpenMobile } = useSidebar();
   const pathname = usePathname();
 
-  const handleLinkClick = () => {
+  const handleLinkClick = (e) => {
     if (isMobile) {
-      setCollapsed(true);
+      setOpenMobile(false);
     }
   };
 
