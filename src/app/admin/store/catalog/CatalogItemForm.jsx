@@ -21,8 +21,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
-import ImageUpload from "./ImageUpload";
+} from "@/components/ui/table"; 
 
 const ITEM_TYPES = [
   { value: "physical", label: "Physical Product" },
@@ -371,12 +370,14 @@ export function CatalogItemForm({
 
         <div className="space-y-4">
           <Label>Images</Label>
+          {/* 
           <ImageUpload
             images={formData.images}
             onImagesChange={handleImagesChange}
             coverImageIndex={formData.coverImageIndex}
             onCoverImageChange={handleCoverImageChange}
           />
+          */}
         </div>
 
         <div className="flex items-center space-x-2">

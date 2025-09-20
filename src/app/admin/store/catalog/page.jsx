@@ -22,7 +22,7 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
 import { Plus, Pencil, Trash2, Image } from "lucide-react";
-import { useTableState } from "./hooks/useTableState";
+import { useTableState } from "../hooks/useTableState";
 import { TableSkeleton } from "@/components/ui/skeleton";
 import { CatalogItemForm } from "./CatalogItemForm"; 
 

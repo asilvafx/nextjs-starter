@@ -44,7 +44,6 @@ async function handleGet(request, { params }) {
             if (!result) {
                 return NextResponse.json(
                     { error: 'Record not found' },
-                    { status: 404 }
                 );
             }
             return NextResponse.json({
