@@ -1,4 +1,4 @@
-// lib/email.js
+// lib/server/email.js
 import { render } from '@react-email/render';
 import nodemailer from 'nodemailer'; 
 

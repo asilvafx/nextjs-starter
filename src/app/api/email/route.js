@@ -1,3 +1,5 @@
+// app/api/email/route.js
+
 import { NextResponse } from 'next/server';
 import EmailService from '@/lib/server/email';
 import UserCreatedTemplate from '@/emails/UserCreatedTemplate';
@@ -5,7 +7,8 @@ import UserUpdatedTemplate from '@/emails/UserUpdatedTemplate';
 
 export async function POST(request) {
     try {
-        const { type, email, name, password, changes } = await request.json();
+        const body = await request.json();
+        const { type, email, name, password, changes } = body;
 
         switch (type) {
             case 'user_created':
@@ -31,6 +34,26 @@ export async function POST(request) {
                         userDisplayName: name,
                         changes,
                         loginUrl: `${process.env.NEXTAUTH_URL}/auth/login`
+                    }
+                );
+                break;
+
+            case 'order_status_update':
+                // Handle order status update email
+                const { email: customerEmail, customerName, orderId, orderDate, status, items, subtotal, shippingCost, total, shippingAddress } = body;
+                
+                await EmailService.sendOrderUpdateEmail(
+                    customerEmail,
+                    {
+                        customerName,
+                        orderId,
+                        orderDate,
+                        status,
+                        items,
+                        total,
+                        subtotal,
+                        shippingCost,
+                        shippingAddress
                     }
                 );
                 break;

@@ -303,6 +303,7 @@ export default function OrdersPage() {
 
       // Prepare email data if status changed
       const emailPayload = {
+        type: 'order_status_update',
         email: order.customer.email,
         customerName: `${order.customer.firstName} ${order.customer.lastName}`.trim(),
         orderId: order.id,
@@ -322,8 +323,8 @@ export default function OrdersPage() {
         status: newStatus
       };
 
-      // Send status update email
-      await fetch('/api/email/order-status', {
+      // Send status update email using consolidated endpoint
+      await fetch('/api/email', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(emailPayload),
