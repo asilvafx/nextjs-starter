@@ -112,17 +112,15 @@ class QueryAPI {
     }
 
     // GET single item by ID (authenticated)
-    async get(collection, id) {
+    async get(id, collection) {
         const url = `${this.baseURL}/${collection}?id=${encodeURIComponent(id)}`;
-        const result = await this.makeRequest(url);
-        return result.data;
+        return await this.makeRequest(url);
     }
 
     // GET single item by ID (public access)
-    async getPublic(collection, id) {
+    async getPublic(id, collection) {
         const url = `${this.publicURL}/${collection}?id=${encodeURIComponent(id)}`;
-        const result = await this.makePublicRequest(url);
-        return result.data;
+        return await this.makePublicRequest(url);
     }
 
     // POST create new item (authenticated)
@@ -194,12 +192,6 @@ class QueryAPI {
     // UPLOAD file (authenticated)
     async upload(files, path = 'uploads') {
         try {
-            const session = await auth();
-
-            if (!session?.user) {
-                throw new Error('Not authenticated');
-            }
-
             const formData = new FormData();
 
             // Handle single file or multiple files
@@ -212,7 +204,8 @@ class QueryAPI {
             const options = {
                 method: 'POST',
                 credentials: 'include',
-                body: formData
+                body: formData,
+                headers: {} // Empty headers as FormData sets its own Content-Type
             };
 
             const response = await fetch(this.uploadURL, options);

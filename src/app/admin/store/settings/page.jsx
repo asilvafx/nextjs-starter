@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
@@ -44,7 +44,7 @@ import {
 } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Badge } from "@/components/ui/badge";
-import { get, create, update } from "@/lib/client/query";
+import { get, getAll, create, update } from "@/lib/client/query";
 import { StoreSettingsSkeleton } from './StoreSettingsSkeleton';
 // Country data for shipping/restrictions
 import { countries } from "country-data-list";
@@ -55,7 +55,7 @@ const storeSettingsSchema = z.object({
   // Business Details
   businessName: z.string().min(2, "Business name is required"),
   tvaNumber: z.string().optional(),
-  address: z.string().min(5, "Business address is required"),
+  address: z.string().optional(),
   
   // VAT Settings
   vatPercentage: z.number().min(0).max(100),
@@ -84,10 +84,12 @@ const storeSettingsSchema = z.object({
 
 export default function StoreSettingsPage() {
   const [isLoading, setIsLoading] = useState(true);
+  const [settingsId, setSettingsId] = useState(null);
   const [selectedAllowedCountries, setSelectedAllowedCountries] = useState([]);
   const [selectedBannedCountries, setSelectedBannedCountries] = useState([]);
   const [allowedOpen, setAllowedOpen] = useState(false);
   const [bannedOpen, setBannedOpen] = useState(false);
+  const fetchedRef = useRef(false);
 
   const form = useForm({
     resolver: zodResolver(storeSettingsSchema),
@@ -116,18 +118,55 @@ export default function StoreSettingsPage() {
 
   useEffect(() => {
     const fetchSettings = async () => {
+      // Skip if already fetched
+      if (fetchedRef.current) return;
+      
       try {
-        const settings = await get("store_settings", "current");
-        if (settings) {
-          if(settings?.error){
-            toast.error("Failed to load store settings");
-          }  
-          form.reset(settings);
-          setSelectedAllowedCountries(settings.allowedCountries || []);
-          setSelectedBannedCountries(settings.bannedCountries || []);
+        // Mark as fetched immediately to prevent race conditions
+        fetchedRef.current = true;
+        
+        const settings = await getAll("store_settings"); 
+        const settingsData = settings?.data[0];   
+
+        if (settings.success && settingsData?.id) { 
+          form.reset(settingsData);
+          setSettingsId(settingsData?.id);
+          setSelectedAllowedCountries(settingsData.allowedCountries || []);
+          setSelectedBannedCountries(settingsData.bannedCountries || []);
+        } else { 
+          // Use form's default values as initial store settings
+          const defaultValues = {
+            businessName: "",
+            tvaNumber: "",
+            address: "",
+            vatPercentage: 0,
+            vatIncludedInPrice: false,
+            applyVatAtCheckout: true,
+            paymentMethods: {
+              cardPayments: false,
+              stripePublicKey: "",
+              stripeSecretKey: "",
+              bankTransfer: false,
+              payOnDelivery: false,
+            },
+            freeShippingEnabled: false,
+            freeShippingThreshold: 0,
+            internationalShipping: false,
+            allowedCountries: [],
+            bannedCountries: [],
+            currency: "EUR",
+          };
+          
+          // Reset form with default values
+          form.reset(defaultValues);
+          setSelectedAllowedCountries([]);
+          setSelectedBannedCountries([]); 
         }
       } catch (error) {
+        // Reset fetched flag on error so it can try again
+        fetchedRef.current = false;
         toast.error("Failed to load store settings");
+        console.error("Store settings error:", error);
       } finally {
         setIsLoading(false);
       }
@@ -139,10 +178,16 @@ export default function StoreSettingsPage() {
   const onSubmit = async (data) => {
     try {
       // Try to update first, if it fails (doesn't exist) then create
-      try {
-        await update("current", data, "store_settings");
+      try { 
+        const res = await getAll("store_settings");
+        const resId = res?.data[0]?.id;
+        if(resId) {
+            await update(resId, data, "store_settings");
+        } else {
+            await create(data, "store_settings");  
+        } 
       } catch {
-        await create(data, "store_settings");
+         toast.error("Failed to update store settings");
       }
       toast.success("Store settings updated successfully");
     } catch (error) {

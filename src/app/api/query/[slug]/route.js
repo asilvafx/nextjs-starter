@@ -42,9 +42,10 @@ async function handleGet(request, { params }) {
         if (id) {
             result = await DBService.read(id, slug);
             if (!result) {
-                return NextResponse.json(
-                    { error: 'Record not found' },
-                );
+                return NextResponse.json({
+                success: false,
+                error: 'Record not found'
+            });
             }
             return NextResponse.json({
                 success: true,
