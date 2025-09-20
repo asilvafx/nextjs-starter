@@ -1,35 +1,32 @@
 // app/auth/logout/page.js
 "use client";
 
-import { useEffect, useState } from "react";
-import { signOut, useSession } from "next-auth/react";
+import { useEffect, useState } from "react"; 
+import {useAuth} from "@/hooks/useAuth";
 import { motion } from "framer-motion";
 import Link from "next/link";
 import {useRouter} from "next/navigation";
 import { Button } from "@/components/ui/button";
 
-export default function LogoutPage() {
-    const { status } = useSession();
+export default function LogoutPage() { 
+    const { logout, status, session } = useAuth();
     const router = useRouter();
     const [isSigningOut, setIsSigningOut] = useState(false);
     const [hasSignedOut, setHasSignedOut] = useState(false);
 
     useEffect(() => {
         const handleSignOut = async () => {
-            if (status === "authenticated" && !isSigningOut && !hasSignedOut) {
+            if (status !== "loading" && session && !isSigningOut && !hasSignedOut) {
                 setIsSigningOut(true);
                 try {
-                    await signOut({
-                        callbackUrl: '/auth/login',
-                        redirect: true
-                    });
+                    await logout();
                     setHasSignedOut(true);
                 } catch (error) {
                     console.error('Sign out error:', error);
                     // Force redirect even if there's an error
                     router.push('/auth/login')
                 }
-            } else if (status === "unauthenticated") {
+            } else if(status !== "loading") {
                 // Already signed out, redirect to login
                 router.push('/auth/login')
             }
@@ -38,7 +35,7 @@ export default function LogoutPage() {
         // Small delay to prevent flash
         const timeout = setTimeout(handleSignOut, 500);
         return () => clearTimeout(timeout);
-    }, [status, isSigningOut, hasSignedOut]);
+    }, [session, isSigningOut, hasSignedOut]);
 
     // Show different content based on auth status
     if (status === "loading") {

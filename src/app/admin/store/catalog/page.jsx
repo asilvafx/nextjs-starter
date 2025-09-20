@@ -22,20 +22,51 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
 import { Plus, Pencil, Trash2, Image } from "lucide-react";
+import { useTableState } from "./hooks/useTableState";
+import { TableSkeleton } from "@/components/ui/skeleton";
+import { CatalogItemForm } from "./CatalogItemForm"; 
 
 const initialFormData = {
+  type: "physical",
   name: "",
+  sku: "",
   description: "",
   price: 0,
-  imageUrl: "",
+  compareAtPrice: 0,
   categoryId: "",
-  inStock: true,
+  collections: [],
+  images: [],
+  coverImageIndex: 0,
+  weight: 0,
+  stock: 0,
+  lowStockAlert: 5,
+  downloadLink: "",
+  downloadNotes: "",
+  duration: 60,
+  serviceNotes: "",
+  customAttributes: [],
+  isActive: true,
 };
 
 export default function CatalogPage() {
-  const [catalog, setCatalog] = useState([]);
+  const {
+    items: catalog,
+    setItems: setCatalog,
+    loading,
+    setLoading,
+    search,
+    setSearch,
+    currentPage,
+    setCurrentPage,
+    sortConfig,
+    handleSort,
+    getFilteredAndSortedItems,
+    getPaginatedItems,
+    totalPages,
+  } = useTableState();
+
   const [categories, setCategories] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [collections, setCollections] = useState([]);
   const [isOpen, setIsOpen] = useState(false);
   const [editItem, setEditItem] = useState(null);
   const [formData, setFormData] = useState(initialFormData);
@@ -43,46 +74,82 @@ export default function CatalogPage() {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const [catalogRes, categoriesRes] = await Promise.all([
+      const [catalogRes, categoriesRes, collectionsRes] = await Promise.all([
         getAll("catalog"),
         getAll("categories"),
+        getAll("collections"),
       ]);
-      
-      if (catalogRes.success) setCatalog(catalogRes.data);
-      if (categoriesRes.success) setCategories(categoriesRes.data);
+
+      if (catalogRes.success) {
+        setCatalog(catalogRes.data);
+      }
+      if (categoriesRes.success) {
+        setCategories(categoriesRes.data);
+      }
+      if (collectionsRes.success) {
+        setCollections(collectionsRes.data);
+      }
     } catch (error) {
       toast.error("Failed to fetch data");
     } finally {
       setLoading(false);
     }
-  };
-
-  useEffect(() => {
+  };  useEffect(() => {
     fetchData();
   }, []);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    try {
-      const data = { ...formData, price: Number(formData.price) };
-      
+    const handleImageUpload = async (files) => {
+      const uploadedImages = await Promise.all(
+        files.map(async (file) => {
+          const formData = new FormData();
+          formData.append('file', file);
+          const response = await fetch('/api/upload', {
+            method: 'POST',
+            body: formData,
+          });
+          const data = await response.json();
+          return {
+            url: data.url,
+            alt: file.name,
+          };
+        })
+      );
+      setFormData((prev) => ({
+        ...prev,
+        images: [...prev.images, ...uploadedImages]
+      }));
+    };
+    
+    const handleSubmit = async (e) => {
+      e.preventDefault();
+      try {
+        const processedData = {
+          ...formData,
+        };
+
       if (editItem) {
-        await update(editItem.id, data, "catalog");
-        toast.success("Item updated successfully");
+        const response = await update(editItem.id, processedData, "catalog");
+        if (response.success) {
+          toast.success("Item updated successfully");
+          setCatalog((prev) =>
+            prev.map((item) =>
+              item.id === editItem.id ? { ...item, ...processedData } : item
+            )
+          );
+        }
       } else {
-        await create(data, "catalog");
-        toast.success("Item created successfully");
+        const response = await create(processedData, "catalog");
+        if (response.success) {
+          toast.success("Item created successfully");
+          setCatalog((prev) => [...prev, response.data]);
+        }
       }
       setIsOpen(false);
-      setEditItem(null);
       setFormData(initialFormData);
-      fetchData();
+      setEditItem(null);
     } catch (error) {
-      if (error instanceof Error) {
-        toast.error(error.message);
-      } else {
-        toast.error("Operation failed");
-      }
+      console.error('Error saving item:', error);
+      toast.error("Failed to save item");
     }
   };
 
@@ -124,202 +191,135 @@ export default function CatalogPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-between items-center">
-        <div>
-          <h2 className="text-2xl font-semibold">Items</h2>
-          <p className="text-muted-foreground">Manage your catalog items</p>
+      {loading ? (
+        <TableSkeleton columns={5} rows={5} />
+      ) : (
+        <div className="space-y-4">
+          <div className="flex justify-between items-center">
+            <div>
+              <h2 className="text-2xl font-semibold">Items</h2>
+              <p className="text-muted-foreground">Manage your catalog items</p>
+            </div>
+            <Dialog open={isOpen} onOpenChange={setIsOpen}>
+              <DialogTrigger asChild>
+                <Button>
+                  <Plus className="w-4 h-4 mr-2" />
+                  Add Item
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-2xl">
+                <DialogHeader>
+                  <DialogTitle>
+                    {editItem ? "Edit Item" : "Add New Item"}
+                  </DialogTitle>
+                </DialogHeader>
+                <CatalogItemForm
+                  formData={formData}
+                  setFormData={setFormData}
+                  editItem={editItem}
+                  categories={categories}
+                  collections={collections}
+                  onSubmit={handleSubmit}
+                  onImageUpload={handleImageUpload}
+                />
+              </DialogContent>
+            </Dialog>
+          </div>
+          <div className="flex flex-col space-y-4">
+            <div className="flex justify-between items-center">
+              <Input
+                placeholder="Search items..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="max-w-xs"
+              />
+            </div>
+            <ScrollArea className="h-[calc(100vh-250px)]">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Image</TableHead>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Price</TableHead>
+                    <TableHead>Category</TableHead>
+                    <TableHead>Stock Status</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {catalog.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={6} className="text-center">
+                        No items found
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    getPaginatedItems().map((item) => (
+                      <TableRow key={item.id}>
+                        <TableCell>
+                          {item.images && item.images.length > 0 ? (
+                            <img
+                              src={item.images[item.coverImageIndex]?.url}
+                              alt={item.name}
+                              className="w-10 h-10 object-cover rounded"
+                            />
+                          ) : (
+                            <div className="w-10 h-10 bg-gray-100 rounded flex items-center justify-center">
+                              <Image className="w-6 h-6 text-gray-400" />
+                            </div>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <div>
+                            <div className="font-medium">{item.name}</div>
+                            <div className="text-sm text-muted-foreground">
+                              {item.description.length > 50
+                                ? item.description.substring(0, 50) + "..."
+                                : item.description}
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell>{formatPrice(item.price)}</TableCell>
+                        <TableCell>
+                          {categories.find((c) => c.id === item.categoryId)?.name ||
+                            "Uncategorized"}
+                        </TableCell>
+                        <TableCell>
+                          <span
+                            className={`px-2 py-1 rounded-full text-xs ${
+                              item.stock > 0
+                                ? "bg-green-100 text-green-800"
+                                : "bg-red-100 text-red-800"
+                            }`}
+                          >
+                            {item.stock > 0 ? "In Stock" : "Out of Stock"}
+                          </span>
+                        </TableCell>
+                        <TableCell className="text-right space-x-2">
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            onClick={() => handleEdit(item)}
+                          >
+                            <Pencil className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            onClick={() => handleDelete(item.id)}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </ScrollArea>
+          </div>
         </div>
-        <Dialog open={isOpen} onOpenChange={setIsOpen}>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="w-4 h-4 mr-2" />
-              Add Item
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-2xl">
-            <DialogHeader>
-              <DialogTitle>
-                {editItem ? "Edit Item" : "Add New Item"}
-              </DialogTitle>
-            </DialogHeader>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Input
-                    placeholder="Item Name"
-                    value={formData.name}
-                    onChange={(e) =>
-                      setFormData({ ...formData, name: e.target.value })
-                    }
-                    required
-                  />
-                </div>
-                <div>
-                  <Input
-                    type="number"
-                    placeholder="Price"
-                    value={formData.price}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        price: parseFloat(e.target.value),
-                      })
-                    }
-                    required
-                    min="0"
-                    step="0.01"
-                  />
-                </div>
-              </div>
-              <div>
-                <textarea
-                  className="w-full p-2 border rounded-md min-h-[100px]"
-                  placeholder="Description"
-                  value={formData.description}
-                  onChange={(e) =>
-                    setFormData({ ...formData, description: e.target.value })
-                  }
-                  required
-                />
-              </div>
-              <div>
-                <Input
-                  type="url"
-                  placeholder="Image URL"
-                  value={formData.imageUrl}
-                  onChange={(e) =>
-                    setFormData({ ...formData, imageUrl: e.target.value })
-                  }
-                  required
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <select
-                    className="w-full p-2 border rounded-md"
-                    value={formData.categoryId}
-                    onChange={(e) =>
-                      setFormData({ ...formData, categoryId: e.target.value })
-                    }
-                    required
-                  >
-                    <option value="">Select Category</option>
-                    {categories.map((category) => (
-                      <option key={category.id} value={category.id}>
-                        {category.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <input
-                    type="checkbox"
-                    id="inStock"
-                    checked={formData.inStock}
-                    onChange={(e) =>
-                      setFormData({ ...formData, inStock: e.target.checked })
-                    }
-                  />
-                  <label htmlFor="inStock">In Stock</label>
-                </div>
-              </div>
-              <Button type="submit" className="w-full">
-                {editItem ? "Update Item" : "Create Item"}
-              </Button>
-            </form>
-          </DialogContent>
-        </Dialog>
-      </div>
-
-      <ScrollArea className="h-[calc(100vh-250px)]">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Image</TableHead>
-              <TableHead>Name</TableHead>
-              <TableHead>Price</TableHead>
-              <TableHead>Category</TableHead>
-              <TableHead>Stock Status</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {loading ? (
-              <TableRow>
-                <TableCell colSpan={6} className="text-center">
-                  Loading...
-                </TableCell>
-              </TableRow>
-            ) : catalog.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={6} className="text-center">
-                  No catalog found
-                </TableCell>
-              </TableRow>
-            ) : (
-              catalog.map((product) => (
-                <TableRow key={product.id}>
-                  <TableCell>
-                    {product.imageUrl ? (
-                      <img
-                        src={product.imageUrl}
-                        alt={product.name}
-                        className="w-10 h-10 object-cover rounded"
-                      />
-                    ) : (
-                      <div className="w-10 h-10 bg-gray-100 rounded flex items-center justify-center">
-                        <Image className="w-6 h-6 text-gray-400" />
-                      </div>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <div>
-                      <div className="font-medium">{product.name}</div>
-                      <div className="text-sm text-muted-foreground">
-                        {product.description.length > 50
-                          ? product.description.substring(0, 50) + "..."
-                          : product.description}
-                      </div>
-                    </div>
-                  </TableCell>
-                  <TableCell>{formatPrice(product.price)}</TableCell>
-                  <TableCell>
-                    {categories.find((c) => c.id === product.categoryId)?.name ||
-                      "Uncategorized"}
-                  </TableCell>
-                  <TableCell>
-                    <span
-                      className={`px-2 py-1 rounded-full text-xs ${
-                        product.inStock
-                          ? "bg-green-100 text-green-800"
-                          : "bg-red-100 text-red-800"
-                      }`}
-                    >
-                      {product.inStock ? "In Stock" : "Out of Stock"}
-                    </span>
-                  </TableCell>
-                  <TableCell className="text-right space-x-2">
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      onClick={() => handleEdit(product)}
-                    >
-                      <Pencil className="w-4 h-4" />
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      onClick={() => handleDelete(product.id)}
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </ScrollArea>
+      )}
     </div>
   );
 }

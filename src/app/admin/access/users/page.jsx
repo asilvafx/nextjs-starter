@@ -24,7 +24,7 @@ import {
 } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
-import { Plus, Pencil, Trash2, Search, ArrowUpDown } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, ArrowUpDown, Eye, User2 } from "lucide-react";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import {
   Select,
@@ -34,6 +34,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Card, CardHeader, CardContent } from "@/components/ui/card"; 
 
 const ROLES = ["user", "admin", "editor", "moderator"];
 
@@ -62,6 +63,8 @@ export default function UsersPage() {
   const [userToDelete, setUserToDelete] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [currentPage, setCurrentPage] = useState(1); 
+  const [isViewOpen, setIsViewOpen] = useState(false);
+  const [viewUser, setViewUser] = useState(null);
 
   const fetchUsers = async () => {
     try {
@@ -329,6 +332,11 @@ export default function UsersPage() {
     setIsOpen(true);
   }
 
+  const handleView = (user) => {
+    setViewUser(user);
+    setIsViewOpen(true);
+  };
+
 
   // If auth is still loading, don't render anything
   if (status === "loading") {
@@ -553,7 +561,14 @@ export default function UsersPage() {
                   <TableCell data-label="Created at">
                     {new Date(user.createdAt).toLocaleDateString()}
                   </TableCell>
-                  <TableCell className="text-right space-x-2"> 
+                  <TableCell className="text-right space-x-2 flex gap-1"> 
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={() => handleView(user)}
+                      >
+                        <Eye className="w-4 h-4" />
+                      </Button>
                       <Button  
                         disabled={user.email === currentUser?.email}
                         className="w-1/5 sm:w-auto px-2"
@@ -628,6 +643,63 @@ export default function UsersPage() {
         confirmText="Delete"
         cancelText="Cancel"
       />
+
+      <Dialog open={isViewOpen} onOpenChange={setIsViewOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>User Profile</DialogTitle>
+            <DialogDescription>
+              Detailed information about the user.
+            </DialogDescription>
+          </DialogHeader>
+          
+          {viewUser && (
+            <div className="grid gap-4 py-4">
+              <Card>
+                <CardHeader className="pb-4">
+                  <div className="flex items-center gap-4">
+                    <div className="rounded-full bg-accent p-2">
+                      <User2 className="h-8 w-8" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold capitalize">{viewUser.displayName}</h3>
+                      <p className="text-sm text-muted-foreground">{viewUser.email}</p>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <p className="text-muted-foreground">Role</p>
+                      <p className="font-medium capitalize">{viewUser.role}</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground">Created</p>
+                      <p className="font-medium">
+                        {new Date(viewUser.createdAt).toLocaleDateString()}
+                      </p>
+                    </div>
+                    {viewUser.web3 && (
+                      <div className="col-span-2">
+                        <p className="text-muted-foreground">Web3 Address</p>
+                        <p className="font-medium break-all">{viewUser.web3.public_key}</p>
+                      </div>
+                    )}
+                    <div className="col-span-2">
+                      <p className="text-muted-foreground">Last Updated</p>
+                      <p className="font-medium">
+                        {viewUser.updatedAt 
+                          ? new Date(viewUser.updatedAt).toLocaleString()
+                          : 'Never'}
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

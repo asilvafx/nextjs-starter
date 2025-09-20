@@ -7,16 +7,19 @@ import { cn } from "@/lib/utils";
 
 const sections = [
   {
-    label: "Items",
+    label: "Products & Services",
     href: "/admin/store/catalog",
+    icon: "BoxIcon",
   },
   {
     label: "Categories",
     href: "/admin/store/categories",
+    icon: "FolderIcon",
   },
   {
     label: "Collections",
     href: "/admin/store/collections",
+    icon: "LayoutGridIcon",
   },
 ];
 

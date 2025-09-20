@@ -271,6 +271,8 @@ gmp-place-autocomplete:focus, gmp-place-autocomplete:active {
 }
 
 table {
+    border-radius: .5rem;
+    overflow: hidden;
     border: 1px solid rgba(255, 255, 255, .1);
     border-collapse: collapse;
     margin: 0;
@@ -293,7 +295,7 @@ table tr {
 .dark table tr {
     background-color: rgba(255, 255, 255, 0.03);
     border: 1px solid rgba(255, 255, 255, .1);
-}
+} 
 table th,
 table td {
     padding: .625em;
