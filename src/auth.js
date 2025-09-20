@@ -1,6 +1,7 @@
 // auth.js
 import NextAuth from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials'; 
+import { toast } from 'sonner';
 
 // Utility function to get base URL from various sources
 export function getBaseUrl(req = null) {
@@ -74,7 +75,8 @@ const authConfig = {
                         })
                     });
 
-                    if(authResponse){
+                    if(authResponse.ok){
+                        console.log(authResponse); // For debugging 
                         const res = await authResponse.json();
 
                         if (res?.error) {
@@ -82,6 +84,8 @@ const authConfig = {
                         }
 
                         return res;
+                    } else {
+                        return null;
                     }
 
                     return null;

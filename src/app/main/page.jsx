@@ -18,22 +18,17 @@ const Homepage = () => {
     // Function to check setup
     useEffect(() => {
         const setupDbEnv = async () => {
-        try {
-        fetch('/api/setup')
-            .then(res => res.json())
-            .then(data => {
+            try {
+                const response = await fetch('/main/setup');
+                const data = await response.json();
                 setSetupData(data);
                 setLoading(false);
-            })
-            .catch(error => {
-                console.error('Setup check failed:', error);
+            } catch (err) {
+                console.error("❌ Error loading setup:", err);
+                toast.error(`Error loading setup: ${err.message}`);
                 setLoading(false);
-            });
-        } catch (err) {
-            console.error("❌ Error loading setup:", err);
-            toast.error(`Error loading setup: ${err.message}`);
-        }
-        }
+            }
+        };
         setupDbEnv();
     }, []); 
 
