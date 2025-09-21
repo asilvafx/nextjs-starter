@@ -1,34 +1,113 @@
 // lib/server/email.js
 import { render } from '@react-email/render';
 import nodemailer from 'nodemailer'; 
+import DBService from '@/data/rest.db.js';
 
+let emailSettings = null;
+let mailTransport = null;
+
+// Cache settings for performance
+const getEmailSettings = async () => {
+    if (!emailSettings) {
+        try {
+            // Try to get settings from database first
+            const settings = await DBService.get(null, 'site_settings');
+            if (settings && settings.length > 0) {
+                emailSettings = settings[0];
+            }
+        } catch (error) {
+            console.warn('Could not load email settings from database, falling back to env vars:', error.message);
+        }
+        
+        // Fallback to environment variables if no database settings
+        if (!emailSettings) {
+            emailSettings = {
+                emailProvider: process.env.NODEMAILER_SERVICE || 'gmail',
+                emailUser: process.env.NODEMAILER_USER,
+                emailPass: process.env.NODEMAILER_PASS,
+                smtpHost: process.env.NODEMAILER_HOST,
+                smtpPort: process.env.NODEMAILER_PORT ? parseInt(process.env.NODEMAILER_PORT) : 587,
+                smtpSecure: process.env.NODEMAILER_SECURE === 'true',
+                siteName: process.env.NEXT_PUBLIC_APP_NAME || 'App',
+                siteEmail: process.env.NODEMAILER_EMAIL || process.env.NODEMAILER_USER
+            };
+        }
+    }
+    return emailSettings;
+};
+
+// Create mail transporter based on settings
+const getMailTransporter = async () => {
+    if (!mailTransport) {
+        const settings = await getEmailSettings();
+        
+        const nodeMailerConfig = {
+            auth: {
+                user: settings.emailUser,
+                pass: settings.emailPass
+            }
+        };
+
+        // Configure based on provider type
+        if (settings.emailProvider === 'custom' && settings.smtpHost) {
+            // Custom SMTP configuration
+            nodeMailerConfig.host = settings.smtpHost;
+            nodeMailerConfig.port = settings.smtpPort || 587;
+            nodeMailerConfig.secure = settings.smtpSecure || false;
+        } else {
+            // Use predefined service
+            const serviceMap = {
+                'gmail': 'gmail',
+                'outlook': 'hotmail',
+                'yahoo': 'yahoo'
+            };
+            nodeMailerConfig.service = serviceMap[settings.emailProvider] || 'gmail';
+        }
+
+        mailTransport = nodemailer.createTransporter(nodeMailerConfig);
+    }
+    return mailTransport;
+};
+
+// Refresh settings (call this when settings are updated)
+const refreshEmailSettings = () => {
+    emailSettings = null;
+    mailTransport = null;
+};
+
+// Dynamic getters for email config
+const getEmailFrom = async () => {
+    const settings = await getEmailSettings();
+    return settings.emailUser;
+};
+
+const getEmailName = async () => {
+    const settings = await getEmailSettings();
+    return settings.siteName || 'App';
+};
+
+const getEmailPublic = async () => {
+    const settings = await getEmailSettings();
+    return settings.siteEmail || settings.emailUser;
+};
+
+// Legacy constants for backwards compatibility
 const emailFrom = process.env.NODEMAILER_USER;
 const emailName = process.env.NEXT_PUBLIC_APP_NAME;
 const emailPublic = process.env.NODEMAILER_EMAIL || process.env.NODEMAILER_USER || null;
 
-// Nodemailer configuration
-const nodeMailerConfig = {
-    service: process.env.NODEMAILER_SERVICE || 'gmail',
-    auth: {
-        user: process.env.NODEMAILER_USER,
-        pass: process.env.NODEMAILER_PASS
-    }
-};
-
-// Support for custom SMTP configuration
-if (process.env.NODEMAILER_HOST) {
-    nodeMailerConfig.host = process.env.NODEMAILER_HOST;
-    nodeMailerConfig.port = process.env.NODEMAILER_PORT || 587;
-    nodeMailerConfig.secure = process.env.NODEMAILER_SECURE === 'true'; // true for 465, false for other ports
-    delete nodeMailerConfig.service; // Remove service when using custom SMTP
-}
-
-const mailTransport = nodemailer.createTransport(nodeMailerConfig);
-
 class EmailService {
     constructor() {
+        // Initialize with legacy values, will be overridden by dynamic settings
         this.fromEmail = emailFrom;
         this.fromName = emailName;
+    }
+
+    // Initialize dynamic email settings
+    async init() {
+        this.fromEmail = await getEmailFrom();
+        this.fromName = await getEmailName();
+        this.transport = await getMailTransporter();
     }
 
     /**
@@ -41,8 +120,13 @@ class EmailService {
      */
     async sendEmailViaNodemailer(to, subject, html, text) {
         try {
-            if (!mailTransport) {
-                throw new Error('Nodemailer transport not initialized. Check your NODEMAILER environment variables.');
+            // Initialize if not already done
+            if (!this.transport) {
+                await this.init();
+            }
+
+            if (!this.transport) {
+                throw new Error('Nodemailer transport not initialized. Check your email settings.');
             }
 
             // Validate HTML is a string
@@ -73,7 +157,7 @@ class EmailService {
                 textLength: text?.length || 0
             });
 
-            const response = await mailTransport.sendMail(mailOptions);
+            const response = await this.transport.sendMail(mailOptions);
 
             console.log('Nodemailer email sent successfully:', response);
             return response;
@@ -505,3 +589,6 @@ class EmailService {
 }
 
 export default new EmailService();
+
+// Export utility functions
+export { refreshEmailSettings, getEmailSettings, getEmailFrom, getEmailName, getEmailPublic };

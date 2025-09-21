@@ -64,8 +64,8 @@ export const navigation = {
   ],
   System: [
     {
-      title: "Administration",
-      url: "/admin/system/administration",
+      title: "Settings",
+      url: "/admin/system/settings",
       icon: Frame, 
     },
     {
