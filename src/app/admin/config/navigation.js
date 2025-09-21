@@ -1,3 +1,5 @@
+// @/app/admin/config/navigation.js
+
 import {
   Frame,
   PieChart,
@@ -45,6 +47,14 @@ export const navigation = {
         {
           title: "Catalog",
           url: "/admin/store/catalog", 
+        },
+        {
+          title: "Categories",
+          url: "/admin/store/categories", 
+        },
+        {
+          title: "Collections",
+          url: "/admin/store/collections", 
         },
         {
           title: "Customers",

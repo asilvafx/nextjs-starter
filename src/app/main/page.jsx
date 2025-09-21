@@ -87,11 +87,19 @@ const Homepage = () => {
                     </Link>
                     </>
                 ) : (
+                    <>
+                    <Link 
+                        href="/admin" 
+                        prefetch={false}
+                    >
+                    <Button className="justify-self-end">Administration</Button>
+                    </Link>
                     <Button 
                         onClick={handleSignOut}
                         className="justify-self-end" 
                     > Sign Out
                     </Button>
+                    </>
                 )} 
                 
                 <Link

@@ -1,4 +1,7 @@
+// @/app/admin/components/nav-user.jsx
+
 "use client"
+
 import Link from 'next/link'
 import {
   BadgeCheck,
@@ -45,7 +48,7 @@ export function NavUser({ user }) {
             >
               <Avatar className="h-8 w-8 rounded-lg">
                 <AvatarImage src={user?.avatar || '/images/avatar.webp'} alt={user?.displayName} />
-                <AvatarFallback className="rounded-lg">CN</AvatarFallback>
+                <AvatarFallback className="rounded-lg">{user?.displayName.charAt(0,2)}</AvatarFallback>
               </Avatar>
               <div className="grid flex-1 text-left text-sm leading-tight">
                 <span className="truncate font-medium">{user?.displayName}</span>
@@ -83,14 +86,12 @@ export function NavUser({ user }) {
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
+              <Link href="/admin/account">
               <DropdownMenuItem>
                 <BadgeCheck />
                 Account
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                <CreditCard />
-                Billing
-              </DropdownMenuItem>
+              </DropdownMenuItem> 
+              </Link>
               <DropdownMenuItem>
                 <Bell />
                 Notifications
