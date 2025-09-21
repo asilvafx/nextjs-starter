@@ -74,7 +74,7 @@ export default function UsersPage() {
 
   const fetchRoles = async () => {
     // Prevent multiple simultaneous fetch requests
-    if (hasFetchedRoles.current || rolesLoading) {
+    if (hasFetchedRoles.current) {
       return;
     }
 
@@ -105,7 +105,7 @@ export default function UsersPage() {
 
   const fetchUsers = async () => {
     // Prevent multiple simultaneous fetch requests
-    if (hasFetchedUsers.current || loading) {
+    if (hasFetchedUsers.current) {
       return;
     }
 
@@ -549,7 +549,6 @@ export default function UsersPage() {
         </div>
         <Button 
           onClick={openCreateDialog} 
-          disabled={status === "loading" || loading}
         >
           <Plus className="w-4 h-4 mr-2" />
           Create User
