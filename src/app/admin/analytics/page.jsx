@@ -143,7 +143,7 @@ export default function AnalyticsPage() {
 
   return (
     <ScrollArea className="h-[calc(100vh-80px)]">
-      <div className="space-y-6 p-6">
+      <div className="space-y-4">
         <div className="flex justify-between items-center">
           <div>
             <h1 className="text-3xl font-bold">Website Analytics</h1>
