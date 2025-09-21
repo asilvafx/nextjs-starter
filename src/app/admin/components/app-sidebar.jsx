@@ -6,17 +6,6 @@ import Link from "next/link"
 import Image from "next/image"
 import {
   Globe,
-  AudioWaveform,
-  BookOpen,
-  Bot,
-  Command,
-  Frame,
-  GalleryVerticalEnd,
-  Map,
-  PieChart,
-  Settings2,
-  Users,
-  SquareTerminal,
 } from "lucide-react"
 
 import { NavMain } from "./nav-main" 
@@ -36,7 +25,7 @@ import { navigation } from "../config/navigation";
 
 export function AppSidebar(props) {
 
-const { isAuthenticated, user, status } = useAuth();
+const { user } = useAuth();
 
 const data = {
   user: {

@@ -1,4 +1,4 @@
-// middleware.js
+// @/middleware.js
 import { NextResponse } from "next/server"
 import { auth } from "@/auth"
 

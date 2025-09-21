@@ -1,4 +1,4 @@
-// auth.js
+// @/auth.js
 import NextAuth from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials'; 
 import { toast } from 'sonner';

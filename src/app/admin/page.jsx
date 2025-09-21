@@ -50,13 +50,13 @@ const StatCard = ({ label, value, icon: Icon, description, trend, loading = fals
 
   return (
     <Card className={`p-6 ${className}`}>
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1">
         <CardTitle className="text-sm font-medium">{label}</CardTitle>
         <Icon className="h-4 w-4 text-muted-foreground" />
       </CardHeader>
       <CardContent>
-        <div className="text-2xl font-bold">{value}</div>
-        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+        <div className="text-2xl font-bold mb-2">{value}</div>
+        <div className="w-full flex flex-col items-start gap-2 text-xs text-muted-foreground">
           {trend && (
             <div className={`flex items-center gap-1 ${trend.positive ? 'text-green-600' : 'text-red-600'}`}>
               {trend.positive ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
@@ -149,7 +149,7 @@ export default function AdminDashboard() {
     products: 0,
     revenue: 0,
     categories: 0,
-    pages: 0,
+    collections: 0,
   });
   
   const [recentActivity, setRecentActivity] = useState([]);
@@ -161,12 +161,12 @@ export default function AdminDashboard() {
       setLoading(true);
       try {
         // Fetch all collections data
-        const [users, orders, products, categories, pages] = await Promise.all([
+        const [users, orders, products, categories, collections] = await Promise.all([
           getAll("users", { limit: 100 }).catch(() => ({ data: [] })),
           getAll("orders", { limit: 100 }).catch(() => ({ data: [] })),
-          getAll("products", { limit: 100 }).catch(() => ({ data: [] })),
+          getAll("catalog", { limit: 100 }).catch(() => ({ data: [] })),
           getAll("categories", { limit: 50 }).catch(() => ({ data: [] })),
-          getAll("pages", { limit: 50 }).catch(() => ({ data: [] })),
+          getAll("collections", { limit: 50 }).catch(() => ({ data: [] })),
         ]);
 
         // Calculate revenue from orders
@@ -197,7 +197,7 @@ export default function AdminDashboard() {
           products: products?.data?.length || 0,
           revenue: revenue,
           categories: categories?.data?.length || 0,
-          pages: pages?.data?.length || 0,
+          collections: collections?.data?.length || 0,
         };
 
         setStats(currentStats);
@@ -299,10 +299,12 @@ export default function AdminDashboard() {
             <Calendar className="h-4 w-4 mr-2" />
             Last 30 days
           </Button>
+          <Link href="/" target="_blank" rel="noopener noreferrer">  
           <Button variant="outline" size="sm">
             <Eye className="h-4 w-4 mr-2" />
             View Site
           </Button>
+          </Link>
         </div>
       </div>
 
@@ -325,10 +327,10 @@ export default function AdminDashboard() {
           loading={loading}
         />
         <StatCard
-          label="Products"
+          label="Catalog"
           value={stats.products.toLocaleString()}
           icon={Package}
-          description="Products in catalog"
+          description="Items in catalog"
           trend={trends.products}
           loading={loading}
         />
@@ -360,9 +362,9 @@ export default function AdminDashboard() {
           <div className="flex items-center justify-between">
             <div>
               <div className="text-2xl font-bold">
-                {loading ? <Skeleton className="h-6 w-8" /> : stats.pages}
+                {loading ? <Skeleton className="h-6 w-8" /> : stats.collections}
               </div>
-              <div className="text-sm text-muted-foreground">Pages</div>
+              <div className="text-sm text-muted-foreground">Collections</div>
             </div>
             <FileText className="h-8 w-8 text-muted-foreground" />
           </div>
@@ -412,21 +414,21 @@ export default function AdminDashboard() {
               title="Manage Catalog"
               description="View and manager products/services"
               icon={Package}
-              href="/admin/dashboard/store/products?action=new"
+              href="/admin/dashboard/store/catalog"
               color="primary"
             />
             <QuickActionCard
               title="Manage Users"
               description="View and manage user accounts"
               icon={Users}
-              href="/admin/dashboard/customers"
+              href="/admin/dashboard/store/customers"
               color="default"
             />
             <QuickActionCard
               title="View Orders"
               description="Check recent orders and fulfillment"
               icon={ShoppingCart}
-              href="/admin/dashboard/orders"
+              href="/admin/dashboard/store/orders"
               color="success"
             />
             <QuickActionCard

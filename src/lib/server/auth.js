@@ -1,4 +1,5 @@
-// lib/auth.js
+// @/lib/server/auth.js
+
 import { NextResponse } from 'next/server';
 import { auth } from '@/auth.js';
 import { cookies } from 'next/headers';
