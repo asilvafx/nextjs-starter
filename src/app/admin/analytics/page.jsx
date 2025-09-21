@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Skeleton} from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import {
   LineChart,
@@ -56,10 +57,6 @@ const StatCard = ({ title, value, icon: Icon, trend, description }) => (
       )}
     </CardContent>
   </Card>
-);
-
-const Skeleton = ({ className = "" }) => (
-  <div className={`animate-pulse bg-gray-200 rounded ${className}`}></div>
 );
 
 export default function AnalyticsPage() {
