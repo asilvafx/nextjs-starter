@@ -174,7 +174,10 @@ export default function RolesPage() {
       }
       
       setRoles(createdRoles);
-      setAllRoles(createdRoles); 
+      setAllRoles(createdRoles);
+      
+      // Clear middleware cache after creating default roles
+      await clearMiddlewareCache(); 
     } catch (error) {
       console.error('Error creating default roles:', error);
       toast.error('Failed to create default roles');
@@ -305,6 +308,9 @@ export default function RolesPage() {
         toast.success("Role created successfully");
       }
 
+      // Clear middleware cache to ensure updated routes are applied
+      await clearMiddlewareCache();
+
       // Reset form and close dialog
       setFormData(initialFormData);
       setEditRole(null);
@@ -344,6 +350,9 @@ export default function RolesPage() {
       const filteredRoles = rolesArray.filter(role => role.id !== roleToDelete.id);
       setRoles(filteredRoles);
       setAllRoles(filteredRoles);
+      
+      // Clear middleware cache to ensure deleted roles are no longer applied
+      await clearMiddlewareCache();
       
       toast.success("Role deleted successfully");
       setDeleteConfirmOpen(false);
@@ -389,6 +398,22 @@ export default function RolesPage() {
         routes: [...formData.routes, newRoute.trim()]
       });
       setNewRoute("");
+    }
+  };
+
+  // Clear middleware cache when roles are modified
+  const clearMiddlewareCache = async () => {
+    try {
+      // Signal that middleware cache should be cleared
+      await fetch('/api/middleware/clear-cache', { method: 'POST' });
+      console.log('Middleware cache clear signal sent');
+      
+      // Also add a cache-busting parameter to force refresh on next request
+      const cacheBuster = Date.now();
+      sessionStorage.setItem('rolesCacheBuster', cacheBuster.toString());
+    } catch (error) {
+      console.error('Failed to clear middleware cache:', error);
+      // Non-critical error, don't show to user
     }
   };
 

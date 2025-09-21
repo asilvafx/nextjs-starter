@@ -137,8 +137,8 @@ export async function verifyCsrfToken(request) {
 // Enhanced public access middleware
 export function withPublicAccess(handler, options = {}) {
     const {
-        requireApiKey = false,
-        requireIpWhitelist = false,
+        requireApiKey = true,
+        requireIpWhitelist = true,
         skipCsrfForApiKey = true,
         requiredPermission = null,
         logAccess = false
@@ -188,6 +188,10 @@ export function withPublicAccess(handler, options = {}) {
             // If we have a valid API key and skipCsrfForApiKey is true, skip CSRF check
             if (!(hasValidApiKey && skipCsrfForApiKey)) {
                 // Verify CSRF token
+                const validate = await validateIpAndDomain(request);
+                if (validate.isInternal) {
+                    return await handler(request, context);
+                } 
                 const csrfResult = await verifyCsrfToken(request);
                 if (csrfResult.error) {
                     return NextResponse.json(

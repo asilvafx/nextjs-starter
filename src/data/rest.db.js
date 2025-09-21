@@ -1,8 +1,8 @@
 // data/rest.db.js
-import FirebaseService from './firebase.db.js';
 import RedisService from './redis.db.js';
 import PostgresService from './postgres.db.js';
 // Import future providers here
+// import FirebaseService from './firebase.db.js';
 // import MongoService from './mongo.db.js';
 // import MySQLService from './mysql.db.js';
 
@@ -10,10 +10,10 @@ class DBService {
     constructor() {
         // Database providers registry
         this.providers = {
-            firebase: FirebaseService,
             redis: RedisService,
             postgres: PostgresService,
             // Add future providers here
+            // firebase: FirebaseService,
             // mongodb: MongoService,
             // mysql: MySQLService,
         };
@@ -24,15 +24,11 @@ class DBService {
         } else
         if(process.env.REDIS_URL){
             DATABASE_PROVIDER = "redis"
-        } else
-        if(process.env.FIREBASE_DATABASE_URL){
-            DATABASE_PROVIDER = "firebase"
-        }
+        } 
         this.provider = DATABASE_PROVIDER.toLowerCase();
         this.service = this.getProviderService(this.provider);
 
-        console.log(`Database provider initialized: ${this.provider}`);
-        console.log(`Available providers: ${Object.keys(this.providers).join(', ')}`);
+        console.log(`Database provider initialized: ${this.provider}`); 
     }
 
     // Get service instance for a specific provider

@@ -2,6 +2,11 @@
 import { createClient } from 'redis';
 import { put } from '@vercel/blob';
 
+// Add connection logging
+if (!process.env.REDIS_URL) {
+    console.error("❌ REDIS_URL environment variable is not set!");
+}
+
 class RedisDBService {
     constructor() {
         this.client = null;

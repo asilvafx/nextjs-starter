@@ -2,7 +2,7 @@
 
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { getAll, create, update, remove } from "@/lib/client/query";
 import { useAuth } from "@/hooks/useAuth";
 import { v6 as uuidv6 } from 'uuid';
@@ -38,8 +38,6 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardHeader, CardContent } from "@/components/ui/card"; 
 
-const ROLES = ["user", "admin", "editor", "moderator"];
-
 const initialFormData = {
   displayName: "",
   email: "",
@@ -53,7 +51,9 @@ import { TableSkeleton } from "@/components/ui/skeleton";
 
 export default function UsersPage() {
   const [users, setUsers] = useState([]);
+  const [roles, setRoles] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [rolesLoading, setRolesLoading] = useState(true);
   const [isOpen, setIsOpen] = useState(false);
   const { user: currentUser, status } = useAuth();
   const [editUser, setEditUser] = useState(null);
@@ -68,8 +68,49 @@ export default function UsersPage() {
   const [isViewOpen, setIsViewOpen] = useState(false);
   const [viewUser, setViewUser] = useState(null);
 
-  const fetchUsers = async () => {
+  // Use refs to prevent multiple API calls
+  const hasFetchedRoles = useRef(false);
+  const hasFetchedUsers = useRef(false);
+
+  const fetchRoles = async () => {
+    // Prevent multiple simultaneous fetch requests
+    if (hasFetchedRoles.current || rolesLoading) {
+      return;
+    }
+
     try {
+      hasFetchedRoles.current = true;
+      setRolesLoading(true);
+      const response = await getAll('roles');
+      
+      // Ensure data is an array and extract role titles
+      const rolesArray = Array.isArray(response.data) ? response.data : [];
+      const rolesList = rolesArray.map(role => role.title?.toLowerCase()).filter(Boolean);
+      
+      // Set roles with fallback to default roles if none exist
+      if (rolesList.length === 0) {
+        setRoles(["user", "admin", "editor", "moderator"]);
+      } else {
+        setRoles(rolesList);
+      }
+    } catch (error) {
+      console.error('Error fetching roles:', error);
+      // Fallback to default roles on error
+      setRoles(["user", "admin", "editor", "moderator"]);
+      hasFetchedRoles.current = false;
+    } finally {
+      setRolesLoading(false);
+    }
+  };
+
+  const fetchUsers = async () => {
+    // Prevent multiple simultaneous fetch requests
+    if (hasFetchedUsers.current || loading) {
+      return;
+    }
+
+    try {
+      hasFetchedUsers.current = true;
       setLoading(true);
       const response = await getAll("users", { 
         page: currentPage,
@@ -91,14 +132,24 @@ export default function UsersPage() {
         });
       }
     } catch (error) {
+      console.error('Error fetching users:', error);
       toast.error("Failed to fetch users");
+      hasFetchedUsers.current = false;
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchUsers();
+    if (status !== "loading" && currentUser?.id && !hasFetchedRoles.current) {
+      fetchRoles();
+    }
+  }, [currentUser?.id, status]);
+
+  useEffect(() => {
+    if (!hasFetchedUsers.current || currentPage !== 1) {
+      fetchUsers();
+    }
   }, [currentPage]);
 
   // Sorting function
@@ -399,7 +450,7 @@ export default function UsersPage() {
                     <SelectValue placeholder="Select a role" />
                   </SelectTrigger>
                   <SelectContent>
-                    {ROLES.map((role) => (
+                    {roles.map((role) => (
                       <SelectItem key={role} value={role}>
                         {role.charAt(0).toUpperCase() + role.slice(1)}
                       </SelectItem>
