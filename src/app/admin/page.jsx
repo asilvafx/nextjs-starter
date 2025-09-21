@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getAll } from "@/lib/client/query";
@@ -283,10 +284,11 @@ export default function AdminDashboard() {
   };
 
   return (
-    <div className="space-y-6 p-4">
+    <ScrollArea className="h-[calc(100vh-80px)]">
+    <div className="space-y-4">
       {/* Header Section */}
-      <div className="flex justify-between items-start">
-        <div>
+      <div className="flex flex-wrap gap-2 justify-between items-start">
+        <div className="w-full md:max-w-sm">
           <h1 className="text-3xl font-bold">Dashboard Overview</h1>
           <p className="text-muted-foreground mt-1">
             Welcome back! Here's what's happening with your website.
@@ -405,9 +407,10 @@ export default function AdminDashboard() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
+            <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-1">
             <QuickActionCard
-              title="Add New Product"
-              description="Add a new product to your catalog"
+              title="Manage Catalog"
+              description="View and manager products/services"
               icon={Package}
               href="/admin/dashboard/store/products?action=new"
               color="primary"
@@ -440,6 +443,7 @@ export default function AdminDashboard() {
               href="/admin/system/maintenance"
               color="warning"
             />
+            </div> 
           </CardContent>
         </Card>
 
@@ -526,5 +530,6 @@ export default function AdminDashboard() {
         </CardContent>
       </Card>
     </div>
+    </ScrollArea>
   );
 }
