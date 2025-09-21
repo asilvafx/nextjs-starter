@@ -4,8 +4,8 @@ import {getLocale, getMessages} from 'next-intl/server';
 import { Toaster } from "@/components/ui/sonner"
 import { Inter } from "next/font/google";
 import Providers from "@/context/providers";
-import CookieConsentComponent from "@/ui/CookieConsent";
-import ScrollToTop from '@/ui/ScrollToTop';
+import CookieConsentComponent from "@/components/cookie-consent";
+import ScrollToTop from '@/components/scroll-to-top';
 import "@/app/globals.css";
 
 const font = Inter({

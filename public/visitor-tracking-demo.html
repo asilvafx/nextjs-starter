@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Visitor Tracking Demo</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        .demo-section {
+            background: #f5f5f5;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+        }
+        button {
+            background: #007cba;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            margin: 5px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #005a87;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        .success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        pre {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 4px;
+            overflow-x: auto;
+            font-size: 14px;
+        }
+        .ids-display {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin: 10px 0;
+        }
+        .id-box {
+            background: white;
+            padding: 10px;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+        }
+        .id-label {
+            font-weight: bold;
+            color: #666;
+            font-size: 12px;
+        }
+        .id-value {
+            font-family: monospace;
+            font-size: 11px;
+            color: #333;
+            word-break: break-all;
+        }
+    </style>
+</head>
+<body>
+    <h1>Visitor Tracking Demo</h1>
+    
+    <div class="demo-section">
+        <h2>Tracking Status</h2>
+        <div id="status" class="status info">
+            Initializing visitor tracking...
+        </div>
+        
+        <div class="ids-display">
+            <div class="id-box">
+                <div class="id-label">Visitor ID</div>
+                <div class="id-value" id="visitor-id">Loading...</div>
+            </div>
+            <div class="id-box">
+                <div class="id-label">Session ID</div>
+                <div class="id-value" id="session-id">Loading...</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="demo-section">
+        <h2>Event Tracking Demo</h2>
+        <p>Click these buttons to send custom tracking events:</p>
+        
+        <button onclick="trackButtonClick('primary')">Primary Action</button>
+        <button onclick="trackButtonClick('secondary')">Secondary Action</button>
+        <button onclick="trackCustomEvent()">Custom Event</button>
+        <button onclick="trackFormSubmit()">Form Submit</button>
+        <button onclick="trackDownload()">Download</button>
+        
+        <div id="event-status"></div>
+    </div>
+
+    <div class="demo-section">
+        <h2>Page Navigation Demo</h2>
+        <p>These actions will trigger page view events:</p>
+        
+        <button onclick="changeHash('section1')">Navigate to #section1</button>
+        <button onclick="changeHash('section2')">Navigate to #section2</button>
+        <button onclick="changeHash('')">Clear Hash</button>
+        
+        <div id="nav-status"></div>
+    </div>
+
+    <div class="demo-section">
+        <h2>Custom Data Demo</h2>
+        <p>Set custom data that will be included in all future events:</p>
+        
+        <button onclick="setUserData()">Set User Data</button>
+        <button onclick="setExperimentData()">Set Experiment Data</button>
+        <button onclick="clearCustomData()">Clear Custom Data</button>
+        
+        <div id="data-status"></div>
+        <pre id="custom-data-display">{}</pre>
+    </div>
+
+    <div class="demo-section">
+        <h2>Configuration</h2>
+        <pre id="config-display">Loading configuration...</pre>
+    </div>
+
+    <div class="demo-section">
+        <h2>Event Log</h2>
+        <div style="max-height: 300px; overflow-y: auto; background: white; padding: 10px; border-radius: 4px;">
+            <pre id="event-log" style="margin: 0; background: none; padding: 0;">Waiting for events...</pre>
+        </div>
+    </div>
+
+    <!-- Configure visitor tracking before loading the script -->
+    <script>
+        // Configuration for the tracking script
+        window.VisitorTrackingConfig = {
+            apiEndpoint: '/api/web-stats', // Change this for external hosts
+            autoTrack: true,
+            trackPageViews: true,
+            trackUserAgent: true,
+            trackScreenSize: true,
+            trackReferrer: true,
+            trackTimezone: true,
+            trackLanguage: true,
+            trackPerformance: true,
+            debounceTime: 100,
+            maxRetries: 3,
+            timeout: 5000
+        };
+
+        // Success callback
+        window.onVisitorTrackingSuccess = function(data) {
+            logEvent('SUCCESS', data);
+            updateStatus('Tracking data sent successfully', 'success');
+        };
+
+        // Error callback
+        window.onVisitorTrackingError = function(error, data) {
+            logEvent('ERROR', { error: error.message, data: data });
+            updateStatus('Tracking error: ' + error.message, 'error');
+        };
+
+        // Utility functions for demo
+        function updateStatus(message, type = 'info') {
+            const statusEl = document.getElementById('status');
+            statusEl.textContent = message;
+            statusEl.className = 'status ' + type;
+        }
+
+        function logEvent(type, data) {
+            const logEl = document.getElementById('event-log');
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = `[${timestamp}] ${type}: ${JSON.stringify(data, null, 2)}\n\n`;
+            
+            if (logEl.textContent === 'Waiting for events...') {
+                logEl.textContent = logEntry;
+            } else {
+                logEl.textContent = logEntry + logEl.textContent;
+            }
+        }
+
+        function updateIds() {
+            if (window.VisitorTracker) {
+                document.getElementById('visitor-id').textContent = window.VisitorTracker.getVisitorId();
+                document.getElementById('session-id').textContent = window.VisitorTracker.getSessionId();
+            }
+        }
+
+        function updateConfig() {
+            document.getElementById('config-display').textContent = 
+                JSON.stringify(window.VisitorTrackingConfig, null, 2);
+        }
+
+        // Demo event functions
+        function trackButtonClick(buttonType) {
+            if (window.VisitorTracker) {
+                window.VisitorTracker.track('button_click', {
+                    buttonType: buttonType,
+                    page: 'demo',
+                    timestamp: Date.now()
+                });
+                
+                const statusEl = document.getElementById('event-status');
+                statusEl.innerHTML = `<div class="status info">Tracked button click: ${buttonType}</div>`;
+            }
+        }
+
+        function trackCustomEvent() {
+            if (window.VisitorTracker) {
+                window.VisitorTracker.trackCustomEvent({
+                    customAction: 'demo_interaction',
+                    value: Math.floor(Math.random() * 100),
+                    category: 'engagement'
+                });
+                
+                const statusEl = document.getElementById('event-status');
+                statusEl.innerHTML = `<div class="status info">Tracked custom event</div>`;
+            }
+        }
+
+        function trackFormSubmit() {
+            if (window.VisitorTracker) {
+                window.VisitorTracker.track('form_submit', {
+                    formType: 'demo_form',
+                    fields: ['name', 'email'],
+                    valid: true
+                });
+                
+                const statusEl = document.getElementById('event-status');
+                statusEl.innerHTML = `<div class="status info">Tracked form submit event</div>`;
+            }
+        }
+
+        function trackDownload() {
+            if (window.VisitorTracker) {
+                window.VisitorTracker.track('download', {
+                    fileName: 'demo-file.pdf',
+                    fileSize: '1.2MB',
+                    fileType: 'pdf'
+                });
+                
+                const statusEl = document.getElementById('event-status');
+                statusEl.innerHTML = `<div class="status info">Tracked download event</div>`;
+            }
+        }
+
+        function changeHash(hash) {
+            window.location.hash = hash;
+            
+            const statusEl = document.getElementById('nav-status');
+            statusEl.innerHTML = `<div class="status info">Changed hash to: ${hash || '(empty)'}</div>`;
+        }
+
+        function setUserData() {
+            if (window.VisitorTracker) {
+                window.VisitorTracker.setCustomData({
+                    userId: 'demo_user_123',
+                    userType: 'premium',
+                    subscription: 'pro'
+                });
+                
+                updateCustomDataDisplay();
+                
+                const statusEl = document.getElementById('data-status');
+                statusEl.innerHTML = `<div class="status info">Set user data</div>`;
+            }
+        }
+
+        function setExperimentData() {
+            if (window.VisitorTracker) {
+                window.VisitorTracker.setCustomData({
+                    experiment: 'homepage_v2',
+                    variant: 'A',
+                    cohort: 'early_adopters'
+                });
+                
+                updateCustomDataDisplay();
+                
+                const statusEl = document.getElementById('data-status');
+                statusEl.innerHTML = `<div class="status info">Set experiment data</div>`;
+            }
+        }
+
+        function clearCustomData() {
+            window.VisitorTrackingData = {};
+            updateCustomDataDisplay();
+            
+            const statusEl = document.getElementById('data-status');
+            statusEl.innerHTML = `<div class="status info">Cleared custom data</div>`;
+        }
+
+        function updateCustomDataDisplay() {
+            const data = window.VisitorTrackingData || {};
+            document.getElementById('custom-data-display').textContent = 
+                JSON.stringify(data, null, 2);
+        }
+
+        // Initialize demo when tracker is ready
+        function initDemo() {
+            updateStatus('Visitor tracking initialized successfully', 'success');
+            updateIds();
+            updateConfig();
+            updateCustomDataDisplay();
+            
+            // Log initial page view
+            logEvent('INIT', { message: 'Visitor tracking demo initialized' });
+        }
+
+        // Wait for tracker to be ready
+        function waitForTracker() {
+            if (window.VisitorTracker) {
+                initDemo();
+            } else {
+                setTimeout(waitForTracker, 100);
+            }
+        }
+
+        // Start checking for tracker after DOM loads
+        document.addEventListener('DOMContentLoaded', function() {
+            waitForTracker();
+        });
+    </script>
+
+    <!-- Load the visitor tracking script -->
+    <script src="/visitor-tracking.js"></script>
+</body>
+</html>

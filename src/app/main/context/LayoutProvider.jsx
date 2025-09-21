@@ -2,9 +2,7 @@
 "use client"
 
 import {useSession} from 'next-auth/react';
-import { createContext, useContext } from 'react';
-import Header from '../components/Header';
-import Footer from '../components/Footer';
+import { createContext, useContext } from 'react'; 
 import '../styles.css';
 
 const LayoutContext = createContext();
@@ -21,14 +19,12 @@ export const LayoutProvider = ({ children }) => {
     };
 
     return (
-        <LayoutContext.Provider value={layoutValue}>
-            <Header />
+        <LayoutContext.Provider value={layoutValue}> 
             <div className="container w-full sm:max-w-3xl md:max-w-4xl lg:max-w-5xl xl:max-w-6xl">
                 <div className="screen">
                     {children}
                 </div>
-            </div>
-            <Footer />
+            </div> 
         </LayoutContext.Provider>
     );
 };

@@ -11,11 +11,9 @@ import 'react-phone-input-2/lib/style.css'
 import PhoneInput from 'react-phone-input-2'
 import { useCart } from 'react-use-cart';
 import { useTranslations } from 'next-intl';
-import { useSession } from "next-auth/react";
-import { COUNTRIES } from '@/lib/client/countries.js';
-import CountrySelector from '@/ui/CountrySelector';
+import { useSession } from "next-auth/react"; 
 import ShippingMethodSelector from './ShippingMethodSelector.jsx';
-import GooglePlacesAutoComplete from '@/ui/GooglePlacesAutoComplete';
+import GooglePlacesInput from '@/components/google-places-input';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const PaymentForm = ({ cartTotal, subTotal, shippingCost, onShippingUpdate, selectedShippingMethod, isEligibleForFreeShipping }) => {
@@ -465,7 +463,7 @@ const PaymentForm = ({ cartTotal, subTotal, shippingCost, onShippingUpdate, sele
                                         {t('streetAddress')}
                                     </label>
                                     <div className="google-places-container">
-                                        <GooglePlacesAutoComplete
+                                        <GooglePlacesInput
                                             legacy="mobile"
                                             value={streetAddress}
                                             onChange={handleAddressChange}
@@ -516,13 +514,7 @@ const PaymentForm = ({ cartTotal, subTotal, shippingCost, onShippingUpdate, sele
                                     className="border rounded-xl px-3 py-2 w-full focus:ring-2 focus:ring-primary/20 focus:border-primary"
                                 />
                                 <div className="w-full">
-                                    <CountrySelector
-                                        id={'countries'}
-                                        open={isOpen}
-                                        onToggle={() => setIsOpen(!isOpen)}
-                                        onChange={handleCountryChange}
-                                        selectedValue={COUNTRIES.find(option => option.value === country)}
-                                    />
+                                    {/* Country Selector Component */}
                                 </div>
                             </div>
                         </div>

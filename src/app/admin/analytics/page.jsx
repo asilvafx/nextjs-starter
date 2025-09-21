@@ -1,9 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getAll } from "@/lib/client/query";
-import { Card } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import {
   LineChart,
@@ -19,295 +22,411 @@ import {
   Tooltip,
   Legend,
   ResponsiveContainer,
+  AreaChart,
+  Area,
 } from "recharts";
 import {
-  TrendingUp,
   Users,
-  ShoppingBag,
-  DollarSign,
-  Package,
+  Eye,
+  Globe,
+  Activity,
+  Clock,
+  Settings,
+  RefreshCw,
 } from "lucide-react";
 
 const COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042", "#8884D8"];
 
-const StatCard = ({ title, value, icon: Icon, trend }) => (
-  <Card className="p-6">
-    <div className="flex items-center justify-between">
-      <div>
-        <p className="text-sm font-medium text-muted-foreground">{title}</p>
-        <h3 className="text-2xl font-bold">{value}</h3>
-        {trend && (
-          <p className={`text-sm ${trend > 0 ? "text-green-500" : "text-red-500"}`}>
-            {trend > 0 ? "+" : ""}
-            {trend}% from last month
-          </p>
-        )}
-      </div>
-      <div className="p-4 bg-primary/10 rounded-full">
-        <Icon className="w-6 h-6 text-primary" />
-      </div>
-    </div>
+const StatCard = ({ title, value, icon: Icon, trend, description }) => (
+  <Card>
+    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+      <CardTitle className="text-sm font-medium">{title}</CardTitle>
+      <Icon className="h-4 w-4 text-muted-foreground" />
+    </CardHeader>
+    <CardContent>
+      <div className="text-2xl font-bold">{value}</div>
+      {description && (
+        <p className="text-xs text-muted-foreground">{description}</p>
+      )}
+      {trend !== undefined && (
+        <p className={`text-xs ${trend > 0 ? "text-green-500" : "text-red-500"}`}>
+          {trend > 0 ? "+" : ""}
+          {trend}% from last period
+        </p>
+      )}
+    </CardContent>
   </Card>
 );
 
+const Skeleton = ({ className = "" }) => (
+  <div className={`animate-pulse bg-gray-200 rounded ${className}`}></div>
+);
+
 export default function AnalyticsPage() {
-  const [loading, setLoading] = useState(true);
-  const [stats, setStats] = useState({
-    totalRevenue: 0,
-    totalOrders: 0,
-    totalProducts: 0,
-    totalUsers: 0,
-    revenueGrowth: 0,
-    orderGrowth: 0,
-    userGrowth: 0,
+  const [webStatsLoading, setWebStatsLoading] = useState(true);
+  const [googleAnalyticsOpen, setGoogleAnalyticsOpen] = useState(false);
+  const [googleApiKey, setGoogleApiKey] = useState("");
+  
+  // Web Stats Data
+  const [webStats, setWebStats] = useState({
+    totalVisitors: 0,
+    uniqueVisitors: 0,
+    pageViews: 0,
+    avgLoadTime: 0,
+    bounceRate: 0,
   });
-  const [revenueData, setRevenueData] = useState([]);
-  const [orderStatusData, setOrderStatusData] = useState([]);
-  const [topProducts, setTopProducts] = useState([]);
-  const [userActivityData, setUserActivityData] = useState([]);
+  const [visitorData, setVisitorData] = useState([]);
+  const [countryData, setCountryData] = useState([]);
+  const [browserData, setBrowserData] = useState([]);
+  const [deviceData, setDeviceData] = useState([]);
+  const [topPages, setTopPages] = useState([]);
+  const [hourlyStats, setHourlyStats] = useState([]);
+  
 
-  const fetchAnalytics = async () => {
+
+  const fetchWebStats = async () => {
     try {
-      setLoading(true);
-      const [orders, products, users] = await Promise.all([
-        getAll("orders"),
-        getAll("products"),
-        getAll("users"),
-      ]);
-
-      // Process orders data
-      const ordersData = orders.data || [];
-      const currentDate = new Date();
-      const lastMonthDate = new Date();
-      lastMonthDate.setMonth(lastMonthDate.getMonth() - 1);
-
-      // Calculate revenue and growth
-      const totalRevenue = ordersData.reduce((sum, order) => sum + order.total, 0);
-      const lastMonthRevenue = ordersData
-        .filter(
-          (order) =>
-            new Date(order.createdAt) >= lastMonthDate &&
-            new Date(order.createdAt) <= currentDate
-        )
-        .reduce((sum, order) => sum + order.total, 0);
-
-      // Group orders by status
-      const ordersByStatus = ordersData.reduce((acc, order) => {
-        acc[order.status] = (acc[order.status] || 0) + 1;
-        return acc;
-      }, {});
-
-      // Process revenue by date
-      const revenueByDate = ordersData.reduce((acc, order) => {
-        const date = new Date(order.createdAt).toLocaleDateString();
-        acc[date] = (acc[date] || 0) + order.total;
-        return acc;
-      }, {});
-
-      // Format revenue data for chart
-      const revenueChartData = Object.entries(revenueByDate).map(
-        ([date, amount]) => ({
-          date,
-          amount,
-        })
-      );
-
-      // Get top selling products
-      const productSales = {};
-      ordersData.forEach((order) => {
-        order.items.forEach((item) => {
-          productSales[item.productId] = (productSales[item.productId] || 0) + item.quantity;
+      setWebStatsLoading(true);
+      const response = await fetch('/api/web-stats');
+      const result = await response.json();
+      
+      if (result.success && result.data) {
+        const data = result.data;
+        
+        setWebStats({
+          totalVisitors: data.overview.totalVisitors,
+          uniqueVisitors: data.overview.uniqueVisitors,
+          pageViews: data.overview.pageViews,
+          avgLoadTime: data.overview.avgLoadTime,
+          bounceRate: data.overview.bounceRate,
         });
-      });
-
-      const topProductsData = (products.data || [])
-        .map((product) => ({
-          name: product.name,
-          sales: productSales[product.id] || 0,
-        }))
-        .sort((a, b) => b.sales - a.sales)
-        .slice(0, 5);
-
-      // Calculate user activity
-      const userActivity = (users.data || []).reduce((acc, user) => {
-        const month = new Date(user.createdAt).toLocaleString('default', { month: 'long' });
-        acc[month] = (acc[month] || 0) + 1;
-        return acc;
-      }, {});
-
-      const userActivityChartData = Object.entries(userActivity).map(
-        ([month, count]) => ({
-          month,
-          users: count,
-        })
-      );
-
-      setStats({
-        totalRevenue,
-        totalOrders: ordersData.length,
-        totalProducts: (products.data || []).length,
-        totalUsers: (users.data || []).length,
-        revenueGrowth: lastMonthRevenue ? ((totalRevenue - lastMonthRevenue) / lastMonthRevenue) * 100 : 0,
-        orderGrowth: 0, // Calculate based on your requirements
-        userGrowth: 0, // Calculate based on your requirements
-      });
-
-      setRevenueData(revenueChartData);
-      setOrderStatusData(
-        Object.entries(ordersByStatus).map(([status, count]) => ({
-          status,
-          count,
-        }))
-      );
-      setTopProducts(topProductsData);
-      setUserActivityData(userActivityChartData);
+        
+        setVisitorData(data.daily || []);
+        setCountryData(data.countries || []);
+        setBrowserData(data.browsers || []);
+        setDeviceData(data.devices || []);
+        setTopPages(data.pages || []);
+        setHourlyStats(data.hourly || []);
+      }
     } catch (error) {
-      toast.error("Failed to fetch analytics data");
+      console.error('Failed to fetch web stats:', error);
+      toast.error("Failed to fetch visitor analytics");
     } finally {
-      setLoading(false);
+      setWebStatsLoading(false);
     }
   };
 
+
+
   useEffect(() => {
-    fetchAnalytics();
+    fetchWebStats();
   }, []);
 
-  const formatCurrency = (value) => {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
-    }).format(value);
+  const formatNumber = (value) => {
+    return new Intl.NumberFormat("en-US").format(value);
   };
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-full">
-        <div className="text-lg">Loading analytics...</div>
-      </div>
-    );
-  }
+  const handleGoogleAnalyticsSubmit = (e) => {
+    e.preventDefault();
+    if (googleApiKey.trim()) {
+      // Save Google Analytics API key (you might want to save this to database)
+      localStorage.setItem('google_analytics_api_key', googleApiKey);
+      toast.success("Google Analytics API key saved successfully");
+      setGoogleAnalyticsOpen(false);
+      setGoogleApiKey("");
+    }
+  };
+
+  const refreshData = () => {
+    fetchWebStats();
+  };
 
   return (
     <ScrollArea className="h-[calc(100vh-80px)]">
       <div className="space-y-6 p-6">
-        <div>
-          <h1 className="text-3xl font-bold">Analytics Dashboard</h1>
-          <p className="text-muted-foreground">
-            Overview of your business performance
-          </p>
-        </div>
-
-        {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <StatCard
-            title="Total Revenue"
-            value={formatCurrency(stats.totalRevenue)}
-            icon={DollarSign}
-            trend={stats.revenueGrowth}
-          />
-          <StatCard
-            title="Total Orders"
-            value={stats.totalOrders}
-            icon={ShoppingBag}
-            trend={stats.orderGrowth}
-          />
-          <StatCard
-            title="Total Products"
-            value={stats.totalProducts}
-            icon={Package}
-          />
-          <StatCard
-            title="Total Users"
-            value={stats.totalUsers}
-            icon={Users}
-            trend={stats.userGrowth}
-          />
-        </div>
-
-        {/* Charts Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Revenue Chart */}
-          <Card className="p-6">
-            <h3 className="text-lg font-semibold mb-4">Revenue Over Time</h3>
-            <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={revenueData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="date" />
-                <YAxis />
-                <Tooltip />
-                <Legend />
-                <Line
-                  type="monotone"
-                  dataKey="amount"
-                  stroke="#8884d8"
-                  name="Revenue"
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          </Card>
-
-          {/* Order Status Chart */}
-          <Card className="p-6">
-            <h3 className="text-lg font-semibold mb-4">Orders by Status</h3>
-            <ResponsiveContainer width="100%" height={300}>
-              <PieChart>
-                <Pie
-                  data={orderStatusData}
-                  dataKey="count"
-                  nameKey="status"
-                  cx="50%"
-                  cy="50%"
-                  outerRadius={100}
-                  label
-                >
-                  {orderStatusData.map((entry, index) => (
-                    <Cell
-                      key={`cell-${index}`}
-                      fill={COLORS[index % COLORS.length]}
+        <div className="flex justify-between items-center">
+          <div>
+            <h1 className="text-3xl font-bold">Website Analytics</h1>
+            <p className="text-muted-foreground">
+              Comprehensive visitor statistics and website performance
+            </p>
+          </div>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={refreshData}>
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Refresh
+            </Button>
+            <Dialog open={googleAnalyticsOpen} onOpenChange={setGoogleAnalyticsOpen}>
+              <DialogTrigger asChild>
+                <Button variant="outline">
+                  <Settings className="h-4 w-4 mr-2" />
+                  Google Analytics
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Google Analytics Integration</DialogTitle>
+                  <DialogDescription>
+                    Enter your Google Analytics API key to integrate analytics data
+                  </DialogDescription>
+                </DialogHeader>
+                <form onSubmit={handleGoogleAnalyticsSubmit} className="space-y-4">
+                  <div>
+                    <Label htmlFor="api-key">API Key</Label>
+                    <Input
+                      id="api-key"
+                      type="text"
+                      placeholder="Enter your Google Analytics API key"
+                      value={googleApiKey}
+                      onChange={(e) => setGoogleApiKey(e.target.value)}
+                      required
                     />
-                  ))}
-                </Pie>
-                <Tooltip />
-                <Legend />
-              </PieChart>
-            </ResponsiveContainer>
-          </Card>
+                  </div>
+                  <div className="flex justify-end gap-2">
+                    <Button type="button" variant="outline" onClick={() => setGoogleAnalyticsOpen(false)}>
+                      Cancel
+                    </Button>
+                    <Button type="submit">Save API Key</Button>
+                  </div>
+                </form>
+              </DialogContent>
+            </Dialog>
+          </div>
+        </div>
 
-          {/* Top Products Chart */}
-          <Card className="p-6">
-            <h3 className="text-lg font-semibold mb-4">Top Selling Products</h3>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={topProducts}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="name" />
-                <YAxis />
-                <Tooltip />
-                <Legend />
-                <Bar dataKey="sales" fill="#82ca9d" name="Sales" />
-              </BarChart>
-            </ResponsiveContainer>
-          </Card>
-
-          {/* User Activity Chart */}
-          <Card className="p-6">
-            <h3 className="text-lg font-semibold mb-4">User Growth</h3>
-            <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={userActivityData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="month" />
-                <YAxis />
-                <Tooltip />
-                <Legend />
-                <Line
-                  type="monotone"
-                  dataKey="users"
-                  stroke="#ff7300"
-                  name="New Users"
+        {/* Website Analytics Section */}
+        <div className="space-y-4">
+          {/* Web Stats Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+            {webStatsLoading ? (
+              <>
+                <Card><CardContent className="pt-6"><Skeleton className="h-8 w-full" /></CardContent></Card>
+                <Card><CardContent className="pt-6"><Skeleton className="h-8 w-full" /></CardContent></Card>
+                <Card><CardContent className="pt-6"><Skeleton className="h-8 w-full" /></CardContent></Card>
+                <Card><CardContent className="pt-6"><Skeleton className="h-8 w-full" /></CardContent></Card>
+                <Card><CardContent className="pt-6"><Skeleton className="h-8 w-full" /></CardContent></Card>
+              </>
+            ) : (
+              <>
+                <StatCard
+                  title="Total Visitors"
+                  value={formatNumber(webStats.totalVisitors)}
+                  icon={Users}
+                  description="Total page visits"
                 />
-              </LineChart>
-            </ResponsiveContainer>
+                <StatCard
+                  title="Unique Visitors"
+                  value={formatNumber(webStats.uniqueVisitors)}
+                  icon={Eye}
+                  description="Unique IP addresses"
+                />
+                <StatCard
+                  title="Page Views"
+                  value={formatNumber(webStats.pageViews)}
+                  icon={Globe}
+                  description="Total page views"
+                />
+                <StatCard
+                  title="Avg Load Time"
+                  value={`${webStats.avgLoadTime}ms`}
+                  icon={Clock}
+                  description="Average page load"
+                />
+                <StatCard
+                  title="Bounce Rate"
+                  value={`${webStats.bounceRate}%`}
+                  icon={Activity}
+                  description="Single page visits"
+                />
+              </>
+            )}
+          </div>
+        </div>
+
+
+
+        {/* Website Analytics Charts */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+          {/* Daily Visitors Chart */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Daily Visitors</CardTitle>
+              <CardDescription>Visitor traffic over time</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {webStatsLoading ? (
+                <Skeleton className="h-64 w-full" />
+              ) : (
+                <ResponsiveContainer width="100%" height={250}>
+                  <AreaChart data={visitorData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="date" />
+                    <YAxis />
+                    <Tooltip />
+                    <Area
+                      type="monotone"
+                      dataKey="visitors"
+                      stroke="#8884d8"
+                      fill="#8884d8"
+                      fillOpacity={0.3}
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Top Countries */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Top Countries</CardTitle>
+              <CardDescription>Visitors by country</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {webStatsLoading ? (
+                <Skeleton className="h-64 w-full" />
+              ) : (
+                <ResponsiveContainer width="100%" height={250}>
+                  <PieChart>
+                    <Pie
+                      data={countryData.slice(0, 5)}
+                      dataKey="count"
+                      nameKey="country"
+                      cx="50%"
+                      cy="50%"
+                      outerRadius={80}
+                      label
+                    >
+                      {countryData.slice(0, 5).map((entry, index) => (
+                        <Cell
+                          key={`cell-${index}`}
+                          fill={COLORS[index % COLORS.length]}
+                        />
+                      ))}
+                    </Pie>
+                    <Tooltip />
+                    <Legend />
+                  </PieChart>
+                </ResponsiveContainer>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Browser Usage */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Browser Usage</CardTitle>
+              <CardDescription>Most used browsers</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {webStatsLoading ? (
+                <Skeleton className="h-64 w-full" />
+              ) : (
+                <ResponsiveContainer width="100%" height={250}>
+                  <BarChart data={browserData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="browser" />
+                    <YAxis />
+                    <Tooltip />
+                    <Bar dataKey="count" fill="#00C49F" />
+                  </BarChart>
+                </ResponsiveContainer>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Device Types */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Device Types</CardTitle>
+              <CardDescription>Desktop vs Mobile traffic</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {webStatsLoading ? (
+                <Skeleton className="h-64 w-full" />
+              ) : (
+                <ResponsiveContainer width="100%" height={250}>
+                  <PieChart>
+                    <Pie
+                      data={deviceData}
+                      dataKey="count"
+                      nameKey="device"
+                      cx="50%"
+                      cy="50%"
+                      outerRadius={80}
+                      label
+                    >
+                      {deviceData.map((entry, index) => (
+                        <Cell
+                          key={`cell-${index}`}
+                          fill={index === 0 ? "#0088FE" : "#FF8042"}
+                        />
+                      ))}
+                    </Pie>
+                    <Tooltip />
+                    <Legend />
+                  </PieChart>
+                </ResponsiveContainer>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Hourly Traffic */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Hourly Traffic</CardTitle>
+              <CardDescription>Traffic distribution by hour</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {webStatsLoading ? (
+                <Skeleton className="h-64 w-full" />
+              ) : (
+                <ResponsiveContainer width="100%" height={250}>
+                  <LineChart data={hourlyStats}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="hour" />
+                    <YAxis />
+                    <Tooltip />
+                    <Line
+                      type="monotone"
+                      dataKey="visitors"
+                      stroke="#FFBB28"
+                      strokeWidth={2}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Top Pages */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Top Pages</CardTitle>
+              <CardDescription>Most visited pages</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {webStatsLoading ? (
+                <div className="space-y-2">
+                  <Skeleton className="h-4 w-full" />
+                  <Skeleton className="h-4 w-3/4" />
+                  <Skeleton className="h-4 w-1/2" />
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {topPages.slice(0, 5).map((page, index) => (
+                    <div key={index} className="flex justify-between items-center">
+                      <span className="text-sm truncate flex-1">{page.page}</span>
+                      <span className="text-sm font-medium ml-2">{page.views}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
           </Card>
         </div>
+
+
       </div>
     </ScrollArea>
   );

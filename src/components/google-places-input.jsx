@@ -1,4 +1,4 @@
-// ui/GooglePlacesAutoComplete.jsx
+// @/components/google-places-input.jsx
 import { useEffect, useRef } from 'react';
 import { Loader } from '@googlemaps/js-api-loader';
 
@@ -6,7 +6,7 @@ import { Loader } from '@googlemaps/js-api-loader';
 let isGoogleMapsLoading = false;
 let googleMapsLoadPromise = null;
 
-const GooglePlacesAutoComplete = ({
+const GooglePlacesInput = ({
                                       legacy = false,
                                       value,
                                       onChange,
@@ -465,4 +465,4 @@ const GooglePlacesAutoComplete = ({
     );
 };
 
-export default GooglePlacesAutoComplete;
+export default GooglePlacesInput;
