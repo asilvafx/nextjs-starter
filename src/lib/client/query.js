@@ -1,4 +1,4 @@
-// lib/query.js
+// @/lib/client/query.js
 import { auth } from '@/auth.js';
 
 class QueryAPI {
