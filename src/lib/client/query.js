@@ -1,5 +1,4 @@
 // @/lib/client/query.js
-import { auth } from '@/auth.js';
 
 class QueryAPI {
     constructor() {

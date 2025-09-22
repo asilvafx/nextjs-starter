@@ -19,10 +19,17 @@ import { Button } from "@/components/ui/button"
 import { ThemeSwitchGroup } from '@/components/ui/theme-mode';
  
 const Homepage = () => { 
+    console.log('Homepage component rendered');
     const [setupData, setSetupData] = useState(null);
     const [loading, setLoading] = useState(true);
     const { isAuthenticated, user, status, logout } = useAuth();
     const { totalItems } = useCart();
+
+    const testVisitorTracking = () => { 
+        if (window.VisitorTracker) { 
+            window.VisitorTracker.trackPageView();
+        }
+    };
 
     const handleSignOut = async() => {
     await logout();
@@ -116,6 +123,13 @@ const Homepage = () => {
                     </Button>
                 </Link>
             </div>
+              {/* Temporary test button for visitor tracking */}
+            <div className="mb-4">
+                <Button onClick={testVisitorTracking} variant="outline" size="sm">
+                    Test Visitor Tracking
+                </Button>
+            </div>
+              
             </div>
         </div>
         <div className="section"> 

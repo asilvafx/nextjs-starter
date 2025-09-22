@@ -35,7 +35,7 @@ export default async function RootLayout({ children }) {
                     {children}
                 <CookieConsentComponent />
             </Providers>
-        </NextIntlClientProvider>
+        </NextIntlClientProvider> 
         </body>
         </html>
     );

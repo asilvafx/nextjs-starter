@@ -1,3 +1,4 @@
+// @/app/admin/analytics/page.jsx
 "use client";
 
 import { useEffect, useState } from "react";

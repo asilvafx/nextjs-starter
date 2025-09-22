@@ -1,9 +1,9 @@
-// app/main/context/LayoutProvider.jsx
-"use client"
+// app/auth/context/LayoutProvider.jsx
+'use client';
 
 import {useSession} from 'next-auth/react';
-import { createContext, useContext, useEffect } from 'react'; 
-import { initializeVisitorTracking } from '@/lib/client/visitor-tracking';
+import { createContext, useContext, useEffect, useRef } from 'react';
+
 import '../styles.css';
 
 const LayoutContext = createContext();
@@ -11,6 +11,7 @@ const LayoutContext = createContext();
 export const LayoutProvider = ({ children }) => {
 
     const { data: session, status } = useSession();
+    const isFirstRender = useRef(true);
 
     const layoutValue = {
         session,
@@ -19,11 +20,11 @@ export const LayoutProvider = ({ children }) => {
         user: session?.user || null
     };
 
-    useEffect(() => { 
+    useEffect(() => {  
         // Initialize visitor tracking once, regardless of auth status
         const initTracking = async () => {
             try {
-                await initializeVisitorTracking();
+                await initializeVisitorTracking(); 
             } catch (error) {
                 console.error('Failed to initialize main visitor tracking:', error);
             }
@@ -32,13 +33,22 @@ export const LayoutProvider = ({ children }) => {
         initTracking();
     }, []);
 
+    useEffect(() => {
+        // Track page views on subsequent renders
+        if (isFirstRender.current) { 
+            return;
+        } 
+        if (window.VisitorTracker) {   
+            isFirstRender.current = true;
+            window.VisitorTracker.trackPageView();
+        }  
+    }, []);
+
     return (
-        <LayoutContext.Provider value={layoutValue}> 
-            <div className="container w-full sm:max-w-3xl md:max-w-4xl lg:max-w-5xl xl:max-w-6xl">
-                <div className="screen">
-                    {children}
-                </div>
-            </div> 
+        <LayoutContext.Provider value={layoutValue}>
+            <div className='container'>
+                {children}
+            </div>
         </LayoutContext.Provider>
     );
 };
@@ -46,7 +56,7 @@ export const LayoutProvider = ({ children }) => {
 export const useLayout = () => {
     const context = useContext(LayoutContext);
     if (!context) {
-        throw new Error('useLayout must be used within a LayoutProvider');
+        throw new Error('useLayout must be used within a Provider');
     }
     return context;
 };

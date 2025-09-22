@@ -50,10 +50,59 @@ function parseUserAgent(userAgent) {
     return { browser, os, isMobile };
 }
 
+// Helper function to check for duplicate entries
+async function isDuplicateEntry(sessionId, pathname, timeWindow = 30000) {
+    try {
+        const recentStats = await DBService.readAll('web_stats');
+        if (!recentStats) return false;
+        
+        const statsArray = Array.isArray(recentStats) ? recentStats : Object.values(recentStats);
+        const now = Date.now();
+        
+        // Check for recent entries from the same session and page
+        const duplicates = statsArray.filter(stat => {
+            const statTime = new Date(stat.timestamp).getTime();
+            return stat.sessionId === sessionId && 
+                   stat.pathname === pathname && 
+                   (now - statTime) < timeWindow &&
+                   stat.eventType === 'pageview';
+        });
+        
+        return duplicates.length > 0;
+    } catch (error) {
+        console.error('Error checking for duplicates:', error);
+        return false; // If we can't check, allow the entry
+    }
+}
+
 // POST - Record visitor statistics
 async function handlePost(request) {
     try {
-        const data = await request.json();
+        const body = await request.text();
+        if (!body.trim()) {
+            console.log('Empty request body, skipping...');
+            return NextResponse.json({ success: true, message: 'Empty request body' });
+        }
+        
+        const data = JSON.parse(body);
+        
+        // Skip unload events for now as they're not needed for analytics
+        if (data.type === 'unload') {
+            return NextResponse.json({ success: true, message: 'Unload event acknowledged' });
+        }
+        
+        // Check for duplicate page views
+        if (data.type === 'pageview' && data.sessionId && data.pathname) {
+            const isDuplicate = await isDuplicateEntry(data.sessionId, data.pathname);
+            if (isDuplicate) {
+                console.log('Duplicate page view detected, skipping...');
+                return NextResponse.json({ 
+                    success: true, 
+                    message: 'Duplicate page view detected, entry skipped',
+                    duplicate: true 
+                });
+            }
+        }
         
         // Get client information
         const ip = getClientIP(request);
