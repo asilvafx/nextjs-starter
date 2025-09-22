@@ -70,20 +70,46 @@ export const navigation = {
       title: "Gallery",
       url: "/admin/gallery",
       icon: Frame, 
+    }, 
+    {
+      title: "Workspace",
+      url: "#",
+      icon: Frame, 
+
+      items: [
+        {
+          title: "Agenda",
+          url: "/admin/planning/agenda",
+        },
+        {
+          title: "Tasks",
+          url: "/admin/planning/tasks",
+        },
+        {
+          title: "Schedule",
+          url: "/admin/planning/schedule",
+        },
+      ]
     },
     {
-      title: "Tasks",
-      url: "/admin/tasks",
+      title: "Marketing",
+      url: "#",
       icon: Frame, 
-    },
-    {
-      title: "Agenda",
-      url: "/admin/agenda",
-      icon: Frame, 
+
+      items: [
+        {
+          title: "Newsletter",
+          url: "/admin/marketing/newsletter",
+        },
+        {
+          title: "Subscribers",
+          url: "/admin/marketing/subscribers",
+        },
+      ]
     },
     {
       title: "API",
-      url: "/admin/api",
+      url: "#",
       icon: Frame, 
 
       items: [
