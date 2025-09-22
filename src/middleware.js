@@ -11,10 +11,8 @@ const protectedRoutes = [
 
 // Role-based access control mapping (fallback)
 const roleRouteAccess = {
-    admin: ["/admin", "/dashboard", "/account"], // Admin has access to everything
-    editor: ["/admin/dashboard", "/admin/store", "/dashboard", "/account"],
-    moderator: ["/admin/access/users", "/admin/dashboard", "/dashboard", "/account"], 
-    user: ["/dashboard", "/account"]
+    admin: ["/", "/admin"], // Admin has access to everything
+    user: ["/"]
 };
 
 // Cache for roles data

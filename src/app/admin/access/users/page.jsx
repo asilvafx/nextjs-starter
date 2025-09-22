@@ -603,7 +603,9 @@ export default function UsersPage() {
             ) : (
               users.map((user) => (
                 <TableRow key={user.id}>
-                  <TableCell data-label="Name" className="capitalize">{user.displayName}</TableCell>
+                  <TableCell data-label="Name" className="capitalize">
+                    {user.displayName} {user.email === currentUser?.email ?? '(You)'}
+                  </TableCell>
                   <TableCell data-label="Email">{user.email}</TableCell>
                   <TableCell data-label="Role">
                     <span className="px-2 py-1 rounded-full text-xs bg-slate-100 text-black capitalize">

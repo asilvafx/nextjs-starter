@@ -71,6 +71,32 @@ export const navigation = {
       url: "/admin/gallery",
       icon: Frame, 
     },
+    {
+      title: "Tasks",
+      url: "/admin/tasks",
+      icon: Frame, 
+    },
+    {
+      title: "Agenda",
+      url: "/admin/agenda",
+      icon: Frame, 
+    },
+    {
+      title: "API",
+      url: "/admin/api",
+      icon: Frame, 
+
+      items: [
+        {
+          title: "Database",
+          url: "/admin/api/database",
+        },
+        {
+          title: "Keys",
+          url: "/admin/api/keys",
+        },
+      ]
+    },
   ],
   System: [
     {
@@ -81,7 +107,7 @@ export const navigation = {
     {
       title: "Maintenance",
       url: "/admin/system/maintenance",
-      icon: PieChart, 
+      icon: Frame, 
     },
   ],
 }

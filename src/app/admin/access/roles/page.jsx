@@ -87,19 +87,18 @@ const initialFormData = {
   routes: []
 };
 
-const commonRoutes = [
+const commonRoutes = [ 
   { path: "/admin", label: "Admin Dashboard" },
-  { path: "/admin/dashboard", label: "Dashboard Analytics" },
+  { path: "/admin/analytics", label: "Dashboard Analytics" },
   { path: "/admin/store", label: "Store Management" },
-  { path: "/admin/store/products", label: "Products" },
-  { path: "/admin/store/orders", label: "Orders" },
-  { path: "/admin/store/customers", label: "Customers" },
+  { path: "/admin/store/catalog", label: "Catalog Management" },
+  { path: "/admin/store/orders", label: "Orders Management" },
+  { path: "/admin/store/customers", label: "Customers Management" },
   { path: "/admin/access", label: "Access Control" },
   { path: "/admin/access/users", label: "Users Management" },
   { path: "/admin/access/roles", label: "Roles Management" },
-  { path: "/admin/system", label: "System Settings" },
-  { path: "/account", label: "Account Settings" },
-  { path: "/dashboard", label: "User Dashboard" }
+  { path: "/admin/system/settings", label: "System Administration" },
+  { path: "/admin/system/maintenance", label: "System Maintenance" }
 ];
 
 export default function RolesPage() {
@@ -255,12 +254,7 @@ export default function RolesPage() {
     if (!formData.title.trim()) {
       toast.error("Role title is required");
       return;
-    }
-
-    if (formData.routes.length === 0) {
-      toast.error("At least one route is required");
-      return;
-    }
+    } 
 
     setIsSubmitting(true);
 
@@ -403,12 +397,8 @@ export default function RolesPage() {
 
   // Clear middleware cache when roles are modified
   const clearMiddlewareCache = async () => {
-    try {
-      // Signal that middleware cache should be cleared
-      await fetch('/api/middleware/clear-cache', { method: 'POST' });
-      console.log('Middleware cache clear signal sent');
-      
-      // Also add a cache-busting parameter to force refresh on next request
+    try {  
+      // Add a cache-busting parameter to force refresh on next request
       const cacheBuster = Date.now();
       sessionStorage.setItem('rolesCacheBuster', cacheBuster.toString());
     } catch (error) {
