@@ -3,6 +3,7 @@
 
 import {useSession} from 'next-auth/react';
 import { createContext, useContext, useEffect, useRef } from 'react';
+import { initializeVisitorTracking } from '@/lib/client/visitor-tracking';
 
 import '../styles.css';
 
