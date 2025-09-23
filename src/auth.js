@@ -129,6 +129,11 @@ const authConfig = {
             return session;
         }
     },
+    pages: {
+        signIn: '/auth/login',
+        signOut: '/auth/logout',
+        error: '/auth/error'
+    },
     secret: process.env.NEXT_SECRET,
     debug: process.env.NODE_ENV === 'development'
 };
