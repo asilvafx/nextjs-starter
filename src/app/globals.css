@@ -177,8 +177,7 @@
 
     .border {
         border-color: var(--input);
-    }
-
+    } 
 }
 
 /* Google Places Autocomplete Styles */
