@@ -25,6 +25,7 @@ import {
   Shield,
   Database,
   Key,
+  Save,
   Locate
 } from "lucide-react";
 import { PhoneInput } from "@/components/ui/phone-input";
@@ -318,17 +319,17 @@ export default function SystemSettingsPage() {
               </TabsContent>
             </Tabs>
 
-            <div className="flex justify-end">
-              <Button type="submit" size="lg" disabled={isSubmitting}>
+            <div className="sm:fixed bottom-0 left-0 right-0 md:ml-[16rem] mb-6 flex justify-center z-10">
+              <Button className="w-full sm:w-auto" type="submit" size="lg" disabled={isSubmitting}>
                 {isSubmitting ? (
                   <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white dark:border-black mr-2"></div>
                     Saving...
                   </>
                 ) : (
                   <>
-                    <Database className="h-4 w-4 mr-2" />
-                    Save Settings
+                    <Save className="h-4 w-4 mr-1" />
+                    Save Changes
                   </>
                 )}
               </Button>
@@ -338,7 +339,7 @@ export default function SystemSettingsPage() {
         
         {/* Loading Overlay */}
         {isSubmitting && (
-          <div className="absolute inset-0 bg-background/50 backdrop-blur-sm z-50 flex items-center justify-center rounded-lg">
+          <div className="absolute inset-0 bg-background/50 z-50 flex items-center justify-center rounded-lg">
             <div className="bg-background border rounded-lg p-6 shadow-lg flex flex-col items-center gap-4">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
               <p className="text-sm text-muted-foreground">Saving settings...</p>
@@ -634,7 +635,7 @@ function EmailSettingsTab({ form, emailProviders, isSubmitting }) {
           name="emailProvider"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Email Provider *</FormLabel>
+              <FormLabel>Email Provider</FormLabel>
               <Select onValueChange={field.onChange} value={field.value} disabled={isSubmitting}>
                 <FormControl>
                   <SelectTrigger>
@@ -660,7 +661,7 @@ function EmailSettingsTab({ form, emailProviders, isSubmitting }) {
             name="emailUser"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Email Username *</FormLabel>
+                <FormLabel>Email Username</FormLabel>
                 <FormControl>
                   <Input 
                     type="email" 
@@ -679,7 +680,7 @@ function EmailSettingsTab({ form, emailProviders, isSubmitting }) {
             name="emailPass"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Email Password *</FormLabel>
+                <FormLabel>Email Password</FormLabel>
                 <FormControl>
                   <Input 
                     type="password" 
@@ -845,7 +846,7 @@ function OAuthTab({ form, oauthProviders, isSubmitting }) {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
             {oauthProviders.map((provider) => (
               <div key={provider.id} className="border rounded-lg p-4">
                 <div className="flex items-center gap-2 mb-4">
@@ -864,7 +865,7 @@ function OAuthTab({ form, oauthProviders, isSubmitting }) {
                   />
                 </div>
                 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-4">
                   <FormField
                     control={form.control}
                     name={`providers.${provider.id}.clientId`}

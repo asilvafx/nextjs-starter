@@ -232,13 +232,16 @@ async function handlePut(request, { params }) {
             );
         }
 
-        // Check if item exists
-        const existingItem = await DBService.read(data.id, slug);
+        // Check if item exists 
+        let existingItem = await DBService.read(data.id, slug); 
         if (!existingItem) {
-            return NextResponse.json(
+            existingItem = await DBService.getItemsByKeyValue('id', data.id, slug); 
+            if(!existingItem){
+              return NextResponse.json(
                 { error: 'Record not found' },
                 { status: 404 }
             );
+            } 
         }
 
         // Prepare update data (exclude id from update data)
@@ -299,12 +302,10 @@ async function handleDelete(request, { params }) {
         }
 
         // Check if item exists
-        let tryId = id;
-        const existingItem = await DBService.read(tryId, slug);
+        let existingItem = await DBService.read(id, slug); 
         if (!existingItem) {
-            tryId = await DBService.getItemKey('id', id, slug);
-            const tryRead = await DBService.read(tryId, slug);
-            if(!tryRead){
+            existingItem = await DBService.getItemsByKeyValue('id', id, slug); 
+            if(!existingItem){
               return NextResponse.json(
                 { error: 'Record not found' },
                 { status: 404 }
