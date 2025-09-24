@@ -127,7 +127,7 @@ export const navigation = {
       icon: Code, 
       items: [
         {
-          title: "API Endpoints",
+          title: "Endpoints",
           url: "/admin/dev/endpoints",
         },
         {

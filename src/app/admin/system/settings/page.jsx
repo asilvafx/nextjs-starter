@@ -16,17 +16,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
-import {
-  Globe,
+import { 
   Mail,
-  Settings,
-  Users,
-  MapPin,
-  Phone,
+  Settings, 
+  MapPin, 
   Plus,
   Trash2,
-  Building,
-  Languages,
+  Building, 
   Shield,
   Database,
   Key,
@@ -273,22 +269,18 @@ export default function SystemSettingsPage() {
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-            <TabsList className="grid w-full grid-cols-4">
+            <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="site" className="flex items-center gap-2">
-                <Globe className="h-4 w-4" />
+                <Settings className="h-4 w-4" />
                 Site Settings
               </TabsTrigger>
               <TabsTrigger value="email" className="flex items-center gap-2">
                 <Mail className="h-4 w-4" />
                 Email Settings
               </TabsTrigger>
-              <TabsTrigger value="options" className="flex items-center gap-2">
-                <Settings className="h-4 w-4" />
-                Site Options
-              </TabsTrigger>
-              <TabsTrigger value="providers" className="flex items-center gap-2">
+              <TabsTrigger value="oauth" className="flex items-center gap-2">
                 <Shield className="h-4 w-4" />
-                OAuth Providers
+                OAuth
               </TabsTrigger>
             </TabsList>
 
@@ -300,12 +292,8 @@ export default function SystemSettingsPage() {
               <EmailSettingsTab form={form} emailProviders={emailProviders} />
             </TabsContent>
 
-            <TabsContent value="options" className="space-y-6">
-              <SiteOptionsTab form={form} />
-            </TabsContent>
-
-            <TabsContent value="providers" className="space-y-6">
-              <ProvidersTab form={form} oauthProviders={oauthProviders} />
+            <TabsContent value="oauth" className="space-y-6">
+              <OAuthTab form={form} oauthProviders={oauthProviders} />
             </TabsContent>
           </Tabs>
 
@@ -711,10 +699,11 @@ function EmailSettingsTab({ form, emailProviders }) {
   );
 }
 
-// Site Options Tab Component
-function SiteOptionsTab({ form }) {
+// OAuth Tab Component (merged Site Options + OAuth Providers)
+function OAuthTab({ form, oauthProviders }) {
   return (
     <div className="grid gap-6">
+      {/* Application Settings Section */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -731,12 +720,12 @@ function SiteOptionsTab({ form }) {
             name="baseUrl"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Base URL *</FormLabel>
+                <FormLabel>Base URL</FormLabel>
                 <FormControl>
-                  <Input placeholder="https://yoursite.com" {...field} />
+                  <Input disabled placeholder="https://yoursite.com" {...field} />
                 </FormControl>
                 <FormDescription>
-                  The base URL of your application
+                  To change the URL, please update your environment NEXTAUTH_URL variable
                 </FormDescription>
                 <FormMessage />
               </FormItem>
@@ -780,19 +769,13 @@ function SiteOptionsTab({ form }) {
           />
         </CardContent>
       </Card>
-    </div>
-  );
-}
 
-// OAuth Providers Tab Component
-function ProvidersTab({ form, oauthProviders }) {
-  return (
-    <div className="grid gap-6">
+      {/* OAuth Providers Section */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Key className="h-5 w-5" />
-            OAuth Provider Configuration
+            OAuth Providers
           </CardTitle>
           <CardDescription>
             Configure third-party authentication providers
