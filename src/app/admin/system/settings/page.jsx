@@ -1,8 +1,6 @@
 "use client";
 import { useState, useEffect} from 'react';
 import { useForm, useFieldArray } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
 import { getAll, create, update } from "@/lib/client/query";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
@@ -31,21 +29,7 @@ import {
 } from "lucide-react";
 import { PhoneInput } from "@/components/ui/phone-input";
 import { CountryDropdown } from "@/components/ui/country-dropdown";
-import { LanguageSelector } from "@/components/ui/language-selector";
-
-// Country data
-const countries = [
-  { code: "US", name: "United States", iso: "USA" },
-  { code: "GB", name: "United Kingdom", iso: "GBR" },
-  { code: "DE", name: "Germany", iso: "DEU" },
-  { code: "FR", name: "France", iso: "FRA" },
-  { code: "ES", name: "Spain", iso: "ESP" },
-  { code: "IT", name: "Italy", iso: "ITA" },
-  { code: "CA", name: "Canada", iso: "CAN" },
-  { code: "AU", name: "Australia", iso: "AUS" },
-  { code: "JP", name: "Japan", iso: "JPN" },
-  { code: "BR", name: "Brazil", iso: "BRA" }
-];
+import { LanguageSelector } from "@/components/ui/language-selector"; 
 
 // Languages data
 const languages = [
@@ -76,68 +60,15 @@ const oauthProviders = [
   { id: "linkedin", name: "LinkedIn", icon: "🔵" }
 ];
 
-// Form validation schema
-const systemSettingsSchema = z.object({
-  // Site Settings
-  siteName: z.string().min(1, "Site name is required"),
-  siteEmail: z.string().email("Valid email is required"),
-  sitePhone: z.string().optional(),
-  businessAddress: z.string().optional(),
-  latitude: z.number().optional(),
-  longitude: z.number().optional(),
-  country: z.string().min(2, "Country is required"),
-  countryIso: z.string().min(3, "Country ISO is required"),
-  language: z.string().min(2, "Language is required"),
-  socialNetworks: z.array(z.object({
-    name: z.string().min(1, "Social network name is required"),
-    url: z.string().url("Valid URL is required")
-  })).optional(),
-  workingHours: z.array(z.object({
-    day: z.string().min(1, "Day is required"),
-    openTime: z.string().min(1, "Open time is required"),
-    closeTime: z.string().min(1, "Close time is required"),
-    isClosed: z.boolean().optional()
-  })).optional(),
-  serviceArea: z.string().optional(),
-  serviceRadius: z.number().optional(),
-  
-  // Email Settings
-  emailProvider: z.string().min(1, "Email provider is required"),
-  emailUser: z.string().optional(),
-  emailPass: z.string().optional(),
-  smtpHost: z.string().optional(),
-  smtpPort: z.number().optional(),
-  smtpSecure: z.boolean().optional(),
-  
-  // Site Options
-  allowRegistration: z.boolean(),
-  enableFrontend: z.boolean(),
-  baseUrl: z.string().url("Valid URL is required"),
-  
-  // Account Providers
-  providers: z.record(z.object({
-    clientId: z.string().optional(),
-    clientSecret: z.string().optional(),
-    enabled: z.boolean()
-  })),
-  
-  // Web3 Settings
-  web3Active: z.boolean().optional(),
-  web3ContractAddress: z.string().optional(),
-  web3ContractSymbol: z.string().optional(),
-  web3ChainSymbol: z.string().optional(),
-  web3InfuraRpc: z.string().optional(),
-  web3ChainId: z.number().optional(),
-  web3NetworkName: z.string().optional()
-});
+
 
 export default function SystemSettingsPage() {
   const [isLoading, setIsLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [settingsId, setSettingsId] = useState(null);
   const [activeTab, setActiveTab] = useState("site");
 
   const form = useForm({
-    resolver: zodResolver(systemSettingsSchema),
     defaultValues: {
       siteName: "",
       siteEmail: "",
@@ -234,18 +165,51 @@ export default function SystemSettingsPage() {
   }, []);
 
   const onSubmit = async (data) => {
+    if (isSubmitting) return; // Prevent double submission
+    
     try {
+      setIsSubmitting(true);
+      
+      // Basic validation
+      if (!data.siteName || !data.siteEmail) {
+        toast.error("Site name and email are required");
+        return;
+      }
+
+      if (!data.country || !data.countryIso) {
+        toast.error("Country selection is required");
+        return;
+      }
+
+      // Clean the data
+      const cleanData = {
+        ...data,
+        // Convert string numbers to numbers
+        latitude: data.latitude ? parseFloat(data.latitude) : undefined,
+        longitude: data.longitude ? parseFloat(data.longitude) : undefined,
+        serviceRadius: data.serviceRadius ? parseInt(data.serviceRadius) : undefined,
+        smtpPort: data.smtpPort ? parseInt(data.smtpPort) : 587,
+        web3ChainId: data.web3ChainId ? parseInt(data.web3ChainId) : 1,
+        // Ensure arrays exist
+        socialNetworks: data.socialNetworks || [],
+        workingHours: data.workingHours || [],
+      };
+
+      console.log("Form data before submission:", cleanData);
+
       if (settingsId) {
-        await update(settingsId, data, "site_settings");
+        await update(settingsId, cleanData, "site_settings");
         toast.success("Settings updated successfully");
       } else {
-        const result = await create(data, "site_settings");
+        const result = await create(cleanData, "site_settings");
         setSettingsId(result.id);
         toast.success("Settings created successfully");
       }
     } catch (error) {
       console.error("Error saving settings:", error);
-      toast.error("Failed to save settings");
+      toast.error(error.message || "Failed to save settings");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -271,13 +235,7 @@ export default function SystemSettingsPage() {
     }
   };
 
-  const handleCountryChange = (countryCode) => {
-    const country = countries.find(c => c.code === countryCode);
-    if (country) {
-      form.setValue("country", countryCode);
-      form.setValue("countryIso", country.iso);
-    }
-  };
+
 
   const getCurrentLocation = () => {
     if (navigator.geolocation) {
@@ -320,60 +278,81 @@ export default function SystemSettingsPage() {
         </div>
       </div>
 
-      <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit, onFormError)} className="space-y-6">
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-            <TabsList className="grid w-full grid-cols-4">
-              <TabsTrigger value="site" className="flex items-center gap-2">
-                <Settings className="h-4 w-4" />
-                Site
-              </TabsTrigger>
-              <TabsTrigger value="email" className="flex items-center gap-2">
-                <Mail className="h-4 w-4" />
-                Email
-              </TabsTrigger>
-              <TabsTrigger value="oauth" className="flex items-center gap-2">
-                <Shield className="h-4 w-4" />
-                OAuth
-              </TabsTrigger>
-              <TabsTrigger value="web3" className="flex items-center gap-2">
-                <Boxes className="h-4 w-4" />
-                Web3
-              </TabsTrigger>
-            </TabsList>
+      <div className="relative">
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit, onFormError)} className="space-y-6">
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+              <TabsList className="grid w-full grid-cols-4" disabled={isSubmitting}>
+                <TabsTrigger value="site" className="flex items-center gap-2" disabled={isSubmitting}>
+                  <Settings className="h-4 w-4" />
+                  Site
+                </TabsTrigger>
+                <TabsTrigger value="email" className="flex items-center gap-2" disabled={isSubmitting}>
+                  <Mail className="h-4 w-4" />
+                  Email
+                </TabsTrigger>
+                <TabsTrigger value="oauth" className="flex items-center gap-2" disabled={isSubmitting}>
+                  <Shield className="h-4 w-4" />
+                  OAuth
+                </TabsTrigger>
+                <TabsTrigger value="web3" className="flex items-center gap-2" disabled={isSubmitting}>
+                  <Boxes className="h-4 w-4" />
+                  Web3
+                </TabsTrigger>
+              </TabsList>
 
-            <TabsContent value="site" className="space-y-6">
-              <SiteSettingsTab form={form} countries={countries} languages={languages} onCountryChange={handleCountryChange} getCurrentLocation={getCurrentLocation} />
-            </TabsContent>
+              <TabsContent value="site" className="space-y-6">
+                <SiteSettingsTab form={form} languages={languages} getCurrentLocation={getCurrentLocation} isSubmitting={isSubmitting} />
+              </TabsContent>
 
-            <TabsContent value="email" className="space-y-6">
-              <EmailSettingsTab form={form} emailProviders={emailProviders} />
-            </TabsContent>
+              <TabsContent value="email" className="space-y-6">
+                <EmailSettingsTab form={form} emailProviders={emailProviders} isSubmitting={isSubmitting} />
+              </TabsContent>
 
-            <TabsContent value="oauth" className="space-y-6">
-              <OAuthTab form={form} oauthProviders={oauthProviders} />
-            </TabsContent>
+              <TabsContent value="oauth" className="space-y-6">
+                <OAuthTab form={form} oauthProviders={oauthProviders} isSubmitting={isSubmitting} />
+              </TabsContent>
 
-            <TabsContent value="web3" className="space-y-6">
-              <Web3Tab form={form} />
-            </TabsContent>
-          </Tabs>
+              <TabsContent value="web3" className="space-y-6">
+                <Web3Tab form={form} isSubmitting={isSubmitting} />
+              </TabsContent>
+            </Tabs>
 
-          <div className="flex justify-end">
-            <Button type="submit" size="lg">
-              <Database className="h-4 w-4 mr-2" />
-              Save Settings
-            </Button>
+            <div className="flex justify-end">
+              <Button type="submit" size="lg" disabled={isSubmitting}>
+                {isSubmitting ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <Database className="h-4 w-4 mr-2" />
+                    Save Settings
+                  </>
+                )}
+              </Button>
+            </div>
+          </form>
+        </Form>
+        
+        {/* Loading Overlay */}
+        {isSubmitting && (
+          <div className="absolute inset-0 bg-background/50 backdrop-blur-sm z-50 flex items-center justify-center rounded-lg">
+            <div className="bg-background border rounded-lg p-6 shadow-lg flex flex-col items-center gap-4">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+              <p className="text-sm text-muted-foreground">Saving settings...</p>
+            </div>
           </div>
-        </form>
-      </Form>
+        )}
+      </div>
     </div>
     </ScrollArea>
   );
 }
 
 // Site Settings Tab Component
-function SiteSettingsTab({ form, countries, languages, onCountryChange, getCurrentLocation }) {
+function SiteSettingsTab({ form, languages, getCurrentLocation, isSubmitting }) {
   return (
     <div className="grid gap-6">
       <Card>
@@ -395,7 +374,7 @@ function SiteSettingsTab({ form, countries, languages, onCountryChange, getCurre
                 <FormItem>
                   <FormLabel>Site Name *</FormLabel>
                   <FormControl>
-                    <Input placeholder="My Awesome Site" {...field} />
+                    <Input placeholder="My Awesome Site" disabled={isSubmitting} {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -409,7 +388,7 @@ function SiteSettingsTab({ form, countries, languages, onCountryChange, getCurre
                 <FormItem>
                   <FormLabel>Contact Email *</FormLabel>
                   <FormControl>
-                    <Input type="email" placeholder="contact@example.com" {...field} />
+                    <Input type="email" placeholder="contact@example.com" disabled={isSubmitting} {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -424,7 +403,7 @@ function SiteSettingsTab({ form, countries, languages, onCountryChange, getCurre
               <FormItem>
                 <FormLabel>Phone Number</FormLabel>
                 <FormControl>
-                  <PhoneInput placeholder="Enter phone number" {...field} />
+                  <PhoneInput placeholder="Enter phone number" disabled={isSubmitting} {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -438,7 +417,7 @@ function SiteSettingsTab({ form, countries, languages, onCountryChange, getCurre
               <FormItem>
                 <FormLabel>Business Address</FormLabel>
                 <FormControl>
-                  <Textarea placeholder="123 Main Street, City, State, ZIP" {...field} />
+                  <Textarea placeholder="123 Main Street, City, State, ZIP" disabled={isSubmitting} {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -471,6 +450,7 @@ function SiteSettingsTab({ form, countries, languages, onCountryChange, getCurre
                         type="number" 
                         step="any" 
                         placeholder="40.7128" 
+                        disabled={isSubmitting}
                         {...field}
                         onChange={e => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)}
                       />
@@ -479,6 +459,7 @@ function SiteSettingsTab({ form, countries, languages, onCountryChange, getCurre
                         variant="outline"
                         size="sm"
                         onClick={getCurrentLocation}
+                        disabled={isSubmitting}
                         className="px-3"
                         title="Get current location"
                       >
@@ -502,6 +483,7 @@ function SiteSettingsTab({ form, countries, languages, onCountryChange, getCurre
                       type="number" 
                       step="any" 
                       placeholder="-74.0060" 
+                      disabled={isSubmitting}
                       {...field}
                       onChange={e => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)}
                     />
@@ -516,25 +498,27 @@ function SiteSettingsTab({ form, countries, languages, onCountryChange, getCurre
             <FormField
               control={form.control}
               name="country"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Country *</FormLabel>
-                  <FormControl>
-                    <CountryDropdown 
-                      defaultValue={field.value} 
-                      onChange={(country) => {
-                        const countryCode = country.alpha2.toUpperCase();
-                        field.onChange(countryCode);
-                        // Update the form with country code and ISO
-                        form.setValue("country", countryCode);
-                        form.setValue("countryIso", country.alpha3);
-                      }}
-                      placeholder="Select a country" 
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
+              render={({ field }) => {
+                return (
+                  <FormItem>
+                    <FormLabel>Country *</FormLabel>
+                    <FormControl>
+                      <CountryDropdown 
+                        key={field.value}
+                        defaultValue={field.value}
+                        disabled={isSubmitting}
+                        onChange={(country) => {
+                          const countryCode = country.alpha2.toUpperCase();
+                          field.onChange(countryCode);
+                          form.setValue("countryIso", country.alpha3);
+                        }}
+                        placeholder="Select a country" 
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                );
+              }}
             />
 
             <FormField
@@ -548,6 +532,7 @@ function SiteSettingsTab({ form, countries, languages, onCountryChange, getCurre
                       languages={languages} 
                       value={field.value}
                       onChange={field.onChange}
+                      disabled={isSubmitting}
                       slim={false}
                     />
                   </FormControl>
@@ -565,7 +550,7 @@ function SiteSettingsTab({ form, countries, languages, onCountryChange, getCurre
                 <FormItem>
                   <FormLabel>Service Area</FormLabel>
                   <FormControl>
-                    <Input placeholder="Metropolitan Area" {...field} />
+                    <Input placeholder="Metropolitan Area" disabled={isSubmitting} {...field} />
                   </FormControl>
                   <FormDescription>
                     Describe your service coverage area
@@ -585,6 +570,7 @@ function SiteSettingsTab({ form, countries, languages, onCountryChange, getCurre
                     <Input 
                       type="number" 
                       placeholder="50" 
+                      disabled={isSubmitting}
                       {...field}
                       onChange={e => field.onChange(e.target.value ? parseInt(e.target.value) : undefined)}
                     />
@@ -608,7 +594,7 @@ function SiteSettingsTab({ form, countries, languages, onCountryChange, getCurre
           </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4">
-          <SocialNetworksSection form={form} />
+          <SocialNetworksSection form={form} isSubmitting={isSubmitting} />
         </CardContent>
       </Card>
 
@@ -620,7 +606,7 @@ function SiteSettingsTab({ form, countries, languages, onCountryChange, getCurre
           </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4">
-          <WorkingHoursSection form={form} />
+          <WorkingHoursSection form={form} isSubmitting={isSubmitting} />
         </CardContent>
       </Card>
     </div>
@@ -628,7 +614,7 @@ function SiteSettingsTab({ form, countries, languages, onCountryChange, getCurre
 }
 
 // Email Settings Tab Component
-function EmailSettingsTab({ form, emailProviders }) {
+function EmailSettingsTab({ form, emailProviders, isSubmitting }) {
   const selectedProvider = form.watch("emailProvider");
   
   return (
@@ -649,7 +635,7 @@ function EmailSettingsTab({ form, emailProviders }) {
           render={({ field }) => (
             <FormItem>
               <FormLabel>Email Provider *</FormLabel>
-              <Select onValueChange={field.onChange} value={field.value}>
+              <Select onValueChange={field.onChange} value={field.value} disabled={isSubmitting}>
                 <FormControl>
                   <SelectTrigger>
                     <SelectValue placeholder="Select an email provider" />
@@ -679,6 +665,7 @@ function EmailSettingsTab({ form, emailProviders }) {
                   <Input 
                     type="email" 
                     placeholder="your-email@gmail.com" 
+                    disabled={isSubmitting}
                     {...field} 
                   />
                 </FormControl>
@@ -697,6 +684,7 @@ function EmailSettingsTab({ form, emailProviders }) {
                   <Input 
                     type="password" 
                     placeholder="Your email password or app password" 
+                    disabled={isSubmitting}
                     {...field} 
                   />
                 </FormControl>
@@ -722,7 +710,7 @@ function EmailSettingsTab({ form, emailProviders }) {
                   <FormItem>
                     <FormLabel>SMTP Host</FormLabel>
                     <FormControl>
-                      <Input placeholder="smtp.yourprovider.com" {...field} />
+                      <Input placeholder="smtp.yourprovider.com" disabled={isSubmitting} {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -739,6 +727,7 @@ function EmailSettingsTab({ form, emailProviders }) {
                       <Input 
                         type="number" 
                         placeholder="587" 
+                        disabled={isSubmitting}
                         {...field}
                         onChange={e => field.onChange(e.target.value ? parseInt(e.target.value) : 587)}
                       />
@@ -761,7 +750,7 @@ function EmailSettingsTab({ form, emailProviders }) {
                     </FormDescription>
                   </div>
                   <FormControl>
-                    <Switch checked={field.value} onCheckedChange={field.onChange} />
+                    <Switch checked={field.value} onCheckedChange={field.onChange} disabled={isSubmitting} />
                   </FormControl>
                 </FormItem>
               )}
@@ -774,7 +763,7 @@ function EmailSettingsTab({ form, emailProviders }) {
 }
 
 // OAuth Tab Component (merged Site Options + OAuth Providers)
-function OAuthTab({ form, oauthProviders }) {
+function OAuthTab({ form, oauthProviders, isSubmitting }) {
   return (
     <div className="grid gap-6">
       {/* Application Settings Section */}
@@ -796,7 +785,7 @@ function OAuthTab({ form, oauthProviders }) {
               <FormItem>
                 <FormLabel>Base URL</FormLabel>
                 <FormControl>
-                  <Input disabled placeholder="https://yoursite.com" {...field} />
+                  <Input disabled={true} placeholder="https://yoursite.com" {...field} />
                 </FormControl>
                 <FormDescription>
                   To change the URL, please update your environment NEXTAUTH_URL variable
@@ -818,7 +807,7 @@ function OAuthTab({ form, oauthProviders }) {
                   </FormDescription>
                 </div>
                 <FormControl>
-                  <Switch checked={field.value} onCheckedChange={field.onChange} />
+                  <Switch checked={field.value} onCheckedChange={field.onChange} disabled={isSubmitting} />
                 </FormControl>
               </FormItem>
             )}
@@ -836,7 +825,7 @@ function OAuthTab({ form, oauthProviders }) {
                   </FormDescription>
                 </div>
                 <FormControl>
-                  <Switch checked={field.value} onCheckedChange={field.onChange} />
+                  <Switch checked={field.value} onCheckedChange={field.onChange} disabled={isSubmitting} />
                 </FormControl>
               </FormItem>
             )}
@@ -868,7 +857,7 @@ function OAuthTab({ form, oauthProviders }) {
                     render={({ field }) => (
                       <FormItem className="ml-auto">
                         <FormControl>
-                          <Switch checked={field.value} onCheckedChange={field.onChange} />
+                          <Switch checked={field.value} onCheckedChange={field.onChange} disabled={isSubmitting} />
                         </FormControl>
                       </FormItem>
                     )}
@@ -886,7 +875,7 @@ function OAuthTab({ form, oauthProviders }) {
                           <Input 
                             placeholder={`${provider.name} Client ID`} 
                             {...field}
-                            disabled={!form.watch(`providers.${provider.id}.enabled`)}
+                            disabled={!form.watch(`providers.${provider.id}.enabled`) || isSubmitting}
                           />
                         </FormControl>
                         <FormMessage />
@@ -905,7 +894,7 @@ function OAuthTab({ form, oauthProviders }) {
                             type="password"
                             placeholder={`${provider.name} Client Secret`} 
                             {...field}
-                            disabled={!form.watch(`providers.${provider.id}.enabled`)}
+                            disabled={!form.watch(`providers.${provider.id}.enabled`) || isSubmitting}
                           />
                         </FormControl>
                         <FormMessage />
@@ -923,7 +912,7 @@ function OAuthTab({ form, oauthProviders }) {
 }
 
 // Social Networks Section Component
-function SocialNetworksSection({ form }) {
+function SocialNetworksSection({ form, isSubmitting }) {
   const { fields, append, remove } = useFieldArray({
     control: form.control,
     name: "socialNetworks"
@@ -948,7 +937,7 @@ function SocialNetworksSection({ form }) {
               <FormItem>
                 <FormLabel>Social Network Name</FormLabel>
                 <FormControl>
-                  <Input placeholder="Facebook, Twitter, Instagram, etc." {...field} />
+                  <Input placeholder="Facebook, Twitter, Instagram, etc." disabled={isSubmitting} {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -987,6 +976,7 @@ function SocialNetworksSection({ form }) {
         type="button"
         variant="outline"
         onClick={addSocialNetwork}
+        disabled={isSubmitting}
         className="w-full"
       >
         <Plus className="h-4 w-4 mr-2" />
@@ -997,7 +987,7 @@ function SocialNetworksSection({ form }) {
 }
 
 // Working Hours Section Component
-function WorkingHoursSection({ form }) {
+function WorkingHoursSection({ form, isSubmitting }) {
   const { fields, append, remove } = useFieldArray({
     control: form.control,
     name: "workingHours"
@@ -1077,7 +1067,7 @@ function WorkingHoursSection({ form }) {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Day</FormLabel>
-                  <Select className="w-full" onValueChange={field.onChange} value={field.value}>
+                  <Select className="w-full" onValueChange={field.onChange} value={field.value} disabled={isSubmitting}>
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="Select day" />
@@ -1102,7 +1092,7 @@ function WorkingHoursSection({ form }) {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Open Time</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value} disabled={isClosed}>
+                  <Select onValueChange={field.onChange} value={field.value} disabled={isClosed || isSubmitting}>
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="Select time" />
@@ -1127,7 +1117,7 @@ function WorkingHoursSection({ form }) {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Close Time</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value} disabled={isClosed}>
+                  <Select onValueChange={field.onChange} value={field.value} disabled={isClosed || isSubmitting}>
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="Select time" />
@@ -1156,6 +1146,7 @@ function WorkingHoursSection({ form }) {
                       <Switch 
                         checked={field.value} 
                         onCheckedChange={field.onChange}
+                        disabled={isSubmitting}
                       />
                     </FormControl>
                     <FormLabel className="text-sm">Closed</FormLabel>
@@ -1170,6 +1161,7 @@ function WorkingHoursSection({ form }) {
                 variant="destructive"
                 size="sm"
                 onClick={() => removeWorkingHours(index)}
+                disabled={isSubmitting}
                 className="mb-2"
               >
                 <Trash2 className="h-4 w-4" />
@@ -1184,6 +1176,7 @@ function WorkingHoursSection({ form }) {
           type="button"
           variant="outline"
           onClick={addWorkingHours}
+          disabled={isSubmitting}
           className="flex-1"
         >
           <Plus className="h-4 w-4 mr-2" />
@@ -1195,6 +1188,7 @@ function WorkingHoursSection({ form }) {
             type="button"
             variant="outline"
             onClick={addAllDays}
+            disabled={isSubmitting}
           >
             Add All Days
           </Button>
@@ -1205,7 +1199,7 @@ function WorkingHoursSection({ form }) {
 }
 
 // Web3 Tab Component
-function Web3Tab({ form }) {
+function Web3Tab({ form, isSubmitting }) {
   const web3Active = form.watch("web3Active");
 
   return (
@@ -1232,7 +1226,7 @@ function Web3Tab({ form }) {
                 </FormDescription>
               </div>
               <FormControl>
-                <Switch checked={field.value} onCheckedChange={field.onChange} />
+                <Switch checked={field.value} onCheckedChange={field.onChange} disabled={isSubmitting} />
               </FormControl>
             </FormItem>
           )}
@@ -1250,7 +1244,7 @@ function Web3Tab({ form }) {
                   <FormItem>
                     <FormLabel>Network Name</FormLabel>
                     <FormControl>
-                      <Input placeholder="Ethereum Mainnet" {...field} />
+                      <Input placeholder="Ethereum Mainnet" disabled={isSubmitting} {...field} />
                     </FormControl>
                     <FormDescription>
                       Human-readable network name
@@ -1270,6 +1264,7 @@ function Web3Tab({ form }) {
                       <Input 
                         type="number" 
                         placeholder="1" 
+                        disabled={isSubmitting}
                         {...field}
                         onChange={e => field.onChange(e.target.value ? parseInt(e.target.value) : 1)}
                       />
@@ -1292,6 +1287,7 @@ function Web3Tab({ form }) {
                   <FormControl>
                     <Input 
                       placeholder="https://mainnet.infura.io/v3/YOUR-PROJECT-ID" 
+                      disabled={isSubmitting}
                       {...field} 
                     />
                   </FormControl>
@@ -1311,7 +1307,7 @@ function Web3Tab({ form }) {
                   <FormItem>
                     <FormLabel>Native Currency Symbol</FormLabel>
                     <FormControl>
-                      <Input placeholder="ETH" {...field} />
+                      <Input placeholder="ETH" disabled={isSubmitting} {...field} />
                     </FormControl>
                     <FormDescription>
                       Native blockchain currency (ETH, MATIC, BNB, etc.)
@@ -1328,7 +1324,7 @@ function Web3Tab({ form }) {
                   <FormItem>
                     <FormLabel>Token Symbol</FormLabel>
                     <FormControl>
-                      <Input placeholder="USDC" {...field} />
+                      <Input placeholder="USDC" disabled={isSubmitting} {...field} />
                     </FormControl>
                     <FormDescription>
                       Custom token symbol (if using ERC-20 contract)
@@ -1348,6 +1344,7 @@ function Web3Tab({ form }) {
                   <FormControl>
                     <Input 
                       placeholder="0xa0b86a33e6bd5c2a6ba7a898f0d6bab9a4b5c8f3" 
+                      disabled={isSubmitting}
                       {...field} 
                     />
                   </FormControl>
