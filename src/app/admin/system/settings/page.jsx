@@ -92,6 +92,12 @@ const systemSettingsSchema = z.object({
     name: z.string().min(1, "Social network name is required"),
     url: z.string().url("Valid URL is required")
   })).optional(),
+  workingHours: z.array(z.object({
+    day: z.string().min(1, "Day is required"),
+    openTime: z.string().min(1, "Open time is required"),
+    closeTime: z.string().min(1, "Close time is required"),
+    isClosed: z.boolean().optional()
+  })).optional(),
   serviceArea: z.string().optional(),
   serviceRadius: z.number().optional(),
   
@@ -113,7 +119,16 @@ const systemSettingsSchema = z.object({
     clientId: z.string().optional(),
     clientSecret: z.string().optional(),
     enabled: z.boolean()
-  }))
+  })),
+  
+  // Web3 Settings
+  web3Active: z.boolean().optional(),
+  web3ContractAddress: z.string().optional(),
+  web3ContractSymbol: z.string().optional(),
+  web3ChainSymbol: z.string().optional(),
+  web3InfuraRpc: z.string().optional(),
+  web3ChainId: z.number().optional(),
+  web3NetworkName: z.string().optional()
 });
 
 export default function SystemSettingsPage() {
@@ -134,6 +149,7 @@ export default function SystemSettingsPage() {
       countryIso: "",
       language: "en",
       socialNetworks: [],
+      workingHours: [],
       serviceArea: "",
       serviceRadius: undefined,
       emailProvider: "gmail",
@@ -148,7 +164,14 @@ export default function SystemSettingsPage() {
       providers: oauthProviders.reduce((acc, provider) => ({
         ...acc,
         [provider.id]: { clientId: "", clientSecret: "", enabled: false }
-      }), {})
+      }), {}),
+      web3Active: false,
+      web3ContractAddress: "",
+      web3ContractSymbol: "",
+      web3ChainSymbol: "",
+      web3InfuraRpc: "",
+      web3ChainId: 1,
+      web3NetworkName: "Ethereum Mainnet"
     }
   });
 
@@ -173,6 +196,7 @@ export default function SystemSettingsPage() {
           countryIso: settings.countryIso || "",
           language: settings.language || "en",
           socialNetworks: settings.socialNetworks || [],
+          workingHours: settings.workingHours || [],
           serviceArea: settings.serviceArea || "",
           serviceRadius: settings.serviceRadius,
           emailProvider: settings.emailProvider || "gmail",
@@ -187,7 +211,14 @@ export default function SystemSettingsPage() {
           providers: settings.providers || oauthProviders.reduce((acc, provider) => ({
             ...acc,
             [provider.id]: { clientId: "", clientSecret: "", enabled: false }
-          }), {})
+          }), {}),
+          web3Active: settings.web3Active || false,
+          web3ContractAddress: settings.web3ContractAddress || "",
+          web3ContractSymbol: settings.web3ContractSymbol || "",
+          web3ChainSymbol: settings.web3ChainSymbol || "",
+          web3InfuraRpc: settings.web3InfuraRpc || "",
+          web3ChainId: settings.web3ChainId || 1,
+          web3NetworkName: settings.web3NetworkName || "Ethereum Mainnet"
         });
       }
     } catch (error) {
@@ -215,6 +246,28 @@ export default function SystemSettingsPage() {
     } catch (error) {
       console.error("Error saving settings:", error);
       toast.error("Failed to save settings");
+    }
+  };
+
+  // Handle form validation errors with toast alerts
+  const onFormError = (errors) => {
+    const errorMessages = [];
+    
+    const collectErrors = (obj, prefix = '') => {
+      Object.entries(obj).forEach(([key, value]) => {
+        if (value?.message) {
+          errorMessages.push(value.message);
+        } else if (typeof value === 'object' && value !== null) {
+          collectErrors(value, prefix ? `${prefix}.${key}` : key);
+        }
+      });
+    };
+    
+    collectErrors(errors);
+    
+    if (errorMessages.length > 0) {
+      // Show the first error message
+      toast.error(errorMessages[0]);
     }
   };
 
@@ -268,9 +321,9 @@ export default function SystemSettingsPage() {
       </div>
 
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+        <form onSubmit={form.handleSubmit(onSubmit, onFormError)} className="space-y-6">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-            <TabsList className="grid w-full grid-cols-3">
+            <TabsList className="grid w-full grid-cols-4">
               <TabsTrigger value="site" className="flex items-center gap-2">
                 <Settings className="h-4 w-4" />
                 Site
@@ -299,6 +352,10 @@ export default function SystemSettingsPage() {
 
             <TabsContent value="oauth" className="space-y-6">
               <OAuthTab form={form} oauthProviders={oauthProviders} />
+            </TabsContent>
+
+            <TabsContent value="web3" className="space-y-6">
+              <Web3Tab form={form} />
             </TabsContent>
           </Tabs>
 
@@ -552,6 +609,18 @@ function SiteSettingsTab({ form, countries, languages, onCountryChange, getCurre
         </CardHeader>
         <CardContent className="grid gap-4">
           <SocialNetworksSection form={form} />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Working Hours</CardTitle>
+          <CardDescription>
+            Configure your business operating hours for each day of the week
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-4">
+          <WorkingHoursSection form={form} />
         </CardContent>
       </Card>
     </div>
@@ -924,6 +993,382 @@ function SocialNetworksSection({ form }) {
         Add Social Network
       </Button>
     </div>
+  );
+}
+
+// Working Hours Section Component
+function WorkingHoursSection({ form }) {
+  const { fields, append, remove } = useFieldArray({
+    control: form.control,
+    name: "workingHours"
+  });
+
+  const daysOfWeek = [
+    { value: "monday", label: "Monday" },
+    { value: "tuesday", label: "Tuesday" },
+    { value: "wednesday", label: "Wednesday" },
+    { value: "thursday", label: "Thursday" },
+    { value: "friday", label: "Friday" },
+    { value: "saturday", label: "Saturday" },
+    { value: "sunday", label: "Sunday" }
+  ];
+
+  const timeOptions = [];
+  for (let hour = 0; hour < 24; hour++) {
+    for (let minute = 0; minute < 60; minute += 30) {
+      const timeString = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+      timeOptions.push({ value: timeString, label: timeString });
+    }
+  }
+
+  const addWorkingHours = () => {
+    append({ 
+      day: "", 
+      openTime: "09:00", 
+      closeTime: "17:00", 
+      isClosed: false 
+    });
+  };
+
+  const removeWorkingHours = (index) => {
+    remove(index);
+  };
+
+  const addAllDays = () => {
+    const existingDays = fields.map(field => form.getValues(`workingHours.${fields.indexOf(field)}.day`));
+    
+    daysOfWeek.forEach(day => {
+      if (!existingDays.includes(day.value)) {
+        append({
+          day: day.value,
+          openTime: "09:00",
+          closeTime: "17:00",
+          isClosed: false
+        });
+      }
+    });
+  };
+
+  return (
+    <div className="space-y-4">
+      {fields.length === 0 && (
+        <div className="text-center py-8">
+          <div className="text-muted-foreground mb-4">
+            No working hours configured
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={addAllDays}
+          >
+            Add All Days
+          </Button>
+        </div>
+      )}
+
+      {fields.map((field, index) => {
+        const isClosed = form.watch(`workingHours.${index}.isClosed`);
+        
+        return (
+          <div key={field.id} className="grid grid-cols-1 md:grid-cols-5 gap-4 p-4 border rounded-lg">
+            <FormField
+              control={form.control}
+              name={`workingHours.${index}.day`}
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Day</FormLabel>
+                  <Select className="w-full" onValueChange={field.onChange} value={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select day" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {daysOfWeek.map((day) => (
+                        <SelectItem key={day.value} value={day.value}>
+                          {day.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name={`workingHours.${index}.openTime`}
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Open Time</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value} disabled={isClosed}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select time" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent className="max-h-60">
+                      {timeOptions.map((time) => (
+                        <SelectItem key={time.value} value={time.value}>
+                          {time.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name={`workingHours.${index}.closeTime`}
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Close Time</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value} disabled={isClosed}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select time" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent className="max-h-60">
+                      {timeOptions.map((time) => (
+                        <SelectItem key={time.value} value={time.value}>
+                          {time.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name={`workingHours.${index}.isClosed`}
+              render={({ field }) => (
+                <FormItem className="flex flex-col justify-end">
+                  <div className="flex items-center space-x-2 pt-6">
+                    <FormControl>
+                      <Switch 
+                        checked={field.value} 
+                        onCheckedChange={field.onChange}
+                      />
+                    </FormControl>
+                    <FormLabel className="text-sm">Closed</FormLabel>
+                  </div>
+                </FormItem>
+              )}
+            />
+            
+            <div className="flex items-end">
+              <Button
+                type="button"
+                variant="destructive"
+                size="sm"
+                onClick={() => removeWorkingHours(index)}
+                className="mb-2"
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        );
+      })}
+      
+      <div className="flex gap-2">
+        <Button
+          type="button"
+          variant="outline"
+          onClick={addWorkingHours}
+          className="flex-1"
+        >
+          <Plus className="h-4 w-4 mr-2" />
+          Add Working Hours
+        </Button>
+        
+        {fields.length > 0 && fields.length < 7 && (
+          <Button
+            type="button"
+            variant="outline"
+            onClick={addAllDays}
+          >
+            Add All Days
+          </Button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// Web3 Tab Component
+function Web3Tab({ form }) {
+  const web3Active = form.watch("web3Active");
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Boxes className="h-5 w-5" />
+          Web3 Configuration
+        </CardTitle>
+        <CardDescription>
+          Configure blockchain and smart contract settings for Web3 integration
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="grid gap-4">
+        <FormField
+          control={form.control}
+          name="web3Active"
+          render={({ field }) => (
+            <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+              <div className="space-y-0.5">
+                <FormLabel className="text-base">Enable Web3 Integration</FormLabel>
+                <FormDescription>
+                  Activate blockchain functionality and smart contract interactions
+                </FormDescription>
+              </div>
+              <FormControl>
+                <Switch checked={field.value} onCheckedChange={field.onChange} />
+              </FormControl>
+            </FormItem>
+          )}
+        />
+
+        {web3Active && (
+          <div className="grid gap-4 p-4 border rounded-lg">
+            <h4 className="font-medium">Blockchain Network Settings</h4>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="web3NetworkName"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Network Name</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Ethereum Mainnet" {...field} />
+                    </FormControl>
+                    <FormDescription>
+                      Human-readable network name
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="web3ChainId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Chain ID</FormLabel>
+                    <FormControl>
+                      <Input 
+                        type="number" 
+                        placeholder="1" 
+                        {...field}
+                        onChange={e => field.onChange(e.target.value ? parseInt(e.target.value) : 1)}
+                      />
+                    </FormControl>
+                    <FormDescription>
+                      Network chain ID (1=Mainnet, 11155111=Sepolia, 137=Polygon)
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            <FormField
+              control={form.control}
+              name="web3InfuraRpc"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>RPC Endpoint URL</FormLabel>
+                  <FormControl>
+                    <Input 
+                      placeholder="https://mainnet.infura.io/v3/YOUR-PROJECT-ID" 
+                      {...field} 
+                    />
+                  </FormControl>
+                  <FormDescription>
+                    Blockchain RPC endpoint (Infura, Alchemy, or custom node)
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="web3ChainSymbol"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Native Currency Symbol</FormLabel>
+                    <FormControl>
+                      <Input placeholder="ETH" {...field} />
+                    </FormControl>
+                    <FormDescription>
+                      Native blockchain currency (ETH, MATIC, BNB, etc.)
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="web3ContractSymbol"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Token Symbol</FormLabel>
+                    <FormControl>
+                      <Input placeholder="USDC" {...field} />
+                    </FormControl>
+                    <FormDescription>
+                      Custom token symbol (if using ERC-20 contract)
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            <FormField
+              control={form.control}
+              name="web3ContractAddress"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Smart Contract Address</FormLabel>
+                  <FormControl>
+                    <Input 
+                      placeholder="0xa0b86a33e6bd5c2a6ba7a898f0d6bab9a4b5c8f3" 
+                      {...field} 
+                    />
+                  </FormControl>
+                  <FormDescription>
+                    ERC-20 token contract address (leave empty for native currency transactions)
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <div className="p-4 bg-input border border-blue-200 rounded-lg">
+              <h5 className="font-medium mb-2">Security Note</h5>
+              <p className="text-sm">
+                Private keys and sensitive credentials are encrypted at rest in the database. Never share your contract private keys or secrets publicly. Always use environment variables or encrypted storage for production deployments.
+              </p>
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 
