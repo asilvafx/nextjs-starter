@@ -1050,7 +1050,7 @@ function WorkingHoursSection({ form }) {
   };
 
   return (
-    <div className="space-y-4">
+    <div className="overflow-hidden space-y-4">
       {fields.length === 0 && (
         <div className="text-center py-8">
           <div className="text-muted-foreground mb-4">

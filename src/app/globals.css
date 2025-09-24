@@ -3,6 +3,11 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 :root {  
+    /* Brand colors */
+    --primary: oklch(0.216 0.006 56.043);           
+    --secondary: oklch(0.97 0.001 106.424);         /* cyan-400 */ 
+    --accent: oklch(0.97 0.001 106.424);         
+
     /* Surface colors */
     --surface: rgba(255, 255, 255, 0.05);     /* white/5 */
     --surface-hover: rgba(255, 255, 255, 0.1); /* white/10 */
@@ -342,8 +347,8 @@ table th {
 
 /* Scrollbars */
 * {
-  --sb-track-color: var(--card);
-  --sb-thumb-color: #101010;
+  --sb-track-color: var(--muted);
+  --sb-thumb-color: var(--input);
   --sb-size: 4px;
 }
 

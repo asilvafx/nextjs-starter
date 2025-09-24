@@ -299,15 +299,20 @@ async function handleDelete(request, { params }) {
         }
 
         // Check if item exists
-        const existingItem = await DBService.read(id, slug);
+        let tryId = id;
+        const existingItem = await DBService.read(tryId, slug);
         if (!existingItem) {
-            return NextResponse.json(
+            tryId = await DBService.getItemKey('id', id, slug);
+            const tryRead = await DBService.read(tryId, slug);
+            if(!tryRead){
+              return NextResponse.json(
                 { error: 'Record not found' },
                 { status: 404 }
             );
+            } 
         }
 
-        const deleted = await DBService.delete(id, slug);
+        const deleted = await DBService.delete(tryId, slug);
 
         if (!deleted) {
             return NextResponse.json(
