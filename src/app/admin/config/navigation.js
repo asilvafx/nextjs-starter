@@ -4,17 +4,26 @@ import {
   Frame,
   PieChart,
   Users,
+  Gauge,
+  Store,
+  Images,
+  Waypoints,
+  Megaphone,
+  Code,
+  Database,
+  Settings,
+  Wrench,
 } from "lucide-react"
 
 export const navigation = {
   Home: [
     {
-      title: "Overview",
+      title: "Dashboard",
       url: "/admin",
-      icon: Frame, 
+      icon: Gauge, 
     },
     {
-      title: "Analytics",
+      title: "Analytics & Reports",
       url: "/admin/analytics",
       icon: PieChart, 
     },
@@ -30,15 +39,15 @@ export const navigation = {
           url: "/admin/access/users", 
         },
         {
-          title: "Roles",
+          title: "Roles & Permissions",
           url: "/admin/access/roles", 
         },
       ],
     },
     {
-      title: "Store",
+      title: "Storefront",
       url: "#",
-      icon: Frame, 
+      icon: Store, 
       items: [
         {
           title: "Orders",
@@ -61,28 +70,27 @@ export const navigation = {
           url: "/admin/store/customers", 
         },
         {
-          title: "Settings",
+          title: "Store Settings",
           url: "/admin/store/settings", 
         },
       ],
     },
     {
-      title: "Gallery",
-      url: "/admin/gallery",
-      icon: Frame, 
+      title: "Media",
+      url: "/admin/media",
+      icon: Images, 
     }, 
     {
       title: "Workspace",
       url: "#",
-      icon: Frame, 
-
+      icon: Waypoints, 
       items: [
         {
           title: "Agenda",
           url: "/admin/planning/agenda",
         },
         {
-          title: "Tasks",
+          title: "Task Board",
           url: "/admin/planning/tasks",
         },
         {
@@ -94,8 +102,7 @@ export const navigation = {
     {
       title: "Marketing",
       url: "#",
-      icon: Frame, 
-
+      icon: Megaphone, 
       items: [
         {
           title: "Newsletter",
@@ -106,20 +113,26 @@ export const navigation = {
           url: "/admin/marketing/subscribers",
         },
       ]
+    }, 
+  ],
+  Developer: [
+    {
+      title: "Database",
+      url: "/admin/dev/database",
+      icon: Database, 
     },
     {
       title: "API",
       url: "#",
-      icon: Frame, 
-
+      icon: Code, 
       items: [
         {
-          title: "Database",
-          url: "/admin/api/database",
+          title: "API Endpoints",
+          url: "/admin/dev/endpoints",
         },
         {
-          title: "Keys",
-          url: "/admin/api/keys",
+          title: "Create API Key",
+          url: "/admin/dev/endpoints/new-key",
         },
       ]
     },
@@ -128,12 +141,12 @@ export const navigation = {
     {
       title: "Settings",
       url: "/admin/system/settings",
-      icon: Frame, 
+      icon: Settings, 
     },
     {
       title: "Maintenance",
       url: "/admin/system/maintenance",
-      icon: Frame, 
+      icon: Wrench, 
     },
   ],
 }

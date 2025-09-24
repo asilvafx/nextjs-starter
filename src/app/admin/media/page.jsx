@@ -180,7 +180,7 @@ export default function GalleryPage() {
     <div className="space-y-6 p-4">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold">Gallery</h1>
+          <h1 className="text-3xl font-bold">Media Gallery</h1>
           <p className="text-muted-foreground">
             Manage your image gallery
           </p>

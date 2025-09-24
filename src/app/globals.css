@@ -2,29 +2,11 @@
 @import "tw-animate-css";
 @custom-variant dark (&:where(.dark, .dark *));
 
-:root {
-    /* Base colors */
-    --bg-primary: #171717;        /* neutral-900 */
-    --bg-secondary: #1e293b;      /* slate-800 */
-    --text-primary: #ffffff;      /* white */
-    --text-secondary: #94a3b8;    /* slate-400 */
-    --text-muted: #64748b;        /* slate-500 */
-    --text-accent: #cbd5e1;       /* slate-300 */
-
-    /* Brand colors */
-    --primary: oklch(0.216 0.006 56.043);           /* purple-400 */
-    --primary-dark: #9333ea;      /* purple-500 */
-    --secondary: oklch(0.97 0.001 106.424);         /* cyan-400 */
-    --secondary-dark: #06b6d4;    /* cyan-500 */
-    --accent: oklch(0.97 0.001 106.424);            /* emerald-500 */
-    --accent-light: #34d399;      /* emerald-400 */
-    --accent-dark: #059669;       /* emerald-600 */
-
+:root {  
     /* Surface colors */
     --surface: rgba(255, 255, 255, 0.05);     /* white/5 */
     --surface-hover: rgba(255, 255, 255, 0.1); /* white/10 */
-    --border: oklch(0.923 0.003 48.717);       /* black/20 */
-    --border-focus: var(--primary);
+    --border: oklch(0.923 0.003 48.717);       /* black/20 */ 
     --overlay: rgba(0, 0, 0, 0.05);
 
     /* Status colors */
@@ -195,8 +177,7 @@ gmp-place-autocomplete:focus, gmp-place-autocomplete:active {
 }
 
 .pac-target-input, .google-places-input {
-    background-color: transparent !important;
-    color: var(--bg-primary) !important;
+    background-color: transparent !important; 
     width: 100%;
     border: 1px solid var(--border) !important;
     font-size: smaller;
@@ -215,8 +196,7 @@ gmp-place-autocomplete:focus, gmp-place-autocomplete:active {
 }
 
 /* Style the Google Places dropdown */
-.pac-container {
-    background-color: var(--bg-secondary) !important;
+.pac-container { 
     border-color: var(--border) !important;
     border-radius: 0.5rem !important;
     border: 1px solid var(--border) !important;
@@ -225,8 +205,7 @@ gmp-place-autocomplete:focus, gmp-place-autocomplete:active {
 }
 
 .pac-item {
-    background-color: transparent !important;
-    color: var(--text-primary) !important;
+    background-color: transparent !important; 
     border-color: var(--border) !important;
     padding: 12px 16px !important;
     font-size: 16px !important;
@@ -359,4 +338,33 @@ table th {
     table td:last-child {
         border-bottom: 0;
     }
+}
+
+/* Scrollbars */
+* {
+  --sb-track-color: var(--card);
+  --sb-thumb-color: #101010;
+  --sb-size: 4px;
+}
+
+*::-webkit-scrollbar {
+  width: var(--sb-size)
+}
+
+*::-webkit-scrollbar-track {
+  background: var(--sb-track-color);
+  border-radius: 3px;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: var(--sb-thumb-color);
+  border-radius: 3px;
+  
+}
+
+@supports not selector(::-webkit-scrollbar) {
+  * {
+    scrollbar-color: var(--sb-thumb-color)
+                     var(--sb-track-color);
+  }
 }
