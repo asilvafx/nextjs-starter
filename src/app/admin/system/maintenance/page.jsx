@@ -481,7 +481,7 @@ function DatabaseTab({
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex flex-col sm:flex-row gap-4">
+          <div className="flex flex-wrap gap-4">
             <Button 
               onClick={onCreateBackup}
               disabled={loading.backup}
@@ -495,7 +495,7 @@ function DatabaseTab({
               Create Backup
             </Button>
             
-            <div className="flex gap-2 flex-1">
+            <div className="flex flex-wrap sm:flex-nowrap gap-2 flex-1">
               <Select value={selectedBackup} onValueChange={setSelectedBackup}>
                 <SelectTrigger className="flex-1">
                   <SelectValue placeholder="Select backup to restore" />
@@ -511,7 +511,8 @@ function DatabaseTab({
               
               <AlertDialog>
                 <AlertDialogTrigger asChild>
-                  <Button 
+                  <Button  
+                    className="w-full sm:w-fit"
                     variant="destructive"
                     disabled={!selectedBackup || loading.restore}
                   >

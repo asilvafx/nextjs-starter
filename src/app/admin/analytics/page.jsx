@@ -122,8 +122,8 @@ export default function AnalyticsPage() {
 
   const formatNumber = (value) => {
     return new Intl.NumberFormat("en-US").format(value);
-  };
-
+  }; 
+  
   const handleGoogleAnalyticsSubmit = (e) => {
     e.preventDefault();
     if (googleApiKey.trim()) {

@@ -1,3 +1,5 @@
+// @/components/ui/language-selector.tsx
+
 "use client";
 
 import { useCallback, useState } from "react";
@@ -21,31 +23,47 @@ import {
 import { ChevronDown, CheckIcon, Languages } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-const languages = [
+const defaultLanguages = [
   { id: "en", name: "English", flag: "🇺🇸" },
   { id: "fr", name: "Français", flag: "🇫🇷" },
   // Add more languages as needed
 ];
 
 interface LanguageSelectorProps {
+  languages?: Array<{ id: string; name: string; flag?: string; code?: string; }>;
+  onChange?: (languageId: string) => void;
+  value?: string;
   slim?: boolean;
 }
 
-export function LanguageSelector({ slim = false }: LanguageSelectorProps) {
+export function LanguageSelector({ 
+  languages = defaultLanguages, 
+  onChange, 
+  value, 
+  slim = false 
+}: LanguageSelectorProps) {
   const [open, setOpen] = useState(false);
   const router = useRouter();
   const pathname = usePathname();
   const currentLocale = useLocale();
 
-  const currentLanguage = languages.find((lang) => lang.id === currentLocale);
+  // Use the form value if provided, otherwise use the current locale
+  const selectedLanguageId = value || currentLocale;
+  const currentLanguage = languages.find((lang) => (lang.id || lang.code) === selectedLanguageId);
 
   const handleSelect = useCallback(
     (locale: string) => {
       setOpen(false);
-      // Replace the locale segment in the pathname
-      alert(locale)
+      if (onChange) {
+        // If onChange is provided (form mode), call it
+        onChange(locale);
+      } else {
+        // Otherwise, handle route navigation (standalone mode)
+        // Replace the locale segment in the pathname
+        alert(locale); // You can implement actual route navigation here
+      }
     },
-    [pathname, router]
+    [onChange, pathname, router]
   );
 
   const triggerClasses = cn(
@@ -59,7 +77,7 @@ export function LanguageSelector({ slim = false }: LanguageSelectorProps) {
         <Languages size={16}/> 
         {!slim && (
         <span className="text-sm">
-            Select language
+            {currentLanguage ? currentLanguage.name : "Select language"}
         </span>
         )} 
         <ChevronDown size={16} />
@@ -74,26 +92,29 @@ export function LanguageSelector({ slim = false }: LanguageSelectorProps) {
             {/* <CommandInput placeholder="Search language..." /> */}
             <CommandEmpty>No language found.</CommandEmpty>
             <CommandGroup>
-              {languages.map((language) => (
-                <CommandItem
-                  key={language.id}
-                  className="flex items-center gap-2"
-                  onSelect={() => handleSelect(language.id)}
-                >
-                  <div className="flex flex-grow items-center gap-2">
-                    <span className="text-base">{language.flag}</span>
-                    <span>{language.name}</span>
-                  </div>
-                  <CheckIcon
-                    className={cn(
-                      "ml-auto h-4 w-4",
-                      language.id === currentLocale
-                        ? "opacity-100"
-                        : "opacity-0"
-                    )}
-                  />
-                </CommandItem>
-              ))}
+              {languages.map((language) => {
+                const languageId = language.id || language.code;
+                return (
+                  <CommandItem
+                    key={languageId}
+                    className="flex items-center gap-2"
+                    onSelect={() => handleSelect(languageId)}
+                  >
+                    <div className="flex flex-grow items-center gap-2">
+                      {language.flag && <span className="text-base">{language.flag}</span>}
+                      <span>{language.name}</span>
+                    </div>
+                    <CheckIcon
+                      className={cn(
+                        "ml-auto h-4 w-4",
+                        languageId === selectedLanguageId
+                          ? "opacity-100"
+                          : "opacity-0"
+                      )}
+                    />
+                  </CommandItem>
+                );
+              })}
             </CommandGroup>
           </CommandList>
         </Command>

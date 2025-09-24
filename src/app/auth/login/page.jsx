@@ -1,4 +1,4 @@
-// app/auth/login/page.jsx
+// @/app/auth/login/page.jsx
 'use client';
 
 import { useEffect } from 'react';

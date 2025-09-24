@@ -158,8 +158,7 @@
         @apply bg-background text-foreground;
     }
 
-    html, body {
-        font-size: 16px; 
+    html, body { 
         -webkit-font-smoothing: antialiased;
         -moz-osx-font-smoothing: grayscale;
         font-feature-settings: "liga" 1, "kern" 1;
@@ -175,6 +174,10 @@
         pointer-events: none;
         cursor: progress;
     }  
+
+    .border {
+        border-color: var(--input);
+    }
 
 }
 

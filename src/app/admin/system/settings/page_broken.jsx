@@ -293,7 +293,7 @@ export default function SystemSettingsPage() {
             </TabsList>
 
             <TabsContent value="site" className="space-y-6">
-              <SiteSettingsTab form={form} countries={countries} languages={languages} onCountryChange={handleCountryChange} getCurrentLocation={getCurrentLocation} />
+              <SiteSettingsTab form={form} countries={countries} languages={languages} onCountryChange={handleCountryChange} />
             </TabsContent>
 
             <TabsContent value="email" className="space-y-6">
@@ -323,7 +323,7 @@ export default function SystemSettingsPage() {
 }
 
 // Site Settings Tab Component
-function SiteSettingsTab({ form, countries, languages, onCountryChange, getCurrentLocation }) {
+function SiteSettingsTab({ form, countries, languages, onCountryChange }) {
   return (
     <div className="grid gap-6">
       <Card>
@@ -409,37 +409,7 @@ function SiteSettingsTab({ form, countries, languages, onCountryChange, getCurre
         </CardHeader>
         <CardContent className="grid gap-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <FormField
-              control={form.control}
-              name="latitude"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Latitude</FormLabel>
-                  <FormControl>
-                    <div className="flex gap-2">
-                      <Input 
-                        type="number" 
-                        step="any" 
-                        placeholder="40.7128" 
-                        {...field}
-                        onChange={e => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)}
-                      />
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={getCurrentLocation}
-                        className="px-3"
-                        title="Get current location"
-                      >
-                        <Locate className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+                        <FormField\n              control={form.control}\n              name=\"latitude\"\n              render={({ field }) => (\n                <FormItem>\n                  <FormLabel>Latitude</FormLabel>\n                  <FormControl>\n                    <div className=\"flex gap-2\">\n                      <Input \n                        type=\"number\" \n                        step=\"any\" \n                        placeholder=\"40.7128\" \n                        {...field}\n                        onChange={e => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)}\n                      />\n                      <Button\n                        type=\"button\"\n                        variant=\"outline\"\n                        size=\"sm\"\n                        onClick={getCurrentLocation}\n                        className=\"px-3\"\n                        title=\"Get current location\"\n                      >\n                        <Locate className=\"h-4 w-4\" />\n                      </Button>\n                    </div>\n                  </FormControl>\n                  <FormMessage />\n                </FormItem>\n              )}\n            />"
             
             <FormField
               control={form.control}
