@@ -20,6 +20,7 @@ import {
   Mail,
   Settings, 
   MapPin, 
+  Boxes,
   Plus,
   Trash2,
   Building, 
@@ -272,15 +273,19 @@ export default function SystemSettingsPage() {
             <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="site" className="flex items-center gap-2">
                 <Settings className="h-4 w-4" />
-                Site Settings
+                Site
               </TabsTrigger>
               <TabsTrigger value="email" className="flex items-center gap-2">
                 <Mail className="h-4 w-4" />
-                Email Settings
+                Email
               </TabsTrigger>
               <TabsTrigger value="oauth" className="flex items-center gap-2">
                 <Shield className="h-4 w-4" />
                 OAuth
+              </TabsTrigger>
+              <TabsTrigger value="web3" className="flex items-center gap-2">
+                <Boxes className="h-4 w-4" />
+                Web3
               </TabsTrigger>
             </TabsList>
 

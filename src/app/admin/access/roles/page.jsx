@@ -27,6 +27,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
+import {ScrollArea} from "@/components/ui/scroll-area";
 import { 
   Table, 
   TableBody, 
@@ -413,6 +414,7 @@ export default function RolesPage() {
   }
 
   return (
+    <ScrollArea className="h-[calc(100vh-80px)]">
     <div className="space-y-4">
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div className="space-y-2">
@@ -795,6 +797,7 @@ export default function RolesPage() {
         </DialogContent>
       </Dialog>
     </div>
+    </ScrollArea>
   );
 }
 

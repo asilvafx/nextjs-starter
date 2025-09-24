@@ -22,6 +22,7 @@ import {
   Clock
 } from "lucide-react";
 import { toast } from "sonner";
+import { create } from "@/lib/client/query";
 
 // Form validation schema
 const apiKeySchema = z.object({
@@ -65,17 +66,27 @@ export default function NewKeyPage() {
 
   const onSubmit = async (data) => {
     try {
-      // Generate a mock API key
-      const mockApiKey = `pk_live_${Math.random().toString(36).substring(2, 15)}${Math.random().toString(36).substring(2, 15)}`;
+      // Generate a real API key
+      const timestamp = Date.now().toString(36);
+      const random = Math.random().toString(36).substring(2, 15);
+      const apiKey = `pk_live_${timestamp}_${random}`;
       
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Create the API key in the database
+      const keyData = {
+        ...data,
+        key: apiKey,
+        keyPreview: `${apiKey.substring(0, 20)}...${apiKey.slice(-4)}`,
+        status: 'active',
+        usage: 0,
+        createdAt: new Date().toISOString(),
+        lastUsed: null
+      };
+      
+      const result = await create(keyData, 'api_keys');
       
       setGeneratedKey({
-        key: mockApiKey,
-        ...data,
-        createdAt: new Date().toISOString(),
-        id: Math.random().toString(36).substring(2, 9)
+        ...keyData,
+        id: result.id || Math.random().toString(36).substring(2, 9)
       });
       
       setStep(2);

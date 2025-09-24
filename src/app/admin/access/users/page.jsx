@@ -397,6 +397,7 @@ export default function UsersPage() {
   }
 
   return (
+    <ScrollArea className="h-[calc(100vh-80px)]">
     <div className="space-y-4">
       <div className="flex justify-between items-center">
         <div>
@@ -555,7 +556,7 @@ export default function UsersPage() {
         </Button>
       </div>
 
-      <ScrollArea className="h-[calc(100vh-200px)]">
+      <div className="w-full h-full flex flex-col">
         {loading ? (
           <TableSkeleton />
         ) : (
@@ -648,7 +649,7 @@ export default function UsersPage() {
           </TableBody>
         </Table>
         )}
-      </ScrollArea>
+      </div>
 
       {/* Pagination */}
       {!loading && users.length > 0 && (
@@ -755,5 +756,6 @@ export default function UsersPage() {
         </DialogContent>
       </Dialog>
     </div>
+    </ScrollArea>
   );
 }
