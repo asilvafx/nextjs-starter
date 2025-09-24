@@ -4,6 +4,7 @@ import { NextResponse } from 'next/server';
 import EmailService from '@/lib/server/email';
 import UserCreatedTemplate from '@/emails/UserCreatedTemplate';
 import UserUpdatedTemplate from '@/emails/UserUpdatedTemplate';
+import NewsletterTemplate from '@/emails/NewsletterTemplate';
 
 export async function POST(request) {
     try {
@@ -54,6 +55,85 @@ export async function POST(request) {
                         subtotal,
                         shippingCost,
                         shippingAddress
+                    }
+                );
+                break;
+
+            case 'newsletter':
+                // Handle newsletter bulk sending
+                const { campaign, subscribers } = body;
+                
+                if (!campaign || !subscribers || subscribers.length === 0) {
+                    throw new Error('Campaign and subscribers are required');
+                }
+
+                const baseUrl = process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+                let successCount = 0;
+                let failureCount = 0;
+
+                // Send newsletter to each subscriber
+                for (const subscriber of subscribers) {
+                    try {
+                        const unsubscribeUrl = `${baseUrl}/newsletter/unsubscribe?email=${encodeURIComponent(subscriber.email)}&id=${subscriber.id}`;
+                        const webVersionUrl = `${baseUrl}/newsletter/campaign/${campaign.id}`;
+
+                        await EmailService.sendEmail(
+                            subscriber.email,
+                            campaign.subject,
+                            NewsletterTemplate,
+                            {
+                                subject: campaign.subject,
+                                content: campaign.content || campaign.previewText || 'Thank you for subscribing to our newsletter.',
+                                previewText: campaign.previewText || '',
+                                subscriberName: subscriber.name || null,
+                                companyName: await EmailService.getEmailName ? await EmailService.getEmailName() : 'Your App Name',
+                                unsubscribeUrl,
+                                webVersionUrl
+                            }
+                        );
+                        successCount++;
+                        
+                        // Small delay to avoid overwhelming the email service
+                        await new Promise(resolve => setTimeout(resolve, 100));
+                    } catch (error) {
+                        console.error(`Failed to send newsletter to ${subscriber.email}:`, error);
+                        failureCount++;
+                    }
+                }
+
+                console.log(`Newsletter campaign sent: ${successCount} successful, ${failureCount} failed`);
+                
+                return NextResponse.json({ 
+                    success: true, 
+                    data: {
+                        sent: successCount,
+                        failed: failureCount,
+                        total: subscribers.length
+                    }
+                });
+
+            case 'newsletter_test':
+                // Handle newsletter test sending (single recipient)
+                const { campaign: testCampaign, testEmail, testName } = body;
+                
+                if (!testCampaign || !testEmail) {
+                    throw new Error('Campaign and test email are required');
+                }
+
+                const baseUrl2 = process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+                
+                await EmailService.sendEmail(
+                    testEmail,
+                    `[TEST] ${testCampaign.subject}`,
+                    NewsletterTemplate,
+                    {
+                        subject: testCampaign.subject,
+                        content: testCampaign.content || testCampaign.previewText || 'Thank you for subscribing to our newsletter.',
+                        previewText: testCampaign.previewText || '',
+                        subscriberName: testName || 'Test User',
+                        companyName: await EmailService.getEmailName ? await EmailService.getEmailName() : 'Your App Name',
+                        unsubscribeUrl: `${baseUrl2}/newsletter/unsubscribe`,
+                        webVersionUrl: `${baseUrl2}/newsletter/campaign/${testCampaign.id}`
                     }
                 );
                 break;
