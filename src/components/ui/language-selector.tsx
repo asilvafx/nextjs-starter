@@ -94,6 +94,7 @@ export function LanguageSelector({
             <CommandGroup>
               {languages.map((language) => {
                 const languageId = language.id || language.code;
+                if (!languageId) return null; // Skip languages without id or code
                 return (
                   <CommandItem
                     key={languageId}
