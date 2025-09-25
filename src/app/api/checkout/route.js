@@ -1,3 +1,5 @@
+// @/app/api/checkout/route.js
+
 import { NextResponse } from 'next/server';
 import EmailService from '@/lib/server/email';
 import DBService from '@/data/rest.db.js';
@@ -6,6 +8,15 @@ export async function POST(request) {
 
     try {
         const body = await request.json();
+
+        // Fetch store settings for VAT calculation
+        let storeSettings = null;
+        try {
+            const settingsData = await DBService.readAll('store_settings');
+            storeSettings = settingsData?.[0];
+        } catch (error) {
+            console.warn('Failed to fetch store settings, using defaults:', error);
+        }
 
         // Extract orderData and emailPayload from the request body
         const { orderData, emailPayload } = body;
@@ -20,9 +31,32 @@ export async function POST(request) {
             );
         }
 
+        // Calculate VAT if applicable
+        let vatAmount = 0;
+        let vatPercentage = storeSettings?.vatPercentage || 20;
+        let finalTotal = orderData.amount;
+
+        if (storeSettings?.applyVatAtCheckout && !storeSettings?.vatIncludedInPrice) {
+            // VAT not included in price, so calculate and add it
+            vatAmount = (orderData.subtotal * vatPercentage) / 100;
+            finalTotal = orderData.amount + vatAmount;
+        } else if (storeSettings?.vatIncludedInPrice) {
+            // VAT included in price, calculate the VAT portion
+            vatAmount = (orderData.amount * vatPercentage) / (100 + vatPercentage);
+        }
+
+        // Update order data with VAT information
+        const updatedOrderData = {
+            ...orderData,
+            vatAmount: vatAmount.toFixed(2),
+            vatPercentage: vatPercentage,
+            vatIncluded: storeSettings?.vatIncludedInPrice || false,
+            finalTotal: finalTotal.toFixed(2)
+        };
+
         // 1. First, save the complete orderData to the database
         try {
-            await DBService.create(orderData, "orders");
+            await DBService.create(updatedOrderData, "orders");
         } catch (dbError) {
             console.error('Failed to save order to database:', dbError);
             // Continue with email sending even if DB save fails
@@ -154,7 +188,11 @@ export async function POST(request) {
                 items: parsedItems,
                 subtotal: subtotal || '0.00',
                 shippingCost: shippingCost || '0.00',
-                total: parseFloat(total).toFixed(2),
+                total: finalTotal.toFixed(2),
+                vatAmount: vatAmount.toFixed(2),
+                vatPercentage: vatPercentage,
+                vatIncluded: storeSettings?.vatIncludedInPrice || false,
+                currency: storeSettings?.currency || 'EUR',
                 shippingAddress: parsedShippingAddress || {}, 
             }
         );

@@ -1,4 +1,4 @@
-// app/shop/checkout/page.jsx
+// @/app/shop/checkout/page.jsx
 "use client"
 
 import { useEffect, useState } from 'react';
@@ -20,9 +20,12 @@ const Checkout = () => {
     const [stripeOptions, setStripeOptions] = useState(null);
     const [shippingCost, setShippingCost] = useState(5.99);
     const [selectedShippingMethod, setSelectedShippingMethod] = useState(null);
+    const [storeSettings, setStoreSettings] = useState(null);
+    const [loading, setLoading] = useState(true);
 
-    const FREE_SHIPPING_THRESHOLD = 50;
-    const isEligibleForFreeShipping = cartTotal >= FREE_SHIPPING_THRESHOLD;
+    // Use store settings for free shipping threshold
+    const FREE_SHIPPING_THRESHOLD = storeSettings?.freeShippingThreshold || 50;
+    const isEligibleForFreeShipping = storeSettings?.freeShippingEnabled && cartTotal >= FREE_SHIPPING_THRESHOLD;
 
     // Calculate shipping cost based on free shipping eligibility
     const calculateShippingCost = () => {
@@ -59,13 +62,32 @@ const Checkout = () => {
         setShippingCost(newShippingCost);
     }, [cartTotal, isEligibleForFreeShipping, selectedShippingMethod]);
 
+    // Fetch store settings
+    const fetchStoreSettings = async () => {
+        try {
+            const response = await fetch('/api/store/settings');
+            const result = await response.json();
+            if (result.success) {
+                setStoreSettings(result.data);
+            }
+        } catch (error) {
+            console.error('Failed to fetch store settings:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchStoreSettings();
+    }, []);
+
     useEffect(() => {
         // Set up Stripe options when cart total or shipping changes
-        if (cartTotal > 0) {
+        if (cartTotal > 0 && storeSettings) {
             setStripeOptions({
                 mode: 'payment',
                 amount: Math.round(totalPrice * 100), // Convert to cents
-                currency: 'eur',
+                currency: (storeSettings?.currency || 'EUR').toLowerCase(),
                 appearance: {
                     theme: 'stripe',
                     variables: {
@@ -80,7 +102,17 @@ const Checkout = () => {
                 payment_method_types: ['card'],
             });
         }
-    }, [cartTotal, totalPrice]);
+    }, [cartTotal, totalPrice, storeSettings]);
+
+    if (loading) {
+        return (
+            <div className="section">
+                <div className="flex items-center justify-center min-h-[400px]">
+                    <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <>
@@ -141,6 +173,7 @@ const Checkout = () => {
                                                 onShippingUpdate={handleShippingUpdate}
                                                 selectedShippingMethod={selectedShippingMethod}
                                                 isEligibleForFreeShipping={isEligibleForFreeShipping}
+                                                storeSettings={storeSettings}
                                             />
                                         </Elements>
                                     )}
@@ -182,7 +215,7 @@ const Checkout = () => {
                                                     </p>
                                                 </div>
                                                 <div className="text-right">
-                                                    <p className="font-semibold">€{(item.price * item.quantity).toFixed(2)}</p>
+                                                    <p className="font-semibold">{storeSettings?.currency === 'USD' ? '$' : '€'}{(item.price * item.quantity).toFixed(2)}</p>
                                                 </div>
                                             </motion.div>
                                         ))}
@@ -192,7 +225,7 @@ const Checkout = () => {
                                     <div className="border-t border-gray-200 pt-4 space-y-3">
                                         <div className="flex justify-between text-gray-600">
                                             <span>{t('subtotal')}</span>
-                                            <span>€{cartTotal.toFixed(2)}</span>
+                                            <span>{storeSettings?.currency === 'USD' ? '$' : '€'}{cartTotal.toFixed(2)}</span>
                                         </div>
                                         <div className="flex justify-between text-gray-600">
                                             <span className="flex items-center">
@@ -206,7 +239,7 @@ const Checkout = () => {
                                                     </>
                                                 ) : (
                                                     selectedShippingMethod ? (
-                                                        <>€{finalShippingCost.toFixed(2)}</>
+                                                        <>{storeSettings?.currency === 'USD' ? '$' : '€'}{finalShippingCost.toFixed(2)}</>
                                                     ) : (
                                                         <>-</>
                                                     )
@@ -221,14 +254,16 @@ const Checkout = () => {
                                         )}
 
                                         <div className="flex justify-between text-gray-600">
-                                            <span>TVA (23%)</span>
-                                            <span className="text-green-600 font-semibold">Inclus</span>
+                                            <span>TVA ({storeSettings?.vatPercentage || 20}%)</span>
+                                            <span className="text-green-600 font-semibold">
+                                                {storeSettings?.vatIncludedInPrice ? 'Inclus' : 'Exclu'}
+                                            </span>
                                         </div>
 
                                         <div
                                             className="flex justify-between text-lg font-bold border-t border-gray-200 pt-3">
                                             <span>{t('total')}</span>
-                                            <span>€{totalPrice}</span>
+                                            <span>{storeSettings?.currency === 'USD' ? '$' : '€'}{totalPrice}</span>
                                         </div>
 
                                         {/* Savings indicator (to do) */}

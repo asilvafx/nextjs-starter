@@ -1,3 +1,5 @@
+// @/app/shop/cart/page.jsx
+
 "use client"
 
 import { useCart } from 'react-use-cart';
@@ -8,6 +10,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { FaPlus, FaMinus, FaTrash, FaShoppingBag } from 'react-icons/fa';
 import FreeShippingProgressBar from '../components/FreeShippingProgressBar';
 import { Button } from '@/components/ui/button';
+import { useState, useEffect } from 'react';
 
 const Cart = () => {
     const t = useTranslations('Cart');
@@ -20,8 +23,26 @@ const Cart = () => {
         emptyCart
     } = useCart();
 
-    const FREE_SHIPPING_THRESHOLD = 50;
-    const isEligibleForFreeShipping = cartTotal >= FREE_SHIPPING_THRESHOLD;
+    const [storeSettings, setStoreSettings] = useState(null);
+
+    // Fetch store settings for consistent pricing and shipping
+    useEffect(() => {
+        const fetchStoreSettings = async () => {
+            try {
+                const response = await fetch('/api/store/settings');
+                const result = await response.json();
+                if (result.success) {
+                    setStoreSettings(result.data);
+                }
+            } catch (error) {
+                console.error('Failed to fetch store settings:', error);
+            }
+        };
+        fetchStoreSettings();
+    }, []);
+
+    const FREE_SHIPPING_THRESHOLD = storeSettings?.freeShippingThreshold || 50;
+    const isEligibleForFreeShipping = storeSettings?.freeShippingEnabled && cartTotal >= FREE_SHIPPING_THRESHOLD;
     const totalPrice = cartTotal.toFixed(2);
 
     const handleQuantityIncrease = (id, currentQuantity) => {
@@ -135,7 +156,9 @@ const Cart = () => {
                                                         </h3>
                                                         <div className="mt-1 space-y-1">
                                                             <p className="text-sm text-gray-500">
-                                                                {t('unitPrice', { price: item.price.toFixed(2) })}
+                                                                                                            <p className="text-sm text-gray-500">
+                                                {t('unitPrice', { price: `${storeSettings?.currency === 'USD' ? '$' : '€'}${item.price.toFixed(2)}` })}
+                                            </p>
                                                             </p>
                                                         </div>
                                                     </div>
@@ -165,7 +188,7 @@ const Cart = () => {
                                                     {/* Price & Remove */}
                                                     <div className="w-full md:w-auto flex items-center md:items-end justify-between md:justify-center flex-row md:flex-col text-right py-2">
                                                         <span className="text-lg font-bold text-gray-900 mb-2">
-                                                            €{(item.price * item.quantity).toFixed(2)}
+                                                            {storeSettings?.currency === 'USD' ? '$' : '€'}{(item.price * item.quantity).toFixed(2)}
                                                         </span>
                                                         <span
                                                             onClick={() => handleRemoveItem(item.id)}
@@ -202,7 +225,7 @@ const Cart = () => {
                                     <div className="space-y-3 mb-6">
                                         <div className="flex justify-between text-gray-600">
                                             <span>{totalItems} {t('articles')}</span>
-                                            <span>€{cartTotal.toFixed(2)}</span>
+                                            <span>{storeSettings?.currency === 'USD' ? '$' : '€'}{cartTotal.toFixed(2)}</span>
                                         </div>
                                         <div className="flex justify-between text-gray-600">
                                             <span className="flex items-center">
@@ -219,13 +242,15 @@ const Cart = () => {
                                             </span>
                                         </div>
                                         <div className="flex justify-between text-gray-600">
-                                            <span>TVA (23%)</span>
-                                            <span className="text-green-600 font-semibold">Inclus</span>
+                                            <span>TVA ({storeSettings?.vatPercentage || 20}%)</span>
+                                            <span className="text-green-600 font-semibold">
+                                                {storeSettings?.vatIncludedInPrice ? 'Inclus' : 'Exclu'}
+                                            </span>
                                         </div>
                                         <div className="border-t border-gray-200 pt-3">
                                             <div className="flex justify-between text-xl font-bold">
                                                 <span>{t('subtotal')}</span>
-                                                <span>€{totalPrice}</span>
+                                                <span>{storeSettings?.currency === 'USD' ? '$' : '€'}{totalPrice}</span>
                                             </div>
                                         </div>
 

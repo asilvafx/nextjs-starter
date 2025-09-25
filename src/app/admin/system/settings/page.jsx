@@ -206,6 +206,16 @@ export default function SystemSettingsPage() {
         setSettingsId(result.id);
         toast.success("Settings created successfully");
       }
+      
+      // Clear Web3 config cache when settings change
+      try {
+        await fetch('/api/web3/cache', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' }
+        });
+      } catch (error) {
+        console.error('Failed to clear Web3 cache:', error);
+      }
     } catch (error) {
       console.error("Error saving settings:", error);
       toast.error(error.message || "Failed to save settings");
@@ -1373,11 +1383,14 @@ function Web3Tab({ form, isSubmitting }) {
 // Skeleton Loading Component
 function SystemSettingsSkeleton() {
   return (
-    <div className="space-y-6 p-4">
+    <ScrollArea className="h-[calc(100vh-80px)]">
+    <div className="space-y-4">
       <div className="flex justify-between items-center">
         <div>
-          <Skeleton className="h-8 w-48" />
-          <Skeleton className="h-4 w-64 mt-2" />
+          <h1 className="text-3xl font-bold">System Settings</h1>
+          <p className="text-muted-foreground">
+            Configure your application settings
+          </p>
         </div>
       </div>
 
@@ -1417,5 +1430,6 @@ function SystemSettingsSkeleton() {
         </div>
       </div>
     </div>
+    </ScrollArea>
   );
 }

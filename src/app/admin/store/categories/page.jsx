@@ -1,3 +1,5 @@
+// @/app/admin/store/categories/page.jsx
+
 "use client";
 
 import { useEffect, useState } from "react";
@@ -22,6 +24,7 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
 import { Plus, Pencil, Trash2 } from "lucide-react";
+import { TableSkeleton } from "@/components/ui/skeleton";
 
 const initialFormData = {
   name: "",
@@ -200,25 +203,22 @@ export default function CategoriesPage() {
         </Dialog>
       </div>
 
-      <ScrollArea className="h-[calc(100vh-250px)]">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Name</TableHead>
-              <TableHead>Slug</TableHead>
-              <TableHead>Parent Category</TableHead>
-              <TableHead>Created At</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {loading ? (
+      {loading ? (
+        <TableSkeleton columns={5} rows={5} />
+      ) : (
+        <ScrollArea className="h-[calc(100vh-250px)]">
+          <Table>
+            <TableHeader>
               <TableRow>
-                <TableCell colSpan={5} className="text-center">
-                  Loading...
-                </TableCell>
+                <TableHead>Name</TableHead>
+                <TableHead>Slug</TableHead>
+                <TableHead>Parent Category</TableHead>
+                <TableHead>Created At</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
               </TableRow>
-            ) : categories.length === 0 ? (
+            </TableHeader>
+            <TableBody>
+              {categories.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={5} className="text-center">
                   No categories found
@@ -264,9 +264,10 @@ export default function CategoriesPage() {
                 </TableRow>
               ))
             )}
-          </TableBody>
-        </Table>
-      </ScrollArea>
+            </TableBody>
+          </Table>
+        </ScrollArea>
+      )}
     </div>
   );
 }

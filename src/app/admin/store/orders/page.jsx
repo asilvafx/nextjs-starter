@@ -1,3 +1,5 @@
+// @/app/admin/store/orders/page.jsx
+
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
@@ -30,6 +32,14 @@ import {
   Plus,
   Pencil,
   Printer,
+  FileText,
+  Download,
+  Send,
+  X,
+  User,
+  Truck,
+  CreditCard,
+  Info,
 } from "lucide-react";
 import {
   Select,
@@ -40,7 +50,11 @@ import {
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
-import {TableSkeleton} from "@/components/ui/skeleton"; 
+import {TableSkeleton} from "@/components/ui/skeleton";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
+import ConfirmationDialog from "@/components/ui/confirmation-dialog";
+import { generatePDF } from "@/utils/generatePDF"; 
 
 
 const ORDER_STATUS = [
@@ -105,11 +119,31 @@ export default function OrdersPage() {
   const [formData, setFormData] = useState(initialFormData);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
+  const [storeSettings, setStoreSettings] = useState(null);
+  const [isStatusDialogOpen, setIsStatusDialogOpen] = useState(false);
+  const [statusChangeData, setStatusChangeData] = useState(null);
+  const [sendEmailNotification, setSendEmailNotification] = useState(true);
+  const [trackingNumber, setTrackingNumber] = useState("");
+  const [isInvoiceDialogOpen, setIsInvoiceDialogOpen] = useState(false);
+  const [selectedOrderForInvoice, setSelectedOrderForInvoice] = useState(null);
+  const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
+
+  const fetchStoreSettings = async () => {
+    try {
+      const response = await fetch('/api/store/settings');
+      const result = await response.json();
+      if (result.success) {
+        setStoreSettings(result.data);
+      }
+    } catch (error) {
+      console.error('Failed to fetch store settings:', error);
+    }
+  };
 
   const fetchOrders = async () => {
     try {
       setLoading(true);
-      const response = await getAll("orders");
+      const response = await getAll("orders", {limit: 0});
       if (response.success) {
         setOrders(response.data);
         setAllOrders(response.data);
@@ -123,7 +157,7 @@ export default function OrdersPage() {
 
   const fetchCustomers = async () => {
     try {
-      const response = await getAll("customers");
+      const response = await getAll("customers", {limit: 0});
       if (response.success) {
         setCustomers(response.data);
       }
@@ -134,7 +168,7 @@ export default function OrdersPage() {
 
   const fetchCatalog = async () => {
     try {
-      const response = await getAll("catalog");
+      const response = await getAll("catalog", {limit: 0});
       if (response.success) {
         setCatalog(response.data);
       }
@@ -144,6 +178,7 @@ export default function OrdersPage() {
   };
 
   useEffect(() => {
+    fetchStoreSettings();
     fetchOrders();
     fetchCustomers();
     fetchCatalog();
@@ -291,51 +326,120 @@ export default function OrdersPage() {
     }
   };
 
-  const handleStatusChange = async (orderId, newStatus) => {
+  const handleStatusChangeRequest = (orderId, newStatus) => { 
+    
+    const order = allOrders.find(o => o.id === orderId);
+    if (!order) {
+      console.error('Order not found:', orderId);
+      toast.error('Order not found');
+      return;
+    }
+ 
+    setStatusChangeData({ orderId, newStatus, order });
+    setTrackingNumber(order.tracking || ""); // Pre-fill existing tracking number
+    setIsStatusDialogOpen(true);
+  };
+
+  const confirmStatusChange = async () => {
+    if (!statusChangeData) return;
+
     try {
-      const order = allOrders.find(o => o.id === orderId);
-      if (!order) {
-        throw new Error('Order not found');
+      const { orderId, newStatus, order } = statusChangeData;
+ 
+
+      // Prepare update data with tracking number if provided
+      const updateData = { status: newStatus };
+      if (trackingNumber.trim()) {
+        updateData.tracking = trackingNumber.trim();
       }
 
-      // Update order status
-      await update(orderId, { status: newStatus }, "orders");
+      // Update order status and tracking
+      const updateResponse = await update(orderId, updateData, "orders");
+      
+      if (!updateResponse.id) { 
+        throw new Error('Failed to update order status in database');
+      }
 
-      // Prepare email data if status changed
-      const emailPayload = {
-        type: 'order_status_update',
-        email: order.customer.email,
-        customerName: `${order.customer.firstName} ${order.customer.lastName}`.trim(),
-        orderId: order.id,
-        orderDate: order.createdAt,
-        items: order.items,
-        subtotal: order.subtotal,
-        shippingCost: order.shippingCost,
-        total: order.total,
-        shippingAddress: {
-          street: order.customer.streetAddress,
-          unit: order.customer.apartmentUnit,
-          city: order.customer.city,
-          state: order.customer.state,
-          zip: order.customer.zipCode,
-          country: order.customer.country,
-        },
-        status: newStatus
-      };
+      // Send email notification if requested
+      if (sendEmailNotification) {
+        try {
+          const emailPayload = {
+            type: 'order_status_update',
+            email: order.customer.email,
+            customerName: `${order.customer.firstName} ${order.customer.lastName}`.trim(),
+            orderId: order.id,
+            orderDate: order.createdAt,
+            items: order.items,
+            subtotal: order.subtotal,
+            shippingCost: order.shippingCost,
+            total: order.total,
+            shippingAddress: {
+              street: order.customer.streetAddress,
+              unit: order.customer.apartmentUnit,
+              city: order.customer.city,
+              state: order.customer.state,
+              zip: order.customer.zipCode,
+              country: order.customer.country,
+            },
+            status: newStatus === 'shipped' ? 'in_transit' : newStatus,
+            trackingNumber: trackingNumber.trim() || undefined,
+            trackingUrl: trackingNumber.trim() ? generateTrackingUrl(trackingNumber.trim()) : undefined
+          };
 
-      // Send status update email using consolidated endpoint
-      await fetch('/api/email', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(emailPayload),
-      });
+          const emailResponse = await fetch('/api/email', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(emailPayload),
+          });
 
-      toast.success("Order status updated successfully");
+          if (!emailResponse.ok) {
+            console.error('Failed to send notification email');
+            toast.warning("Order updated but email notification failed");
+          } else {
+            toast.success("Order status updated and customer notified");
+          }
+        } catch (emailError) {
+          console.error('Email notification error:', emailError);
+          toast.warning("Order updated but email notification failed");
+        }
+      } else {
+        toast.success("Order status updated successfully");
+      }
+
+      // Refresh orders and close dialog
       fetchOrders();
+      setIsStatusDialogOpen(false);
+      setStatusChangeData(null);
+      setTrackingNumber("");
     } catch (error) {
       console.error('Error updating order status:', error);
       toast.error("Failed to update order status");
     }
+  };
+
+  const handleGenerateInvoice = async (order) => {
+    setIsGeneratingPDF(true);
+    try {
+      await generatePDF(order, storeSettings);
+      toast.success("Invoice PDF generated successfully");
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      toast.error("Failed to generate invoice");
+    } finally {
+      setIsGeneratingPDF(false);
+    }
+  };
+
+  const openInvoiceDialog = (order) => {
+    setSelectedOrderForInvoice(order);
+    setIsInvoiceDialogOpen(true);
+  };
+
+  const generateTrackingUrl = (trackingNumber) => { 
+    const tracking = trackingNumber.toUpperCase();
+   
+    // Default: Generic tracking search
+    return `https://parcelsapp.com/tracking/${encodeURIComponent(tracking)}`;
   };
 
   const formatDate = (dateString) => {
@@ -343,9 +447,12 @@ export default function OrdersPage() {
   };
 
   const formatPrice = (amount) => {
-    return new Intl.NumberFormat("en-US", {
+    const currency = storeSettings?.currency || 'EUR';
+    const locale = currency === 'EUR' ? 'fr-FR' : currency === 'USD' ? 'en-US' : 'en-GB';
+    
+    return new Intl.NumberFormat(locale, {
       style: "currency",
-      currency: "USD",
+      currency: currency,
     }).format(amount);
   };
 
@@ -429,50 +536,51 @@ export default function OrdersPage() {
       </div>
 
       <ScrollArea className="h-[calc(100vh-250px)]">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead
-                className="cursor-pointer"
-                onClick={() => handleSort("id")}
-              >
-                <div className="flex items-center">
-                  Order ID
-                  <ArrowUpDown className="ml-2 h-4 w-4" />
-                </div>
-              </TableHead>
-              <TableHead
-                className="cursor-pointer"
-                onClick={() => handleSort("customer.name")}
-              >
-                <div className="flex items-center">
-                  Customer
-                  <ArrowUpDown className="ml-2 h-4 w-4" />
-                </div>
-              </TableHead>
-              <TableHead
-                className="cursor-pointer"
-                onClick={() => handleSort("total")}
-              >
-                <div className="flex items-center">
-                  Total
-                  <ArrowUpDown className="ml-2 h-4 w-4" />
-                </div>
-              </TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Payment</TableHead>
-              <TableHead
-                className="cursor-pointer"
-                onClick={() => handleSort("createdAt")}
-              >
-                <div className="flex items-center">
-                  Date
-                  <ArrowUpDown className="ml-2 h-4 w-4" />
-                </div>
-              </TableHead>
-              <TableHead className="text-right">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
+        <div className="rounded-md border">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead
+                  className="cursor-pointer"
+                  onClick={() => handleSort("id")}
+                >
+                  <div className="flex items-center">
+                    Order ID
+                    <ArrowUpDown className="ml-2 h-4 w-4" />
+                  </div>
+                </TableHead>
+                <TableHead
+                  className="cursor-pointer hidden sm:table-cell"
+                  onClick={() => handleSort("customer.name")}
+                >
+                  <div className="flex items-center">
+                    Customer
+                    <ArrowUpDown className="ml-2 h-4 w-4" />
+                  </div>
+                </TableHead>
+                <TableHead
+                  className="cursor-pointer"
+                  onClick={() => handleSort("total")}
+                >
+                  <div className="flex items-center">
+                    Total
+                    <ArrowUpDown className="ml-2 h-4 w-4" />
+                  </div>
+                </TableHead>
+                <TableHead className="hidden md:table-cell">Status</TableHead>
+                <TableHead className="hidden lg:table-cell">Payment</TableHead>
+                <TableHead
+                  className="cursor-pointer hidden xl:table-cell"
+                  onClick={() => handleSort("createdAt")}
+                >
+                  <div className="flex items-center">
+                    Date
+                    <ArrowUpDown className="ml-2 h-4 w-4" />
+                  </div>
+                </TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
           <TableBody>
             {loading ? (
               <TableRow>
@@ -489,20 +597,41 @@ export default function OrdersPage() {
             ) : (
               filteredOrders.map((order) => (
                 <TableRow key={order.id}>
-                  <TableCell className="font-medium">{order.id}</TableCell>
-                  <TableCell>
+                  <TableCell className="font-medium">
+                    <div className="flex flex-col">
+                      <span className="font-semibold truncate">{order.id}</span>
+                      <div className="sm:hidden text-xs text-muted-foreground">
+                        {`${order.customer.firstName} ${order.customer.lastName}`.trim()}
+                      </div>
+                    </div>
+                  </TableCell>
+                  <TableCell className="hidden sm:table-cell">
                     <div>
-                      <div>{`${order.customer.firstName} ${order.customer.lastName}`.trim()}</div>
-                      <div className="text-sm text-muted-foreground">
+                      <div className="font-medium truncate">{`${order.customer.firstName} ${order.customer.lastName}`.trim()}</div>
+                      <div className="text-sm text-muted-foreground truncate">
                         {order.customer.email}
                       </div>
                     </div>
                   </TableCell>
-                  <TableCell>{formatPrice(order.total)}</TableCell>
                   <TableCell>
+                    <div className="flex flex-col">
+                      <span className="font-semibold">{formatPrice(order.total)}</span>
+                      <div className="md:hidden">
+                        <Badge variant={
+                          order.status === "delivered" ? "default" :
+                          order.status === "cancelled" ? "destructive" :
+                          order.status === "shipped" ? "secondary" :
+                          order.status === "processing" ? "outline" : "outline"
+                        }>
+                          {ORDER_STATUS.find(s => s.value === order.status)?.label}
+                        </Badge>
+                      </div>
+                    </div>
+                  </TableCell>
+                  <TableCell className="hidden md:table-cell">
                     <Select 
                       value={order.status}
-                      onValueChange={(value) => handleStatusChange(order.id, value)}
+                      onValueChange={(value) => handleStatusChangeRequest(order.id, value)}
                     >
                       <SelectTrigger 
                         className={`h-8 ${
@@ -530,103 +659,216 @@ export default function OrdersPage() {
                       </SelectContent>
                     </Select>
                   </TableCell>
-                  <TableCell>
-                    <span
-                      className={`px-2 py-1 rounded text-sm ${
-                        order.paymentStatus === "paid"
-                          ? "bg-green-100 text-green-800"
-                          : order.paymentStatus === "failed"
-                          ? "bg-red-100 text-red-800"
-                          : order.paymentStatus === "refunded"
-                          ? "bg-purple-100 text-purple-800"
-                          : "bg-yellow-100 text-yellow-800"
-                      }`}
+                  <TableCell className="hidden lg:table-cell">
+                    <Badge
+                      variant={
+                        order.paymentStatus === "paid" ? "default" :
+                        order.paymentStatus === "failed" ? "destructive" :
+                        order.paymentStatus === "refunded" ? "secondary" : "outline"
+                      }
                     >
-                      {order.paymentStatus.charAt(0).toUpperCase() +
-                        order.paymentStatus.slice(1)}
-                    </span>
+                      {order.paymentStatus.charAt(0).toUpperCase() + order.paymentStatus.slice(1)}
+                    </Badge>
                   </TableCell>
-                  <TableCell>{formatDate(order.createdAt)}</TableCell>
+                  <TableCell className="hidden xl:table-cell text-sm text-muted-foreground">
+                    {formatDate(order.createdAt)}
+                  </TableCell>
                   <TableCell className="text-right">
-                    <Dialog open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
-                      <DialogTrigger asChild>
-                        <Button
-                          variant="outline"
-                          size="icon"
-                          onClick={() => {
-                            setSelectedOrder(order);
-                            setIsDetailsOpen(true);
-                          }}
-                        >
-                          <Eye className="w-4 h-4" />
-                        </Button>
-                      </DialogTrigger>
-                      <DialogContent className="max-w-3xl">
+                    <div className="flex gap-1 justify-end">
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={() => openInvoiceDialog(order)}
+                      >
+                        <FileText className="w-4 h-4" />
+                      </Button>
+                      <Dialog open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
+                        <DialogTrigger asChild>
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            onClick={() => {
+                              setSelectedOrder(order);
+                              setIsDetailsOpen(true);
+                            }}
+                          >
+                            <Eye className="w-4 h-4" />
+                          </Button>
+                        </DialogTrigger>
+                      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
                         <DialogHeader>
-                          <DialogTitle>Order Details</DialogTitle>
+                          <DialogTitle className="text-xl font-bold">Order Details #{selectedOrder?.id}</DialogTitle>
                         </DialogHeader>
                         {selectedOrder && (
-                          <div className="space-y-4">
-                            <div className="grid grid-cols-2 gap-4">
-                              <div>
-                                <h3 className="font-semibold">Customer Details</h3>
-                                <p>{selectedOrder.customer.name}</p>
-                                <p>{selectedOrder.customer.email}</p>
-                              </div>
-                              <div>
-                                <h3 className="font-semibold">Order Info</h3>
-                                <p>Order ID: {selectedOrder.id}</p>
-                                <p>Date: {formatDate(selectedOrder.createdAt)}</p>
-                              </div>
-                            </div>
-                            <div>
-                              <h3 className="font-semibold mb-2">Items</h3>
-                              <Table>
-                                <TableHeader>
-                                  <TableRow>
-                                    <TableHead>Product</TableHead>
-                                    <TableHead>Quantity</TableHead>
-                                    <TableHead>Price</TableHead>
-                                    <TableHead>Total</TableHead>
-                                  </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                  {selectedOrder.items.map((item, index) => (
-                                    <TableRow key={index}>
-                                      <TableCell>{item.name}</TableCell>
-                                      <TableCell>{item.quantity}</TableCell>
-                                      <TableCell>
-                                        {formatPrice(item.price)}
-                                      </TableCell>
-                                      <TableCell>
-                                        {formatPrice(item.price * item.quantity)}
-                                      </TableCell>
-                                    </TableRow>
-                                  ))}
-                                  <TableRow>
-                                    <TableCell
-                                      colSpan={3}
-                                      className="text-right font-semibold"
-                                    >
-                                      Total:
-                                    </TableCell>
-                                    <TableCell className="font-semibold">
-                                      {formatPrice(selectedOrder.total)}
-                                    </TableCell>
-                                  </TableRow>
-                                </TableBody>
-                              </Table>
-                            </div>
-                          </div>
+                          <Tabs defaultValue="customer" className="w-full">
+                            <TabsList className="grid w-full grid-cols-4">
+                              <TabsTrigger value="customer" className="flex items-center gap-2">
+                                <User className="h-4 w-4" />
+                                Customer
+                              </TabsTrigger>
+                              <TabsTrigger value="shipping" className="flex items-center gap-2">
+                                <Truck className="h-4 w-4" />
+                                Shipping
+                              </TabsTrigger>
+                              <TabsTrigger value="payment" className="flex items-center gap-2">
+                                <CreditCard className="h-4 w-4" />
+                                Payment
+                              </TabsTrigger>
+                              <TabsTrigger value="status" className="flex items-center gap-2">
+                                <Info className="h-4 w-4" />
+                                Status
+                              </TabsTrigger>
+                            </TabsList>
+                            
+                            <TabsContent value="customer" className="space-y-4 mt-4">
+                              <Card>
+                                <CardHeader>
+                                  <h3 className="font-semibold">Customer Information</h3>
+                                </CardHeader>
+                                <CardContent className="grid gap-3">
+                                  <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                      <label className="text-sm font-medium text-gray-500">Name</label>
+                                      <p className="text-sm">{`${selectedOrder.customer.firstName} ${selectedOrder.customer.lastName}`.trim()}</p>
+                                    </div>
+                                    <div>
+                                      <label className="text-sm font-medium text-gray-500">Email</label>
+                                      <p className="text-sm">{selectedOrder.customer.email}</p>
+                                    </div>
+                                  </div>
+                                  {selectedOrder.customer.phone && (
+                                    <div>
+                                      <label className="text-sm font-medium text-gray-500">Phone</label>
+                                      <p className="text-sm">{selectedOrder.customer.phone}</p>
+                                    </div>
+                                  )}
+                                </CardContent>
+                              </Card>
+                            </TabsContent>
+                            
+                            <TabsContent value="shipping" className="space-y-4 mt-4">
+                              <Card>
+                                <CardHeader>
+                                  <h3 className="font-semibold">Shipping Address</h3>
+                                </CardHeader>
+                                <CardContent className="space-y-2">
+                                  <p className="text-sm">{selectedOrder.customer.streetAddress}</p>
+                                  {selectedOrder.customer.apartmentUnit && (
+                                    <p className="text-sm">{selectedOrder.customer.apartmentUnit}</p>
+                                  )}
+                                  <p className="text-sm">{selectedOrder.customer.city}, {selectedOrder.customer.state} {selectedOrder.customer.zipCode}</p>
+                                  <p className="text-sm font-medium">{selectedOrder.customer.country}</p>
+                                  {selectedOrder.deliveryNotes && (
+                                    <div className="mt-3 pt-3 border-t">
+                                      <label className="text-sm font-medium text-gray-500">Delivery Notes</label>
+                                      <p className="text-sm">{selectedOrder.deliveryNotes}</p>
+                                    </div>
+                                  )}
+                                </CardContent>
+                              </Card>
+                            </TabsContent>
+                            
+                            <TabsContent value="payment" className="space-y-4 mt-4">
+                              <Card>
+                                <CardHeader>
+                                  <h3 className="font-semibold">Payment Details</h3>
+                                </CardHeader>
+                                <CardContent className="space-y-4">
+                                  <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                      <label className="text-sm font-medium text-gray-500">Payment Method</label>
+                                      <p className="text-sm">{selectedOrder.paymentMethod || selectedOrder.method || 'Card'}</p>
+                                    </div>
+                                    <div>
+                                      <label className="text-sm font-medium text-gray-500">Payment Status</label>
+                                      <Badge variant={selectedOrder.paymentStatus === "paid" ? "default" : "outline"}>
+                                        {selectedOrder.paymentStatus}
+                                      </Badge>
+                                    </div>
+                                  </div>
+                                  
+                                  {/* Order Items */}
+                                  <div className="mt-6">
+                                    <h4 className="font-medium mb-3">Order Items</h4>
+                                    <Table>
+                                      <TableHeader>
+                                        <TableRow>
+                                          <TableHead>Product</TableHead>
+                                          <TableHead>Qty</TableHead>
+                                          <TableHead>Price</TableHead>
+                                          <TableHead className="text-right">Total</TableHead>
+                                        </TableRow>
+                                      </TableHeader>
+                                      <TableBody>
+                                        {selectedOrder.items.map((item, index) => (
+                                          <TableRow key={index}>
+                                            <TableCell className="font-medium">{item.name}</TableCell>
+                                            <TableCell>{item.quantity}</TableCell>
+                                            <TableCell>{formatPrice(item.price)}</TableCell>
+                                            <TableCell className="text-right">{formatPrice(item.price * item.quantity)}</TableCell>
+                                          </TableRow>
+                                        ))}
+                                        <TableRow className="border-t-2">
+                                          <TableCell colSpan={2}></TableCell>
+                                          <TableCell className="font-semibold">Subtotal:</TableCell>
+                                          <TableCell className="text-right font-semibold">{formatPrice(selectedOrder.subtotal)}</TableCell>
+                                        </TableRow>
+                                        <TableRow>
+                                          <TableCell colSpan={2}></TableCell>
+                                          <TableCell className="font-semibold">Shipping:</TableCell>
+                                          <TableCell className="text-right font-semibold">{formatPrice(selectedOrder.shippingCost || 0)}</TableCell>
+                                        </TableRow>
+                                        <TableRow className="border-t">
+                                          <TableCell colSpan={2}></TableCell>
+                                          <TableCell className="font-bold">Total:</TableCell>
+                                          <TableCell className="text-right font-bold text-lg">{formatPrice(selectedOrder.total)}</TableCell>
+                                        </TableRow>
+                                      </TableBody>
+                                    </Table>
+                                  </div>
+                                </CardContent>
+                              </Card>
+                            </TabsContent>
+                            
+                            <TabsContent value="status" className="space-y-4 mt-4">
+                              <Card>
+                                <CardHeader>
+                                  <h3 className="font-semibold">Order Status & Timeline</h3>
+                                </CardHeader>
+                                <CardContent className="space-y-4">
+                                  <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                      <label className="text-sm font-medium text-gray-500">Current Status</label>
+                                      <Badge variant={selectedOrder.status === "delivered" ? "default" : "outline"} className="mt-1">
+                                        {ORDER_STATUS.find(s => s.value === selectedOrder.status)?.label}
+                                      </Badge>
+                                    </div>
+                                    <div>
+                                      <label className="text-sm font-medium text-gray-500">Order Date</label>
+                                      <p className="text-sm">{formatDate(selectedOrder.createdAt)}</p>
+                                    </div>
+                                  </div>
+                                  {selectedOrder.tracking && (
+                                    <div>
+                                      <label className="text-sm font-medium text-gray-500">Tracking Number</label>
+                                      <p className="text-sm font-mono">{selectedOrder.tracking}</p>
+                                    </div>
+                                  )}
+                                </CardContent>
+                              </Card>
+                            </TabsContent>
+                          </Tabs>
                         )}
                       </DialogContent>
                     </Dialog>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))
             )}
           </TableBody>
         </Table>
+        </div>
       </ScrollArea>
 
       {/* Create Order Dialog */}
@@ -1090,6 +1332,182 @@ export default function OrdersPage() {
               </Button>
             </div>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Status Change Confirmation Dialog */}
+      <Dialog open={isStatusDialogOpen} onOpenChange={(open) => {
+        if (!open) {
+          setIsStatusDialogOpen(false);
+          setStatusChangeData(null);
+          setTrackingNumber("");
+        }
+      }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Confirm Status Change</DialogTitle>
+            <DialogDescription>
+              {statusChangeData ? 
+                `Are you sure you want to change order ${statusChangeData.orderId} status to "${ORDER_STATUS.find(s => s.value === statusChangeData.newStatus)?.label}"?` 
+                : ''
+              }
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            {/* Tracking Number Input */}
+            <div className="space-y-2">
+              <label htmlFor="trackingNumber" className="text-sm font-medium">
+                Tracking Number <span className="text-gray-400">(optional)</span>
+              </label>
+              <Input
+                id="trackingNumber"
+                placeholder="Enter tracking number..."
+                value={trackingNumber}
+                onChange={(e) => setTrackingNumber(e.target.value)}
+                className="w-full"
+              />
+              {statusChangeData?.newStatus === 'shipped' && (
+                <p className="text-xs text-gray-500">
+                  💡 Adding a tracking number is recommended when marking orders as shipped
+                </p>
+              )}
+            </div>
+
+            {/* Email Notification Checkbox */}
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="sendEmailStatus"
+                checked={sendEmailNotification}
+                onCheckedChange={setSendEmailNotification}
+              />
+              <label htmlFor="sendEmailStatus" className="text-sm font-medium">
+                Send email notification to customer
+                {trackingNumber.trim() && sendEmailNotification && (
+                  <span className="text-xs text-gray-500 block">
+                    (will include tracking number)
+                  </span>
+                )}
+              </label>
+            </div>
+            
+            <div className="flex justify-end gap-3">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setIsStatusDialogOpen(false);
+                  setStatusChangeData(null);
+                  setTrackingNumber("");
+                }}
+              >
+                Cancel
+              </Button>
+              <Button onClick={confirmStatusChange}>
+                Update Status
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Invoice Preview Dialog */}
+      <Dialog open={isInvoiceDialogOpen} onOpenChange={setIsInvoiceDialogOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FileText className="h-5 w-5" />
+              Invoice Preview - Order #{selectedOrderForInvoice?.id}
+            </DialogTitle>
+          </DialogHeader>
+          {selectedOrderForInvoice && (
+            <div className="space-y-6">
+              {/* Invoice Preview Area */}
+              <div className="bg-gray-50 p-6 rounded-lg border-2 border-dashed border-gray-200">
+                <div className="text-center text-gray-500 py-8">
+                  <FileText className="h-16 w-16 mx-auto mb-4 text-gray-400" />
+                  <p className="text-lg font-medium">Invoice Preview</p>
+                  <p className="text-sm">PDF will be generated with your current store settings</p>
+                </div>
+              </div>
+              
+              {/* Invoice Actions */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <Button
+                  variant="outline"
+                  onClick={() => handleGenerateInvoice(selectedOrderForInvoice)}
+                  disabled={isGeneratingPDF}
+                  className="w-full"
+                >
+                  <Download className="h-4 w-4 mr-2" />
+                  {isGeneratingPDF ? 'Generating...' : 'Download PDF'}
+                </Button>
+                
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    handleGenerateInvoice(selectedOrderForInvoice);
+                    // Print logic would go here - opens PDF and triggers print dialog
+                  }}
+                  disabled={isGeneratingPDF}
+                  className="w-full"
+                >
+                  <Printer className="h-4 w-4 mr-2" />
+                  Print Invoice
+                </Button>
+                
+                <Button
+                  variant="outline"
+                  onClick={async () => {
+                    try {
+                      const subject = `Invoice for Order #${selectedOrderForInvoice.id}`;
+                      const body = `Dear ${selectedOrderForInvoice.customer.firstName},\n\nPlease find attached your invoice for order #${selectedOrderForInvoice.id}.\n\nThank you for your business!`;
+                      
+                      // Generate PDF first, then handle email
+                      await handleGenerateInvoice(selectedOrderForInvoice);
+                      
+                      // Create mailto link
+                      const mailtoLink = `mailto:${selectedOrderForInvoice.customer.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+                      window.open(mailtoLink);
+                      
+                      toast.success("Email client opened with invoice details");
+                    } catch (error) {
+                      toast.error("Failed to prepare email");
+                    }
+                  }}
+                  disabled={isGeneratingPDF}
+                  className="w-full"
+                >
+                  <Send className="h-4 w-4 mr-2" />
+                  Email Invoice
+                </Button>
+              </div>
+
+              {/* Invoice Details Summary */}
+              <div className="border-t pt-4">
+                <h4 className="font-medium mb-3">Invoice Details</h4>
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <span className="text-gray-500">Customer:</span>
+                    <p className="font-medium">{`${selectedOrderForInvoice.customer.firstName} ${selectedOrderForInvoice.customer.lastName}`.trim()}</p>
+                  </div>
+                  <div>
+                    <span className="text-gray-500">Total Amount:</span>
+                    <p className="font-medium">{formatPrice(selectedOrderForInvoice.total)}</p>
+                  </div>
+                  <div>
+                    <span className="text-gray-500">Order Date:</span>
+                    <p className="font-medium">{formatDate(selectedOrderForInvoice.createdAt)}</p>
+                  </div>
+                  <div>
+                    <span className="text-gray-500">Status:</span>
+                    <Badge variant={selectedOrderForInvoice.status === "delivered" ? "default" : "outline"}>
+                      {ORDER_STATUS.find(s => s.value === selectedOrderForInvoice.status)?.label}
+                    </Badge>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>

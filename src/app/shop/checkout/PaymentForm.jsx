@@ -1,4 +1,4 @@
-// app/shop/checkout/PaymentForm.jsx
+// @/app/shop/checkout/PaymentForm.jsx
 "use client"
 
 import { useState, useEffect } from 'react';
@@ -16,7 +16,7 @@ import ShippingMethodSelector from './ShippingMethodSelector.jsx';
 import GooglePlacesInput from '@/components/google-places-input';
 import { motion, AnimatePresence } from 'framer-motion';
 
-const PaymentForm = ({ cartTotal, subTotal, shippingCost, onShippingUpdate, selectedShippingMethod, isEligibleForFreeShipping }) => {
+const PaymentForm = ({ cartTotal, subTotal, shippingCost, onShippingUpdate, selectedShippingMethod, isEligibleForFreeShipping, storeSettings }) => {
     const t = useTranslations('Checkout');
     const { data: session } = useSession();
     const stripe = useStripe();
@@ -234,7 +234,7 @@ const PaymentForm = ({ cartTotal, subTotal, shippingCost, onShippingUpdate, sele
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                    currency: 'eur',
+                    currency: (storeSettings?.currency || 'EUR').toLowerCase(),
                     email: emailInput,
                     amount: priceInCents,
                     paymentMethodType: "card"
@@ -297,7 +297,7 @@ const PaymentForm = ({ cartTotal, subTotal, shippingCost, onShippingUpdate, sele
                     subtotal: subTotal,
                     shipping: shippingCost,
                     shipping_method: JSON.stringify(localSelectedShippingMethod),
-                    currency: paymentIntent.currency,
+                    currency: (storeSettings?.currency || paymentIntent.currency),
                     method: paymentIntent.payment_method_types[0],
                     created_at: paymentIntent.created,
                     status: "pending",
@@ -322,7 +322,7 @@ const PaymentForm = ({ cartTotal, subTotal, shippingCost, onShippingUpdate, sele
                         shipping: newOrderData.shipping,
                         totalItems: newOrderData.totalItems,
                         shipping_address: newOrderData.shipping_address,
-                        currency: newOrderData.currency || 'eur',
+                        currency: (storeSettings?.currency?.toLowerCase() || newOrderData.currency || 'eur'),
                         method: newOrderData.method || 'Carte bancaire',
                         status: newOrderData.status || 'Confirmé',
                         created_at: new Date().toISOString(),

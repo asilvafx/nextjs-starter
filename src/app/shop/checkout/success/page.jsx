@@ -1,3 +1,5 @@
+// @/app/shop/checkout/success/page.jsx
+
 "use client"
 
 import { useEffect, useState, useRef } from 'react';

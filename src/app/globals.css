@@ -1,4 +1,4 @@
-@import 'tailwindcss';
+@import 'tailwindcss'; 
 @import "tw-animate-css";
 @custom-variant dark (&:where(.dark, .dark *));
 
@@ -137,20 +137,7 @@
     --sidebar-ring: oklch(0.553 0.013 58.071);
 }
 
-@layer base {
-    * {
-        @apply border-border outline-ring/50;
-    }
-    body {
-        @apply bg-background text-foreground;
-    }
-
-    html, body { 
-        -webkit-font-smoothing: antialiased;
-        -moz-osx-font-smoothing: grayscale;
-        font-feature-settings: "liga" 1, "kern" 1;
-    }
-
+@layer base {  
     a, button, .button {
         pointer-events: auto;
         cursor: pointer;

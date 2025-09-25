@@ -4,7 +4,7 @@ import { NextResponse } from 'next/server';
 import DBService from '@/data/rest.db.js';
 import { encryptPassword, generateSalt, validatePassword } from '@/lib/server/crypt';
 import EmailService from '@/lib/server/email';
-import { createWallet, loadConfig } from '@/lib/server/web3';
+import { createWallet, loadWeb3Config, clearWeb3ConfigCache } from '@/lib/server/web3';
 import { v6 as uuidv6 } from 'uuid';
 
 // Force Node.js runtime
@@ -42,7 +42,7 @@ async function handleLogin(email, passwordHash, { client }) {
         let userLoginData = { ...user, client };
 
         try {
-            const web3load = await loadConfig;
+            const web3load = await loadWeb3Config;
             if (web3load?.WEB3_ACTIVE > 0) {
                 const web3user = user.web3_pk || user.web3 || null;
                 if (!web3user) {
@@ -50,14 +50,14 @@ async function handleLogin(email, passwordHash, { client }) {
                     const salt = await generateSalt();
 
                     const web3create = await createWallet();
-                    if (web3create?.web3?.address && web3create?.web3?.privateKey) {
+                    if (web3create?.address && web3create?.privateKey) {
                         // Encrypt web3 private key
 
-                        const encryptResult = await encryptPassword(web3create.web3.privateKey, salt);
+                        const encryptResult = await encryptPassword(web3create.privateKey, salt);
 
                         const web3data = {
                             salt: salt,
-                            public_key: web3create.web3.address,
+                            public_key: web3create.address,
                             private_key: encryptResult
                         };
                         userLoginData = { ...userLoginData, web3: web3data };
@@ -139,19 +139,19 @@ async function handleRegistration(email, passwordHash, { name, client }) {
         };
 
         try {
-            const web3load = await loadConfig;
-            if (web3load?.WEB3_ACTIVE > 0) {
+            const web3load = await loadWeb3Config();
+            if (web3load?.WEB3_ACTIVE) {
                 // Generate salt for web3
                 const web3Salt = await generateSalt();
 
                 const web3create = await createWallet();
-                if (web3create?.web3?.address && web3create?.web3?.privateKey) {
+                if (web3create?.address && web3create?.privateKey) {
                     // Encrypt web3 private key
-                    const web3EncryptResult = await encryptPassword(web3create.web3.privateKey, web3Salt);
+                    const web3EncryptResult = await encryptPassword(web3create.privateKey, web3Salt);
 
                     const web3data = {
                         salt: web3Salt,
-                        public_key: web3create.web3.address,
+                        public_key: web3create.address,
                         private_key: web3EncryptResult
                     };
                     userRegisterData = { ...userRegisterData, web3: web3data };

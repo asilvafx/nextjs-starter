@@ -1,3 +1,5 @@
+// @/app/admin/store/catalog/page.jsx
+
 "use client";
 
 import { useEffect, useState } from "react";
@@ -70,14 +72,16 @@ export default function CatalogPage() {
   const [isOpen, setIsOpen] = useState(false);
   const [editItem, setEditItem] = useState(null);
   const [formData, setFormData] = useState(initialFormData);
+  const [storeSettings, setStoreSettings] = useState(null);
 
   const fetchData = async () => {
     try {
       setLoading(true);
-      const [catalogRes, categoriesRes, collectionsRes] = await Promise.all([
+      const [catalogRes, categoriesRes, collectionsRes, storeRes] = await Promise.all([
         getAll("catalog"),
         getAll("categories"),
         getAll("collections"),
+        fetch('/api/store/settings').then(res => res.json())
       ]);
 
       if (catalogRes.success) {
@@ -88,6 +92,9 @@ export default function CatalogPage() {
       }
       if (collectionsRes.success) {
         setCollections(collectionsRes.data);
+      }
+      if (storeRes.success) {
+        setStoreSettings(storeRes.data);
       }
     } catch (error) {
       toast.error("Failed to fetch data");
@@ -156,12 +163,11 @@ export default function CatalogPage() {
   const handleEdit = (product) => {
     setEditItem(product);
     setFormData({
-      name: product.name,
-      description: product.description,
-      price: product.price,
-      imageUrl: product.imageUrl,
-      categoryId: product.categoryId,
-      inStock: product.inStock,
+      ...product,
+      // Ensure all fields are properly set
+      collections: product.collections || [],
+      images: product.images || [],
+      customAttributes: product.customAttributes || [],
     });
     setIsOpen(true);
   };
@@ -183,9 +189,12 @@ export default function CatalogPage() {
   };
 
   const formatPrice = (price) => {
-    return new Intl.NumberFormat("en-US", {
+    const currency = storeSettings?.currency || 'EUR';
+    const locale = currency === 'EUR' ? 'fr-FR' : currency === 'USD' ? 'en-US' : 'en-GB';
+    
+    return new Intl.NumberFormat(locale, {
       style: "currency",
-      currency: "USD",
+      currency: currency,
     }).format(price);
   };
 

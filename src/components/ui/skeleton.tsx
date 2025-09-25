@@ -19,55 +19,35 @@ function Skeleton({ className, ...props }: React.ComponentProps<"div">) {
   )
 }
 
-function TableSkeleton(): React.ReactElement {
+function TableSkeleton({ columns = 5, rows = 5 }: { columns?: number; rows?: number }): React.ReactElement {
   return (
     <Table>
       <TableHeader>
         <TableRow>
-          <TableHead>
-            <div className="flex items-center justify-center">
-              <Skeleton className="h-4 w-16" />
-            </div>
-          </TableHead>
-          <TableHead>
-            <Skeleton className="h-4 w-16 sm:mx-auto" />
-          </TableHead>
-          <TableHead>
-            <div className="flex items-center justify-center">
-              <Skeleton className="h-4 w-16" />
-            </div>
-          </TableHead>
-          <TableHead>
-            <div className="flex items-center justify-center">
-              <Skeleton className="h-4 w-16" />
-            </div>
-          </TableHead>
-          <TableHead>
-            <Skeleton className="h-4 w-16 sm:ms-auto" />
-          </TableHead>
+          {[...Array(columns)].map((_, index) => (
+            <TableHead key={index}>
+              <div className="flex items-center justify-center">
+                <Skeleton className="h-4 w-16" />
+              </div>
+            </TableHead>
+          ))}
         </TableRow>
       </TableHeader>
       <TableBody>
-        {[...Array(5)].map((_, index) => (
-          <TableRow key={index}>
-            <TableCell>
-              <Skeleton className="h-4 w-26" />
-            </TableCell>
-            <TableCell>
-              <Skeleton className="h-4 w-26" />
-            </TableCell>
-            <TableCell>
-              <Skeleton className="h-6 w-14 sm:mx-auto" />
-            </TableCell>
-            <TableCell>
-              <Skeleton className="h-4 w-24 sm:mx-auto" />
-            </TableCell>
-            <TableCell className="text-right">
-              <div className="flex justify-end gap-2">
-                <Skeleton className="h-8 w-8" />
-                <Skeleton className="h-8 w-8" />
-              </div>
-            </TableCell>
+        {[...Array(rows)].map((_, rowIndex) => (
+          <TableRow key={rowIndex}>
+            {[...Array(columns)].map((_, colIndex) => (
+              <TableCell key={colIndex} className={colIndex === columns - 1 ? "text-right" : ""}>
+                {colIndex === columns - 1 ? (
+                  <div className="flex justify-end gap-2">
+                    <Skeleton className="h-8 w-8" />
+                    <Skeleton className="h-8 w-8" />
+                  </div>
+                ) : (
+                  <Skeleton className="h-4 w-20" />
+                )}
+              </TableCell>
+            ))}
           </TableRow>
         ))}
       </TableBody>

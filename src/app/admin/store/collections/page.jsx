@@ -1,3 +1,5 @@
+// @/app/admin/store/categories/page.jsx
+
 "use client";
 
 import { useEffect, useState } from "react";
@@ -22,6 +24,7 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
 import { Plus, Pencil, Trash2 } from "lucide-react";
+import { TableSkeleton } from "@/components/ui/skeleton";
 
 const initialFormData = {
   name: "",
@@ -50,13 +53,13 @@ export default function CollectionsPage() {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const [collectionsRes, productsRes] = await Promise.all([
+      const [collectionsRes, catalogRes] = await Promise.all([
         getAll("collections"),
-        getAll("products"),
+        getAll("catalog"),
       ]);
       
       if (collectionsRes.success) setCollections(collectionsRes.data);
-      if (productsRes.success) setProducts(productsRes.data);
+      if (catalogRes.success) setProducts(catalogRes.data);
     } catch (error) {
       toast.error("Failed to fetch data");
     } finally {
@@ -193,22 +196,22 @@ export default function CollectionsPage() {
                 />
               </div>
               <div>
-                <div className="font-medium mb-2">Products in Collection</div>
+                <div className="font-medium mb-2">Items in Collection</div>
                 <div className="border rounded-md p-4 max-h-[200px] overflow-y-auto">
-                  {products.map((product) => (
-                    <div key={product.id} className="flex items-center space-x-2">
+                  {products.map((item) => (
+                    <div key={item.id} className="flex items-center space-x-2">
                       <input
                         type="checkbox"
-                        id={`product-${product.id}`}
-                        checked={formData.products.includes(product.id)}
+                        id={`item-${item.id}`}
+                        checked={formData.products.includes(item.id)}
                         onChange={(e) => {
-                          const newProducts = e.target.checked
-                            ? [...formData.products, product.id]
-                            : formData.products.filter((id) => id !== product.id);
-                          setFormData({ ...formData, products: newProducts });
+                          const newItems = e.target.checked
+                            ? [...formData.products, item.id]
+                            : formData.products.filter((id) => id !== item.id);
+                          setFormData({ ...formData, products: newItems });
                         }}
                       />
-                      <label htmlFor={`product-${product.id}`}>{product.name}</label>
+                      <label htmlFor={`item-${item.id}`}>{item.name}</label>
                     </div>
                   ))}
                 </div>
@@ -232,25 +235,22 @@ export default function CollectionsPage() {
         </Dialog>
       </div>
 
-      <ScrollArea className="h-[calc(100vh-250px)]">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Name</TableHead>
-              <TableHead>Products</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Created At</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {loading ? (
+      {loading ? (
+        <TableSkeleton columns={5} rows={5} />
+      ) : (
+        <ScrollArea className="h-[calc(100vh-250px)]">
+          <Table>
+            <TableHeader>
               <TableRow>
-                <TableCell colSpan={5} className="text-center">
-                  Loading...
-                </TableCell>
+                <TableHead>Name</TableHead>
+                <TableHead>Items</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Created At</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
               </TableRow>
-            ) : collections.length === 0 ? (
+            </TableHeader>
+            <TableBody>
+              {collections.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={5} className="text-center">
                   No collections found
@@ -270,7 +270,7 @@ export default function CollectionsPage() {
                     </div>
                   </TableCell>
                   <TableCell>
-                    {collection.products.length} products
+                    {collection.products.length} items
                   </TableCell>
                   <TableCell>
                     <span
@@ -305,9 +305,10 @@ export default function CollectionsPage() {
                 </TableRow>
               ))
             )}
-          </TableBody>
-        </Table>
-      </ScrollArea>
+            </TableBody>
+          </Table>
+        </ScrollArea>
+      )}
     </div>
   );
 }

@@ -1,7 +1,31 @@
 import { jsPDF } from 'jspdf';
 
-export const generatePDF = (order) => {
+export const generatePDF = async (order, storeSettings = null) => {
     const doc = new jsPDF();
+
+    // Fetch store settings if not provided
+    if (!storeSettings) {
+        try {
+            const response = await fetch('/api/store/settings');
+            const result = await response.json();
+            if (result.success) {
+                storeSettings = result.data;
+            }
+        } catch (error) {
+            console.error('Failed to fetch store settings:', error);
+        }
+    }
+
+    // Fallback store settings
+    const defaultSettings = {
+        businessName: 'LOST-FOREVER',
+        address: 'Boutique de vêtements',
+        currency: 'EUR',
+        vatPercentage: 20,
+        vatIncludedInPrice: true
+    };
+
+    const settings = storeSettings || defaultSettings;
 
     // Helper function to safely parse JSON strings
     const parseJSON = (jsonString, fallback = {}) => {
@@ -18,10 +42,13 @@ export const generatePDF = (order) => {
     const items = parseJSON(order.items, []);
 
     // Helper function to format currency
-    const formatCurrency = (amount, currency = 'eur') => {
-        return new Intl.NumberFormat('fr-FR', {
+    const formatCurrency = (amount, currency = null) => {
+        const currencyCode = currency || settings.currency || 'EUR';
+        const locale = currencyCode === 'EUR' ? 'fr-FR' : currencyCode === 'USD' ? 'en-US' : 'en-GB';
+        
+        return new Intl.NumberFormat(locale, {
             style: 'currency',
-            currency: currency.toUpperCase()
+            currency: currencyCode.toUpperCase()
         }).format(amount);
     };
 
@@ -39,12 +66,16 @@ export const generatePDF = (order) => {
     // Company Header
     doc.setFontSize(24);
     doc.setFont(undefined, 'bold');
-    doc.text("LOST-FOREVER", 20, 25);
+    doc.text(settings.businessName || "LOST-FOREVER", 20, 25);
 
     doc.setFontSize(10);
     doc.setFont(undefined, 'normal');
     doc.text("www.lost-forever.com", 20, 32);
-    doc.text("Boutique de vêtements", 20, 37);
+    doc.text(settings.address || "Boutique de vêtements", 20, 37);
+    
+    if (settings.tvaNumber) {
+        doc.text(`TVA: ${settings.tvaNumber}`, 20, 42);
+    }
 
     // Header line
     doc.setLineWidth(1);
@@ -219,8 +250,10 @@ export const generatePDF = (order) => {
     itemsStartY += 8;
 
     // VAT note
-    doc.text(`TVA (20%):`, 130, itemsStartY);
-    doc.text(`Incluse`, 165, itemsStartY);
+    const vatPercentage = settings.vatPercentage || 20;
+    const vatIncluded = settings.vatIncludedInPrice !== false;
+    doc.text(`TVA (${vatPercentage}%):`, 130, itemsStartY);
+    doc.text(vatIncluded ? 'Incluse' : 'Ajoutée', 165, itemsStartY);
     itemsStartY += 12;
 
     // Total line
@@ -262,7 +295,7 @@ export const generatePDF = (order) => {
 
     doc.setFontSize(8);
     doc.setFont(undefined, 'normal');
-    doc.text(`Lost-Forever - Boutique en ligne de vêtements`, 20, itemsStartY);
+    doc.text(`${settings.businessName || 'Lost-Forever'} - ${settings.address || 'Boutique en ligne de vêtements'}`, 20, itemsStartY);
     itemsStartY += 5;
     doc.text(`Pour toute question, contactez-nous à: contact@lost-forever.com`, 20, itemsStartY);
 

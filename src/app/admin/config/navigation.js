@@ -45,7 +45,7 @@ export const navigation = {
       ],
     },
     {
-      title: "Storefront",
+      title: "Store",
       url: "#",
       icon: Store, 
       items: [
@@ -87,15 +87,15 @@ export const navigation = {
       items: [
         {
           title: "Agenda",
-          url: "/admin/planning/agenda",
+          url: "/admin/workspace/agenda",
         },
         {
           title: "Task Board",
-          url: "/admin/planning/tasks",
+          url: "/admin/workspace/tasks",
         },
         {
           title: "Schedule",
-          url: "/admin/planning/schedule",
+          url: "/admin/workspace/schedule",
         },
       ]
     },
@@ -128,11 +128,11 @@ export const navigation = {
       items: [
         {
           title: "Endpoints",
-          url: "/admin/dev/endpoints",
+          url: "/admin/developer/endpoints",
         },
         {
           title: "Create API Key",
-          url: "/admin/dev/endpoints/new-key",
+          url: "/admin/developer/endpoints/new-key",
         },
       ]
     },

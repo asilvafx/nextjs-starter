@@ -64,7 +64,7 @@ const getMailTransporter = async () => {
             nodeMailerConfig.service = serviceMap[settings.emailProvider] || 'gmail';
         }
 
-        mailTransport = nodemailer.createTransporter(nodeMailerConfig);
+        mailTransport = nodemailer.createTransport(nodeMailerConfig);
     }
     return mailTransport;
 };

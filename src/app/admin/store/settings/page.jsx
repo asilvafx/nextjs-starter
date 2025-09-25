@@ -1,3 +1,5 @@
+// @/app/admin/store/settings/page.jsx
+
 "use client";
 
 import { useState, useEffect, useRef } from "react";

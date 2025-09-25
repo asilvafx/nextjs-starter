@@ -41,7 +41,20 @@ export async function POST(request) {
 
             case 'order_status_update':
                 // Handle order status update email
-                const { email: customerEmail, customerName, orderId, orderDate, status, items, subtotal, shippingCost, total, shippingAddress } = body;
+                const { 
+                    email: customerEmail, 
+                    customerName, 
+                    orderId, 
+                    orderDate, 
+                    status, 
+                    items, 
+                    subtotal, 
+                    shippingCost, 
+                    total, 
+                    shippingAddress,
+                    trackingNumber,
+                    trackingUrl 
+                } = body;
                 
                 await EmailService.sendOrderUpdateEmail(
                     customerEmail,
@@ -54,7 +67,9 @@ export async function POST(request) {
                         total,
                         subtotal,
                         shippingCost,
-                        shippingAddress
+                        shippingAddress,
+                        trackingNumber: trackingNumber || null,
+                        trackingUrl: trackingUrl || null
                     }
                 );
                 break;

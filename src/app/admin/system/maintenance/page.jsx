@@ -105,6 +105,7 @@ export default function MaintenancePage() {
   }, []);
 
   return (
+    <ScrollArea className="h-[calc(100vh-80px)]">
     <div className="space-y-4">
       <div className="flex justify-between items-center">
         <div>
@@ -124,6 +125,7 @@ export default function MaintenancePage() {
         formatUptime={formatUptime}
       />
     </div>
+    </ScrollArea>
   );
 }
 
@@ -173,28 +175,36 @@ function ServerInfoTab({ serverInfo, loading, onRefresh, onClearCache, formatByt
         <CardContent className="grid gap-4">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div className="text-center p-4 border rounded-lg">
-              <div className="text-2xl font-bold text-blue-600">
+              <div className="font-bold text-blue-600">
                 {serverInfo.versions.node}
               </div>
-              <div className="text-sm text-muted-foreground">Node.js</div>
+              <div className="text-sm text-muted-foreground">
+                Node.js
+              </div>
             </div>
             <div className="text-center p-4 border rounded-lg">
-              <div className="text-2xl font-bold text-green-600">
+              <div className="font-bold text-blue-600">
                 {serverInfo.versions.next}
               </div>
-              <div className="text-sm text-muted-foreground">Next.js</div>
+              <div className="text-sm text-muted-foreground">
+                Next.js
+              </div>
             </div>
             <div className="text-center p-4 border rounded-lg">
-              <div className="text-2xl font-bold text-cyan-600">
+              <div className="font-bold text-blue-600">
                 {serverInfo.versions.react}
               </div>
-              <div className="text-sm text-muted-foreground">React</div>
+              <div className="text-sm text-muted-foreground">
+                React
+              </div>
             </div>
             <div className="text-center p-4 border rounded-lg">
-              <div className="text-2xl font-bold text-purple-600">
+              <div className="font-bold text-purple-600">
                 {serverInfo.versions.tailwindcss}
               </div>
-              <div className="text-sm text-muted-foreground">Tailwind</div>
+              <div className="text-sm text-muted-foreground">
+                Tailwind
+              </div>
             </div>
           </div>
         </CardContent>
