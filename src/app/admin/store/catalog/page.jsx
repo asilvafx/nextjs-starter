@@ -163,11 +163,20 @@ export default function CatalogPage() {
   const handleEdit = (product) => {
     setEditItem(product);
     setFormData({
+      ...initialFormData,
       ...product,
       // Ensure all fields are properly set
       collections: product.collections || [],
       images: product.images || [],
       customAttributes: product.customAttributes || [],
+      // Ensure numeric fields are properly handled
+      price: product.price || 0,
+      compareAtPrice: product.compareAtPrice || 0,
+      weight: product.weight || 0,
+      stock: product.stock || 0,
+      lowStockAlert: product.lowStockAlert || 5,
+      duration: product.duration || 60,
+      coverImageIndex: product.coverImageIndex || 0,
     });
     setIsOpen(true);
   };
@@ -209,14 +218,23 @@ export default function CatalogPage() {
               <h2 className="text-2xl font-semibold">Items</h2>
               <p className="text-muted-foreground">Manage your catalog items</p>
             </div>
-            <Dialog open={isOpen} onOpenChange={setIsOpen}>
+            <Dialog open={isOpen} onOpenChange={(open) => {
+              setIsOpen(open);
+              if (!open) {
+                setEditItem(null);
+                setFormData(initialFormData);
+              }
+            }}>
               <DialogTrigger asChild>
-                <Button>
+                <Button onClick={() => {
+                  setEditItem(null);
+                  setFormData(initialFormData);
+                }}>
                   <Plus className="w-4 h-4 mr-2" />
                   Add Item
                 </Button>
               </DialogTrigger>
-              <DialogContent className="max-w-2xl">
+              <DialogContent className="max-w-4xl w-[90vw]">
                 <DialogHeader>
                   <DialogTitle>
                     {editItem ? "Edit Item" : "Add New Item"}
@@ -268,7 +286,7 @@ export default function CatalogPage() {
                         <TableCell>
                           {item.images && item.images.length > 0 ? (
                             <img
-                              src={item.images[item.coverImageIndex]?.url}
+                              src={item.images[item.coverImageIndex >= 0 ? item.coverImageIndex : 0]?.url || item.images[0]?.url}
                               alt={item.name}
                               className="w-10 h-10 object-cover rounded"
                             />

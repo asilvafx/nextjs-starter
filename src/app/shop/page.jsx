@@ -79,7 +79,7 @@ function Shop() {
                     // Add inStock property based on stock number
                     inStock: item.stock > 0,
                     // Use cover image from images array or fallback
-                    image: item.images?.[item.coverImageIndex || 0]?.url || item.images?.[0]?.url || '/placeholder-image.jpg',
+                    image: item.images?.[item.coverImageIndex >= 0 ? item.coverImageIndex : 0]?.url || item.images?.[0]?.url || '/placeholder-image.jpg',
                     // Ensure collections is always an array
                     collections: item.collections || [],
                     // Keep original category and type structure

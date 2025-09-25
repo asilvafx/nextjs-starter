@@ -21,7 +21,12 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table"; 
+} from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { toast } from "sonner";
+import { Upload, X, Star, Image as ImageIcon } from "lucide-react"; 
 
 const ITEM_TYPES = [
   { value: "physical", label: "Physical Product" },
@@ -35,12 +40,13 @@ export function CatalogItemForm({
   categories,
   collections,
   onSubmit,
-  isSubmitting,
-  editMode = false,
+  onImageUpload,
+  editItem,
 }) {
-  const [customAttributes, setCustomAttributes] = useState([
-    { name: "", value: "" },
-  ]);
+  const [customAttributes, setCustomAttributes] = useState(
+    formData.customAttributes || [{ name: "", value: "" }]
+  );
+  const [isUploading, setIsUploading] = useState(false);
 
   const addAttribute = () => {
     setCustomAttributes([...customAttributes, { name: "", value: "" }]);
@@ -61,345 +67,521 @@ export function CatalogItemForm({
     });
   };
 
-  const handleImagesChange = (newImages) => {
-    setFormData({ ...formData, images: newImages });
+  const handleImageUploadLocal = async (event) => {
+    const files = Array.from(event.target.files);
+    if (files.length === 0) return;
+
+    setIsUploading(true);
+    try {
+      if (onImageUpload) {
+        await onImageUpload(files);
+        toast.success(`Uploaded ${files.length} image(s) successfully`);
+      }
+    } catch (error) {
+      toast.error("Failed to upload images");
+    } finally {
+      setIsUploading(false);
+    }
   };
 
   const handleCoverImageChange = (index) => {
     setFormData({ ...formData, coverImageIndex: index });
   };
 
+  const removeImage = (index) => {
+    const newImages = formData.images.filter((_, i) => i !== index);
+    const newCoverIndex = formData.coverImageIndex >= newImages.length ? 0 : formData.coverImageIndex;
+    setFormData({ 
+      ...formData, 
+      images: newImages,
+      coverImageIndex: newCoverIndex
+    });
+  };
+
+  const handleCollectionChange = (collectionId) => {
+    const currentCollections = formData.collections || [];
+    const isSelected = currentCollections.includes(collectionId);
+    
+    const newCollections = isSelected
+      ? currentCollections.filter(id => id !== collectionId)
+      : [...currentCollections, collectionId];
+    
+    setFormData({ ...formData, collections: newCollections });
+  };
+
   return (
-    <form onSubmit={onSubmit} className="space-y-8">
-      <div className="grid gap-6">
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-4">
-            <div>
-              <Label>Item Type</Label>
-              <Select
-                value={formData.type}
-                onValueChange={(value) =>
-                  setFormData({ ...formData, type: value })
-                }
-                required
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select item type" />
-                </SelectTrigger>
-                <SelectContent>
-                  {ITEM_TYPES.map((type) => (
-                    <SelectItem key={type.value} value={type.value}>
-                      {type.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+    <ScrollArea className="h-[80vh]">
+      <form onSubmit={onSubmit} className="space-y-6">
+        <Tabs defaultValue="basic" className="w-full">
+          <TabsList className="grid w-full grid-cols-4">
+            <TabsTrigger value="basic">Basic Info</TabsTrigger>
+            <TabsTrigger value="details">Details</TabsTrigger>
+            <TabsTrigger value="images">Images</TabsTrigger>
+            <TabsTrigger value="advanced">Advanced</TabsTrigger>
+          </TabsList>
 
-            <div>
-              <Label>Name</Label>
-              <Input
-                value={formData.name}
-                onChange={(e) =>
-                  setFormData({ ...formData, name: e.target.value })
-                }
-                required
-              />
-            </div>
-
-            <div>
-              <Label>SKU</Label>
-              <Input
-                value={formData.sku}
-                onChange={(e) =>
-                  setFormData({ ...formData, sku: e.target.value })
-                }
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label>Price</Label>
-                <Input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={formData.price}
-                  onChange={(e) =>
-                    setFormData({ ...formData, price: parseFloat(e.target.value) })
-                  }
-                  required
-                />
-              </div>
-              <div>
-                <Label>Compare at Price</Label>
-                <Input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={formData.compareAtPrice}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      compareAtPrice: parseFloat(e.target.value),
-                    })
-                  }
-                />
-              </div>
-            </div>
-
-            <div>
-              <Label>Category</Label>
-              <Select
-                value={formData.categoryId}
-                onValueChange={(value) =>
-                  setFormData({ ...formData, categoryId: value })
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select category" />
-                </SelectTrigger>
-                <SelectContent>
-                  {categories.map((category) => (
-                    <SelectItem key={category.id} value={category.id}>
-                      {category.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div>
-              <Label>Collections</Label>
-              <Select
-                value={formData.collections}
-                onValueChange={(value) =>
-                  setFormData({
-                    ...formData,
-                    collections: Array.isArray(value) ? value : [value],
-                  })
-                }
-                multiple
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select collections" />
-                </SelectTrigger>
-                <SelectContent>
-                  {collections.map((collection) => (
-                    <SelectItem key={collection.id} value={collection.id}>
-                      {collection.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          <div className="space-y-4">
-            <div>
-              <Label>Description</Label>
-              <Textarea
-                value={formData.description}
-                onChange={(e) =>
-                  setFormData({ ...formData, description: e.target.value })
-                }
-                className="h-[150px]"
-              />
-            </div>
-
-            {formData.type === "physical" && (
-              <>
-                <div>
-                  <Label>Weight (kg)</Label>
-                  <Input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={formData.weight}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        weight: parseFloat(e.target.value),
-                      })
-                    }
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
+          <TabsContent value="basic" className="space-y-6 mt-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Basic Information</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <Label>Stock</Label>
-                    <Input
-                      type="number"
-                      min="0"
-                      value={formData.stock}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          stock: parseInt(e.target.value),
-                        })
+                    <Label htmlFor="type">Item Type *</Label>
+                    <Select
+                      value={formData.type}
+                      onValueChange={(value) =>
+                        setFormData({ ...formData, type: value })
                       }
-                    />
-                  </div>
-                  <div>
-                    <Label>Low Stock Alert</Label>
-                    <Input
-                      type="number"
-                      min="0"
-                      value={formData.lowStockAlert}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          lowStockAlert: parseInt(e.target.value),
-                        })
-                      }
-                    />
-                  </div>
-                </div>
-              </>
-            )}
-
-            {formData.type === "digital" && (
-              <>
-                <div>
-                  <Label>Download Link</Label>
-                  <Input
-                    value={formData.downloadLink}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        downloadLink: e.target.value,
-                      })
-                    }
-                  />
-                </div>
-                <div>
-                  <Label>Download Notes</Label>
-                  <Textarea
-                    value={formData.downloadNotes}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        downloadNotes: e.target.value,
-                      })
-                    }
-                  />
-                </div>
-              </>
-            )}
-
-            {formData.type === "service" && (
-              <>
-                <div>
-                  <Label>Duration (minutes)</Label>
-                  <Input
-                    type="number"
-                    min="0"
-                    value={formData.duration}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        duration: parseInt(e.target.value),
-                      })
-                    }
-                  />
-                </div>
-                <div>
-                  <Label>Service Notes</Label>
-                  <Textarea
-                    value={formData.serviceNotes}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        serviceNotes: e.target.value,
-                      })
-                    }
-                  />
-                </div>
-              </>
-            )}
-          </div>
-        </div>
-
-        <div className="space-y-4">
-          <Label>Custom Attributes</Label>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Value</TableHead>
-                <TableHead></TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {customAttributes.map((attr, index) => (
-                <TableRow key={index}>
-                  <TableCell>
-                    <Input
-                      value={attr.name}
-                      onChange={(e) =>
-                        updateAttribute(index, "name", e.target.value)
-                      }
-                      placeholder="Attribute name"
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <Input
-                      value={attr.value}
-                      onChange={(e) =>
-                        updateAttribute(index, "value", e.target.value)
-                      }
-                      placeholder="Attribute value"
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      onClick={() => removeAttribute(index)}
+                      required
                     >
-                      Remove
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-          <Button type="button" variant="outline" onClick={addAttribute}>
-            Add Attribute
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select item type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {ITEM_TYPES.map((type) => (
+                          <SelectItem key={type.value} value={type.value}>
+                            {type.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div>
+                    <Label htmlFor="name">Name *</Label>
+                    <Input
+                      id="name"
+                      value={formData.name}
+                      onChange={(e) =>
+                        setFormData({ ...formData, name: e.target.value })
+                      }
+                      placeholder="Enter item name"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <Label htmlFor="sku">SKU</Label>
+                    <Input
+                      id="sku"
+                      value={formData.sku}
+                      onChange={(e) =>
+                        setFormData({ ...formData, sku: e.target.value })
+                      }
+                      placeholder="Enter SKU"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="price">Price *</Label>
+                    <Input
+                      id="price"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={formData.price}
+                      onChange={(e) =>
+                        setFormData({ ...formData, price: parseFloat(e.target.value) || 0 })
+                      }
+                      placeholder="0.00"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="comparePrice">Compare at Price</Label>
+                    <Input
+                      id="comparePrice"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={formData.compareAtPrice}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          compareAtPrice: parseFloat(e.target.value) || 0,
+                        })
+                      }
+                      placeholder="0.00"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <Label htmlFor="description">Description</Label>
+                  <Textarea
+                    id="description"
+                    value={formData.description}
+                    onChange={(e) =>
+                      setFormData({ ...formData, description: e.target.value })
+                    }
+                    placeholder="Enter item description"
+                    className="h-24"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label>Category</Label>
+                    <Select
+                      value={formData.categoryId}
+                      onValueChange={(value) =>
+                        setFormData({ ...formData, categoryId: value })
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select category" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="">No Category</SelectItem>
+                        {categories.map((category) => (
+                          <SelectItem key={category.id} value={category.id}>
+                            {category.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div>
+                    <Label>Collections</Label>
+                    <div className="space-y-2 mt-2">
+                      <div className="flex flex-wrap gap-2">
+                        {(formData.collections || []).map((collectionId) => {
+                          const collection = collections.find(c => c.id === collectionId);
+                          return collection ? (
+                            <Badge key={collectionId} variant="secondary" className="gap-1">
+                              {collection.name}
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleCollectionChange(collectionId)}
+                                className="h-auto p-0 hover:bg-transparent"
+                              >
+                                <X className="h-3 w-3" />
+                              </Button>
+                            </Badge>
+                          ) : null;
+                        })}
+                      </div>
+                      <Select onValueChange={handleCollectionChange}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Add to collections" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {collections
+                            .filter(collection => !formData.collections?.includes(collection.id))
+                            .map((collection) => (
+                            <SelectItem key={collection.id} value={collection.id}>
+                              {collection.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center space-x-2">
+                  <Switch
+                    checked={formData.isActive}
+                    onCheckedChange={(checked) =>
+                      setFormData({ ...formData, isActive: checked })
+                    }
+                  />
+                  <Label>Active Item</Label>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="details" className="space-y-6 mt-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Type-Specific Details</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {formData.type === "physical" && (
+                  <>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div>
+                        <Label htmlFor="weight">Weight (kg)</Label>
+                        <Input
+                          id="weight"
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={formData.weight}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              weight: parseFloat(e.target.value) || 0,
+                            })
+                          }
+                          placeholder="0.00"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="stock">Stock Quantity</Label>
+                        <Input
+                          id="stock"
+                          type="number"
+                          min="0"
+                          value={formData.stock}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              stock: parseInt(e.target.value) || 0,
+                            })
+                          }
+                          placeholder="0"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="lowStock">Low Stock Alert</Label>
+                        <Input
+                          id="lowStock"
+                          type="number"
+                          min="0"
+                          value={formData.lowStockAlert}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              lowStockAlert: parseInt(e.target.value) || 0,
+                            })
+                          }
+                          placeholder="5"
+                        />
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                {formData.type === "digital" && (
+                  <>
+                    <div>
+                      <Label htmlFor="downloadLink">Download Link</Label>
+                      <Input
+                        id="downloadLink"
+                        value={formData.downloadLink}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            downloadLink: e.target.value,
+                          })
+                        }
+                        placeholder="https://example.com/download"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="downloadNotes">Download Notes</Label>
+                      <Textarea
+                        id="downloadNotes"
+                        value={formData.downloadNotes}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            downloadNotes: e.target.value,
+                          })
+                        }
+                        placeholder="Instructions for customers"
+                        className="h-24"
+                      />
+                    </div>
+                  </>
+                )}
+
+                {formData.type === "service" && (
+                  <>
+                    <div>
+                      <Label htmlFor="duration">Duration (minutes)</Label>
+                      <Input
+                        id="duration"
+                        type="number"
+                        min="0"
+                        value={formData.duration}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            duration: parseInt(e.target.value) || 0,
+                          })
+                        }
+                        placeholder="60"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="serviceNotes">Service Notes</Label>
+                      <Textarea
+                        id="serviceNotes"
+                        value={formData.serviceNotes}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            serviceNotes: e.target.value,
+                          })
+                        }
+                        placeholder="Additional service information"
+                        className="h-24"
+                      />
+                    </div>
+                  </>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="images" className="space-y-6 mt-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Images</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {/* Image Upload Area */}
+                <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-6">
+                  <div className="flex flex-col items-center justify-center space-y-2">
+                    <Upload className="h-8 w-8 text-muted-foreground" />
+                    <div className="text-center">
+                      <Label htmlFor="image-upload" className="cursor-pointer text-sm font-medium">
+                        Click to upload images
+                      </Label>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        PNG, JPG, WEBP up to 10MB each
+                      </p>
+                    </div>
+                    <Input
+                      id="image-upload"
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      onChange={handleImageUploadLocal}
+                      disabled={isUploading}
+                      className="hidden"
+                    />
+                    {isUploading && (
+                      <p className="text-sm text-muted-foreground">Uploading...</p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Uploaded Images */}
+                {formData.images && formData.images.length > 0 && (
+                  <div>
+                    <Label>Uploaded Images</Label>
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mt-2">
+                      {formData.images.map((image, index) => (
+                        <div key={index} className="relative group">
+                          <div className="aspect-square overflow-hidden rounded-lg border">
+                            <img
+                              src={image.url}
+                              alt={image.alt || `Image ${index + 1}`}
+                              className="w-full h-full object-cover"
+                            />
+                          </div>
+                          
+                          {/* Cover Image Badge */}
+                          {formData.coverImageIndex === index && (
+                            <Badge className="absolute top-2 left-2 bg-primary">
+                              <Star className="h-3 w-3 mr-1" />
+                              Cover
+                            </Badge>
+                          )}
+                          
+                          {/* Action Buttons */}
+                          <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <div className="flex space-x-1">
+                              {formData.coverImageIndex !== index && (
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="secondary"
+                                  onClick={() => handleCoverImageChange(index)}
+                                  className="h-8 w-8 p-0"
+                                >
+                                  <Star className="h-4 w-4" />
+                                </Button>
+                              )}
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="destructive"
+                                onClick={() => removeImage(index)}
+                                className="h-8 w-8 p-0"
+                              >
+                                <X className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {formData.images && formData.images.length === 0 && (
+                  <div className="text-center py-8">
+                    <ImageIcon className="h-12 w-12 text-muted-foreground mx-auto mb-2" />
+                    <p className="text-sm text-muted-foreground">No images uploaded yet</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="advanced" className="space-y-6 mt-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Custom Attributes</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {customAttributes.length > 0 && (
+                  <div className="space-y-3">
+                    {customAttributes.map((attr, index) => (
+                      <div key={index} className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                        <Input
+                          value={attr.name}
+                          onChange={(e) =>
+                            updateAttribute(index, "name", e.target.value)
+                          }
+                          placeholder="Attribute name"
+                        />
+                        <div className="flex gap-2">
+                          <Input
+                            value={attr.value}
+                            onChange={(e) =>
+                              updateAttribute(index, "value", e.target.value)
+                            }
+                            placeholder="Attribute value"
+                          />
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="icon"
+                            onClick={() => removeAttribute(index)}
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <Button type="button" variant="outline" onClick={addAttribute}>
+                  Add Custom Attribute
+                </Button>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
+
+        <div className="flex justify-end space-x-4 pt-6 border-t">
+          <Button type="submit">
+            {editItem ? "Update Item" : "Create Item"}
           </Button>
         </div>
-
-        <div className="space-y-4">
-          <Label>Images</Label>
-          {/* 
-          <ImageUpload
-            images={formData.images}
-            onImagesChange={handleImagesChange}
-            coverImageIndex={formData.coverImageIndex}
-            onCoverImageChange={handleCoverImageChange}
-          />
-          */}
-        </div>
-
-        <div className="flex items-center space-x-2">
-          <Switch
-            checked={formData.isActive}
-            onCheckedChange={(checked) =>
-              setFormData({ ...formData, isActive: checked })
-            }
-          />
-          <Label>Active</Label>
-        </div>
-      </div>
-
-      <div className="flex justify-end space-x-4">
-        <Button type="submit" disabled={isSubmitting}>
-          {isSubmitting
-            ? "Saving..."
-            : editMode
-            ? "Update Item"
-            : "Create Item"}
-        </Button>
-      </div>
-    </form>
+      </form>
+    </ScrollArea>
   );
 }
