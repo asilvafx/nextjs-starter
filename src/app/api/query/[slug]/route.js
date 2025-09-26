@@ -42,11 +42,14 @@ async function handleGet(request, { params }) {
         if (id) {
             result = await DBService.read(id, slug);
             if (!result) {
-                return NextResponse.json({
-                success: false,
-                error: 'Record not found'
-            });
+                result = await DBService.getItemByKey('id', id, slug);
+                if (!result) {
+                    return NextResponse.json({
+                    success: false,
+                    error: 'Record not found'
+                });
             }
+            }   
             return NextResponse.json({
                 success: true,
                 data: result
@@ -233,10 +236,11 @@ async function handlePut(request, { params }) {
         }
 
         // Check if item exists 
-        let existingItem = await DBService.read(data.id, slug); 
+        let tryId = data.id;
+        const existingItem = await DBService.read(tryId, slug); 
         if (!existingItem) {
-            existingItem = await DBService.getItemsByKeyValue('id', data.id, slug); 
-            if(!existingItem){
+            tryId = await DBService.getItemKey('id', id, slug);  
+            if(!tryId){
               return NextResponse.json(
                 { error: 'Record not found' },
                 { status: 404 }
@@ -253,7 +257,7 @@ async function handlePut(request, { params }) {
             updatedBy: request.user?.id || 'unknown'
         };
 
-        const updatedItem = await DBService.update(id, updateData, slug);
+        const updatedItem = await DBService.update(tryId, updateData, slug);
 
         if (!updatedItem) {
             return NextResponse.json(
@@ -302,10 +306,12 @@ async function handleDelete(request, { params }) {
         }
 
         // Check if item exists
-        let existingItem = await DBService.read(id, slug); 
+        
+        let tryId = id; 
+        const existingItem = await DBService.read(tryId, slug); 
         if (!existingItem) {
-            existingItem = await DBService.getItemsByKeyValue('id', id, slug); 
-            if(!existingItem){
+            tryId = await DBService.getItemKey('id', id, slug);  
+            if(!tryId){
               return NextResponse.json(
                 { error: 'Record not found' },
                 { status: 404 }

@@ -57,6 +57,16 @@ export async function POST(request) {
         // 1. First, save the complete orderData to the database
         try {
             await DBService.create(updatedOrderData, "orders");
+
+            const existingCustomer = await DBService.getItemByKey('email', orderData.cst_email, 'customers');
+            if (!existingCustomer) {
+                await DBService.create({
+                    name: orderData.cst_name,
+                    email: orderData.cst_email,
+                    address: orderData.shipping_address || {}, 
+                    createdAt: new Date().toISOString()
+                }, 'customers');    
+            }
         } catch (dbError) {
             console.error('Failed to save order to database:', dbError);
             // Continue with email sending even if DB save fails

@@ -226,17 +226,19 @@ export function CatalogItemForm({
                   <div>
                     <Label>Category</Label>
                     <Select
-                      value={formData.categoryId}
+                      value={formData.categoryId || "none"}
                       onValueChange={(value) =>
-                        setFormData({ ...formData, categoryId: value })
+                        setFormData({ ...formData, categoryId: value === "none" ? "" : value })
                       }
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="Select category" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">No Category</SelectItem>
-                        {categories.map((category) => (
+                        <SelectItem value="none">No Category</SelectItem>
+                        {categories
+                          .filter(category => category.id && category.name)
+                          .map((category) => (
                           <SelectItem key={category.id} value={category.id}>
                             {category.name}
                           </SelectItem>
@@ -273,7 +275,7 @@ export function CatalogItemForm({
                         </SelectTrigger>
                         <SelectContent>
                           {collections
-                            .filter(collection => !formData.collections?.includes(collection.id))
+                            .filter(collection => collection.id && collection.name && !formData.collections?.includes(collection.id))
                             .map((collection) => (
                             <SelectItem key={collection.id} value={collection.id}>
                               {collection.name}

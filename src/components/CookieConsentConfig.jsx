@@ -162,7 +162,7 @@ const getConfig = (translations = {}) => {
             translations: {
                 en: {
                     consentModal: {
-                        title: translations.consentModal?.title || 'We use cookies',
+                        title: translations.consentModal?.title || '🍪 We use cookies',
                         description: translations.consentModal?.description || 'We use cookies to improve your experience. Manage your preferences below.',
                         acceptAllBtn: translations.consentModal?.acceptAllBtn || 'Accept all',
                         acceptNecessaryBtn: translations.consentModal?.acceptNecessaryBtn || 'Reject all',

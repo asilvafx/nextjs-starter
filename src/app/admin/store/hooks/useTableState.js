@@ -1,3 +1,5 @@
+// @/app/admin/store/hooks/useTableState.js
+
 "use client";
 
 import { useState, useCallback } from "react";
@@ -13,6 +15,12 @@ export function useTableState(initialPageSize = 10) {
     direction: "desc",
   });
 
+  // Reset to first page when search changes
+  const setSearchWithPageReset = useCallback((searchValue) => {
+    setSearch(searchValue);
+    setCurrentPage(1);
+  }, []);
+
   const handleSort = useCallback((key) => {
     setSortConfig((current) => ({
       key,
@@ -20,7 +28,10 @@ export function useTableState(initialPageSize = 10) {
     }));
   }, []);
 
-  const getFilteredAndSortedItems = useCallback((itemsToFilter) => {
+  const getFilteredAndSortedItems = useCallback((itemsToFilter = items) => {
+    if (!itemsToFilter || !Array.isArray(itemsToFilter)) {
+      return [];
+    }
     let filtered = [...itemsToFilter];
     
     if (search) {
@@ -47,17 +58,23 @@ export function useTableState(initialPageSize = 10) {
     });
 
     return filtered;
-  }, [search, sortConfig]);
+  }, [search, sortConfig, items]);
 
-  const getPaginatedItems = useCallback((filteredItems) => {
+  const getPaginatedItems = useCallback((filteredItems = items) => {
+    if (!filteredItems || !Array.isArray(filteredItems)) {
+      return [];
+    }
     const start = (currentPage - 1) * pageSize;
     const end = start + pageSize;
     return filteredItems.slice(start, end);
-  }, [currentPage, pageSize]);
+  }, [currentPage, pageSize, items]);
 
-  const totalPages = useCallback((filteredItems) => {
+  const totalPages = useCallback((filteredItems = items) => {
+    if (!filteredItems || !Array.isArray(filteredItems)) {
+      return 0;
+    }
     return Math.ceil(filteredItems.length / pageSize);
-  }, [pageSize]);
+  }, [pageSize, items]);
 
   return {
     items,
@@ -65,7 +82,7 @@ export function useTableState(initialPageSize = 10) {
     loading,
     setLoading,
     search,
-    setSearch,
+    setSearch: setSearchWithPageReset,
     currentPage,
     setCurrentPage,
     pageSize,
@@ -73,6 +90,8 @@ export function useTableState(initialPageSize = 10) {
     handleSort,
     getFilteredAndSortedItems,
     getPaginatedItems,
-    totalPages,
+    totalPages: totalPages(),
+    filteredItems: getFilteredAndSortedItems(),
+    paginatedItems: getPaginatedItems(),
   };
 }

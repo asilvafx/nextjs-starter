@@ -127,6 +127,12 @@ export default function OrdersPage() {
   const [isInvoiceDialogOpen, setIsInvoiceDialogOpen] = useState(false);
   const [selectedOrderForInvoice, setSelectedOrderForInvoice] = useState(null);
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
+  const [isEditingStatus, setIsEditingStatus] = useState(false);
+  const [editStatusData, setEditStatusData] = useState({
+    status: '',
+    tracking: '',
+    sendEmail: true
+  });
 
   const fetchStoreSettings = async () => {
     try {
@@ -832,26 +838,195 @@ export default function OrdersPage() {
                             
                             <TabsContent value="status" className="space-y-4 mt-4">
                               <Card>
-                                <CardHeader>
+                                <CardHeader className="flex flex-row items-center justify-between">
                                   <h3 className="font-semibold">Order Status & Timeline</h3>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => {
+                                      if (isEditingStatus) {
+                                        setIsEditingStatus(false);
+                                        setEditStatusData({ status: '', tracking: '', sendEmail: true });
+                                      } else {
+                                        setIsEditingStatus(true);
+                                        setEditStatusData({
+                                          status: selectedOrder.status,
+                                          tracking: selectedOrder.tracking || '',
+                                          sendEmail: true
+                                        });
+                                      }
+                                    }}
+                                  >
+                                    <Pencil className="h-4 w-4 mr-2" />
+                                    {isEditingStatus ? 'Cancel' : 'Edit Status'}
+                                  </Button>
                                 </CardHeader>
                                 <CardContent className="space-y-4">
-                                  <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                      <label className="text-sm font-medium text-gray-500">Current Status</label>
-                                      <Badge variant={selectedOrder.status === "delivered" ? "default" : "outline"} className="mt-1">
-                                        {ORDER_STATUS.find(s => s.value === selectedOrder.status)?.label}
-                                      </Badge>
-                                    </div>
-                                    <div>
-                                      <label className="text-sm font-medium text-gray-500">Order Date</label>
-                                      <p className="text-sm">{formatDate(selectedOrder.createdAt)}</p>
-                                    </div>
-                                  </div>
-                                  {selectedOrder.tracking && (
-                                    <div>
-                                      <label className="text-sm font-medium text-gray-500">Tracking Number</label>
-                                      <p className="text-sm font-mono">{selectedOrder.tracking}</p>
+                                  {!isEditingStatus ? (
+                                    // View Mode
+                                    <>
+                                      <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                          <label className="text-sm font-medium text-gray-500">Current Status</label>
+                                          <div className="mt-1">
+                                            <Badge variant={selectedOrder.status === "delivered" ? "default" : "outline"}>
+                                              {ORDER_STATUS.find(s => s.value === selectedOrder.status)?.label}
+                                            </Badge>
+                                          </div>
+                                        </div>
+                                        <div>
+                                          <label className="text-sm font-medium text-gray-500">Order Date</label>
+                                          <p className="text-sm mt-1">{formatDate(selectedOrder.createdAt)}</p>
+                                        </div>
+                                      </div>
+                                      {selectedOrder.tracking && (
+                                        <div>
+                                          <label className="text-sm font-medium text-gray-500">Tracking Number</label>
+                                          <div className="flex items-center gap-2 mt-1">
+                                            <p className="text-sm font-mono bg-gray-100 px-2 py-1 rounded">{selectedOrder.tracking}</p>
+                                            <Button
+                                              variant="outline"
+                                              size="sm"
+                                              onClick={() => {
+                                                const trackingUrl = generateTrackingUrl(selectedOrder.tracking);
+                                                window.open(trackingUrl, '_blank');
+                                              }}
+                                            >
+                                              Track Package
+                                            </Button>
+                                          </div>
+                                        </div>
+                                      )}
+                                    </>
+                                  ) : (
+                                    // Edit Mode
+                                    <div className="space-y-4">
+                                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div>
+                                          <label className="text-sm font-medium text-gray-700">Order Status</label>
+                                          <Select
+                                            value={editStatusData.status}
+                                            onValueChange={(value) => setEditStatusData({ ...editStatusData, status: value })}
+                                          >
+                                            <SelectTrigger className="mt-1">
+                                              <SelectValue placeholder="Select status" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                              {ORDER_STATUS.map((status) => (
+                                                <SelectItem key={status.value} value={status.value}>
+                                                  {status.label}
+                                                </SelectItem>
+                                              ))}
+                                            </SelectContent>
+                                          </Select>
+                                        </div>
+                                        <div>
+                                          <label className="text-sm font-medium text-gray-700">Tracking Number</label>
+                                          <Input
+                                            placeholder="Enter tracking number (optional)"
+                                            value={editStatusData.tracking}
+                                            onChange={(e) => setEditStatusData({ ...editStatusData, tracking: e.target.value })}
+                                            className="mt-1"
+                                          />
+                                        </div>
+                                      </div>
+                                      
+                                      <div className="flex items-center space-x-2">
+                                        <Checkbox
+                                          id="sendEmailUpdate"
+                                          checked={editStatusData.sendEmail}
+                                          onCheckedChange={(checked) => setEditStatusData({ ...editStatusData, sendEmail: checked })}
+                                        />
+                                        <label htmlFor="sendEmailUpdate" className="text-sm font-medium">
+                                          Send email notification to customer
+                                          {editStatusData.tracking && editStatusData.sendEmail && (
+                                            <span className="text-xs text-gray-500 block">
+                                              (will include tracking information)
+                                            </span>
+                                          )}
+                                        </label>
+                                      </div>
+
+                                      <div className="flex gap-2 pt-2">
+                                        <Button
+                                          onClick={async () => {
+                                            try {
+                                              // Update order with new status and tracking
+                                              const updateData = { status: editStatusData.status };
+                                              if (editStatusData.tracking.trim()) {
+                                                updateData.tracking = editStatusData.tracking.trim();
+                                              }
+
+                                              const updateResponse = await update(selectedOrder.id, updateData, "orders");
+                                              
+                                              if (updateResponse.success) {
+                                                // Send email notification if requested
+                                                if (editStatusData.sendEmail) {
+                                                  const emailPayload = {
+                                                    type: 'order_status_update',
+                                                    email: selectedOrder.customer.email,
+                                                    customerName: `${selectedOrder.customer.firstName} ${selectedOrder.customer.lastName}`.trim(),
+                                                    orderId: selectedOrder.id,
+                                                    orderDate: selectedOrder.createdAt,
+                                                    items: selectedOrder.items,
+                                                    subtotal: selectedOrder.subtotal,
+                                                    shippingCost: selectedOrder.shippingCost,
+                                                    total: selectedOrder.total,
+                                                    shippingAddress: {
+                                                      street: selectedOrder.customer.streetAddress,
+                                                      unit: selectedOrder.customer.apartmentUnit,
+                                                      city: selectedOrder.customer.city,
+                                                      state: selectedOrder.customer.state,
+                                                      zip: selectedOrder.customer.zipCode,
+                                                      country: selectedOrder.customer.country,
+                                                    },
+                                                    status: editStatusData.status === 'shipped' ? 'in_transit' : editStatusData.status,
+                                                    trackingNumber: editStatusData.tracking.trim() || undefined,
+                                                    trackingUrl: editStatusData.tracking.trim() ? generateTrackingUrl(editStatusData.tracking.trim()) : undefined
+                                                  };
+
+                                                  await fetch('/api/email', {
+                                                    method: 'POST',
+                                                    headers: { 'Content-Type': 'application/json' },
+                                                    body: JSON.stringify(emailPayload),
+                                                  });
+
+                                                  toast.success("Order status updated and customer notified");
+                                                } else {
+                                                  toast.success("Order status updated successfully");
+                                                }
+
+                                                // Update the selected order in state
+                                                setSelectedOrder({ ...selectedOrder, ...updateData });
+                                                
+                                                // Refresh orders list
+                                                fetchOrders();
+                                                
+                                                // Exit edit mode
+                                                setIsEditingStatus(false);
+                                                setEditStatusData({ status: '', tracking: '', sendEmail: true });
+                                              } else {
+                                                toast.error("Failed to update order status");
+                                              }
+                                            } catch (error) {
+                                              console.error('Error updating status:', error);
+                                              toast.error("Failed to update order status");
+                                            }
+                                          }}
+                                          disabled={!editStatusData.status}
+                                        >
+                                          Update Status
+                                        </Button>
+                                        <Button
+                                          variant="outline"
+                                          onClick={() => {
+                                            setIsEditingStatus(false);
+                                            setEditStatusData({ status: '', tracking: '', sendEmail: true });
+                                          }}
+                                        >
+                                          Cancel
+                                        </Button>
+                                      </div>
                                     </div>
                                   )}
                                 </CardContent>
@@ -1422,11 +1597,106 @@ export default function OrdersPage() {
           {selectedOrderForInvoice && (
             <div className="space-y-6">
               {/* Invoice Preview Area */}
-              <div className="bg-gray-50 p-6 rounded-lg border-2 border-dashed border-gray-200">
-                <div className="text-center text-gray-500 py-8">
-                  <FileText className="h-16 w-16 mx-auto mb-4 text-gray-400" />
-                  <p className="text-lg font-medium">Invoice Preview</p>
-                  <p className="text-sm">PDF will be generated with your current store settings</p>
+              <div className="bg-white p-8 rounded-lg border shadow-sm">
+                {/* Invoice Header */}
+                <div className="flex justify-between items-start mb-8">
+                  <div>
+                    <h1 className="text-3xl font-bold text-gray-900">INVOICE</h1>
+                    <p className="text-sm text-gray-600 mt-1">Order #{selectedOrderForInvoice.id}</p>
+                  </div>
+                  <div className="text-right">
+                    {storeSettings && (
+                      <div>
+                        <h2 className="text-lg font-semibold">{storeSettings.businessName || 'Your Business'}</h2>
+                        {storeSettings.businessAddress && <p className="text-sm text-gray-600">{storeSettings.businessAddress}</p>}
+                        {storeSettings.businessEmail && <p className="text-sm text-gray-600">{storeSettings.businessEmail}</p>}
+                        {storeSettings.businessPhone && <p className="text-sm text-gray-600">{storeSettings.businessPhone}</p>}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Invoice Details */}
+                <div className="grid grid-cols-2 gap-8 mb-8">
+                  <div>
+                    <h3 className="font-semibold text-gray-900 mb-2">Bill To:</h3>
+                    <div className="text-sm text-gray-600">
+                      <p className="font-medium">{`${selectedOrderForInvoice.customer.firstName} ${selectedOrderForInvoice.customer.lastName}`.trim()}</p>
+                      <p>{selectedOrderForInvoice.customer.email}</p>
+                      {selectedOrderForInvoice.customer.phone && <p>{selectedOrderForInvoice.customer.phone}</p>}
+                      <div className="mt-2">
+                        <p>{selectedOrderForInvoice.customer.streetAddress}</p>
+                        {selectedOrderForInvoice.customer.apartmentUnit && <p>{selectedOrderForInvoice.customer.apartmentUnit}</p>}
+                        <p>{selectedOrderForInvoice.customer.city}, {selectedOrderForInvoice.customer.state} {selectedOrderForInvoice.customer.zipCode}</p>
+                        <p>{selectedOrderForInvoice.customer.country}</p>
+                      </div>
+                    </div>
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-gray-900 mb-2">Invoice Details:</h3>
+                    <div className="text-sm text-gray-600 space-y-1">
+                      <div className="flex justify-between">
+                        <span>Invoice Date:</span>
+                        <span>{new Date(selectedOrderForInvoice.createdAt).toLocaleDateString()}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Payment Method:</span>
+                        <span>{selectedOrderForInvoice.paymentMethod || 'Card'}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Status:</span>
+                        <Badge variant={selectedOrderForInvoice.status === "delivered" ? "default" : "outline"} className="ml-2">
+                          {ORDER_STATUS.find(s => s.value === selectedOrderForInvoice.status)?.label}
+                        </Badge>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Invoice Items Table */}
+                <div className="mb-8">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-b border-gray-200">
+                        <th className="text-left py-2 font-semibold text-gray-900">Description</th>
+                        <th className="text-center py-2 font-semibold text-gray-900">Qty</th>
+                        <th className="text-right py-2 font-semibold text-gray-900">Price</th>
+                        <th className="text-right py-2 font-semibold text-gray-900">Total</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {selectedOrderForInvoice.items.map((item, index) => (
+                        <tr key={index} className="border-b border-gray-100">
+                          <td className="py-3 text-gray-900">{item.name}</td>
+                          <td className="py-3 text-center text-gray-600">{item.quantity}</td>
+                          <td className="py-3 text-right text-gray-600">{formatPrice(item.price)}</td>
+                          <td className="py-3 text-right text-gray-900 font-medium">{formatPrice(item.price * item.quantity)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                    <tfoot>
+                      <tr className="border-t border-gray-200">
+                        <td colSpan="3" className="py-2 text-right font-semibold text-gray-900">Subtotal:</td>
+                        <td className="py-2 text-right font-semibold text-gray-900">{formatPrice(selectedOrderForInvoice.subtotal)}</td>
+                      </tr>
+                      <tr>
+                        <td colSpan="3" className="py-2 text-right font-semibold text-gray-900">Shipping:</td>
+                        <td className="py-2 text-right font-semibold text-gray-900">{formatPrice(selectedOrderForInvoice.shippingCost || 0)}</td>
+                      </tr>
+                      <tr className="border-t border-gray-900">
+                        <td colSpan="3" className="py-3 text-right font-bold text-lg text-gray-900">Total:</td>
+                        <td className="py-3 text-right font-bold text-lg text-gray-900">{formatPrice(selectedOrderForInvoice.total)}</td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+
+                {/* Footer */}
+                <div className="text-center text-sm text-gray-500 mt-8 pt-4 border-t">
+                  <p>Thank you for your business!</p>
+                  {storeSettings?.businessWebsite && (
+                    <p className="mt-1">{storeSettings.businessWebsite}</p>
+                  )}
                 </div>
               </div>
               

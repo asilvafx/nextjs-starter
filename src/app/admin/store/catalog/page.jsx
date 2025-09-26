@@ -23,10 +23,29 @@ import {
 } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
-import { Plus, Pencil, Trash2, Image } from "lucide-react";
+import { Plus, Pencil, Trash2, Image, ArrowUpDown, Loader2 } from "lucide-react";
 import { useTableState } from "../hooks/useTableState";
 import { TableSkeleton } from "@/components/ui/skeleton";
-import { CatalogItemForm } from "./CatalogItemForm"; 
+import { CatalogItemForm } from "./CatalogItemForm";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"; 
 
 const initialFormData = {
   type: "physical",
@@ -65,6 +84,8 @@ export default function CatalogPage() {
     getFilteredAndSortedItems,
     getPaginatedItems,
     totalPages,
+    filteredItems,
+    paginatedItems,
   } = useTableState();
 
   const [categories, setCategories] = useState([]);
@@ -73,6 +94,9 @@ export default function CatalogPage() {
   const [editItem, setEditItem] = useState(null);
   const [formData, setFormData] = useState(initialFormData);
   const [storeSettings, setStoreSettings] = useState(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [itemToDelete, setItemToDelete] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const fetchData = async () => {
     try {
@@ -169,6 +193,7 @@ export default function CatalogPage() {
       collections: product.collections || [],
       images: product.images || [],
       customAttributes: product.customAttributes || [],
+      categoryId: product.categoryId || "",
       // Ensure numeric fields are properly handled
       price: product.price || 0,
       compareAtPrice: product.compareAtPrice || 0,
@@ -181,20 +206,36 @@ export default function CatalogPage() {
     setIsOpen(true);
   };
 
-  const handleDelete = async (id) => {
-    if (window.confirm("Are you sure you want to delete this product?")) {
-      try {
-        await remove(id, "catalog");
-        toast.success("Item deleted successfully");
-        fetchData();
-      } catch (error) {
-        if (error instanceof Error) {
-          toast.error(error.message);
-        } else {
-          toast.error("Failed to delete product");
-        }
+  const handleDeleteClick = (item) => {
+    setItemToDelete(item);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!itemToDelete) return;
+    
+    setIsDeleting(true);
+    try {
+      await remove(itemToDelete.id, "catalog");
+      toast.success("Item deleted successfully");
+      setDeleteDialogOpen(false);
+      setItemToDelete(null);
+      fetchData();
+    } catch (error) {
+      if (error instanceof Error) {
+        toast.error(error.message);
+      } else {
+        toast.error("Failed to delete item");
       }
+    } finally {
+      setIsDeleting(false);
     }
+  };
+
+  const handleDeleteCancel = () => {
+    setDeleteDialogOpen(false);
+    setItemToDelete(null);
+    setIsDeleting(false);
   };
 
   const formatPrice = (price) => {
@@ -266,22 +307,49 @@ export default function CatalogPage() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Image</TableHead>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Price</TableHead>
+                    <TableHead>
+                      <Button
+                        variant="ghost"
+                        onClick={() => handleSort('name')}
+                        className="h-auto p-0 font-medium hover:bg-transparent"
+                      >
+                        Name
+                        <ArrowUpDown className="ml-2 h-4 w-4" />
+                      </Button>
+                    </TableHead>
+                    <TableHead>
+                      <Button
+                        variant="ghost"
+                        onClick={() => handleSort('price')}
+                        className="h-auto p-0 font-medium hover:bg-transparent"
+                      >
+                        Price
+                        <ArrowUpDown className="ml-2 h-4 w-4" />
+                      </Button>
+                    </TableHead>
                     <TableHead>Category</TableHead>
-                    <TableHead>Stock Status</TableHead>
+                    <TableHead>
+                      <Button
+                        variant="ghost"
+                        onClick={() => handleSort('stock')}
+                        className="h-auto p-0 font-medium hover:bg-transparent"
+                      >
+                        Stock Status
+                        <ArrowUpDown className="ml-2 h-4 w-4" />
+                      </Button>
+                    </TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {catalog.length === 0 ? (
+                  {paginatedItems.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={6} className="text-center">
                         No items found
                       </TableCell>
                     </TableRow>
                   ) : (
-                    getPaginatedItems().map((item) => (
+                    paginatedItems.map((item) => (
                       <TableRow key={item.id}>
                         <TableCell>
                           {item.images && item.images.length > 0 ? (
@@ -333,9 +401,14 @@ export default function CatalogPage() {
                           <Button
                             variant="outline"
                             size="icon"
-                            onClick={() => handleDelete(item.id)}
+                            onClick={() => handleDeleteClick(item)}
+                            disabled={isDeleting && itemToDelete?.id === item.id}
                           >
-                            <Trash2 className="w-4 h-4" />
+                            {isDeleting && itemToDelete?.id === item.id ? (
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                              <Trash2 className="w-4 h-4" />
+                            )}
                           </Button>
                         </TableCell>
                       </TableRow>
@@ -344,9 +417,79 @@ export default function CatalogPage() {
                 </TableBody>
               </Table>
             </ScrollArea>
+            
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <div className="flex justify-center mt-4">
+                <Pagination>
+                  <PaginationContent>
+                    <PaginationItem>
+                      <PaginationPrevious 
+                        onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                        className={currentPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                      />
+                    </PaginationItem>
+                    {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                      <PaginationItem key={page}>
+                        <PaginationLink
+                          onClick={() => setCurrentPage(page)}
+                          isActive={page === currentPage}
+                          className="cursor-pointer"
+                        >
+                          {page}
+                        </PaginationLink>
+                      </PaginationItem>
+                    ))}
+                    <PaginationItem>
+                      <PaginationNext 
+                        onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                        className={currentPage === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                      />
+                    </PaginationItem>
+                  </PaginationContent>
+                </Pagination>
+              </div>
+            )}
+            
+            {/* Items count info */}
+            <div className="text-sm text-muted-foreground text-center">
+              Showing {paginatedItems.length} of {filteredItems.length} items
+              {search && ` (filtered from ${catalog.length} total)`}
+            </div>
           </div>
         </div>
       )}
+      
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Item</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete "{itemToDelete?.name}"? This action cannot be undone and will permanently remove the item from your catalog.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={handleDeleteCancel} disabled={isDeleting}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteConfirm}
+              disabled={isDeleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isDeleting ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                "Delete Item"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

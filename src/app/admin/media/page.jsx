@@ -21,7 +21,14 @@ import {
 } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Pagination } from "@/components/ui/pagination";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
 import { toast } from "sonner";
 import {
   Upload,
@@ -31,7 +38,19 @@ import {
   CheckCircle,
   Search,
   Filter,
+  Star,
+  Loader2,
 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 export default function GalleryPage() {
   const [media, setMedia] = useState([]);
@@ -43,6 +62,11 @@ export default function GalleryPage() {
   const [selectedFile, setSelectedFile] = useState(null);
   const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false);
   const [dragActive, setDragActive] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [itemToDelete, setItemToDelete] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [updatingFeatured, setUpdatingFeatured] = useState(null);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const inputRef = useRef(null);
   const itemsPerPage = 10;
 
@@ -52,8 +76,10 @@ export default function GalleryPage() {
       const response = await getAll("gallery", {
         page,
         limit: itemsPerPage,
-        search: search || null,
+        search: search || '',
       });
+
+      console.log('Fetch response:', response);
       
       // Handle different response structures and ensure default values
       if (response?.success && response?.data && response?.data.length > 0) {
@@ -92,6 +118,9 @@ export default function GalleryPage() {
   const handleDrag = (e) => {
     e.preventDefault();
     e.stopPropagation();
+    
+    if (uploading) return; // Don't handle drag when uploading
+    
     if (e.type === "dragenter" || e.type === "dragover") {
       setDragActive(true);
     } else if (e.type === "dragleave") {
@@ -117,57 +146,160 @@ export default function GalleryPage() {
   };
 
   const handleFileUpload = async (file) => {
+    // Prevent multiple uploads
+    if (uploading) {
+      toast.error("Please wait for the current upload to finish");
+      return;
+    }
+
     if (!file.type.startsWith('image/')) {
       toast.error("Please upload an image file");
       return;
     }
 
+    // Validate file size (10MB limit)
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error("File size must be less than 10MB");
+      return;
+    }
+
     try {
       setUploading(true);
+      setUploadProgress(0);
+      
+      // Simulate progress for better UX
+      const progressInterval = setInterval(() => {
+        setUploadProgress(prev => {
+          if (prev >= 90) {
+            clearInterval(progressInterval);
+            return 90;
+          }
+          return prev + Math.random() * 20;
+        });
+      }, 200);
       const uploadResult = await upload(file); 
       const uploadUrl = uploadResult[0]?.publicUrl;
 
       if (uploadUrl) {
         const blobUrl = uploadUrl;
-        const uploadData = {
+        
+        // Create the new image data and add to database
+        const imageData = {
           url: blobUrl,
           alt: file.name,
           featured: false,
+        };
+        
+        const createResponse = await create(imageData, "gallery");
+        
+        // Add the new image to the current media state with the actual ID from server
+        const newImage = {
+          id: createResponse.data?.id || Date.now(),
+          ...imageData,
+        };
+        
+        setMedia(prevMedia => [newImage, ...prevMedia]);
+        
+        // Complete the progress
+        setUploadProgress(100);
+        
+        // Update total pages if we're adding to a full page
+        if (media.length >= itemsPerPage && currentPage === 1) {
+          // Only update if we're on the first page to avoid pagination issues
+          setTotalPages(prevPages => prevPages);
         }
-        await create(uploadData, "gallery");
-
-        toast.success("Image uploaded successfully");
-        setIsUploadDialogOpen(false);
-        fetchMedia(currentPage);
+        
+        toast.success(
+          <div className="flex items-center gap-2">
+            <CheckCircle className="h-4 w-4 text-green-500" />
+            Image uploaded successfully!
+          </div>
+        );
+        
+        // Small delay to show success state before closing
+        setTimeout(() => {
+          setIsUploadDialogOpen(false);
+          setUploadProgress(0);
+        }, 800);
       }
     } catch (error) {
       const errorMessage = error?.message || "Failed to upload image";
-      toast.error(errorMessage);
+      toast.error(
+        <div className="flex items-center gap-2">
+          <span className="text-destructive">✕</span>
+          {errorMessage}
+        </div>
+      );
       console.error('Upload error:', error);
+      
+      // Reset file input on error
+      if (inputRef.current) {
+        inputRef.current.value = '';
+      }
     } finally {
       setUploading(false);
+      setUploadProgress(0);
     }
   };
 
-  const handleDelete = async (id) => {
-    if (window.confirm("Are you sure you want to delete this image?")) {
-      try {
-        await remove(id, "gallery");
-        toast.success("Image deleted successfully");
-        fetchMedia(currentPage);
-      } catch (error) {
-        toast.error("Failed to delete image");
-      }
+  const handleDeleteClick = (item) => {
+    setItemToDelete(item);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!itemToDelete) return;
+    
+    setIsDeleting(true);
+    try {
+      await remove(itemToDelete.id, "gallery");
+      
+      // Remove the item from the current media state
+      setMedia(prevMedia => prevMedia.filter(item => item.id !== itemToDelete.id));
+      
+      toast.success("Image deleted successfully");
+      setDeleteDialogOpen(false);
+      setItemToDelete(null);
+    } catch (error) {
+      toast.error("Failed to delete image");
+    } finally {
+      setIsDeleting(false);
     }
+  };
+
+  const handleDeleteCancel = () => {
+    setDeleteDialogOpen(false);
+    setItemToDelete(null);
+    setIsDeleting(false);
   };
 
   const toggleFeatured = async (id, featured) => {
+    setUpdatingFeatured(id);
+    
+    // Optimistically update the UI
+    setMedia(prevMedia => 
+      prevMedia.map(item => 
+        item.id === id 
+          ? { ...item, featured: !featured }
+          : item
+      )
+    );
+    
     try {
-      //await update(id, { featured: !featured }, "gallery");
+      await update(id, { featured: !featured }, "gallery");
       toast.success(featured ? "Image unfeatured" : "Image featured");
-      fetchMedia(currentPage);
     } catch (error) {
+      // Revert the optimistic update on error
+      setMedia(prevMedia => 
+        prevMedia.map(item => 
+          item.id === id 
+            ? { ...item, featured: featured }
+            : item
+        )
+      );
       toast.error("Failed to update image");
+    } finally {
+      setUpdatingFeatured(null);
     }
   };
 
@@ -185,9 +317,16 @@ export default function GalleryPage() {
             Manage your image gallery
           </p>
         </div>
-        <Button disabled={loading} onClick={() => setIsUploadDialogOpen(true)}>
-          <Upload className="w-4 h-4 mr-2" />
-          Upload Images
+        <Button 
+          disabled={loading || uploading} 
+          onClick={() => setIsUploadDialogOpen(true)}
+        >
+          {uploading ? (
+            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+          ) : (
+            <Upload className="w-4 h-4 mr-2" />
+          )}
+          {uploading ? "Uploading..." : "Upload Images"}
         </Button>
       </div>
 
@@ -202,7 +341,16 @@ export default function GalleryPage() {
         />
       </div>
 
-      <Dialog open={isUploadDialogOpen} onOpenChange={setIsUploadDialogOpen}>
+      <Dialog 
+        open={isUploadDialogOpen} 
+        onOpenChange={(open) => {
+          // Prevent closing dialog while uploading
+          if (uploading && !open) {
+            return;
+          }
+          setIsUploadDialogOpen(open);
+        }}
+      >
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Upload Images</DialogTitle>
@@ -212,25 +360,53 @@ export default function GalleryPage() {
           </DialogHeader>
           <div
             className={`mt-4 grid place-items-center border-2 border-dashed rounded-lg p-8 transition-colors ${
-              dragActive ? "border-primary bg-primary/5" : "border-muted"
+              uploading 
+                ? "border-primary bg-primary/10 pointer-events-none"
+                : dragActive 
+                ? "border-primary bg-primary/5" 
+                : "border-muted cursor-pointer hover:border-primary/50 hover:bg-primary/5"
             }`}
-            onDragEnter={handleDrag}
-            onDragLeave={handleDrag}
-            onDragOver={handleDrag}
-            onDrop={handleDrop}
-            onClick={() => inputRef.current?.click()}
+            onDragEnter={!uploading ? handleDrag : undefined}
+            onDragLeave={!uploading ? handleDrag : undefined}
+            onDragOver={!uploading ? handleDrag : undefined}
+            onDrop={!uploading ? handleDrop : undefined}
+            onClick={!uploading ? () => inputRef.current?.click() : undefined}
           >
             <div className="flex flex-col items-center gap-2">
-              <Upload className="h-8 w-8 text-muted-foreground" />
-              <p className="text-sm text-muted-foreground">
-                Drop your images here or click to browse
-              </p>
+              {uploading ? (
+                <>
+                  <Loader2 className="h-8 w-8 text-primary animate-spin" />
+                  <p className="text-sm text-primary font-medium">
+                    Uploading image...
+                  </p>
+                  <div className="w-32 h-2 bg-muted rounded-full overflow-hidden">
+                    <div 
+                      className="h-full bg-primary rounded-full transition-all duration-300 ease-out"
+                      style={{ width: `${uploadProgress}%` }}
+                    />
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {Math.round(uploadProgress)}%
+                  </p>
+                </>
+              ) : (
+                <>
+                  <Upload className="h-8 w-8 text-muted-foreground" />
+                  <p className="text-sm text-muted-foreground">
+                    Drop your images here or click to browse
+                  </p>
+                  <p className="text-xs text-muted-foreground/70">
+                    PNG, JPG, WEBP up to 10MB
+                  </p>
+                </>
+              )}
             </div>
             <input
               ref={inputRef}
               type="file"
               accept="image/*"
               onChange={handleFileSelect}
+              disabled={uploading}
               className="hidden"
             />
           </div>
@@ -276,8 +452,13 @@ export default function GalleryPage() {
                       item.featured ? "text-yellow-500" : "text-muted-foreground"
                     }`}
                     onClick={() => toggleFeatured(item.id, item.featured)}
+                    disabled={updatingFeatured === item.id}
                   >
-                    <Star className="h-4 w-4" />
+                    {updatingFeatured === item.id ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Star className="h-4 w-4" />
+                    )}
                   </Button>
                 </CardHeader>
                 <CardContent>
@@ -301,9 +482,14 @@ export default function GalleryPage() {
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => handleDelete(item.id)}
+                    onClick={() => handleDeleteClick(item)}
+                    disabled={isDeleting && itemToDelete?.id === item.id}
                   >
-                    <Trash2 className="h-4 w-4 mr-2" />
+                    {isDeleting && itemToDelete?.id === item.id ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    ) : (
+                      <Trash2 className="h-4 w-4 mr-2" />
+                    )}
                     Delete
                   </Button>
                 </CardFooter>
@@ -311,17 +497,72 @@ export default function GalleryPage() {
             ))}
           </div>
 
-          <div className="flex justify-center mt-6">
-            <Pagination
-              currentPage={currentPage}
-              totalPages={totalPages}
-              onPageChange={setCurrentPage}
-            />
-          </div>
+          {totalPages > 1 && (
+            <div className="flex justify-center mt-6">
+              <Pagination>
+                <PaginationContent>
+                  <PaginationItem>
+                    <PaginationPrevious 
+                      onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                      className={currentPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                    />
+                  </PaginationItem>
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                    <PaginationItem key={page}>
+                      <PaginationLink
+                        onClick={() => setCurrentPage(page)}
+                        isActive={page === currentPage}
+                        className="cursor-pointer"
+                      >
+                        {page}
+                      </PaginationLink>
+                    </PaginationItem>
+                  ))}
+                  <PaginationItem>
+                    <PaginationNext 
+                      onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                      className={currentPage === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                    />
+                  </PaginationItem>
+                </PaginationContent>
+              </Pagination>
+            </div>
+          )}
         </>
       )}
       </>
       ) }
+      
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Image</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this image? This action cannot be undone and will permanently remove the image from your gallery.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={handleDeleteCancel} disabled={isDeleting}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteConfirm}
+              disabled={isDeleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isDeleting ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                "Delete Image"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
