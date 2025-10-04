@@ -61,7 +61,7 @@ const getConfig = (translations = {}) => {
          * Callback functions
          */
         onFirstConsent: ({ cookie }) => {
-            console.log('onFirstConsent fired', cookie);
+            // console.log('onFirstConsent fired', cookie);
 
             // Load Google Analytics if analytics category is accepted
             if (cookie.categories.includes('analytics')) {
@@ -70,7 +70,7 @@ const getConfig = (translations = {}) => {
         },
 
         onConsent: ({ cookie }) => {
-            console.log('onConsent fired!', cookie);
+            // console.log('onConsent fired!', cookie);
 
             // Load Google Analytics if analytics category is accepted
             if (cookie.categories.includes('analytics')) {
@@ -79,7 +79,7 @@ const getConfig = (translations = {}) => {
         },
 
         onChange: ({ changedCategories, changedServices, cookie }) => {
-            console.log('onChange fired!', changedCategories, changedServices);
+            // console.log('onChange fired!', changedCategories, changedServices);
 
             // Handle analytics category changes
             if (changedCategories.includes('analytics')) {
@@ -93,15 +93,15 @@ const getConfig = (translations = {}) => {
         },
 
         onModalReady: ({ modalName }) => {
-            console.log('ready:', modalName);
+            // console.log('ready:', modalName);
         },
 
         onModalShow: ({ modalName }) => {
-            console.log('visible:', modalName);
+            // console.log('visible:', modalName);
         },
 
         onModalHide: ({ modalName }) => {
-            console.log('hidden:', modalName);
+            // console.log('hidden:', modalName);
         },
 
         // https://cookieconsent.orestbida.com/reference/configuration-reference.html#guioptions

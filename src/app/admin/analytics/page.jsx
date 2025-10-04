@@ -69,9 +69,7 @@ export default function AnalyticsPage() {
   const [webStats, setWebStats] = useState({
     totalVisitors: 0,
     uniqueVisitors: 0,
-    pageViews: 0,
-    avgLoadTime: 0,
-    bounceRate: 0,
+    pageViews: 0, 
   });
   const [visitorData, setVisitorData] = useState([]);
   const [countryData, setCountryData] = useState([]);
@@ -94,9 +92,7 @@ export default function AnalyticsPage() {
         setWebStats({
           totalVisitors: data.overview.totalVisitors,
           uniqueVisitors: data.overview.uniqueVisitors,
-          pageViews: data.overview.pageViews,
-          avgLoadTime: data.overview.avgLoadTime,
-          bounceRate: data.overview.bounceRate,
+          pageViews: data.overview.pageViews, 
         });
         
         setVisitorData(data.daily || []);
@@ -223,19 +219,7 @@ export default function AnalyticsPage() {
                   value={formatNumber(webStats.pageViews)}
                   icon={Globe}
                   description="Total page views"
-                />
-                <StatCard
-                  title="Avg Load Time"
-                  value={`${webStats.avgLoadTime}ms`}
-                  icon={Clock}
-                  description="Average page load"
-                />
-                <StatCard
-                  title="Bounce Rate"
-                  value={`${webStats.bounceRate}%`}
-                  icon={Activity}
-                  description="Single page visits"
-                />
+                /> 
               </>
             )}
           </div>

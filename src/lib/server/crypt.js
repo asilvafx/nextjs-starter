@@ -41,14 +41,14 @@ function isValidJson(str) {
 }
 
 export const encryptHash = (password) => {
-    return CryptoJS.AES.encrypt(JSON.stringify(password), process.env.NEXT_SECRET || 'your-super-secret-key', {
+    return CryptoJS.AES.encrypt(JSON.stringify(password), process.env.NEXT_SECRET_KEY || 'your-super-secret-key', {
         format: CryptoJSAesJson
     }).toString();
 };
 
 export const decryptHash = (encryptedPassword) => {
     try {
-        const decrypted = CryptoJS.AES.decrypt(encryptedPassword, process.env.NEXT_SECRET || 'your-super-secret-key', {
+        const decrypted = CryptoJS.AES.decrypt(encryptedPassword, process.env.NEXT_SECRET_KEY || 'your-super-secret-key', {
             format: CryptoJSAesJson
         }).toString(CryptoJS.enc.Utf8);
 
@@ -67,7 +67,7 @@ const scryptAsync = promisify(scrypt);
 // Encrypt password with salt
 export async function encryptPassword(password, salt=null) {
     if (!salt) {
-        salt = process.env.NEXT_SECRET;
+        salt = process.env.NEXT_SECRET_KEY;
     }
     const hash = await scryptAsync(password.normalize(), salt, 64);
     return hash.toString('hex').normalize();

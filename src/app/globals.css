@@ -369,6 +369,7 @@ table th {
 } 
 #cc-main .cm__title, #cc-main .pm__title {
     color: var(--foreground);
+    font-weight: bolder;
 }
 #cc-main .cm__desc, #cc-main .pm__section-desc {
     color: var(--muted-foreground);
@@ -381,11 +382,16 @@ table th {
     border-color: var(--border);
 }
 #cc-main .cm__btn, #cc-main .pm__btn {
-    background: inherit;
+    background: var(--foreground);
+    color: var(--background);
+}
+#cc-main .cm__btn:hover, #cc-main .pm__btn:hover {
+    background: var(--foreground);
+    color: var(--background);
 }
 #cc-main .cm__btn--secondary, #cc-main .pm__btn--secondary {
-    background: var(--foreground);
-    color: var(--secondary);
+    background: var(--accent);
+    color: var(--accent-foreground);
     border-color: var(--border);
 }
 #cc-main .pm__header, #cc-main .pm__footer, #cc-main .pm__section, #cc-main .pm__section--toggle .pm__section-desc-wrapper  {
@@ -418,4 +424,10 @@ table th {
 }
 #cc-main .toggle__icon {
     background-color: var(--accent);
+}
+#cc-main .pm__service:hover, #cc-main .pm__table-tr:hover {
+    background-color: inherit;
+}
+#cc-main .pm__table-caption {
+    color: var(--muted-foreground);
 }

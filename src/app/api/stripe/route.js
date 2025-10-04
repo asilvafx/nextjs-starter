@@ -1,6 +1,6 @@
 import Stripe from "stripe";
 
-const stripe = new Stripe(process.env.STRIPE_SK);
+const stripe = new Stripe(process.env.STRIPE_SK || '');
 
 export async function OPTIONS() {
     return new Response(null, {

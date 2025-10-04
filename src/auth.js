@@ -134,7 +134,7 @@ const authConfig = {
         signOut: '/auth/logout',
         error: '/auth/error'
     },
-    secret: process.env.NEXT_SECRET,
+    secret: process.env.NEXT_SECRET_KEY,
     debug: process.env.NODE_ENV === 'development'
 };
 
