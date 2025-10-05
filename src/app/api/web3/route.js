@@ -8,7 +8,7 @@ import {
     getTxStatus,
     sendTransaction,
     getTokenBalance,
-    getWeb3Config
+    loadWeb3Config
 } from '@/lib/server/web3.js';
 
 // GET - Get Web3 configuration and status
@@ -19,7 +19,7 @@ async function handleGet(request) {
 
         switch (action) {
             case 'config':
-                return NextResponse.json(await getWeb3Config());
+                return NextResponse.json(await loadWeb3Config());
 
             case 'gas_price':
                 return NextResponse.json(await getGasPrice());
@@ -58,7 +58,7 @@ async function handleGet(request) {
                 return NextResponse.json(await getTxStatus(txHash));
 
             default:
-                return NextResponse.json(await getWeb3Config());
+                return NextResponse.json(await loadWeb3Config());
         }
     } catch (error) {
         console.error('Web3 API GET error:', error);
