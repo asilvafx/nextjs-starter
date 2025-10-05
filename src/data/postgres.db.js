@@ -1,10 +1,11 @@
 // data/postgres.db.js
 import { createPool, createClient } from "@vercel/postgres";
 import { put } from '@vercel/blob';
+import { ca } from "zod/v4/locales";
 
 // Add connection logging
-if (!process.env.POSTGRES_URL) {
-    console.error("❌ POSTGRES_URL environment variable is not set!");
+if (process.env.POSTGRES_URL) {
+    console.error("POSTGRES_URL environment variable found!");
 }
 
 let client;
@@ -13,9 +14,13 @@ try {
         connectionString: process.env.POSTGRES_URL,
     });
 } catch (e) {
+    try {
     client = createClient({
-        connectionString: process.env.POSTGRES_URL,
+            connectionString: process.env.POSTGRES_URL,
     });
+    } catch (e) {
+    client = null;
+    }
 }
 
 class PostgresDBService {
