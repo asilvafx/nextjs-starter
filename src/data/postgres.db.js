@@ -1,11 +1,10 @@
 // data/postgres.db.js
 import { createPool, createClient } from "@vercel/postgres";
 import { put } from '@vercel/blob';
-import { ca } from "zod/v4/locales";
 
 // Add connection logging
 if (process.env.POSTGRES_URL) {
-    console.error("POSTGRES_URL environment variable found!");
+    console.log("POSTGRES_URL environment variable found!");
 }
 
 let client;
