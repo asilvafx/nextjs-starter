@@ -6,39 +6,6 @@ import PostgresService from './postgres.db.js';
 // import MongoService from './mongo.db.js';
 // import MySQLService from './mysql.db.js';
 
-// Mock provider for builds without database connections
-class MockDBProvider {
-    async create(data, collectionName) {
-        console.warn('MockDBProvider: create operation called during build');
-        return { success: false, message: 'Database not configured' };
-    }
-    
-    async read(id, collectionName) {
-        console.warn('MockDBProvider: read operation called during build');
-        return null;
-    }
-    
-    async readAll(collectionName) {
-        console.warn('MockDBProvider: readAll operation called during build');
-        return {};
-    }
-    
-    async update(id, data, collectionName) {
-        console.warn('MockDBProvider: update operation called during build');
-        return { success: false, message: 'Database not configured' };
-    }
-    
-    async delete(id, collectionName) {
-        console.warn('MockDBProvider: delete operation called during build');
-        return { success: false, message: 'Database not configured' };
-    }
-    
-    async search(query, collectionName) {
-        console.warn('MockDBProvider: search operation called during build');
-        return [];
-    }
-}
-
 class DBService {
     constructor() {
         // Database providers registry
@@ -51,20 +18,26 @@ class DBService {
             // mysql: MySQLService,
         };
 
-        let DATABASE_PROVIDER;
-        if(process.env.POSTGRES_URL){
-            console.log('Using PostgreSQL provider');
-            this.provider = new PostgresService();
-            return;
+        // Initialize the database service based on available environment variables
+        try {
+            if (process.env.POSTGRES_URL) { 
+                this.provider = 'postgres';
+                // Check if PostgresService is a constructor or already an instance
+                this.service = typeof PostgresService === 'function' ? new PostgresService() : PostgresService;
+            } else if (process.env.REDIS_URL) { 
+                this.provider = 'redis';
+                // Check if RedisService is a constructor or already an instance
+                this.service = typeof RedisService === 'function' ? new RedisService() : RedisService;
+            } else {
+                console.log('No database configuration found');
+                this.provider = null;
+                this.service = null;
+            }
+        } catch (error) {
+            console.error('Database service initialization failed:', error.message);
+            this.provider = null;
+            this.service = null;
         }
-        if(process.env.REDIS_URL){
-            console.log('Using Redis provider');
-            this.provider = new RedisService();
-            return;
-        }
-        
-        this.provider = null;
-        return;
     }
 
     // Get service instance for a specific provider
@@ -102,8 +75,17 @@ class DBService {
 
     // Unified methods - these will call the appropriate service
     async getItemsByKeyValue(key, value, table) {
+        if (!this.service) {
+            console.error('Database service not initialized');
+            return null;
+        }
         try {
-            return await this.service.getItemsByKeyValue(key, value, table);
+            if (typeof this.service.getItemsByKeyValue === 'function') {
+                return await this.service.getItemsByKeyValue(key, value, table);
+            } else {
+                console.warn(`getItemsByKeyValue not implemented for ${this.provider} provider`);
+                return null;
+            }
         } catch (error) {
             console.error(`Error in getItemsByKeyValue (${this.provider}):`, error);
             return null;
@@ -111,8 +93,17 @@ class DBService {
     }
 
     async readBy(key, value, table) {
+        if (!this.service) {
+            console.error('Database service not initialized');
+            return null;
+        }
         try {
-            return await this.service.readBy(key, value, table);
+            if (typeof this.service.readBy === 'function') {
+                return await this.service.readBy(key, value, table);
+            } else {
+                console.warn(`readBy not implemented for ${this.provider} provider`);
+                return null;
+            }
         } catch (error) {
             console.error(`Error in readBy (${this.provider}):`, error);
             return null;
@@ -120,8 +111,17 @@ class DBService {
     }
 
     async getItemKey(key, value, table) {
+        if (!this.service) {
+            console.error('Database service not initialized');
+            return null;
+        }
         try {
-            return await this.service.getItemKey(key, value, table);
+            if (typeof this.service.getItemKey === 'function') {
+                return await this.service.getItemKey(key, value, table);
+            } else {
+                console.warn(`getItemKey not implemented for ${this.provider} provider`);
+                return null;
+            }
         } catch (error) {
             console.error(`Error in getItemKey (${this.provider}):`, error);
             return null;
@@ -129,6 +129,10 @@ class DBService {
     }
 
     async read(id, table) {
+        if (!this.service) {
+            console.error('Database service not initialized');
+            return null;
+        }
         try {
             return await this.service.read(id, table);
         } catch (error) {
@@ -138,42 +142,62 @@ class DBService {
     }
 
     async readAll(table) {
+        if (!this.service) {
+            console.error('Database service not initialized');
+            return {};
+        }
         try {
             return await this.service.readAll(table);
         } catch (error) {
             console.error(`Error in readAll (${this.provider}):`, error);
-            return null;
+            return {};
         }
     }
 
     async create(data, table) {
+        if (!this.service) {
+            console.error('Database service not initialized');
+            return { success: false, message: 'Database not configured' };
+        }
         try {
             return await this.service.create(data, table);
         } catch (error) {
             console.error(`Error in create (${this.provider}):`, error);
-            return null;
+            return { success: false, message: error.message };
         }
     }
 
     async update(id, updateData, table) {
+        if (!this.service) {
+            console.error('Database service not initialized');
+            return { success: false, message: 'Database not configured' };
+        }
         try {
             return await this.service.update(id, updateData, table);
         } catch (error) {
             console.error(`Error in update (${this.provider}):`, error);
-            return null;
+            return { success: false, message: error.message };
         }
     }
 
     async delete(id, table) {
+        if (!this.service) {
+            console.error('Database service not initialized');
+            return { success: false, message: 'Database not configured' };
+        }
         try {
             return await this.service.delete(id, table);
         } catch (error) {
             console.error(`Error in delete (${this.provider}):`, error);
-            return null;
+            return { success: false, message: error.message };
         }
     }
 
     async deleteAll(table) {
+        if (!this.service) {
+            console.error('Database service not initialized');
+            return false;
+        }
         try {
             return await this.service.deleteAll(table);
         } catch (error) {
@@ -183,8 +207,17 @@ class DBService {
     }
 
     async upload(file, path) {
+        if (!this.service) {
+            console.error('Database service not initialized');
+            return null;
+        }
         try {
-            return await this.service.upload(file, path);
+            if (typeof this.service.upload === 'function') {
+                return await this.service.upload(file, path);
+            } else {
+                console.warn(`upload not implemented for ${this.provider} provider`);
+                return null;
+            }
         } catch (error) {
             console.error(`Error in upload (${this.provider}):`, error);
             return null;

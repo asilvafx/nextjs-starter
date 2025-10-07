@@ -21,12 +21,18 @@ export function getBaseUrl(req = null) {
         return `${protocol}://${host}`;
     }
 
-    // 6. Last resort - use localhost for development, or require NEXTAUTH_URL for production
+    // 3. Development fallback
     if (process.env.NODE_ENV === 'development') {
         return 'http://localhost:3000';
     }
-    
-    console.warn('NEXTAUTH_URL not set. Using localhost:3000 as fallback.');
+
+    // 4. Production fallback - try to detect from Vercel environment
+    if (process.env.VERCEL_URL) {
+        return `https://${process.env.VERCEL_URL}`;
+    }
+
+    // 5. Last resort - return a default localhost URL for builds
+    console.warn('Unable to determine base URL. Using default localhost:3000');
     return 'http://localhost:3000';
 }
 

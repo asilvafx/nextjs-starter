@@ -189,8 +189,7 @@ async function handlePost(request) {
 
         if (!result) {
             return NextResponse.json(
-                { error: 'Failed to save visitor data' },
-                { status: 500 }
+                { error: 'Failed to save visitor data' }
             );
         }
 
@@ -212,8 +211,7 @@ async function handlePost(request) {
             {
                 error: 'Failed to record visitor data',
                 message: error.message
-            },
-            { status: 500 }
+            }
         );
     }
 }
@@ -354,8 +352,7 @@ async function handleGet(request) {
             {
                 error: 'Failed to retrieve analytics data',
                 message: error.message
-            },
-            { status: 500 }
+            }
         );
     }
 }

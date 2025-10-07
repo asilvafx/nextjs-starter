@@ -33,6 +33,11 @@ async function handleLogin(email, passwordHash, { client }) {
             throw new Error('Invalid credentials.');
         }
 
+        // Handle mock database provider
+        if (DBService.provider === 'mock') {
+            throw new Error('Database not configured. Please set up database connection.');
+        }
+
         const cryptoResult = await validatePassword(passwordHash, user.salt, user.password);
 
         if (!cryptoResult) {
@@ -93,6 +98,11 @@ async function handleRegistration(email, passwordHash, { name, client }) {
     try {
         if (!name) {
             throw new Error('Name is required for registration.');
+        }
+
+        // Handle mock database provider
+        if (DBService.provider === 'mock') {
+            throw new Error('Database not configured. Please set up database connection.');
         }
 
         const passwordValid = (pwd) => {

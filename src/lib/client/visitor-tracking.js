@@ -281,11 +281,7 @@ class VisitorTracker {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(requestData)
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
+      }); 
 
       const result = await response.json();
       
@@ -391,8 +387,7 @@ export const initializeVisitorTracking = () => {
     return Promise.reject(new Error('Not in browser environment'));
   }
   
-  if (isInitialized) {
-    console.log('Visitor tracking already initialized');
+  if (isInitialized) { 
     return Promise.resolve(visitorTracker);
   }
 
