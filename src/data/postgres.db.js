@@ -2,20 +2,22 @@
 import { createPool, createClient } from "@vercel/postgres";
 import { put } from '@vercel/blob';
 
+const dbUrl = process.env.POSTGRES_URL || process.env.NETLIFY_DATABASE_URL;
+
 // Add connection logging
-if (process.env.POSTGRES_URL) {
+if (dbUrl) {
     console.log("POSTGRES_URL environment variable found!");
 }
 
 let client;
 try {
     client = createPool({
-        connectionString: process.env.POSTGRES_URL,
+        connectionString: dbUrl,
     });
 } catch (e) {
     try {
     client = createClient({
-            connectionString: process.env.POSTGRES_URL,
+            connectionString: dbUrl,
     });
     } catch (e) {
     client = null;

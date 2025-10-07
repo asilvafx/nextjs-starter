@@ -20,7 +20,7 @@ class DBService {
 
         // Initialize the database service based on available environment variables
         try {
-            if (process.env.POSTGRES_URL) { 
+            if (process.env.POSTGRES_URL || process.env.NETLIFY_DATABASE_URL ) { 
                 this.provider = 'postgres';
                 // Check if PostgresService is a constructor or already an instance
                 this.service = typeof PostgresService === 'function' ? new PostgresService() : PostgresService;
