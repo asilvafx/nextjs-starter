@@ -6,6 +6,39 @@ import PostgresService from './postgres.db.js';
 // import MongoService from './mongo.db.js';
 // import MySQLService from './mysql.db.js';
 
+// Mock provider for builds without database connections
+class MockDBProvider {
+    async create(data, collectionName) {
+        console.warn('MockDBProvider: create operation called during build');
+        return { success: false, message: 'Database not configured' };
+    }
+    
+    async read(id, collectionName) {
+        console.warn('MockDBProvider: read operation called during build');
+        return null;
+    }
+    
+    async readAll(collectionName) {
+        console.warn('MockDBProvider: readAll operation called during build');
+        return {};
+    }
+    
+    async update(id, data, collectionName) {
+        console.warn('MockDBProvider: update operation called during build');
+        return { success: false, message: 'Database not configured' };
+    }
+    
+    async delete(id, collectionName) {
+        console.warn('MockDBProvider: delete operation called during build');
+        return { success: false, message: 'Database not configured' };
+    }
+    
+    async search(query, collectionName) {
+        console.warn('MockDBProvider: search operation called during build');
+        return [];
+    }
+}
+
 class DBService {
     constructor() {
         // Database providers registry
@@ -20,15 +53,18 @@ class DBService {
 
         let DATABASE_PROVIDER;
         if(process.env.POSTGRES_URL){
-            DATABASE_PROVIDER = "postgres"
-        } else
+            console.log('Using PostgreSQL provider');
+            this.provider = new PostgresService();
+            return;
+        }
         if(process.env.REDIS_URL){
-            DATABASE_PROVIDER = "redis"
-        } 
-        this.provider = DATABASE_PROVIDER.toLowerCase();
-        this.service = this.getProviderService(this.provider);
-
-        console.log(`Database provider initialized: ${this.provider}`); 
+            console.log('Using Redis provider');
+            this.provider = new RedisService();
+            return;
+        }
+        
+        this.provider = null;
+        return;
     }
 
     // Get service instance for a specific provider

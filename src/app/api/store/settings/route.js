@@ -23,7 +23,7 @@ export async function GET(request) {
                 applyVatAtCheckout: true,
                 paymentMethods: {
                     cardPayments: true,
-                    stripePublicKey: process.env.NEXT_PUBLIC_STRIPE_PK || "",
+                    stripePublicKey: process.env.NEXT_PUBLIC_STRIPE_PK || process.env.STRIPE_PUBLISHABLE_KEY || "",
                     stripeSecretKey: "",
                     bankTransfer: false,
                     payOnDelivery: false,

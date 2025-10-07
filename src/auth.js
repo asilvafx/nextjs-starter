@@ -21,8 +21,13 @@ export function getBaseUrl(req = null) {
         return `${protocol}://${host}`;
     }
 
-    // 6. Last resort - throw error
-    throw new Error('Unable to determine base URL. Please set NEXTAUTH_URL environment variable.');
+    // 6. Last resort - use localhost for development, or require NEXTAUTH_URL for production
+    if (process.env.NODE_ENV === 'development') {
+        return 'http://localhost:3000';
+    }
+    
+    console.warn('NEXTAUTH_URL not set. Using localhost:3000 as fallback.');
+    return 'http://localhost:3000';
 }
 
 const authConfig = {
@@ -134,7 +139,7 @@ const authConfig = {
         signOut: '/auth/logout',
         error: '/auth/error'
     },
-    secret: process.env.NEXT_SECRET_KEY,
+    secret: process.env.NEXT_SECRET_KEY || process.env.NEXTAUTH_SECRET || 'fallback-secret-key-change-in-production',
     debug: process.env.NODE_ENV === 'development'
 };
 
