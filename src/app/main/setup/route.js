@@ -5,7 +5,7 @@ export async function GET() {
     try {
         // Define required environment variables
         const requiredEnvVars = {
-            'POSTGRES_URL': process.env.POSTGRES_UR || process.env.NETLIFY_DATABASE_URL || '',
+            'POSTGRES_URL': process.env.POSTGRES_URL || '',
             'REDIS_URL': process.env.REDIS_URL || '',
             'BLOB_READ_WRITE_TOKEN': process.env.BLOB_READ_WRITE_TOKEN || '',
             'NEXT_SECRET_KEY': process.env.NEXT_SECRET_KEY || ''
