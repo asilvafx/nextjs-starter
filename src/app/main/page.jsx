@@ -17,6 +17,7 @@ import { useCart } from 'react-use-cart';
 import { FaCartShopping } from "react-icons/fa6"; 
 import { Button } from "@/components/ui/button"
 import { ThemeSwitchGroup } from '@/components/ui/theme-mode';
+import { LoadingPage } from '@/components/ui/loading-spinner';
  
 const Homepage = () => { 
     console.log('Homepage component rendered');
@@ -52,7 +53,11 @@ const Homepage = () => {
         setupDbEnv();
     }, []); 
 
-    if (loading) return <div className="section"><span>Loading...</span></div>;
+    if (loading) return (
+        <div className="section">
+            <LoadingPage />
+        </div>
+    );
 
     return (
         <>

@@ -25,13 +25,23 @@ import { ThemeSwitchGroup } from "@/components/ui/theme-mode";
 import { LanguageSelector } from "@/components/ui/language-selector";
 import { cn } from "@/lib/utils";
 import { usePathname } from "next/navigation";
-import { findBreadcrumbPath } from "./config/navigation"; 
+import { findBreadcrumbPath } from "./config/navigation";
+import { LoadingPage } from "@/components/ui/loading-spinner"; 
 
 export default function AdminLayout({ children }) {
   const { isAuthenticated, user, status } = useAuth();
   const pathname = usePathname();
   const breadcrumbs = findBreadcrumbPath(pathname);
   const [showMobileActions, setShowMobileActions] = React.useState(false);
+
+  // Show loading spinner while authentication is being checked
+  if (status === "loading") {
+    return (
+      <div className="h-screen w-screen flex items-center justify-center">
+        <LoadingPage message="Loading administration panel..." />
+      </div>
+    );
+  }
 
   // Protect admin routes
   if (!isAuthenticated && status !== "loading") {
