@@ -23,7 +23,7 @@ const Homepage = () => {
     console.log('Homepage component rendered');
     const [setupData, setSetupData] = useState(null);
     const [loading, setLoading] = useState(true);
-    const { isAuthenticated, user, status, logout } = useAuth();
+    const { isAuthenticated, user, logout } = useAuth();
     const { totalItems } = useCart();
 
     const testVisitorTracking = () => { 
@@ -40,24 +40,23 @@ const Homepage = () => {
     useEffect(() => {
         const setupDbEnv = async () => {
             try {
+                setLoading(true);
                 const response = await fetch('/main/setup');
                 const data = await response.json();
-                setSetupData(data);
-                setLoading(false);
+                setSetupData(data); 
             } catch (err) {
                 console.error("❌ Error loading setup:", err);
-                toast.error(`Error loading setup: ${err.message}`);
+                toast.error(`Error loading setup: ${err.message}`); 
+            } finally {
                 setLoading(false);
             }
         };
         setupDbEnv();
-    }, []); 
+    }, []);  
 
-    if (loading) return (
-        <div className="section">
-            <LoadingPage />
-        </div>
-    );
+    if (loading) {
+        return <LoadingPage />;
+    }
 
     return (
         <>

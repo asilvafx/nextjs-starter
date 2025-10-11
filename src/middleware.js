@@ -1,6 +1,6 @@
 // @/middleware.js
 import { NextResponse } from "next/server"
-import { auth } from "@/auth"  
+import { auth } from "@/auth"   
 
 // Define protected routes - these will be checked for authentication and role access
 const protectedRoutes = [
@@ -37,7 +37,7 @@ async function getCachedRoles(origin, forceRefresh = false) {
     // Start new fetch and cache the promise
     cachePromise = (async () => {
         try {
-            // Add cache busting parameter when force refreshing
+            // Add cache busting parameter when force refreshing 
             const url = forceRefresh 
                 ? `${origin}/api/query/public/roles?_t=${Date.now()}`
                 : `${origin}/api/query/public/roles`;
