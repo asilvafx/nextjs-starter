@@ -1,4 +1,4 @@
-// app/api/store/settings/route.js
+// app/api/shop/settings/route.js
 import { NextResponse } from 'next/server';
 import DBService from '@/data/rest.db.js';
 

@@ -2,12 +2,7 @@
 import { createPool, createClient } from "@vercel/postgres";
 import { put } from '@vercel/blob';
 
-const dbUrl = process.env.POSTGRES_URL;
-
-// Add connection logging
-if (dbUrl) {
-    console.log("POSTGRES_URL environment variable found!");
-}
+const dbUrl = process.env.POSTGRES_URL; 
 
 let client;
 try {

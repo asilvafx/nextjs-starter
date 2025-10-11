@@ -1,11 +1,6 @@
 // data/redis.db.js
 import { createClient } from 'redis';
-import { put } from '@vercel/blob';
-
-// Add connection logging
-if (process.env.REDIS_URL) {
-    console.log("REDIS_URL environment variable found!");
-}
+import { put } from '@vercel/blob'; 
 
 class RedisDBService {
     constructor() {
@@ -33,8 +28,7 @@ class RedisDBService {
                 this.isConnected = false;
             });
 
-            this.client.on('connect', () => {
-                console.log('Redis Client Connected');
+            this.client.on('connect', () => { 
                 this.isConnected = true;
             });
 

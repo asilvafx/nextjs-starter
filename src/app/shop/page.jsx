@@ -53,7 +53,7 @@ function Shop() {
                 getAllPublic('catalog'),
                 getAllPublic('categories'), 
                 getAllPublic('collections'),
-                fetch('/api/store/settings').then(res => res.json())
+                fetch('/api/shop/settings').then(res => res.json())
             ]);
 
             // Set store settings

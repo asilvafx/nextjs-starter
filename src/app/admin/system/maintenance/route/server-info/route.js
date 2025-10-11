@@ -1,4 +1,4 @@
-// app/api/maintenance/server-info/route.js
+// app/admin/system/maintenance/route/server-info/route.js
 import { NextResponse } from 'next/server';
 import { withAdminAuth } from '@/lib/server/auth.js';
 import fs from 'fs/promises';

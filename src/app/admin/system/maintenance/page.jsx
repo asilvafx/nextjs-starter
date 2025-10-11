@@ -38,7 +38,7 @@ export default function MaintenancePage() {
   const fetchServerInfo = async () => {
     setLoading(prev => ({ ...prev, serverInfo: true }));
     try {
-      const response = await fetch('/api/maintenance/server-info');
+      const response = await fetch('/admin/system/maintenance/route/server-info');
       const data = await response.json();
       
       if (data.success) {
@@ -60,7 +60,7 @@ export default function MaintenancePage() {
   const clearCache = async (action) => {
     setLoading(prev => ({ ...prev, cache: true }));
     try {
-      const response = await fetch('/api/maintenance/cache', {
+      const response = await fetch('/admin/system/maintenance/route/cache', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action })

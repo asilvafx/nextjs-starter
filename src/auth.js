@@ -68,9 +68,7 @@ const authConfig = {
                     const passwordHash = atob(password);
 
                     // Get base URL automatically
-                    const baseUrl = getBaseUrl(req);
-
-                    console.log('Using base URL:', baseUrl); // For debugging
+                    const baseUrl = getBaseUrl(req); 
 
                     const authResponse = await fetch(`${baseUrl}/auth/api/handler`, {
                         method: 'POST',
@@ -86,8 +84,7 @@ const authConfig = {
                         })
                     });
 
-                    if(authResponse.ok){
-                        console.log(authResponse); // For debugging 
+                    if(authResponse.ok){ 
                         const res = await authResponse.json();
 
                         if (res?.error) {

@@ -166,7 +166,7 @@ export default function EndpointsPage() {
   };
 
   const handleCreateNewKey = () => {
-    router.push('/admin/dev/endpoints/new-key');
+    router.push('/admin/developer/endpoints/new-key');
   };
 
   const methodConfig = {

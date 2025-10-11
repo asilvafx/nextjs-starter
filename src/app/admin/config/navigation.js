@@ -118,7 +118,7 @@ export const navigation = {
   Developer: [
     {
       title: "Database",
-      url: "/admin/dev/database",
+      url: "/admin/developer/database",
       icon: Database, 
     },
     {
