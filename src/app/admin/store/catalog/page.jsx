@@ -49,9 +49,12 @@ import {
 
 const initialFormData = {
   type: "physical",
-  name: "",
+  name: "", // Will be converted to multi-language object
+  nameML: {}, // Multi-language names: { en: 'Name', fr: 'Nom' }
+  slug: "",
   sku: "",
-  description: "",
+  description: "", // Will be converted to multi-language object
+  descriptionML: {}, // Multi-language descriptions
   price: 0,
   compareAtPrice: 0,
   categoryId: "",
@@ -66,6 +69,28 @@ const initialFormData = {
   duration: 60,
   serviceNotes: "",
   customAttributes: [],
+  // Variant system for attributes with individual stock and images
+  variants: [], // [{ attributes: {color: 'black'}, stock: 10, price: 0, sku: '', coverImage: null }]
+  hasVariants: false,
+  // SEO fields with multi-language support
+  seo: {
+    metaTitle: "",
+    metaTitleML: {},
+    metaDescription: "",
+    metaDescriptionML: {},
+    metaKeywords: "",
+    metaKeywordsML: {},
+    ogTitle: "",
+    ogTitleML: {},
+    ogDescription: "",
+    ogDescriptionML: {},
+    ogImage: "",
+    twitterTitle: "",
+    twitterTitleML: {},
+    twitterDescription: "",
+    twitterDescriptionML: {},
+    twitterImage: "",
+  },
   isActive: true,
 };
 
@@ -90,6 +115,8 @@ export default function CatalogPage() {
 
   const [categories, setCategories] = useState([]);
   const [collections, setCollections] = useState([]);
+  const [availableLanguages, setAvailableLanguages] = useState(["en"]);
+  const [defaultLanguage, setDefaultLanguage] = useState("en");
   const [isOpen, setIsOpen] = useState(false);
   const [editItem, setEditItem] = useState(null);
   const [formData, setFormData] = useState(initialFormData);
@@ -101,11 +128,12 @@ export default function CatalogPage() {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const [catalogRes, categoriesRes, collectionsRes, storeRes] = await Promise.all([
+      const [catalogRes, categoriesRes, collectionsRes, storeRes, settingsRes] = await Promise.all([
         getAll("catalog"),
         getAll("categories"),
         getAll("collections"),
-        fetch('/api/shop/settings').then(res => res.json())
+        fetch('/api/shop/settings').then(res => res.json()),
+        getAll("site_settings")
       ]);
 
       if (catalogRes.success) {
@@ -119,6 +147,11 @@ export default function CatalogPage() {
       }
       if (storeRes.success) {
         setStoreSettings(storeRes.data);
+      }
+      if (settingsRes.success && settingsRes.data.length > 0) {
+        const settings = settingsRes.data[0];
+        setAvailableLanguages(settings.availableLanguages || ["en"]);
+        setDefaultLanguage(settings.language || "en");
       }
     } catch (error) {
       toast.error("Failed to fetch data");
@@ -190,10 +223,36 @@ export default function CatalogPage() {
       ...initialFormData,
       ...product,
       // Ensure all fields are properly set
+      slug: product.slug || "",
+      // Handle multi-language fields - backwards compatibility
+      nameML: product.nameML || (product.name ? { [defaultLanguage]: product.name } : {}),
+      descriptionML: product.descriptionML || (product.description ? { [defaultLanguage]: product.description } : {}),
       collections: product.collections || [],
       images: product.images || [],
       customAttributes: product.customAttributes || [],
       categoryId: product.categoryId || "",
+      // Variant system
+      variants: product.variants || [],
+      hasVariants: product.hasVariants || false,
+      // SEO fields with proper structure and multi-language support
+      seo: {
+        metaTitle: product.seo?.metaTitle || "",
+        metaTitleML: product.seo?.metaTitleML || (product.seo?.metaTitle ? { [defaultLanguage]: product.seo.metaTitle } : {}),
+        metaDescription: product.seo?.metaDescription || "",
+        metaDescriptionML: product.seo?.metaDescriptionML || (product.seo?.metaDescription ? { [defaultLanguage]: product.seo.metaDescription } : {}),
+        metaKeywords: product.seo?.metaKeywords || "",
+        metaKeywordsML: product.seo?.metaKeywordsML || (product.seo?.metaKeywords ? { [defaultLanguage]: product.seo.metaKeywords } : {}),
+        ogTitle: product.seo?.ogTitle || "",
+        ogTitleML: product.seo?.ogTitleML || (product.seo?.ogTitle ? { [defaultLanguage]: product.seo.ogTitle } : {}),
+        ogDescription: product.seo?.ogDescription || "",
+        ogDescriptionML: product.seo?.ogDescriptionML || (product.seo?.ogDescription ? { [defaultLanguage]: product.seo.ogDescription } : {}),
+        ogImage: product.seo?.ogImage || "",
+        twitterTitle: product.seo?.twitterTitle || "",
+        twitterTitleML: product.seo?.twitterTitleML || (product.seo?.twitterTitle ? { [defaultLanguage]: product.seo.twitterTitle } : {}),
+        twitterDescription: product.seo?.twitterDescription || "",
+        twitterDescriptionML: product.seo?.twitterDescriptionML || (product.seo?.twitterDescription ? { [defaultLanguage]: product.seo.twitterDescription } : {}),
+        twitterImage: product.seo?.twitterImage || "",
+      },
       // Ensure numeric fields are properly handled
       price: product.price || 0,
       compareAtPrice: product.compareAtPrice || 0,
@@ -287,6 +346,8 @@ export default function CatalogPage() {
                   editItem={editItem}
                   categories={categories}
                   collections={collections}
+                  availableLanguages={availableLanguages}
+                  defaultLanguage={defaultLanguage}
                   onSubmit={handleSubmit}
                   onImageUpload={handleImageUpload}
                 />
@@ -366,11 +427,21 @@ export default function CatalogPage() {
                         </TableCell>
                         <TableCell>
                           <div>
-                            <div className="font-medium">{item.name}</div>
+                            <div className="font-medium">
+                              {item.nameML?.[defaultLanguage] || item.name || 'Untitled'}
+                              {availableLanguages.length > 1 && (
+                                <span className="ml-2 text-xs text-muted-foreground">
+                                  ({Object.keys(item.nameML || {}).length || 1}/{availableLanguages.length} lang)
+                                </span>
+                              )}
+                            </div>
                             <div className="text-sm text-muted-foreground">
-                              {item.description.length > 50
-                                ? item.description.substring(0, 50) + "..."
-                                : item.description}
+                              {(() => {
+                                const description = item.descriptionML?.[defaultLanguage] || item.description || '';
+                                return description.length > 50
+                                  ? description.substring(0, 50) + "..."
+                                  : description || 'No description';
+                              })()}
                             </div>
                           </div>
                         </TableCell>
@@ -380,15 +451,34 @@ export default function CatalogPage() {
                             "Uncategorized"}
                         </TableCell>
                         <TableCell>
-                          <span
-                            className={`px-2 py-1 rounded-full text-xs ${
-                              item.stock > 0
-                                ? "bg-green-100 text-green-800"
-                                : "bg-red-100 text-red-800"
-                            }`}
-                          >
-                            {item.stock > 0 ? "In Stock" : "Out of Stock"}
-                          </span>
+                          {item.hasVariants && item.variants?.length > 0 ? (
+                            <div className="space-y-1">
+                              <span className="text-xs text-muted-foreground">
+                                {item.variants.length} variant{item.variants.length !== 1 ? 's' : ''}
+                              </span>
+                              <div>
+                                {item.variants.some(v => v.stock > 0 || v.unlimitedStock) ? (
+                                  <span className="px-2 py-1 rounded-full text-xs bg-green-100 text-green-800">
+                                    In Stock
+                                  </span>
+                                ) : (
+                                  <span className="px-2 py-1 rounded-full text-xs bg-red-100 text-red-800">
+                                    Out of Stock
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          ) : (
+                            <span
+                              className={`px-2 py-1 rounded-full text-xs ${
+                                item.stock > 0
+                                  ? "bg-green-100 text-green-800"
+                                  : "bg-red-100 text-red-800"
+                              }`}
+                            >
+                              {item.stock > 0 ? "In Stock" : "Out of Stock"}
+                            </span>
+                          )}
                         </TableCell>
                         <TableCell className="text-right space-x-2">
                           <Button

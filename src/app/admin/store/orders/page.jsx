@@ -499,9 +499,13 @@ export default function OrdersPage() {
 
   return (
     <div className="space-y-4">
-      <div>
-        <h1 className="text-3xl font-bold">Orders</h1>
-        <p className="text-muted-foreground">Manage and track your orders</p>
+      <div className="flex justify-between items-center">
+        <div>
+          <h2 className="text-2xl font-semibold">Orders</h2>
+          <p className="text-muted-foreground">
+            Manage and track your orders
+          </p>
+        </div>
       </div>
 
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -541,8 +545,10 @@ export default function OrdersPage() {
         </div>
       </div>
 
-      <ScrollArea className="h-[calc(100vh-250px)]">
-        <div className="rounded-md border">
+      {loading ? (
+        <TableSkeleton columns={7} rows={5} />
+      ) : (
+        <ScrollArea className="h-[calc(100vh-250px)]">
           <Table>
             <TableHeader>
               <TableRow>
@@ -587,21 +593,15 @@ export default function OrdersPage() {
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
-          <TableBody>
-            {loading ? (
-              <TableRow>
-                <TableCell colSpan={7} className="text-center">
-                  Loading...
-                </TableCell>
-              </TableRow>
-            ) : filteredOrders.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={7} className="text-center">
-                  No orders found
-                </TableCell>
-              </TableRow>
-            ) : (
-              filteredOrders.map((order) => (
+            <TableBody>
+              {filteredOrders.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={7} className="text-center">
+                    No orders found
+                  </TableCell>
+                </TableRow>
+              ) : (
+                filteredOrders.map((order) => (
                 <TableRow key={order.id}>
                   <TableCell className="font-medium">
                     <div className="flex flex-col">
@@ -1041,10 +1041,10 @@ export default function OrdersPage() {
                 </TableRow>
               ))
             )}
-          </TableBody>
-        </Table>
-        </div>
-      </ScrollArea>
+            </TableBody>
+          </Table>
+        </ScrollArea>
+      )}
 
       {/* Create Order Dialog */}
       <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>

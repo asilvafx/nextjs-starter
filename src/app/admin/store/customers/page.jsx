@@ -34,11 +34,17 @@ import {
 } from "@/components/ui/form";
 
 const initialFormData = {
-  name: "",
+  firstName: "",
+  lastName: "",
   email: "",
   phone: "",
-  address: "",
-  notes: "",
+  streetAddress: "",
+  apartmentUnit: "",
+  city: "",
+  state: "",
+  zipCode: "",
+  country: "FR",
+  countryIso: "FR",
 };
 
 export default function CustomersPage() {
@@ -86,10 +92,12 @@ export default function CustomersPage() {
     if (search) {
       const searchLower = search.toLowerCase();
       filtered = filtered.filter(
-        (customer) =>
-          customer.name?.toLowerCase().includes(searchLower) ||
-          customer.email?.toLowerCase().includes(searchLower) ||
-          customer.phone?.includes(search)
+        (customer) => {
+          const fullName = `${customer.firstName || ''} ${customer.lastName || ''}`.trim() || customer.name || '';
+          return fullName.toLowerCase().includes(searchLower) ||
+                 customer.email?.toLowerCase().includes(searchLower) ||
+                 customer.phone?.includes(search);
+        }
       );
     }
 
@@ -143,7 +151,17 @@ export default function CustomersPage() {
     e.preventDefault();
     try {
       setIsSubmitting(true);
-      const response = await create(formData, "customers");
+      
+      // Add default values for new customers with no orders
+      const customerData = {
+        ...formData,
+        orders: 0,
+        totalSpent: 0,
+        lastOrder: null,
+        createdAt: new Date().toISOString(),
+      };
+      
+      const response = await create(customerData, "customers");
       
       if (response.success) {
         toast.success("Customer created successfully");
@@ -198,15 +216,27 @@ export default function CustomersPage() {
                   </DialogHeader>
                   <form onSubmit={handleSubmit} className="space-y-4">
                     <div className="grid gap-4 py-4">
-                      <div className="grid gap-2">
-                        <Label htmlFor="name">Name</Label>
-                        <Input
-                          id="name"
-                          name="name"
-                          value={formData.name}
-                          onChange={handleInputChange}
-                          required
-                        />
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="grid gap-2">
+                          <Label htmlFor="firstName">First Name</Label>
+                          <Input
+                            id="firstName"
+                            name="firstName"
+                            value={formData.firstName}
+                            onChange={handleInputChange}
+                            required
+                          />
+                        </div>
+                        <div className="grid gap-2">
+                          <Label htmlFor="lastName">Last Name</Label>
+                          <Input
+                            id="lastName"
+                            name="lastName"
+                            value={formData.lastName}
+                            onChange={handleInputChange}
+                            required
+                          />
+                        </div>
                       </div>
                       <div className="grid gap-2">
                         <Label htmlFor="email">Email</Label>
@@ -230,22 +260,62 @@ export default function CustomersPage() {
                         />
                       </div>
                       <div className="grid gap-2">
-                        <Label htmlFor="address">Address</Label>
+                        <Label htmlFor="streetAddress">Street Address</Label>
                         <Input
-                          id="address"
-                          name="address"
-                          value={formData.address}
+                          id="streetAddress"
+                          name="streetAddress"
+                          value={formData.streetAddress}
                           onChange={handleInputChange}
                         />
                       </div>
                       <div className="grid gap-2">
-                        <Label htmlFor="notes">Notes</Label>
+                        <Label htmlFor="apartmentUnit">Apartment/Unit</Label>
                         <Input
-                          id="notes"
-                          name="notes"
-                          value={formData.notes}
+                          id="apartmentUnit"
+                          name="apartmentUnit"
+                          value={formData.apartmentUnit}
                           onChange={handleInputChange}
                         />
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="grid gap-2">
+                          <Label htmlFor="city">City</Label>
+                          <Input
+                            id="city"
+                            name="city"
+                            value={formData.city}
+                            onChange={handleInputChange}
+                          />
+                        </div>
+                        <div className="grid gap-2">
+                          <Label htmlFor="state">State</Label>
+                          <Input
+                            id="state"
+                            name="state"
+                            value={formData.state}
+                            onChange={handleInputChange}
+                          />
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="grid gap-2">
+                          <Label htmlFor="zipCode">ZIP Code</Label>
+                          <Input
+                            id="zipCode"
+                            name="zipCode"
+                            value={formData.zipCode}
+                            onChange={handleInputChange}
+                          />
+                        </div>
+                        <div className="grid gap-2">
+                          <Label htmlFor="country">Country</Label>
+                          <Input
+                            id="country"
+                            name="country"
+                            value={formData.country}
+                            onChange={handleInputChange}
+                          />
+                        </div>
                       </div>
                     </div>
                     <div className="flex justify-end space-x-2">
@@ -266,7 +336,7 @@ export default function CustomersPage() {
             </div>
             <ScrollArea className="h-[calc(100vh-250px)]">
                    {loading ? (
-                <TableSkeleton />
+                <TableSkeleton columns={6} rows={5} />
             ) : (
               <Table>
                 <TableHeader>
@@ -290,27 +360,34 @@ export default function CustomersPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {getPaginatedCustomers().map((customer) => (
-                    <TableRow key={customer.email}>
-                      <TableCell>{customer.name}</TableCell>
-                      <TableCell>{customer.email}</TableCell>
-                      <TableCell>{customer.orders}</TableCell>
-                      <TableCell>{formatCurrency(customer.totalSpent)}</TableCell>
-                      <TableCell>{formatDate(customer.lastOrder)}</TableCell>
-                      <TableCell className="text-right">
-                        <Button
-                          variant="outline"
-                          size="icon"
-                          onClick={() => {
-                            // Handle view customer details
-                            toast.info("Customer details view coming soon");
-                          }}
-                        >
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                  {getPaginatedCustomers().map((customer) => {
+                    const fullName = `${customer.firstName || ''} ${customer.lastName || ''}`.trim() || customer.name || 'N/A';
+                    const orderCount = customer.orders || 0;
+                    const totalSpent = customer.totalSpent || 0;
+                    const lastOrderDate = customer.lastOrder;
+                    
+                    return (
+                      <TableRow key={customer.id || customer.email}>
+                        <TableCell>{fullName}</TableCell>
+                        <TableCell>{customer.email}</TableCell>
+                        <TableCell>{orderCount}</TableCell>
+                        <TableCell>{formatCurrency(totalSpent)}</TableCell>
+                        <TableCell>{lastOrderDate ? formatDate(lastOrderDate) : 'No orders'}</TableCell>
+                        <TableCell className="text-right">
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            onClick={() => {
+                              // Handle view customer details
+                              toast.info("Customer details view coming soon");
+                            }}
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
                 </TableBody>
               </Table>
 

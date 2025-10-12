@@ -80,6 +80,7 @@ export default function SystemSettingsPage() {
       country: "",
       countryIso: "",
       language: "en",
+      availableLanguages: ["en"], // Multi-language support for content
       socialNetworks: [],
       workingHours: [],
       serviceArea: "",
@@ -127,6 +128,7 @@ export default function SystemSettingsPage() {
           country: settings.country || "",
           countryIso: settings.countryIso || "",
           language: settings.language || "en",
+          availableLanguages: settings.availableLanguages || ["en"],
           socialNetworks: settings.socialNetworks || [],
           workingHours: settings.workingHours || [],
           serviceArea: settings.serviceArea || "",
@@ -194,9 +196,7 @@ export default function SystemSettingsPage() {
         // Ensure arrays exist
         socialNetworks: data.socialNetworks || [],
         workingHours: data.workingHours || [],
-      };
-
-      console.log("Form data before submission:", cleanData);
+      }; 
 
       if (settingsId) {
         await update(settingsId, cleanData, "site_settings");
@@ -505,53 +505,57 @@ function SiteSettingsTab({ form, languages, getCurrentLocation, isSubmitting }) 
             />
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <FormField
-              control={form.control}
-              name="country"
-              render={({ field }) => {
-                return (
-                  <FormItem>
-                    <FormLabel>Country *</FormLabel>
-                    <FormControl>
-                      <CountryDropdown 
-                        key={field.value}
-                        defaultValue={field.value}
-                        disabled={isSubmitting}
-                        onChange={(country) => {
-                          const countryCode = country.alpha2.toUpperCase();
-                          field.onChange(countryCode);
-                          form.setValue("countryIso", country.alpha3);
-                        }}
-                        placeholder="Select a country" 
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                );
-              }}
-            />
-
-            <FormField
-              control={form.control}
-              name="language"
-              render={({ field }) => (
+          <FormField
+            control={form.control}
+            name="country"
+            render={({ field }) => {
+              return (
                 <FormItem>
-                  <FormLabel>Default Language *</FormLabel>
+                  <FormLabel>Country *</FormLabel>
                   <FormControl>
-                    <LanguageSelector 
-                      languages={languages} 
-                      value={field.value}
-                      onChange={field.onChange}
+                    <CountryDropdown 
+                      key={field.value}
+                      defaultValue={field.value}
                       disabled={isSubmitting}
-                      slim={false}
+                      onChange={(country) => {
+                        const countryCode = country.alpha2.toUpperCase();
+                        field.onChange(countryCode);
+                        form.setValue("countryIso", country.alpha3);
+                      }}
+                      placeholder="Select a country" 
                     />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
-              )}
-            />
-          </div>
+              );
+            }}
+          />
+
+          <FormField
+            control={form.control}
+            name="availableLanguages"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Available Languages *</FormLabel>
+                <FormControl>
+                  <MultiLanguageSelector 
+                    languages={languages} 
+                    value={field.value}
+                    onChange={field.onChange}
+                    disabled={isSubmitting}
+                    defaultLanguage={form.watch("language")}
+                    onDefaultLanguageChange={(langCode) => {
+                      form.setValue("language", langCode);
+                    }}
+                  />
+                </FormControl>
+                <FormDescription>
+                  Select all languages available for content creation. Click on a language card to set it as the default language.
+                </FormDescription>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <FormField
@@ -1377,6 +1381,106 @@ function Web3Tab({ form, isSubmitting }) {
         )}
       </CardContent>
     </Card>
+  );
+}
+
+// Multi Language Selector Component
+function MultiLanguageSelector({ languages, value, onChange, disabled, defaultLanguage, onDefaultLanguageChange }) {
+  const handleLanguageClick = (langCode, event) => {
+    if (disabled) return;
+    
+    const currentValues = value || [];
+    const isSelected = currentValues.includes(langCode);
+    
+    // Double-click or Ctrl+click to set as default language
+    if (event.detail === 2 || event.ctrlKey || event.metaKey) {
+      if (onDefaultLanguageChange) {
+        onDefaultLanguageChange(langCode);
+        // Ensure the language is also selected
+        if (!isSelected) {
+          const newValues = [...currentValues, langCode];
+          onChange(newValues);
+        }
+      }
+      return;
+    }
+    
+    // Single click to toggle selection
+    if (langCode === defaultLanguage) {
+      // Default language can be deselected, but a new default must be chosen from remaining languages
+      if (currentValues.length > 1) {
+        const newValues = currentValues.filter(code => code !== langCode);
+        const newDefault = newValues[0]; // First available language becomes new default
+        onChange(newValues);
+        if (onDefaultLanguageChange) {
+          onDefaultLanguageChange(newDefault);
+        }
+      }
+      return;
+    }
+    
+    let newValues;
+    if (isSelected) {
+      newValues = currentValues.filter(code => code !== langCode);
+    } else {
+      newValues = [...currentValues, langCode];
+    }
+    
+    // Always ensure default language is included
+    if (!newValues.includes(defaultLanguage)) {
+      newValues.unshift(defaultLanguage);
+    }
+    
+    onChange(newValues);
+  };
+
+  return (
+    <div className="space-y-3">
+      <div className="text-sm text-muted-foreground">
+        Click to select/deselect languages. Double-click or Ctrl+click to set as default language.
+      </div>
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+        {languages.map((lang) => {
+          const isSelected = value?.includes(lang.code) || lang.code === defaultLanguage;
+          const isDefault = lang.code === defaultLanguage;
+          
+          return (
+            <div key={lang.code} className="relative">
+              <button
+                type="button"
+                onClick={(e) => handleLanguageClick(lang.code, e)}
+                disabled={disabled}
+                className={`w-full text-left p-3 border rounded-lg transition-colors ${
+                  isSelected 
+                    ? 'border-primary bg-primary/10 text-primary' 
+                    : 'border-border hover:border-primary/50'
+                } ${
+                  disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
+                } ${
+                  isDefault ? 'border-primary bg-primary/20 ring-2 ring-primary/30' : ''
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <span className="font-medium">{lang.name}</span>
+                  <div className="flex items-center gap-1">
+                    {isDefault && (
+                      <span className="text-xs bg-primary text-primary-foreground px-1.5 py-0.5 rounded">
+                        Default
+                      </span>
+                    )}
+                    <span className={`text-xs px-1.5 py-0.5 rounded ${
+                      isSelected ? 'bg-primary text-primary-foreground' : 'bg-muted'
+                    }`}>
+                      {lang.code.toUpperCase()}
+                    </span>
+                  </div>
+                </div>
+              </button>
+            </div>
+          );
+        })}
+      </div>
+    </div>
   );
 }
 

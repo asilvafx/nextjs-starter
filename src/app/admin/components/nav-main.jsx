@@ -37,8 +37,8 @@ export function NavMain({ nav }) {
       <SidebarGroupLabel>Dashboard</SidebarGroupLabel>
       <SidebarMenu>
 
-        {nav.Home.map((item) => (
-             <SidebarMenuItem key={item.title}>
+        {nav.Home.map((item, key) => (
+             <SidebarMenuItem key={key}>
               <SidebarMenuButton tooltip={item.title} isActive={pathname === item.url} asChild> 
               <Link href={item.url} onClick={handleLinkClick}> 
                 <item.icon className="mr-2 size-4" />
@@ -53,11 +53,11 @@ export function NavMain({ nav }) {
     <SidebarGroup>
       <SidebarGroupLabel>Platform</SidebarGroupLabel>
       <SidebarMenu>
-        {nav.Main.map((item) => {
+        {nav.Main.map((item, key) => {
           // For items without subitems, render a simple button
           if (!item.items) {
             return (
-              <SidebarMenuItem key={item.title}>
+              <SidebarMenuItem key={key}>
                 <SidebarMenuButton tooltip={item.title} isActive={pathname === item.url} asChild>
                   <Link href={item.url} onClick={handleLinkClick}>
                     {item.icon && <item.icon className="mr-2 size-4" />}
@@ -71,7 +71,7 @@ export function NavMain({ nav }) {
           // For items with subitems (like Store), render a collapsible
           return (
             <Collapsible
-              key={item.title}
+              key={key}
               asChild
               defaultOpen={item.isActive}
               className="group/collapsible"
@@ -110,11 +110,11 @@ export function NavMain({ nav }) {
     <SidebarGroup>
     <SidebarGroupLabel>Developer</SidebarGroupLabel>
     <SidebarMenu>
-        {nav.Developer.map((item) => {
+        {nav.Developer.map((item, key) => {
           // For items without subitems, render a simple button
           if (!item.items) {
             return (
-              <SidebarMenuItem key={item.title}>
+              <SidebarMenuItem key={key}>
                 <SidebarMenuButton tooltip={item.title} isActive={pathname === item.url} asChild>
                   <Link href={item.url} onClick={handleLinkClick}>
                     {item.icon && <item.icon className="mr-2 size-4" />}
@@ -128,7 +128,7 @@ export function NavMain({ nav }) {
           // For items with subitems (like Store), render a collapsible
           return (
             <Collapsible
-              key={item.title}
+              key={key}
               asChild
               defaultOpen={item.isActive}
               className="group/collapsible"
@@ -168,8 +168,8 @@ export function NavMain({ nav }) {
     <SidebarGroupLabel>System</SidebarGroupLabel>
     <SidebarMenu>
 
-      {nav.System.map((item) => (
-            <SidebarMenuItem key={item.title}>
+      {nav.System.map((item, key) => (
+            <SidebarMenuItem key={key}>
             <SidebarMenuButton tooltip={item.title} isActive={pathname === item.url} asChild> 
             <Link href={item.url} onClick={handleLinkClick}> 
               <item.icon className="mr-2 size-4" />
