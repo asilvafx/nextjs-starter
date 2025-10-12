@@ -136,7 +136,7 @@ export default function OrdersPage() {
 
   const fetchStoreSettings = async () => {
     try {
-      const response = await fetch('/api/store/settings');
+      const response = await fetch('/api/shop/settings');
       const result = await response.json();
       if (result.success) {
         setStoreSettings(result.data);

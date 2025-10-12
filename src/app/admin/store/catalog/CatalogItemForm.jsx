@@ -1,9 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
+import { getAll } from "@/lib/client/query";
 import {
   Select,
   SelectContent,
@@ -47,6 +49,22 @@ export function CatalogItemForm({
     formData.customAttributes || [{ name: "", value: "" }]
   );
   const [isUploading, setIsUploading] = useState(false);
+  const [availableAttributes, setAvailableAttributes] = useState([]);
+  const [unlimitedStock, setUnlimitedStock] = useState(formData.stock === -1);
+
+  useEffect(() => {
+    const fetchAttributes = async () => {
+      try {
+        const response = await getAll("attributes");
+        if (response.success) {
+          setAvailableAttributes(response.data.filter(attr => attr.isActive));
+        }
+      } catch (error) {
+        console.error('Failed to fetch attributes:', error);
+      }
+    };
+    fetchAttributes();
+  }, []);
 
   const addAttribute = () => {
     setCustomAttributes([...customAttributes, { name: "", value: "" }]);
@@ -328,19 +346,39 @@ export function CatalogItemForm({
                       </div>
                       <div>
                         <Label htmlFor="stock">Stock Quantity</Label>
-                        <Input
-                          id="stock"
-                          type="number"
-                          min="0"
-                          value={formData.stock}
-                          onChange={(e) =>
-                            setFormData({
-                              ...formData,
-                              stock: parseInt(e.target.value) || 0,
-                            })
-                          }
-                          placeholder="0"
-                        />
+                        <div className="space-y-2">
+                          <Input
+                            id="stock"
+                            type="number"
+                            min="0"
+                            value={unlimitedStock ? "" : formData.stock}
+                            onChange={(e) => {
+                              const value = parseInt(e.target.value) || 0;
+                              setFormData({
+                                ...formData,
+                                stock: value,
+                              });
+                            }}
+                            placeholder="0"
+                            disabled={unlimitedStock}
+                          />
+                          <div className="flex items-center space-x-2">
+                            <Checkbox
+                              id="unlimited-stock"
+                              checked={unlimitedStock}
+                              onCheckedChange={(checked) => {
+                                setUnlimitedStock(checked);
+                                setFormData({
+                                  ...formData,
+                                  stock: checked ? -1 : 0,
+                                });
+                              }}
+                            />
+                            <Label htmlFor="unlimited-stock" className="text-sm">
+                              Unlimited stock
+                            </Label>
+                          </div>
+                        </div>
                       </div>
                       <div>
                         <Label htmlFor="lowStock">Low Stock Alert</Label>
@@ -538,41 +576,133 @@ export function CatalogItemForm({
                 <CardTitle>Custom Attributes</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                {customAttributes.length > 0 && (
-                  <div className="space-y-3">
-                    {customAttributes.map((attr, index) => (
-                      <div key={index} className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                        <Input
-                          value={attr.name}
-                          onChange={(e) =>
-                            updateAttribute(index, "name", e.target.value)
-                          }
-                          placeholder="Attribute name"
-                        />
-                        <div className="flex gap-2">
-                          <Input
-                            value={attr.value}
-                            onChange={(e) =>
-                              updateAttribute(index, "value", e.target.value)
-                            }
-                            placeholder="Attribute value"
-                          />
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="icon"
-                            onClick={() => removeAttribute(index)}
-                          >
-                            <X className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
+                {/* Predefined Attributes */}
+                {availableAttributes.length > 0 && (
+                  <div>
+                    <Label className="text-sm font-medium">Available Attributes</Label>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
+                      {availableAttributes.map((attr) => {
+                        const existingAttr = customAttributes.find(ca => ca.name === attr.name);
+                        return (
+                          <div key={attr.id} className="space-y-2">
+                            <Label className="text-sm">{attr.name}</Label>
+                            {attr.type === 'select' ? (
+                              <Select
+                                value={existingAttr?.value || ""}
+                                onValueChange={(value) => {
+                                  const index = customAttributes.findIndex(ca => ca.name === attr.name);
+                                  if (index >= 0) {
+                                    updateAttribute(index, "value", value);
+                                  } else {
+                                    const newAttrs = [...customAttributes, { name: attr.name, value }];
+                                    setCustomAttributes(newAttrs);
+                                    setFormData({
+                                      ...formData,
+                                      customAttributes: newAttrs.filter(a => a.name && a.value),
+                                    });
+                                  }
+                                }}
+                              >
+                                <SelectTrigger>
+                                  <SelectValue placeholder={`Select ${attr.name.toLowerCase()}`} />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {attr.options?.map((option) => (
+                                    <SelectItem key={option} value={option}>
+                                      {option}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            ) : attr.type === 'boolean' ? (
+                              <div className="flex items-center space-x-2">
+                                <Checkbox
+                                  checked={existingAttr?.value === 'true'}
+                                  onCheckedChange={(checked) => {
+                                    const index = customAttributes.findIndex(ca => ca.name === attr.name);
+                                    if (index >= 0) {
+                                      updateAttribute(index, "value", checked ? 'true' : 'false');
+                                    } else {
+                                      const newAttrs = [...customAttributes, { name: attr.name, value: checked ? 'true' : 'false' }];
+                                      setCustomAttributes(newAttrs);
+                                      setFormData({
+                                        ...formData,
+                                        customAttributes: newAttrs.filter(a => a.name && a.value),
+                                      });
+                                    }
+                                  }}
+                                />
+                                <Label className="text-sm">{attr.description || 'Yes'}</Label>
+                              </div>
+                            ) : (
+                              <Input
+                                type={attr.type === 'number' ? 'number' : attr.type === 'color' ? 'color' : 'text'}
+                                value={existingAttr?.value || ""}
+                                onChange={(e) => {
+                                  const index = customAttributes.findIndex(ca => ca.name === attr.name);
+                                  if (index >= 0) {
+                                    updateAttribute(index, "value", e.target.value);
+                                  } else {
+                                    const newAttrs = [...customAttributes, { name: attr.name, value: e.target.value }];
+                                    setCustomAttributes(newAttrs);
+                                    setFormData({
+                                      ...formData,
+                                      customAttributes: newAttrs.filter(a => a.name && a.value),
+                                    });
+                                  }
+                                }}
+                                placeholder={`Enter ${attr.name.toLowerCase()}`}
+                              />
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
                 )}
-                <Button type="button" variant="outline" onClick={addAttribute}>
-                  Add Custom Attribute
-                </Button>
+
+                {/* Custom Attributes */}
+                <div>
+                  <Label className="text-sm font-medium">Custom Attributes</Label>
+                  {customAttributes.filter(attr => !availableAttributes.some(aa => aa.name === attr.name)).length > 0 && (
+                    <div className="space-y-3 mt-2">
+                      {customAttributes.filter(attr => !availableAttributes.some(aa => aa.name === attr.name)).map((attr, index) => {
+                        const actualIndex = customAttributes.findIndex(ca => ca === attr);
+                        return (
+                          <div key={actualIndex} className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                            <Input
+                              value={attr.name}
+                              onChange={(e) =>
+                                updateAttribute(actualIndex, "name", e.target.value)
+                              }
+                              placeholder="Attribute name"
+                            />
+                            <div className="flex gap-2">
+                              <Input
+                                value={attr.value}
+                                onChange={(e) =>
+                                  updateAttribute(actualIndex, "value", e.target.value)
+                                }
+                                placeholder="Attribute value"
+                              />
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="icon"
+                                onClick={() => removeAttribute(actualIndex)}
+                              >
+                                <X className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                  <Button type="button" variant="outline" onClick={addAttribute} className="mt-2">
+                    Add Custom Attribute
+                  </Button>
+                </div>
               </CardContent>
             </Card>
           </TabsContent>

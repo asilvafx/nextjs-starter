@@ -105,7 +105,7 @@ export default function CatalogPage() {
         getAll("catalog"),
         getAll("categories"),
         getAll("collections"),
-        fetch('/api/store/settings').then(res => res.json())
+        fetch('/api/shop/settings').then(res => res.json())
       ]);
 
       if (catalogRes.success) {

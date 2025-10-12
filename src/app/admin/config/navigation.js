@@ -66,8 +66,16 @@ export const navigation = {
           url: "/admin/store/collections", 
         },
         {
+          title: "Attributes",
+          url: "/admin/store/attributes", 
+        },
+        {
           title: "Customers",
           url: "/admin/store/customers", 
+        }, xx
+        {
+          title: "Attributes",
+          url: "/admin/store/attributes", 
         },
         {
           title: "Store Settings",

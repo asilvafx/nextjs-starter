@@ -23,8 +23,28 @@ import {
 } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
-import { Plus, Pencil, Trash2 } from "lucide-react";
+import { Plus, Pencil, Trash2, ArrowUpDown, Loader2, Upload, X, Image as ImageIcon } from "lucide-react";
 import { TableSkeleton } from "@/components/ui/skeleton";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 const initialFormData = {
   name: "",
@@ -49,6 +69,10 @@ export default function CollectionsPage() {
   const [isOpen, setIsOpen] = useState(false);
   const [editCollection, setEditCollection] = useState(null);
   const [formData, setFormData] = useState(initialFormData);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [collectionToDelete, setCollectionToDelete] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
 
   const fetchData = async () => {
     try {
@@ -100,27 +124,77 @@ export default function CollectionsPage() {
       name: collection.name,
       slug: collection.slug,
       description: collection.description,
-      imageUrl: collection.imageUrl,
+      imageUrl: collection.imageUrl || "",
       isActive: collection.isActive,
-      products: collection.products,
+      products: collection.products || [],
     });
     setIsOpen(true);
   };
 
-  const handleDelete = async (id) => {
-    if (window.confirm("Are you sure you want to delete this collection?")) {
-      try {
-        await remove(id, "collections");
-        toast.success("Collection deleted successfully");
-        fetchData();
-      } catch (error) {
-        if (error instanceof Error) {
-          toast.error(error.message);
-        } else {
-          toast.error("Failed to delete collection");
-        }
+  const handleImageUpload = async (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    try {
+      const uploadFormData = new FormData();
+      uploadFormData.append('file', file);
+      
+      const response = await fetch('/api/upload', {
+        method: 'POST',
+        body: uploadFormData,
+      });
+      
+      const data = await response.json();
+      
+      if (data.url) {
+        setFormData({ ...formData, imageUrl: data.url });
+        toast.success('Image uploaded successfully');
+      } else {
+        toast.error('Failed to upload image');
       }
+    } catch (error) {
+      console.error('Upload error:', error);
+      toast.error('Failed to upload image');
+    } finally {
+      setIsUploading(false);
     }
+  };
+
+  const removeImage = () => {
+    setFormData({ ...formData, imageUrl: "" });
+  };
+
+  const handleDeleteClick = (collection) => {
+    setCollectionToDelete(collection);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!collectionToDelete) return;
+    
+    setIsDeleting(true);
+    try {
+      await remove(collectionToDelete.id, "collections");
+      toast.success("Collection deleted successfully");
+      setDeleteDialogOpen(false);
+      setCollectionToDelete(null);
+      fetchData();
+    } catch (error) {
+      if (error instanceof Error) {
+        toast.error(error.message);
+      } else {
+        toast.error("Failed to delete collection");
+      }
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const handleDeleteCancel = () => {
+    setDeleteDialogOpen(false);
+    setCollectionToDelete(null);
+    setIsDeleting(false);
   };
 
   return (
@@ -145,10 +219,12 @@ export default function CollectionsPage() {
                 {editCollection ? "Edit Collection" : "Add New Collection"}
               </DialogTitle>
             </DialogHeader>
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-6">
               <div className="grid grid-cols-2 gap-4">
-                <div>
+                <div className="space-y-2">
+                  <Label htmlFor="name">Name *</Label>
                   <Input
+                    id="name"
                     placeholder="Collection Name"
                     value={formData.name}
                     onChange={(e) => {
@@ -162,9 +238,11 @@ export default function CollectionsPage() {
                     required
                   />
                 </div>
-                <div>
+                <div className="space-y-2">
+                  <Label htmlFor="slug">Slug *</Label>
                   <Input
-                    placeholder="Slug"
+                    id="slug"
+                    placeholder="collection-slug"
                     value={formData.slug}
                     onChange={(e) =>
                       setFormData({ ...formData, slug: e.target.value })
@@ -173,60 +251,107 @@ export default function CollectionsPage() {
                   />
                 </div>
               </div>
-              <div>
-                <textarea
-                  className="w-full p-2 border rounded-md min-h-[100px]"
-                  placeholder="Description"
+              
+              <div className="space-y-2">
+                <Label htmlFor="description">Description *</Label>
+                <Textarea
+                  id="description"
+                  placeholder="Collection description..."
                   value={formData.description}
                   onChange={(e) =>
                     setFormData({ ...formData, description: e.target.value })
                   }
+                  className="min-h-[100px]"
                   required
                 />
               </div>
-              <div>
-                <Input
-                  type="url"
-                  placeholder="Image URL"
-                  value={formData.imageUrl}
-                  onChange={(e) =>
-                    setFormData({ ...formData, imageUrl: e.target.value })
-                  }
-                  required
-                />
-              </div>
-              <div>
-                <div className="font-medium mb-2">Items in Collection</div>
-                <div className="border rounded-md p-4 max-h-[200px] overflow-y-auto">
-                  {products.map((item) => (
-                    <div key={item.id} className="flex items-center space-x-2">
-                      <input
-                        type="checkbox"
-                        id={`item-${item.id}`}
-                        checked={formData.products.includes(item.id)}
-                        onChange={(e) => {
-                          const newItems = e.target.checked
-                            ? [...formData.products, item.id]
-                            : formData.products.filter((id) => id !== item.id);
-                          setFormData({ ...formData, products: newItems });
-                        }}
+              
+              {/* Image Upload Section */}
+              <div className="space-y-2">
+                <Label>Cover Image</Label>
+                {formData.imageUrl ? (
+                  <div className="space-y-2">
+                    <div className="relative w-full h-32 border rounded-lg overflow-hidden">
+                      <img
+                        src={formData.imageUrl}
+                        alt="Collection cover"
+                        className="w-full h-full object-cover"
                       />
-                      <label htmlFor={`item-${item.id}`}>{item.name}</label>
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        size="sm"
+                        onClick={removeImage}
+                        className="absolute top-2 right-2 h-8 w-8 p-0"
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
                     </div>
-                  ))}
-                </div>
+                  </div>
+                ) : (
+                  <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-6">
+                    <div className="flex flex-col items-center justify-center space-y-2">
+                      <Upload className="h-8 w-8 text-muted-foreground" />
+                      <div className="text-center">
+                        <Label htmlFor="image-upload" className="cursor-pointer text-sm font-medium">
+                          Click to upload image
+                        </Label>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          PNG, JPG, WEBP up to 10MB
+                        </p>
+                      </div>
+                      <Input
+                        id="image-upload"
+                        type="file"
+                        accept="image/*"
+                        onChange={handleImageUpload}
+                        disabled={isUploading}
+                        className="hidden"
+                      />
+                      {isUploading && (
+                        <p className="text-sm text-muted-foreground">Uploading...</p>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
+              
+              <div className="space-y-2">
+                <Label>Items in Collection</Label>
+                <ScrollArea className="border rounded-md p-4 max-h-[200px]">
+                  <div className="space-y-3">
+                    {products.map((item) => (
+                      <div key={item.id} className="flex items-center space-x-2">
+                        <Checkbox
+                          id={`item-${item.id}`}
+                          checked={formData.products.includes(item.id)}
+                          onCheckedChange={(checked) => {
+                            const newItems = checked
+                              ? [...formData.products, item.id]
+                              : formData.products.filter((id) => id !== item.id);
+                            setFormData({ ...formData, products: newItems });
+                          }}
+                        />
+                        <Label htmlFor={`item-${item.id}`} className="text-sm font-normal">
+                          {item.name}
+                        </Label>
+                      </div>
+                    ))}
+                  </div>
+                </ScrollArea>
+              </div>
+              
               <div className="flex items-center space-x-2">
-                <input
-                  type="checkbox"
+                <Checkbox
                   id="isActive"
                   checked={formData.isActive}
-                  onChange={(e) =>
-                    setFormData({ ...formData, isActive: e.target.checked })
+                  onCheckedChange={(checked) =>
+                    setFormData({ ...formData, isActive: checked })
                   }
                 />
-                <label htmlFor="isActive">Active Collection</label>
+                <Label htmlFor="isActive">Active Collection</Label>
               </div>
+              
               <Button type="submit" className="w-full">
                 {editCollection ? "Update Collection" : "Create Collection"}
               </Button>
@@ -260,12 +385,25 @@ export default function CollectionsPage() {
               collections.map((collection) => (
                 <TableRow key={collection.id}>
                   <TableCell>
-                    <div>
-                      <div className="font-medium">{collection.name}</div>
-                      <div className="text-sm text-muted-foreground">
-                        {collection.description.length > 50
-                          ? collection.description.substring(0, 50) + "..."
-                          : collection.description}
+                    <div className="flex items-center gap-3">
+                      {collection.imageUrl ? (
+                        <img
+                          src={collection.imageUrl}
+                          alt={collection.name}
+                          className="w-10 h-10 object-cover rounded"
+                        />
+                      ) : (
+                        <div className="w-10 h-10 bg-gray-100 rounded flex items-center justify-center">
+                          <ImageIcon className="w-6 h-6 text-gray-400" />
+                        </div>
+                      )}
+                      <div>
+                        <div className="font-medium">{collection.name}</div>
+                        <div className="text-sm text-muted-foreground">
+                          {collection.description.length > 50
+                            ? collection.description.substring(0, 50) + "..."
+                            : collection.description}
+                        </div>
                       </div>
                     </div>
                   </TableCell>
@@ -297,9 +435,14 @@ export default function CollectionsPage() {
                     <Button
                       variant="outline"
                       size="icon"
-                      onClick={() => handleDelete(collection.id)}
+                      onClick={() => handleDeleteClick(collection)}
+                      disabled={isDeleting && collectionToDelete?.id === collection.id}
                     >
-                      <Trash2 className="w-4 h-4" />
+                      {isDeleting && collectionToDelete?.id === collection.id ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <Trash2 className="w-4 h-4" />
+                      )}
                     </Button>
                   </TableCell>
                 </TableRow>
@@ -309,6 +452,37 @@ export default function CollectionsPage() {
           </Table>
         </ScrollArea>
       )}
+      
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Collection</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete "{collectionToDelete?.name}"? This action cannot be undone and will remove this collection from all associated products.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={handleDeleteCancel} disabled={isDeleting}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteConfirm}
+              disabled={isDeleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isDeleting ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                "Delete Collection"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
