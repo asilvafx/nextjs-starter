@@ -1450,7 +1450,7 @@ function MultiLanguageSelector({ languages, value, onChange, disabled, defaultLa
                 type="button"
                 onClick={(e) => handleLanguageClick(lang.code, e)}
                 disabled={disabled}
-                className={`w-full text-left p-3 border rounded-lg transition-colors ${
+                className={`w-full text-left p-2 text-sm border rounded-lg transition-colors ${
                   isSelected 
                     ? 'border-primary bg-primary/10 text-primary' 
                     : 'border-border hover:border-primary/50'

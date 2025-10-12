@@ -42,7 +42,7 @@ async function handleGet(request, { params }) {
         if (id) {
             result = await DBService.read(id, slug);
             if (!result) {
-                result = await DBService.getItemByKey('id', id, slug);
+                result = await DBService.getItemsByKeyValue('id', id, slug);
                 if (!result) {
                     return NextResponse.json({
                     success: false,
