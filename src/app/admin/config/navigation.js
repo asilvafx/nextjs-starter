@@ -72,7 +72,7 @@ export const navigation = {
         {
           title: "Customers",
           url: "/admin/store/customers", 
-        }, xx
+        },
         {
           title: "Attributes",
           url: "/admin/store/attributes", 
