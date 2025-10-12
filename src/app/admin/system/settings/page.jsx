@@ -47,6 +47,7 @@ const languages = [
 
 // Email providers
 const emailProviders = [
+  { id: "none", name: "None", service: null },
   { id: "gmail", name: "Gmail", service: "gmail" }, 
   { id: "custom", name: "Custom SMTP", service: null }
 ];
@@ -85,7 +86,7 @@ export default function SystemSettingsPage() {
       workingHours: [],
       serviceArea: "",
       serviceRadius: undefined,
-      emailProvider: "gmail",
+      emailProvider: "none",
       emailUser: "",
       emailPass: "",
       smtpHost: "",
@@ -133,7 +134,7 @@ export default function SystemSettingsPage() {
           workingHours: settings.workingHours || [],
           serviceArea: settings.serviceArea || "",
           serviceRadius: settings.serviceRadius,
-          emailProvider: settings.emailProvider || "gmail",
+          emailProvider: settings.emailProvider || "none",
           emailUser: settings.emailUser || "",
           emailPass: settings.emailPass || "",
           smtpHost: settings.smtpHost || "",
@@ -669,49 +670,61 @@ function EmailSettingsTab({ form, emailProviders, isSubmitting }) {
           )}
         />
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <FormField
-            control={form.control}
-            name="emailUser"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Email Username</FormLabel>
-                <FormControl>
-                  <Input 
-                    type="email" 
-                    placeholder="your-email@gmail.com" 
-                    disabled={isSubmitting}
-                    {...field} 
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+        {selectedProvider === "gmail" && (
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="emailUser"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Email Username</FormLabel>
+                    <FormControl>
+                      <Input 
+                        type="email" 
+                        placeholder="your-email@gmail.com" 
+                        disabled={isSubmitting}
+                        {...field} 
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-          <FormField
-            control={form.control}
-            name="emailPass"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Email Password</FormLabel>
-                <FormControl>
-                  <Input 
-                    type="password" 
-                    placeholder="Your email password or app password" 
-                    disabled={isSubmitting}
-                    {...field} 
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        </div>
+              <FormField
+                control={form.control}
+                name="emailPass"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Email Password</FormLabel>
+                    <FormControl>
+                      <Input 
+                        type="password" 
+                        placeholder="Your email password or app password" 
+                        disabled={isSubmitting}
+                        {...field} 
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
 
-        <p className="text-sm text-muted-foreground">
-          For Gmail, use an App Password instead of your regular password
-        </p>
+            <p className="text-sm text-muted-foreground">
+              For Gmail, use an App Password instead of your regular password
+            </p>
+          </>
+        )}
+
+        {selectedProvider === "none" && (
+          <div className="p-4 border rounded-lg bg-muted/50">
+            <p className="text-sm text-muted-foreground">
+              Email functionality is disabled. No email notifications will be sent.
+            </p>
+          </div>
+        )}
 
         {selectedProvider === "custom" && (
           <div className="grid gap-4 p-4 border rounded-lg">
