@@ -5,6 +5,7 @@ import EmailService from '@/lib/server/email';
 import UserCreatedTemplate from '@/emails/UserCreatedTemplate';
 import UserUpdatedTemplate from '@/emails/UserUpdatedTemplate';
 import NewsletterTemplate from '@/emails/NewsletterTemplate';
+import OrderConfirmationTemplate from '@/emails/OrderConfirmationTemplate';
 
 export async function POST(request) {
     try {
@@ -153,6 +154,57 @@ export async function POST(request) {
                 );
                 break;
 
+            case 'order_confirmation':
+                // Handle order confirmation email
+                const { 
+                    email: orderEmail, 
+                    customerName: orderCustomerName, 
+                    orderId: orderOrderId, 
+                    orderDate: orderOrderDate, 
+                    items: orderItems, 
+                    subtotal: orderSubtotal, 
+                    shippingCost: orderShippingCost, 
+                    total: orderTotal, 
+                    shippingAddress: orderShippingAddress 
+                } = body;
+
+                // Format the order date
+                const formattedOrderDate = new Date(orderOrderDate).toLocaleDateString('fr-FR', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                });
+
+                // Transform products to the template format
+                const formattedProducts = orderItems.map(item => ({
+                    name: item.name,
+                    size: item.size || 'Standard',
+                    quantity: item.quantity
+                }));
+
+                // Create formatted delivery address
+                const deliveryAddress = {
+                    name: orderCustomerName,
+                    address: `${orderShippingAddress.street}${orderShippingAddress.unit ? ', ' + orderShippingAddress.unit : ''}, ${orderShippingAddress.city}, ${orderShippingAddress.state} ${orderShippingAddress.zip}, ${orderShippingAddress.country}`
+                };
+                
+                await EmailService.sendEmail(
+                    orderEmail,
+                    'Confirmation de votre commande',
+                    OrderConfirmationTemplate,
+                    {
+                        userDisplayName: orderCustomerName,
+                        orderId: `#${orderOrderId}`,
+                        orderDate: formattedOrderDate,
+                        products: formattedProducts,
+                        deliveryAddress: deliveryAddress,
+                        orderSummaryUrl: `${process.env.NEXTAUTH_URL}/orders/${orderOrderId}`,
+                        companyName: await EmailService.getEmailName ? await EmailService.getEmailName() : 'Your Store',
+                        supportEmail: process.env.SUPPORT_EMAIL || 'support@yourstore.com'
+                    }
+                );
+                break;
+
             default:
                 throw new Error('Invalid email type');
         }
@@ -161,8 +213,7 @@ export async function POST(request) {
     } catch (error) {
         console.error('Email sending error:', error);
         return NextResponse.json(
-            { error: 'Failed to send email' },
-            { status: 500 }
+            { error: 'Failed to send email' }
         );
     }
 }

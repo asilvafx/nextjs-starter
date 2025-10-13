@@ -3,7 +3,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { getAll, create, update } from "@/lib/client/query";
+import { getAll, create, update, remove } from "@/lib/client/query";
 import {
   Table,
   TableBody,
@@ -40,6 +40,7 @@ import {
   Truck,
   CreditCard,
   Info,
+  Trash2,
 } from "lucide-react";
 import {
   Select,
@@ -91,6 +92,7 @@ const initialFormData = {
 };
 
 const PAYMENT_METHODS = [
+  { value: "none", label: "None/Pending" },
   { value: "credit_card", label: "Credit Card" },
   { value: "debit_card", label: "Debit Card" },
   { value: "bank_transfer", label: "Bank Transfer" },
@@ -133,6 +135,12 @@ export default function OrdersPage() {
     tracking: '',
     sendEmail: true
   });
+  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
+  const [isConfirmingStatusChange, setIsConfirmingStatusChange] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [orderToDelete, setOrderToDelete] = useState(null);
+  const [deleteConfirmText, setDeleteConfirmText] = useState("");
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const fetchStoreSettings = async () => {
     try {
@@ -251,6 +259,22 @@ export default function OrdersPage() {
     try {
       setIsSubmitting(true);
 
+      // Validate form data
+      if (!isNewCustomer && !selectedCustomerId) {
+        throw new Error('Please select a customer or choose to create a new one');
+      }
+
+      if (formData.items.length === 0) {
+        throw new Error('Please add at least one item to the order');
+      }
+
+      // Validate customer data for new customers
+      if (isNewCustomer) {
+        if (!formData.customer.firstName || !formData.customer.lastName || !formData.customer.email) {
+          throw new Error('Customer first name, last name, and email are required');
+        }
+      }
+
       // Calculate totals
       const subtotal = formData.items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
       const orderData = {
@@ -262,7 +286,7 @@ export default function OrdersPage() {
 
       // Create customer if new
       if (isNewCustomer) {
-        const customerResponse = await create({
+        const customerData = {
           firstName: orderData.customer.firstName,
           lastName: orderData.customer.lastName,
           email: orderData.customer.email,
@@ -274,20 +298,32 @@ export default function OrdersPage() {
           zipCode: orderData.customer.zipCode,
           country: orderData.customer.country,
           countryIso: orderData.customer.countryIso,
-        }, "customers");
+          // Add default values for new customers
+          orders: 0,
+          totalSpent: 0,
+          lastOrder: null,
+          createdAt: new Date().toISOString(),
+        };
+        
+        const customerResponse = await create(customerData, "customers");
 
-        if (!customerResponse.success) { 
+        if (!customerResponse.id) { 
           throw new Error('Failed to create customer');
-        }
+        } 
 
-        orderData.customerId = customerResponse.data.id;
+        orderData.customerId = customerResponse.id;
       } else {
+        // Validate that the selected customer exists
+        const existingCustomer = customers.find(c => c.id === selectedCustomerId);
+        if (!existingCustomer) {
+          throw new Error('Selected customer not found. Please select a valid customer or create a new one.');
+        }
         orderData.customerId = selectedCustomerId;
       }
 
       // Create order in database
-      const response = await create(orderData, "orders");
-      
+      const response = await create(orderData, "orders"); 
+ 
       if (!response.id) { 
         throw new Error('Failed to create order');
       }
@@ -295,6 +331,7 @@ export default function OrdersPage() {
       // If email notification is enabled, send confirmation
       if (formData.sendEmail) {
         const emailPayload = {
+          type: 'order_confirmation',
           email: orderData.customer.email,
           customerName: `${orderData.customer.firstName} ${orderData.customer.lastName}`.trim(),
           orderId: response.data.id,
@@ -313,7 +350,7 @@ export default function OrdersPage() {
           }
         };
 
-        await fetch('/api/email/order-confirmation', {
+        await fetch('/api/email', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(emailPayload),
@@ -323,10 +360,12 @@ export default function OrdersPage() {
       toast.success("Order created successfully");
       setIsCreateOpen(false);
       setFormData(initialFormData);
+      setIsNewCustomer(false);
+      setSelectedCustomerId("");
       fetchOrders();
     } catch (error) {
       console.error('Error creating order:', error);
-      toast.error("Failed to create order");
+      toast.error(error.message || "Failed to create order");
     } finally {
       setIsSubmitting(false);
     }
@@ -350,6 +389,8 @@ export default function OrdersPage() {
     if (!statusChangeData) return;
 
     try {
+      setIsConfirmingStatusChange(true);
+      
       const { orderId, newStatus, order } = statusChangeData;
  
 
@@ -420,6 +461,8 @@ export default function OrdersPage() {
     } catch (error) {
       console.error('Error updating order status:', error);
       toast.error("Failed to update order status");
+    } finally {
+      setIsConfirmingStatusChange(false);
     }
   };
 
@@ -460,6 +503,39 @@ export default function OrdersPage() {
       style: "currency",
       currency: currency,
     }).format(amount);
+  };
+
+  const handleDeleteOrder = (order) => {
+    setOrderToDelete(order);
+    setDeleteConfirmText("");
+    setIsDeleteDialogOpen(true);
+  };
+
+  const confirmDeleteOrder = async () => {
+    if (!orderToDelete || deleteConfirmText !== "delete") {
+      return;
+    }
+
+    try {
+      setIsDeleting(true);
+      const response = await remove(orderToDelete.id, "orders");
+      
+      if (response.success) {
+        toast.success("Order deleted successfully");
+        setOrders(prev => prev.filter(order => order.id !== orderToDelete.id));
+        setAllOrders(prev => prev.filter(order => order.id !== orderToDelete.id));
+        setIsDeleteDialogOpen(false);
+        setOrderToDelete(null);
+        setDeleteConfirmText("");
+      } else {
+        throw new Error('Failed to delete order');
+      }
+    } catch (error) {
+      console.error('Error deleting order:', error);
+      toast.error("Failed to delete order");
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   const exportToCSV = () => {
@@ -951,6 +1027,8 @@ export default function OrdersPage() {
                                         <Button
                                           onClick={async () => {
                                             try {
+                                              setIsUpdatingStatus(true);
+                                              
                                               // Update order with new status and tracking
                                               const updateData = { status: editStatusData.status };
                                               if (editStatusData.tracking.trim()) {
@@ -1011,11 +1089,20 @@ export default function OrdersPage() {
                                             } catch (error) {
                                               console.error('Error updating status:', error);
                                               toast.error("Failed to update order status");
+                                            } finally {
+                                              setIsUpdatingStatus(false);
                                             }
                                           }}
-                                          disabled={!editStatusData.status}
+                                          disabled={!editStatusData.status || isUpdatingStatus}
                                         >
-                                          Update Status
+                                          {isUpdatingStatus ? (
+                                            <>
+                                              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
+                                              Updating...
+                                            </>
+                                          ) : (
+                                            "Update Status"
+                                          )}
                                         </Button>
                                         <Button
                                           variant="outline"
@@ -1036,6 +1123,14 @@ export default function OrdersPage() {
                         )}
                       </DialogContent>
                     </Dialog>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => handleDeleteOrder(order)}
+                      className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
                     </div>
                   </TableCell>
                 </TableRow>
@@ -1048,7 +1143,7 @@ export default function OrdersPage() {
 
       {/* Create Order Dialog */}
       <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-        <DialogContent className="max-w-3xl">
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Create New Order</DialogTitle>
             <DialogDescription>
@@ -1056,7 +1151,7 @@ export default function OrdersPage() {
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-6 py-4">
-            <div className="flex gap-4 items-center">
+            <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
               <Select 
                 value={isNewCustomer ? "new" : selectedCustomerId}
                 onValueChange={(value) => {
@@ -1072,42 +1167,48 @@ export default function OrdersPage() {
                       setFormData({
                         ...formData,
                         customer: {
-                          firstName: customer.firstName,
-                          lastName: customer.lastName,
-                          email: customer.email,
-                          phone: customer.phone,
-                          streetAddress: customer.streetAddress,
-                          apartmentUnit: customer.apartmentUnit,
-                          city: customer.city,
-                          state: customer.state,
-                          zipCode: customer.zipCode,
-                          country: customer.country,
-                          countryIso: customer.countryIso,
+                          firstName: customer.firstName || '',
+                          lastName: customer.lastName || '',
+                          email: customer.email || '',
+                          phone: customer.phone || '',
+                          streetAddress: customer.streetAddress || '',
+                          apartmentUnit: customer.apartmentUnit || '',
+                          city: customer.city || '',
+                          state: customer.state || '',
+                          zipCode: customer.zipCode || '',
+                          country: customer.country || 'FR',
+                          countryIso: customer.countryIso || 'FR',
                         }
                       });
+                    } else {
+                      console.warn('Customer not found:', value);
+                      toast.error('Selected customer not found. Please try again.');
                     }
                   }
                 }}
               >
-                <SelectTrigger className="w-[350px]">
+                <SelectTrigger className="w-full md:w-[350px]">
                   <SelectValue placeholder="Select existing customer or create new" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="new">Create New Customer</SelectItem>
-                  {customers.map((customer) => (
-                    <SelectItem key={customer.id} value={customer.id}>
-                      {customer.firstName} {customer.lastName} - {customer.email}
-                    </SelectItem>
-                  ))}
+                  {customers.map((customer) => {
+                    const name = `${customer.firstName || ''} ${customer.lastName || ''}`.trim() || customer.name || 'Unnamed Customer';
+                    return (
+                      <SelectItem key={customer.id} value={customer.id}>
+                        {name} - {customer.email}
+                      </SelectItem>
+                    );
+                  })}
                 </SelectContent>
               </Select>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-6">
               <div>
                 <h3 className="text-sm font-semibold mb-4">Customer Information</h3>
                 <div className="space-y-4">
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     <div className="space-y-2">
                       <label htmlFor="firstName">First Name</label>
                       <Input
@@ -1211,7 +1312,7 @@ export default function OrdersPage() {
                       }
                     />
                   </div>
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     <div className="space-y-2">
                       <label htmlFor="city">City</label>
                       <Input
@@ -1245,7 +1346,7 @@ export default function OrdersPage() {
                       />
                     </div>
                   </div>
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     <div className="space-y-2">
                       <label htmlFor="zipCode">ZIP Code</label>
                       <Input
@@ -1307,7 +1408,7 @@ export default function OrdersPage() {
                     }
                   }}
                 >
-                  <SelectTrigger className="w-[350px]">
+                  <SelectTrigger className="w-full md:w-[350px]">
                     <SelectValue placeholder="Add item from catalog" />
                   </SelectTrigger>
                   <SelectContent>
@@ -1410,7 +1511,7 @@ export default function OrdersPage() {
               </Button>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <div className="space-y-4">
                 <div>
                   <label className="text-sm font-medium">Order Status</label>
@@ -1498,12 +1599,24 @@ export default function OrdersPage() {
               </label>
             </div>
 
-            <div className="flex justify-end gap-4">
-              <Button variant="outline" onClick={() => setIsCreateOpen(false)}>
+            <div className="flex flex-col sm:flex-row justify-end gap-3">
+              <Button variant="outline" onClick={() => {
+                setIsCreateOpen(false);
+                setFormData(initialFormData);
+                setIsNewCustomer(false);
+                setSelectedCustomerId("");
+              }} disabled={isSubmitting} className="w-full sm:w-auto">
                 Cancel
               </Button>
-              <Button onClick={handleCreateOrder} disabled={isSubmitting}>
-                {isSubmitting ? "Creating..." : "Create Order"}
+              <Button onClick={handleCreateOrder} disabled={isSubmitting} className="w-full sm:w-auto">
+                {isSubmitting ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
+                    Creating...
+                  </>
+                ) : (
+                  "Create Order"
+                )}
               </Button>
             </div>
           </div>
@@ -1574,11 +1687,19 @@ export default function OrdersPage() {
                   setStatusChangeData(null);
                   setTrackingNumber("");
                 }}
+                disabled={isConfirmingStatusChange}
               >
                 Cancel
               </Button>
-              <Button onClick={confirmStatusChange}>
-                Update Status
+              <Button onClick={confirmStatusChange} disabled={isConfirmingStatusChange}>
+                {isConfirmingStatusChange ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
+                    Updating...
+                  </>
+                ) : (
+                  "Update Status"
+                )}
               </Button>
             </div>
           </div>
@@ -1778,6 +1899,67 @@ export default function OrdersPage() {
               </div>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Order Confirmation Dialog */}
+      <Dialog open={isDeleteDialogOpen} onOpenChange={(open) => {
+        if (!open) {
+          setIsDeleteDialogOpen(false);
+          setOrderToDelete(null);
+          setDeleteConfirmText("");
+        }
+      }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Delete Order</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete order #{orderToDelete?.id}? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <label htmlFor="deleteConfirm" className="text-sm font-medium">
+                Type "delete" to confirm deletion:
+              </label>
+              <Input
+                id="deleteConfirm"
+                placeholder="Type 'delete' to confirm"
+                value={deleteConfirmText}
+                onChange={(e) => setDeleteConfirmText(e.target.value)}
+                disabled={isDeleting}
+              />
+            </div>
+            
+            <div className="flex justify-end gap-3">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setIsDeleteDialogOpen(false);
+                  setOrderToDelete(null);
+                  setDeleteConfirmText("");
+                }}
+                disabled={isDeleting}
+              >
+                Cancel
+              </Button>
+              <Button 
+                variant="destructive" 
+                onClick={confirmDeleteOrder}
+                disabled={deleteConfirmText !== "delete" || isDeleting}
+              >
+                {isDeleting ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
+                    Deleting...
+                  </>
+                ) : (
+                  "Delete Order"
+                )}
+              </Button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
     </div>
