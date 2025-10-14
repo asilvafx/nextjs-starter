@@ -178,6 +178,4 @@ export async function POST(request) {
 }
 
 export const wrappedGET = withAuth(GET);
-export const wrappedPOST = withAuth(POST);
-
-export { wrappedGET as GET, wrappedPOST as POST };
+export const wrappedPOST = withAuth(POST); 

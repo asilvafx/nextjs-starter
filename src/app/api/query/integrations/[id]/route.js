@@ -107,6 +107,4 @@ export async function DELETE(request, { params }) {
 
 export const wrappedGET = withAuth(GET);
 export const wrappedPUT = withAuth(PUT);
-export const wrappedDELETE = withAuth(DELETE);
-
-export { wrappedGET as GET, wrappedPUT as PUT, wrappedDELETE as DELETE };
+export const wrappedDELETE = withAuth(DELETE); 
