@@ -1,4 +1,5 @@
 // @/app/api/query/public/integrations/route.js
+import { NextResponse } from 'next/server';
 import { withPublicAccess } from '@/lib/server/auth';
 import DBService from '@/data/rest.db.js';
 
