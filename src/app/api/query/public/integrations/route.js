@@ -94,4 +94,4 @@ function getPublicSettings(integration) {
 }
 
 // Export directly without middleware to allow same-host access
-export const GET = { handleGet };
+export const GET = handleGet;
