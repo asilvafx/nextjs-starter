@@ -22,7 +22,15 @@ async function handleGet(request) {
                 return NextResponse.json(await loadWeb3Config());
 
             case 'gas_price':
-                return NextResponse.json(await getGasPrice());
+                const gasPriceResult = await getGasPrice();
+                if (gasPriceResult.success) {
+                    return NextResponse.json(gasPriceResult.gasPrice);
+                } else {
+                    return NextResponse.json(
+                        { error: gasPriceResult.error },
+                        { status: 500 }
+                    );
+                }
 
             case 'validate_wallet':
                 const address = url.searchParams.get('address');
@@ -32,7 +40,15 @@ async function handleGet(request) {
                         { status: 400 }
                     );
                 }
-                return NextResponse.json(await validateWallet(address));
+                const validationResult = await validateWallet(address);
+                if (validationResult.success) {
+                    return NextResponse.json(validationResult.isValid);
+                } else {
+                    return NextResponse.json(
+                        { error: validationResult.error },
+                        { status: 500 }
+                    );
+                }
 
             case 'balance':
                 const walletAddress = url.searchParams.get('address');
@@ -45,7 +61,15 @@ async function handleGet(request) {
                     );
                 }
                 
-                return NextResponse.json(await getTokenBalance(walletAddress, chain));
+                const balanceResult = await getTokenBalance(walletAddress, chain);
+                if (balanceResult.success) {
+                    return NextResponse.json(balanceResult.balance);
+                } else {
+                    return NextResponse.json(
+                        { error: balanceResult.error },
+                        { status: 500 }
+                    );
+                }
 
             case 'tx_status':
                 const txHash = url.searchParams.get('hash');
@@ -55,7 +79,15 @@ async function handleGet(request) {
                         { status: 400 }
                     );
                 }
-                return NextResponse.json(await getTxStatus(txHash));
+                const statusResult = await getTxStatus(txHash);
+                if (statusResult.success) {
+                    return NextResponse.json(statusResult);
+                } else {
+                    return NextResponse.json(
+                        { error: statusResult.error },
+                        { status: 500 }
+                    );
+                }
 
             default:
                 return NextResponse.json(await loadWeb3Config());
@@ -77,7 +109,18 @@ async function handlePost(request) {
 
         switch (action) {
             case 'create_wallet':
-                return NextResponse.json(await createWallet());
+                const walletResult = await createWallet();
+                if (walletResult.success) {
+                    return NextResponse.json({
+                        address: walletResult.address,
+                        privateKey: walletResult.privateKey
+                    });
+                } else {
+                    return NextResponse.json(
+                        { error: walletResult.error },
+                        { status: 500 }
+                    );
+                }
 
             case 'send_transaction':
                 const {
@@ -112,7 +155,19 @@ async function handlePost(request) {
                     useNativeCurrency
                 );
 
-                return NextResponse.json(result);
+                if (result.success) {
+                    return NextResponse.json({
+                        tx_hash: result.tx_hash,
+                        block: result.block,
+                        gasUsed: result.gasUsed,
+                        status: result.status
+                    });
+                } else {
+                    return NextResponse.json(
+                        { error: result.error },
+                        { status: 500 }
+                    );
+                }
 
             default:
                 return NextResponse.json(

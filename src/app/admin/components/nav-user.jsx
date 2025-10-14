@@ -10,7 +10,14 @@ import {
   CreditCard,
   LogOut,
   Globe,
+  Wallet,
+  Copy,
+  ArrowUpDown,
+  Coins,
 } from "lucide-react"
+
+import { useWeb3Settings } from '@/hooks/useWeb3'
+import { useWeb3 } from '@/hooks/useWeb3'
 
 import {
   Avatar,
@@ -36,6 +43,15 @@ import {
 
 export function NavUser({ user }) {
   const { isMobile } = useSidebar()
+  const { isWeb3Enabled } = useWeb3Settings()
+  const { 
+    userWallet, 
+    formattedBalance, 
+    formattedAddress, 
+    copyAddress, 
+    isLoading: web3Loading,
+    web3Config 
+  } = useWeb3()
 
   return (
     <SidebarMenu>
@@ -53,6 +69,20 @@ export function NavUser({ user }) {
               <div className="grid flex-1 text-left text-sm leading-tight">
                 <span className="truncate font-medium">{user?.displayName}</span>
                 <span className="truncate text-xs">{user?.email}</span>
+                {isWeb3Enabled && !web3Loading && userWallet && (
+                  <div className="flex items-center gap-2 mt-1">
+                    <Wallet className="h-3 w-3 text-muted-foreground" />
+                    <span className="text-xs text-muted-foreground">
+                      {formattedBalance || '0.0000'} {web3Config?.WEB3_CONTRACT_SYMBOL || 'ETH'}
+                    </span>
+                  </div>
+                )}
+                {isWeb3Enabled && web3Loading && (
+                  <div className="flex items-center gap-2 mt-1">
+                    <div className="h-3 w-3 animate-spin rounded-full border border-muted-foreground border-t-transparent" />
+                    <span className="text-xs text-muted-foreground">Loading wallet...</span>
+                  </div>
+                )}
               </div>
               <ChevronsUpDown className="ml-auto size-4" />
             </SidebarMenuButton>
@@ -72,6 +102,20 @@ export function NavUser({ user }) {
                 <div className="grid flex-1 text-left text-sm leading-tight">
                   <span className="truncate font-medium">{user?.displayName}</span>
                   <span className="truncate text-xs">{user?.email}</span>
+                  {isWeb3Enabled && !web3Loading && userWallet && (
+                    <div className="flex items-center gap-2 mt-1">
+                      <Wallet className="h-3 w-3 text-muted-foreground" />
+                      <span className="text-xs text-muted-foreground">
+                        {formattedBalance || '0.0000'} {web3Config?.WEB3_CONTRACT_SYMBOL || 'ETH'}
+                      </span>
+                    </div>
+                  )}
+                  {isWeb3Enabled && web3Loading && (
+                    <div className="flex items-center gap-2 mt-1">
+                      <div className="h-3 w-3 animate-spin rounded-full border border-muted-foreground border-t-transparent" />
+                      <span className="text-xs text-muted-foreground">Loading...</span>
+                    </div>
+                  )}
                 </div>
               </div>
             </DropdownMenuLabel>
@@ -84,6 +128,47 @@ export function NavUser({ user }) {
                 </Link>
               </DropdownMenuItem>
             </DropdownMenuGroup>
+            
+            {isWeb3Enabled && !web3Loading && userWallet && (
+              <>
+                <DropdownMenuSeparator />
+                <DropdownMenuGroup>
+                  <DropdownMenuItem>
+                    <div className="w-full">
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-2">
+                          <Wallet className="h-4 w-4" />
+                          <span className="font-medium">Wallet</span>
+                        </div>
+                        <button
+                          onClick={copyAddress}
+                          className="flex items-center gap-1 px-2 py-1 text-xs bg-muted rounded hover:bg-muted/80 transition-colors"
+                        >
+                          <Copy className="h-3 w-3" />
+                          Copy
+                        </button>
+                      </div>
+                      <div className="text-xs text-muted-foreground mb-1">
+                        Address: {formattedAddress}
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium">
+                          {formattedBalance || '0.0000'} {web3Config?.WEB3_CONTRACT_SYMBOL || 'ETH'}
+                        </span>
+                        <Coins className="h-4 w-4 text-muted-foreground" />
+                      </div>
+                    </div>
+                  </DropdownMenuItem>
+                  
+                  <Link href="/admin/transactions">
+                    <DropdownMenuItem>
+                      <ArrowUpDown />
+                      Transactions
+                    </DropdownMenuItem>
+                  </Link>
+                </DropdownMenuGroup>
+              </>
+            )}
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
               <Link href="/admin/account">

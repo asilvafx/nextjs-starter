@@ -1,3 +1,4 @@
+// @/app/admin/developer/endpoints/new-key/page.jsx
 "use client";
 
 import { useState } from 'react';
@@ -40,17 +41,26 @@ export default function NewKeyPage() {
 
   // Available permissions
   const permissions = [
-    { id: "read:users", label: "Read Users", description: "View user information and profiles" },
-    { id: "write:users", label: "Write Users", description: "Create and update user accounts" },
-    { id: "delete:users", label: "Delete Users", description: "Remove user accounts" },
-    { id: "read:products", label: "Read Products", description: "View product catalog and details" },
-    { id: "write:products", label: "Write Products", description: "Create and update products" },
-    { id: "delete:products", label: "Delete Products", description: "Remove products from catalog" },
-    { id: "read:orders", label: "Read Orders", description: "View order information and history" },
-    { id: "write:orders", label: "Write Orders", description: "Create and update orders" },
-    { id: "read:analytics", label: "Read Analytics", description: "Access analytics and reporting data" },
-    { id: "read:settings", label: "Read Settings", description: "View system configuration" },
-    { id: "write:settings", label: "Write Settings", description: "Modify system configuration" }
+    { 
+      id: "READ", 
+      label: "Read Access", 
+      description: "View and retrieve data from all collections (users, products, orders, settings, etc.)" 
+    },
+    { 
+      id: "WRITE", 
+      label: "Write Access", 
+      description: "Create and update records in all collections (users, products, orders, settings, etc.)" 
+    },
+    { 
+      id: "DELETE", 
+      label: "Delete Access", 
+      description: "Remove and delete records from all collections (users, products, orders, etc.)" 
+    },
+    { 
+      id: "UPLOAD", 
+      label: "Upload Access", 
+      description: "Upload, manage, and delete files in the media storage system" 
+    }
   ];
 
   const form = useForm({
@@ -343,7 +353,7 @@ export default function NewKeyPage() {
                     Permissions
                   </h3>
                   <p className="text-sm text-muted-foreground">
-                    Select the permissions this API key should have. Choose only the minimum required permissions for security.
+                    Select the access levels this API key should have. These permissions apply to all data collections and resources. Choose only the minimum required permissions for security.
                   </p>
                   
                   <FormField
@@ -361,7 +371,7 @@ export default function NewKeyPage() {
                                 return (
                                   <FormItem
                                     key={permission.id}
-                                    className="flex flex-row items-start space-x-3 space-y-0 p-3 border rounded-lg"
+                                    className="flex flex-row items-start space-x-3 space-y-0 p-4 border rounded-lg hover:bg-muted/50 transition-colors"
                                   >
                                     <FormControl>
                                       <Checkbox
@@ -377,11 +387,11 @@ export default function NewKeyPage() {
                                         }}
                                       />
                                     </FormControl>
-                                    <div className="space-y-1 leading-none">
-                                      <FormLabel className="text-sm font-medium">
+                                    <div className="space-y-2 leading-none flex-1">
+                                      <FormLabel className="text-sm font-medium cursor-pointer">
                                         {permission.label}
                                       </FormLabel>
-                                      <FormDescription className="text-xs">
+                                      <FormDescription className="text-xs text-muted-foreground">
                                         {permission.description}
                                       </FormDescription>
                                     </div>

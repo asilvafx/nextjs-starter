@@ -104,7 +104,7 @@ const QuickActionCard = ({ title, description, icon: Icon, href, color = "defaul
 const ActivityItem = ({ type, title, description, timestamp, loading = false }) => {
   if (loading) {
     return (
-      <div className="flex items-center gap-3 p-3 border-b">
+      <div className="flex items-center gap-3 p-3 border-b border-muted-foreground">
         <Skeleton className="h-8 w-8 rounded-full" />
         <div className="flex-1 space-y-1">
           <Skeleton className="h-4 w-32" />
@@ -126,7 +126,7 @@ const ActivityItem = ({ type, title, description, timestamp, loading = false }) 
   };
 
   return (
-    <div className="flex items-center gap-3 p-3 border-b last:border-0">
+    <div className="flex items-center gap-3 p-3 border-b last:border-0 border-muted-foreground">
       <div className="p-2 rounded-full bg-muted">
         {getActivityIcon(type)}
       </div>

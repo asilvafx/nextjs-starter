@@ -4,9 +4,60 @@ import { v4 as uuidv4 } from 'uuid';
 import { auth } from '@/auth.js';
 import DBService from '@/data/rest.db.js';
 
+// Check if API is enabled (same function as in public query routes)
+async function checkApiAccess(request) {
+    try {
+        // Get API settings from database
+        const apiSettingsResponse = await DBService.readAll('api_settings');
+        const apiSettings = Object.values(apiSettingsResponse || {})[0];
+        
+        // If no settings exist, allow access (fail open)
+        if (!apiSettings) {
+            return { allowed: true };
+        }
+        
+        // Check if API is disabled
+        if (!apiSettings.apiEnabled) {
+            return { 
+                allowed: false, 
+                error: 'API access is currently disabled',
+                status: 503 
+            };
+        }
+        
+        // Check allowed origins if configured
+        const origin = request.headers.get('origin');
+        const allowedOrigins = apiSettings.allowedOrigins || ['*'];
+        
+        if (!allowedOrigins.includes('*') && origin && !allowedOrigins.includes(origin)) {
+            return { 
+                allowed: false, 
+                error: 'Origin not allowed',
+                status: 403 
+            };
+        }
+        
+        return { allowed: true, settings: apiSettings };
+        
+    } catch (error) {
+        console.error('Error checking API access:', error);
+        // Fail open - allow access if we can't check settings
+        return { allowed: true };
+    }
+}
+
 // POST handler for file uploads with inline authentication
 export async function POST(request) {
     try {
+        // Check if API access is allowed
+        const accessCheck = await checkApiAccess(request);
+        if (!accessCheck.allowed) {
+            return NextResponse.json(
+                { error: accessCheck.error || 'API access denied' },
+                { status: accessCheck.status || 403 }
+            );
+        }
+
         // Authentication check
         const session = await auth();
 

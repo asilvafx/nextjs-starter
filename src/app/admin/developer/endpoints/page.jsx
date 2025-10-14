@@ -1,3 +1,5 @@
+// @/app/admin/developer/endpoints/page.jsx
+
 "use client";
 
 import { useState, useEffect } from 'react';
@@ -7,6 +9,16 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { 
+  Table, 
+  TableBody, 
+  TableCell, 
+  TableHead, 
+  TableHeader, 
+  TableRow 
+} from "@/components/ui/table";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Switch } from "@/components/ui/switch";
 import { 
   Code, 
   Key, 
@@ -22,7 +34,7 @@ import {
   Shield,
   Activity
 } from "lucide-react";
-import { getAll, create, update, remove } from "@/lib/client/query";
+import { getAll, update, remove } from "@/lib/client/query";
 import { toast } from "sonner";
 import { useRouter } from 'next/navigation';
 
@@ -32,102 +44,149 @@ export default function EndpointsPage() {
   const [endpoints, setEndpoints] = useState([]);
   const [apiKeys, setApiKeys] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [selectedEndpoint, setSelectedEndpoint] = useState(null);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [apiSettings, setApiSettings] = useState({ apiEnabled: true, allowedOrigins: [] });
+  const [isUpdatingSettings, setIsUpdatingSettings] = useState(false);
   const router = useRouter();
 
-  // Fetch API endpoints and keys from database
+  // Load default endpoints and API keys from database
   const fetchData = async () => {
     try {
       setIsLoading(true);
-      const [endpointsResponse, apiKeysResponse] = await Promise.all([
-        getAll('api_endpoints'),
-        getAll('api_keys')
+      
+      // Set default endpoints (no database operations)
+      setEndpoints(getDefaultEndpoints());
+      
+      // Fetch API keys and API settings from database
+      const [apiKeysResponse, apiSettingsResponse] = await Promise.all([
+        getAll('api_keys'),
+        getAll('api_settings')
       ]);
       
-      const endpointsData = endpointsResponse?.success ? endpointsResponse.data : [];
       const apiKeysData = apiKeysResponse?.success ? apiKeysResponse.data : [];
-      
-      // If no endpoints exist, create default ones
-      if (endpointsData.length === 0) {
-        await createDefaultEndpoints();
-      } else {
-        setEndpoints(endpointsData);
-      }
+      const apiSettingsData = apiSettingsResponse?.success ? apiSettingsResponse.data : [];
       
       setApiKeys(apiKeysData);
+      
+      // Set API settings (use first record or default)
+      if (apiSettingsData.length > 0) {
+        setApiSettings(apiSettingsData[0]);
+      } else {
+        // Create default API settings if none exist
+        await createDefaultApiSettings();
+      }
     } catch (error) {
-      console.error('Error fetching API data:', error);
-      toast.error('Failed to load API information');
+      console.error('Error fetching API keys:', error);
+      toast.error('Failed to load API keys');
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Create default API endpoints documentation
-  const createDefaultEndpoints = async () => {
-    const defaultEndpoints = [
+  // Get default API endpoints (static data)
+  // Create default API settings
+  const createDefaultApiSettings = async () => {
+    try {
+      const defaultSettings = {
+        apiEnabled: true,
+        allowedOrigins: ['*'],
+        rateLimit: {
+          enabled: true,
+          defaultLimit: 100,
+          windowMs: 3600000 // 1 hour
+        },
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+      
+      const response = await fetch('/api/query/api_settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(defaultSettings)
+      });
+      
+      if (response.ok) {
+        setApiSettings(defaultSettings);
+      }
+    } catch (error) {
+      console.error('Error creating default API settings:', error);
+    }
+  };
+
+  const getDefaultEndpoints = () => {
+    return [
       {
+        id: 'public-query-get',
         method: "GET",
-        path: "/api/query/users",
-        description: "Retrieve all users with pagination support",
-        status: "active",
-        authentication: "required",
-        rateLimit: "100/hour",
-        usage: 0,
-        createdAt: new Date().toISOString()
-      },
-      {
-        method: "POST",
-        path: "/api/query/users",
-        description: "Create a new user account",
-        status: "active",
-        authentication: "required", 
-        rateLimit: "10/hour",
-        usage: 0,
-        createdAt: new Date().toISOString()
-      },
-      {
-        method: "GET",
-        path: "/api/query/public/site_settings",
-        description: "Get public site settings and configuration",
+        path: "/api/query/public/[slug]",
+        description: "Retrieve data from any collection with optional pagination, search, and filtering",
         status: "active",
         authentication: "none",
-        rateLimit: "1000/hour",
+        rateLimit: "100/hour",
         usage: 0,
+        responseFormat: "JSON",
+        parameters: "slug (path), id, key, value, page, limit, search (query)",
+        example: '{"success": true, "data": [...], "pagination": {...}}',
         createdAt: new Date().toISOString()
       },
       {
-        method: "PUT",
-        path: "/api/query/settings/:id",
-        description: "Update system settings (admin only)",
-        status: "active",
-        authentication: "admin",
-        rateLimit: "5/hour",
-        usage: 0,
-        createdAt: new Date().toISOString()
-      },
-      {
+        id: 'public-query-post',
         method: "POST",
-        path: "/api/email",
-        description: "Send emails via email service",
+        path: "/api/query/public/[slug]",
+        description: "Create new items in any collection",
         status: "active",
-        authentication: "required",
+        authentication: "none",
         rateLimit: "50/hour",
         usage: 0,
+        responseFormat: "JSON",
+        parameters: "slug (path), JSON body with item data",
+        example: '{"success": true, "data": {...}, "message": "Record created successfully!"}',
+        createdAt: new Date().toISOString()
+      },
+      {
+        id: 'public-query-put',
+        method: "PUT",
+        path: "/api/query/public/[slug]",
+        description: "Update existing items in any collection",
+        status: "active",
+        authentication: "none",
+        rateLimit: "50/hour",
+        usage: 0,
+        responseFormat: "JSON",
+        parameters: "slug (path), JSON body with id and updated data",
+        example: '{"success": true, "data": {...}, "message": "Record updated successfully!"}',
+        createdAt: new Date().toISOString()
+      },
+      {
+        id: 'public-query-delete',
+        method: "DELETE",
+        path: "/api/query/public/[slug]",
+        description: "Delete items from any collection",
+        status: "active",
+        authentication: "none",
+        rateLimit: "25/hour",
+        usage: 0,
+        responseFormat: "JSON",
+        parameters: "slug (path), id (query parameter)",
+        example: '{"success": true, "message": "Record deleted successfully!", "data": {"id": "123"}}',
+        createdAt: new Date().toISOString()
+      },
+      {
+        id: 'upload-files',
+        method: "POST",
+        path: "/api/upload",
+        description: "Upload files with support for images, documents, and media files",
+        status: "active",
+        authentication: "none",
+        rateLimit: "20/hour",
+        usage: 0,
+        responseFormat: "JSON",
+        parameters: "file (multipart/form-data), folder, resize (query)",
+        example: '{"success": true, "data": {"filename": "...", "url": "...", "size": 123456}}',
         createdAt: new Date().toISOString()
       }
     ];
-
-    for (const endpoint of defaultEndpoints) {
-      try {
-        await create(endpoint, 'api_endpoints');
-      } catch (error) {
-        console.error('Error creating endpoint:', error);
-      }
-    }
-    
-    // Refetch data
-    const endpointsResponse = await getAll('api_endpoints');
-    setEndpoints(endpointsResponse?.success ? endpointsResponse.data : []);
   };
 
   useEffect(() => {
@@ -168,6 +227,41 @@ export default function EndpointsPage() {
   const handleCreateNewKey = () => {
     router.push('/admin/developer/endpoints/new-key');
   };
+  
+  const handleViewEndpoint = (endpoint) => {
+    setSelectedEndpoint(endpoint);
+    setIsDialogOpen(true);
+  };
+
+  const handleUpdateApiSettings = async (newSettings) => {
+    try {
+      setIsUpdatingSettings(true);
+      
+      const updatedSettings = {
+        ...apiSettings,
+        ...newSettings,
+        updatedAt: new Date().toISOString()
+      };
+      
+      const response = await fetch('/api/query/api_settings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: apiSettings.id, ...updatedSettings })
+      });
+      
+      if (response.ok) {
+        setApiSettings(updatedSettings);
+        toast.success('API settings updated successfully');
+      } else {
+        toast.error('Failed to update API settings');
+      }
+    } catch (error) {
+      console.error('Error updating API settings:', error);
+      toast.error('Failed to update API settings');
+    } finally {
+      setIsUpdatingSettings(false);
+    }
+  };
 
   const methodConfig = {
     GET: { color: "bg-green-100 text-green-800", textColor: "text-green-600" },
@@ -188,10 +282,13 @@ export default function EndpointsPage() {
     admin: { color: "bg-purple-100 text-purple-800", label: "Admin Only", icon: Shield }
   };
 
-  const filteredEndpoints = endpoints.filter(endpoint =>
-    endpoint.path.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    endpoint.description.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredEndpoints = endpoints.filter(endpoint => {
+    // Only show query public routes and upload routes
+    const isRelevantRoute = endpoint.path.includes('/api/query/public/') || endpoint.path.includes('/api/upload');
+    const matchesSearch = endpoint.path.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      endpoint.description.toLowerCase().includes(searchTerm.toLowerCase());
+    return isRelevantRoute && matchesSearch;
+  });
 
   const filteredApiKeys = apiKeys.filter(apiKey =>
     apiKey.name.toLowerCase().includes(searchTerm.toLowerCase())
@@ -306,6 +403,10 @@ export default function EndpointsPage() {
             <Key className="h-4 w-4" />
             API Keys
           </TabsTrigger>
+          <TabsTrigger value="settings" className="flex items-center gap-2">
+            <Shield className="h-4 w-4" />
+            API Settings
+          </TabsTrigger>
         </TabsList>
 
         {/* Search */}
@@ -333,63 +434,90 @@ export default function EndpointsPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                {filteredEndpoints.length === 0 ? (
-                  <div className="text-center py-12">
-                    <Code className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
-                    <h3 className="text-lg font-medium mb-2">No endpoints found</h3>
-                    <p className="text-muted-foreground">
-                      {searchTerm ? `No endpoints match "${searchTerm}"` : "No API endpoints available"}
-                    </p>
-                  </div>
-                ) : (
-                  filteredEndpoints.map((endpoint) => {
-                    const StatusIcon = statusConfig[endpoint.status]?.icon || CheckCircle;
-                    const AuthIcon = authConfig[endpoint.authentication]?.icon || Eye;
-                    
-                    return (
-                      <div key={endpoint.id} className="flex items-center gap-4 p-4 border rounded-lg hover:shadow-sm transition-shadow">
-                        <div className="flex items-center gap-3">
-                          <Badge className={methodConfig[endpoint.method]?.color || methodConfig.GET.color}>
-                            {endpoint.method}
-                          </Badge>
-                          <code className="px-2 py-1 bg-gray-100 rounded text-sm font-mono">
-                            {endpoint.path}
-                          </code>
-                        </div>
+              {filteredEndpoints.length === 0 ? (
+                <div className="text-center py-12">
+                  <Code className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
+                  <h3 className="text-lg font-medium mb-2">No endpoints found</h3>
+                  <p className="text-muted-foreground">
+                    {searchTerm ? `No endpoints match "${searchTerm}"` : "No API endpoints available"}
+                  </p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Method</TableHead>
+                        <TableHead>Endpoint</TableHead>
+                        <TableHead className="hidden md:table-cell">Description</TableHead>
+                        <TableHead className="hidden sm:table-cell">Auth</TableHead>
+                        <TableHead className="hidden lg:table-cell">Rate Limit</TableHead>
+                        <TableHead className="hidden lg:table-cell">Usage</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredEndpoints.map((endpoint) => {
+                        const StatusIcon = statusConfig[endpoint.status]?.icon || CheckCircle;
+                        const AuthIcon = authConfig[endpoint.authentication]?.icon || Eye;
                         
-                        <div className="flex-1">
-                          <p className="text-sm text-muted-foreground">
-                            {endpoint.description}
-                          </p>
-                          <div className="flex items-center gap-4 text-xs text-muted-foreground mt-2">
-                            <div className="flex items-center gap-1">
-                              <AuthIcon className="h-3 w-3" />
-                              {authConfig[endpoint.authentication]?.label || 'Public'}
-                            </div>
-                            <div className="flex items-center gap-1">
-                              <Zap className="h-3 w-3" />
-                              {endpoint.rateLimit || 'No limit'}
-                            </div>
-                            <span>{endpoint.usage || 0} requests</span>
-                            <span>Last used: {endpoint.lastUsed ? new Date(endpoint.lastUsed).toLocaleDateString() : 'Never'}</span>
-                          </div>
-                        </div>
-                        
-                        <div className="flex items-center gap-2">
-                          <Badge className={statusConfig[endpoint.status]?.color || statusConfig.active.color}>
-                            <StatusIcon className="h-3 w-3 mr-1" />
-                            {endpoint.status}
-                          </Badge>
-                          <Button variant="outline" size="sm">
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </div>
-                    );
-                  })
-                )}
-              </div>
+                        return (
+                          <TableRow key={endpoint.id} className="hover:bg-muted/50">
+                            <TableCell>
+                              <Badge className={methodConfig[endpoint.method]?.color || methodConfig.GET.color}>
+                                {endpoint.method}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              <code className="px-2 py-1 bg-muted rounded text-sm font-mono">
+                                {endpoint.path}
+                              </code>
+                            </TableCell>
+                            <TableCell className="hidden md:table-cell max-w-xs">
+                              <p className="text-sm text-muted-foreground truncate">
+                                {endpoint.description}
+                              </p>
+                            </TableCell>
+                            <TableCell className="hidden sm:table-cell">
+                              <div className="flex items-center gap-1">
+                                <AuthIcon className="h-3 w-3" />
+                                <span className="text-xs">
+                                  {authConfig[endpoint.authentication]?.label || 'Public'}
+                                </span>
+                              </div>
+                            </TableCell>
+                            <TableCell className="hidden lg:table-cell">
+                              <div className="flex items-center gap-1">
+                                <Zap className="h-3 w-3" />
+                                <span className="text-xs">{endpoint.rateLimit || 'No limit'}</span>
+                              </div>
+                            </TableCell>
+                            <TableCell className="hidden lg:table-cell">
+                              <span className="text-xs">{endpoint.usage || 0} requests</span>
+                            </TableCell>
+                            <TableCell>
+                              <Badge className={statusConfig[endpoint.status]?.color || statusConfig.active.color}>
+                                <StatusIcon className="h-3 w-3 mr-1" />
+                                {endpoint.status}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              <Button 
+                                variant="outline" 
+                                size="sm"
+                                onClick={() => handleViewEndpoint(endpoint)}
+                              >
+                                <Eye className="h-4 w-4" />
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -490,7 +618,273 @@ export default function EndpointsPage() {
             </CardContent>
           </Card>
         </TabsContent>
+
+        {/* API Settings Tab */}
+        <TabsContent value="settings">
+          <Card>
+            <CardHeader>
+              <CardTitle>API Access Control</CardTitle>
+              <CardDescription>
+                Manage global API access and security settings
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* API Enable/Disable */}
+              <div className="flex items-center justify-between p-4 border rounded-lg">
+                <div className="space-y-1">
+                  <h3 className="font-medium">API Access</h3>
+                  <p className="text-sm text-muted-foreground">
+                    {apiSettings.apiEnabled 
+                      ? 'API endpoints are currently accessible to external requests'
+                      : 'API endpoints are currently disabled for external requests'
+                    }
+                  </p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <Badge className={apiSettings.apiEnabled ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}>
+                    {apiSettings.apiEnabled ? (
+                      <><CheckCircle className="h-3 w-3 mr-1" />Enabled</>
+                    ) : (
+                      <><XCircle className="h-3 w-3 mr-1" />Disabled</>
+                    )}
+                  </Badge>
+                  {isUpdatingSettings && (
+                    <Clock className="h-4 w-4 animate-spin text-muted-foreground" />
+                  )}
+                  <div className="flex items-center gap-2">
+                    <Switch
+                      checked={apiSettings.apiEnabled}
+                      disabled={isUpdatingSettings}
+                      onCheckedChange={(checked) => handleUpdateApiSettings({ apiEnabled: checked })}
+                    />
+                    <span className="text-sm font-medium">
+                      {apiSettings.apiEnabled ? 'Enabled' : 'Disabled'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Rate Limiting Settings */}
+              <div className="space-y-4">
+                <h3 className="font-medium">Rate Limiting</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Default Rate Limit (per hour)</label>
+                    <Input
+                      type="number"
+                      value={apiSettings.rateLimit?.defaultLimit || 100}
+                      onChange={(e) => {
+                        const newLimit = parseInt(e.target.value) || 100;
+                        handleUpdateApiSettings({
+                          rateLimit: {
+                            ...apiSettings.rateLimit,
+                            defaultLimit: newLimit
+                          }
+                        });
+                      }}
+                      className="w-full"
+                    />
+                  </div>
+                  <div className="flex items-center space-x-2 pt-6">
+                    <Switch
+                      id="rateLimit"
+                      checked={apiSettings.rateLimit?.enabled || false}
+                      onCheckedChange={(checked) => {
+                        handleUpdateApiSettings({
+                          rateLimit: {
+                            ...apiSettings.rateLimit,
+                            enabled: checked
+                          }
+                        });
+                      }}
+                    />
+                    <label htmlFor="rateLimit" className="text-sm font-medium">
+                      Enable Rate Limiting
+                    </label>
+                  </div>
+                </div>
+              </div>
+
+              {/* Allowed Origins */}
+              <div className="space-y-4">
+                <h3 className="font-medium">Allowed Origins</h3>
+                <p className="text-sm text-muted-foreground">
+                  Control which domains can access your API. Use "*" to allow all origins.
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {(apiSettings.allowedOrigins || ['*']).map((origin, index) => (
+                    <Badge key={index} variant="outline" className="flex items-center gap-1">
+                      {origin}
+                      {origin !== '*' && (
+                        <button
+                          onClick={() => {
+                            const newOrigins = apiSettings.allowedOrigins.filter((_, i) => i !== index);
+                            handleUpdateApiSettings({ allowedOrigins: newOrigins });
+                          }}
+                          className="ml-1 hover:text-red-600"
+                        >
+                          ×
+                        </button>
+                      )}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+
+              {/* API Statistics */}
+              <div className="space-y-4">
+                <h3 className="font-medium">Statistics</h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="p-3 border rounded">
+                    <p className="text-sm text-muted-foreground">Status</p>
+                    <p className="font-medium">{apiSettings.apiEnabled ? 'Active' : 'Disabled'}</p>
+                  </div>
+                  <div className="p-3 border rounded">
+                    <p className="text-sm text-muted-foreground">Last Updated</p>
+                    <p className="font-medium">
+                      {apiSettings.updatedAt ? new Date(apiSettings.updatedAt).toLocaleDateString() : 'Never'}
+                    </p>
+                  </div>
+                  <div className="p-3 border rounded">
+                    <p className="text-sm text-muted-foreground">Created</p>
+                    <p className="font-medium">
+                      {apiSettings.createdAt ? new Date(apiSettings.createdAt).toLocaleDateString() : 'Unknown'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
       </Tabs>
+      
+      {/* Endpoint Details Dialog */}
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Badge className={methodConfig[selectedEndpoint?.method]?.color || methodConfig.GET.color}>
+                {selectedEndpoint?.method}
+              </Badge>
+              <code className="text-sm font-mono">{selectedEndpoint?.path}</code>
+            </DialogTitle>
+            <DialogDescription>
+              {selectedEndpoint?.description}
+            </DialogDescription>
+          </DialogHeader>
+          
+          {selectedEndpoint && (
+            <div className="space-y-6">
+              {/* Basic Information */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <h4 className="font-medium text-sm mb-2">Authentication</h4>
+                  <div className="flex items-center gap-2">
+                    {(() => {
+                      const AuthIcon = authConfig[selectedEndpoint.authentication]?.icon || Eye;
+                      return (
+                        <>
+                          <AuthIcon className="h-4 w-4" />
+                          <span className="text-sm">
+                            {authConfig[selectedEndpoint.authentication]?.label || 'Public'}
+                          </span>
+                        </>
+                      );
+                    })()}
+                  </div>
+                </div>
+                
+                <div>
+                  <h4 className="font-medium text-sm mb-2">Rate Limit</h4>
+                  <div className="flex items-center gap-2">
+                    <Zap className="h-4 w-4" />
+                    <span className="text-sm">{selectedEndpoint.rateLimit || 'No limit'}</span>
+                  </div>
+                </div>
+                
+                <div>
+                  <h4 className="font-medium text-sm mb-2">Status</h4>
+                  <Badge className={statusConfig[selectedEndpoint.status]?.color || statusConfig.active.color}>
+                    {(() => {
+                      const StatusIcon = statusConfig[selectedEndpoint.status]?.icon || CheckCircle;
+                      return <StatusIcon className="h-3 w-3 mr-1" />;
+                    })()}
+                    {selectedEndpoint.status}
+                  </Badge>
+                </div>
+                
+                <div>
+                  <h4 className="font-medium text-sm mb-2">Usage</h4>
+                  <div className="flex items-center gap-2">
+                    <Activity className="h-4 w-4" />
+                    <span className="text-sm">{selectedEndpoint.usage || 0} requests</span>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Parameters */}
+              {selectedEndpoint.parameters && (
+                <div>
+                  <h4 className="font-medium text-sm mb-2">Parameters</h4>
+                  <div className="bg-muted p-3 rounded text-sm font-mono">
+                    {selectedEndpoint.parameters}
+                  </div>
+                </div>
+              )}
+              
+              {/* Response Format */}
+              <div>
+                <h4 className="font-medium text-sm mb-2">Response Format</h4>
+                <Badge variant="outline">
+                  {selectedEndpoint.responseFormat || 'JSON'}
+                </Badge>
+              </div>
+              
+              {/* Example Response */}
+              {selectedEndpoint.example && (
+                <div>
+                  <h4 className="font-medium text-sm mb-2">Example Response</h4>
+                  <div className="bg-muted p-3 rounded">
+                    <pre className="text-xs overflow-x-auto">
+                      <code>{selectedEndpoint.example}</code>
+                    </pre>
+                  </div>
+                </div>
+              )}
+              
+              {/* Usage Stats */}
+              <div>
+                <h4 className="font-medium text-sm mb-2">Statistics</h4>
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <span className="text-muted-foreground">Created:</span>
+                    <div>{selectedEndpoint.createdAt ? new Date(selectedEndpoint.createdAt).toLocaleDateString() : 'Unknown'}</div>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Last Used:</span>
+                    <div>{selectedEndpoint.lastUsed ? new Date(selectedEndpoint.lastUsed).toLocaleDateString() : 'Never'}</div>
+                  </div>
+                </div>
+              </div>
+              
+              {/* cURL Example */}
+              <div>
+                <h4 className="font-medium text-sm mb-2">cURL Example</h4>
+                <div className="bg-muted p-3 rounded">
+                  <pre className="text-xs overflow-x-auto">
+                    <code>
+                      {`curl -X ${selectedEndpoint.method} \\
+  '${window.location.origin}${selectedEndpoint.path}' \\
+${selectedEndpoint.authentication !== 'none' ? `  -H 'Authorization: Bearer YOUR_API_KEY' \\
+` : ''}  -H 'Content-Type: application/json'`}
+                    </code>
+                  </pre>
+                </div>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

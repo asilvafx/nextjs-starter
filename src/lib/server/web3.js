@@ -129,73 +129,111 @@ const transferABI = [
 
 
 export const validateWallet = async (address) => {
-    const web3 = await getWeb3Instance();
-    if (!web3) {
-        return ('Please ensure you have a valid RPC provider, and try again.');
+    try {
+        const web3 = await getWeb3Instance();
+        if (!web3) {
+            return { success: false, error: 'Web3 not available - please check RPC configuration' };
+        }
+        const isValid = web3.utils.isAddress(address);
+        return { success: true, isValid };
+    } catch (error) {
+        return { success: false, error: error.message };
     }
-    return web3.utils.isAddress(address);
 }
 export const getGasPrice = async () => {
-    const web3 = await getWeb3Instance();
-    if (!web3) {
-        return ('Please ensure you have a valid RPC provider, and try again.');
-    }
+    try {
+        const web3 = await getWeb3Instance();
+        if (!web3) {
+            return { success: false, error: 'Web3 not available - please check RPC configuration' };
+        }
 
-    const gasPrice = await web3.eth.getGasPrice();
-    const ethPrice = web3.utils.fromWei(gasPrice, "Gwei");
-    const ratePrice = parseFloat(ethPrice / 10000);
-    return ratePrice.toFixed(3);
+        const gasPrice = await web3.eth.getGasPrice();
+        const gweiPrice = web3.utils.fromWei(gasPrice, "gwei");
+        return { 
+            success: true, 
+            gasPrice: parseFloat(gweiPrice).toFixed(2),
+            gasPriceWei: gasPrice 
+        };
+    } catch (error) {
+        return { success: false, error: error.message };
+    }
 }
 export const createWallet = async () => {
-    const web3 = await getWeb3Instance();
-    if (!web3) {
-        return ('Please ensure you have a valid RPC provider, and try again.');
-    }
+    try {
+        const web3 = await getWeb3Instance();
+        if (!web3) {
+            return { success: false, error: 'Web3 not available - please check RPC configuration' };
+        }
 
-    return web3.eth.accounts.create();
+        const wallet = web3.eth.accounts.create();
+        return { 
+            success: true, 
+            address: wallet.address,
+            privateKey: wallet.privateKey
+        };
+    } catch (error) {
+        return { success: false, error: error.message };
+    }
 }
 export const getTxStatus = async (hash) => {
-    const web3 = await getWeb3Instance();
-    if (!web3) {
-        return ('Please ensure you have a valid RPC provider, and try again.');
-    }
-
     try {
+        const web3 = await getWeb3Instance();
+        if (!web3) {
+            return { success: false, error: 'Web3 not available - please check RPC configuration' };
+        }
+
         // Get transaction receipt
         const receipt = await web3.eth.getTransactionReceipt(hash);
 
-        if(receipt) {
-            // Return data
-            return receipt;
+        if (receipt) {
+            return {
+                success: true,
+                receipt,
+                status: receipt.status ? 'confirmed' : 'failed',
+                blockNumber: receipt.blockNumber,
+                gasUsed: receipt.gasUsed,
+                transactionHash: receipt.transactionHash
+            };
         } else {
-            return ('Transaction is not mined yet or does not exist.');
+            // Check if transaction exists but not mined yet
+            const tx = await web3.eth.getTransaction(hash);
+            if (tx) {
+                return {
+                    success: true,
+                    status: 'pending',
+                    transaction: tx
+                };
+            } else {
+                return { success: false, error: 'Transaction not found' };
+            }
         }
     } catch (error) {
-        return ('Error fetching transaction status: ' + error);
+        return { success: false, error: error.message };
     }
 }
 export const sendTransaction = async (amountToSend, destinationAddress, tokenHolder, holderSecretKey, inChain = false, txType = 'transfer') => {
-    const web3 = await getWeb3Instance();
-    const config = await loadWeb3Config();
-    
-    if (!web3) return;
-
     try {
-        const amountInWei = web3.utils.toWei(amountToSend, "ether");
+        const web3 = await getWeb3Instance();
+        const config = await loadWeb3Config();
+        
+        if (!web3) {
+            return { success: false, error: 'Web3 not available - please check RPC configuration' };
+        }
 
-        //const signer = web3.eth.accounts.privateKeyToAccount(holderSecretKey);
-        //web3.eth.accounts.wallet.add(signer);
+        // Validate inputs
+        if (!amountToSend || !destinationAddress || !tokenHolder || !holderSecretKey) {
+            return { success: false, error: 'Missing required parameters' };
+        }
 
+        const amountInWei = web3.utils.toWei(amountToSend.toString(), "ether");
         const nonce = await web3.eth.getTransactionCount(tokenHolder);
         const gasPrice = await web3.eth.getGasPrice();
         const gasLimit = 200000;
 
-        let web3contract = null;
-
         let params = {};
 
-        if(inChain){
-
+        if (inChain) {
+            // Native currency transaction
             params = {
                 to: destinationAddress,
                 value: amountInWei,
@@ -204,12 +242,13 @@ export const sendTransaction = async (amountToSend, destinationAddress, tokenHol
                 gas: web3.utils.toHex(gasLimit),
             };
         } else {
+            // ERC-20 token transaction
             const tokenContract = config.WEB3_CONTRACT_ADDRESS;
             if (!tokenContract) {
-                throw new Error('Contract address not configured');
+                return { success: false, error: 'Token contract address not configured' };
             }
 
-            web3contract = new web3.eth.Contract(transferABI, tokenContract, { from: tokenHolder });
+            const web3contract = new web3.eth.Contract(transferABI, tokenContract, { from: tokenHolder });
 
             params = {
                 from: tokenHolder,
@@ -228,49 +267,73 @@ export const sendTransaction = async (amountToSend, destinationAddress, tokenHol
         const receipt = await web3.eth.sendSignedTransaction(signedTx.rawTransaction)
             .once("transactionHash", async (txHash) => {
                 transactionHash = txHash;
-
             })
-            .on('error', function(error){ console.log("error", error); });
+            .on('error', function(error) { 
+                console.log("Transaction error:", error); 
+            });
+
+        // Update balance after transaction
+        setTimeout(() => {
+            getTokenBalance(tokenHolder, inChain);
+        }, 1000);
 
         return {
+            success: true,
             tx_hash: transactionHash,
             block: receipt.blockNumber,
+            gasUsed: receipt.gasUsed,
+            status: receipt.status ? 'confirmed' : 'failed'
         };
 
     } catch (error) {
         console.error("Transaction failed:", error);
-    } finally {
-        await getTokenBalance(tokenHolder, false);
+        return { success: false, error: error.message };
     }
 };
 
 export const getTokenBalance = async (tokenHolder, chain = false) => {
-    const web3 = await getWeb3Instance();
-    const config = await loadWeb3Config();
-    
-    if (!web3) return; // Ensure web3 is initialized
     try {
-        // Get main chain token balance
-        if(chain){
-            const balance = await web3.eth.getBalance(tokenHolder);
-            const formattedBalance = parseFloat(web3.utils.fromWei(balance, "ether"));
-
-            return formattedBalance.toFixed(4);
-        }
-
-        // Or, Get custom erc-20 token balance
-        const tokenContract = config.WEB3_CONTRACT_ADDRESS;
-        if (!tokenContract) {
-            throw new Error('Contract address not configured');
-        }
+        const web3 = await getWeb3Instance();
+        const config = await loadWeb3Config();
         
-        const contract = new web3.eth.Contract(balanceOfABI, tokenContract);
-        const result = await contract.methods.balanceOf(tokenHolder).call();
-        const formattedResult = parseFloat(web3.utils.fromWei(result, "ether"));
+        if (!web3) {
+            return { success: false, error: 'Web3 not available - please check RPC configuration' };
+        }
 
-        return formattedResult.toFixed(4);
+        if (!tokenHolder) {
+            return { success: false, error: 'Token holder address is required' };
+        }
+
+        let balance;
+        let symbol;
+
+        if (chain) {
+            // Get native chain token balance (ETH, BNB, etc.)
+            balance = await web3.eth.getBalance(tokenHolder);
+            symbol = config.WEB3_CHAIN_SYMBOL || 'ETH';
+        } else {
+            // Get ERC-20 token balance
+            const tokenContract = config.WEB3_CONTRACT_ADDRESS;
+            if (!tokenContract) {
+                return { success: false, error: 'Token contract address not configured' };
+            }
+            
+            const contract = new web3.eth.Contract(balanceOfABI, tokenContract);
+            balance = await contract.methods.balanceOf(tokenHolder).call();
+            symbol = config.WEB3_CONTRACT_SYMBOL || 'TOKEN';
+        }
+
+        const formattedBalance = parseFloat(web3.utils.fromWei(balance, "ether"));
+
+        return {
+            success: true,
+            balance: formattedBalance.toFixed(6),
+            balanceWei: balance,
+            symbol: symbol,
+            address: tokenHolder
+        };
     } catch (error) {
-        console.log("Failed to fetch balance. " + error.message);
-        return null;
+        console.error("Failed to fetch balance:", error);
+        return { success: false, error: error.message };
     }
 };

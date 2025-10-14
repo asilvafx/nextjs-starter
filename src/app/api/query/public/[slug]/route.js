@@ -17,9 +17,96 @@ async function getRequestBody(request) {
     }
 }
 
+// Check if API is enabled
+async function checkApiAccess(request) {
+    try {
+        // Get API settings from database
+        const apiSettingsResponse = await DBService.readAll('api_settings');
+        const apiSettings = Object.values(apiSettingsResponse || {})[0];
+        
+        // If no settings exist, allow access (fail open)
+        if (!apiSettings) {
+            return { allowed: true };
+        }
+        
+        // Check if API is disabled
+        if (!apiSettings.apiEnabled) {
+            return { 
+                allowed: false, 
+                error: 'API access is currently disabled',
+                status: 503 
+            };
+        }
+        
+        // Check allowed origins if configured
+        const origin = request.headers.get('origin');
+        const allowedOrigins = apiSettings.allowedOrigins || ['*'];
+        
+        if (!allowedOrigins.includes('*') && origin && !allowedOrigins.includes(origin)) {
+            return { 
+                allowed: false, 
+                error: 'Origin not allowed',
+                status: 403 
+            };
+        }
+        
+        return { allowed: true, settings: apiSettings };
+        
+    } catch (error) {
+        console.error('Error checking API access:', error);
+        // Fail open - allow access if we can't check settings
+        return { allowed: true };
+    }
+}
+
+// Track API usage if API key is provided
+async function trackApiUsage(request) {
+    try {
+        const url = new URL(request.url);
+        const authHeader = request.headers.get('authorization');
+        const apiKeyFromHeader = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
+        const apiKeyFromQuery = url.searchParams.get('api_key');
+        const apiKey = apiKeyFromHeader || apiKeyFromQuery;
+        
+        if (apiKey) {
+            // Log API usage for analytics (could be stored in a separate analytics collection)
+            console.log(`API Key used: ${apiKey.substring(0, 8)}... for ${request.method} ${url.pathname}`);
+            
+            // Optional: Store usage statistics in a separate analytics collection
+            try {
+                await DBService.create({
+                    apiKey: apiKey.substring(0, 8) + '...',
+                    method: request.method,
+                    endpoint: url.pathname,
+                    timestamp: new Date().toISOString(),
+                    userAgent: request.headers.get('user-agent') || 'unknown'
+                }, 'api_usage_logs');
+            } catch (logError) {
+                // Ignore logging errors to not affect the main request
+                console.error('Failed to log API usage:', logError);
+            }
+        }
+    } catch (error) {
+        console.error('Error tracking API usage:', error);
+        // Don't fail the request if tracking fails
+    }
+}
+
 // GET all items or single item - public access with CSRF protection
 async function handlePublicGet(request, { params }) {
     try {
+        // Check if API access is allowed
+        const accessCheck = await checkApiAccess(request);
+        if (!accessCheck.allowed) {
+            return NextResponse.json(
+                { error: accessCheck.error || 'API access denied' },
+                { status: accessCheck.status || 403 }
+            );
+        }
+        
+        // Track API usage if API key provided
+        await trackApiUsage(request);
+        
         const { slug } = await params;
         const url = new URL(request.url);
         const id = url.searchParams.get('id');
@@ -151,6 +238,18 @@ async function handlePublicGet(request, { params }) {
 // POST create new item - public access with CSRF protection
 async function handlePublicPost(request, { params }) {
     try {
+        // Check if API access is allowed
+        const accessCheck = await checkApiAccess(request);
+        if (!accessCheck.allowed) {
+            return NextResponse.json(
+                { error: accessCheck.error || 'API access denied' },
+                { status: accessCheck.status || 403 }
+            );
+        }
+        
+        // Track API usage if API key provided
+        await trackApiUsage(request);
+        
         const { slug } = await params;
         const data = await getRequestBody(request);
 
@@ -210,6 +309,18 @@ async function handlePublicPost(request, { params }) {
 // PUT update item - public access with CSRF protection
 async function handlePublicPut(request, { params }) {
     try {
+        // Check if API access is allowed
+        const accessCheck = await checkApiAccess(request);
+        if (!accessCheck.allowed) {
+            return NextResponse.json(
+                { error: accessCheck.error || 'API access denied' },
+                { status: accessCheck.status || 403 }
+            );
+        }
+        
+        // Track API usage if API key provided
+        await trackApiUsage(request);
+        
         const { slug } = await params;
         const data = await getRequestBody(request);
 
@@ -275,6 +386,18 @@ async function handlePublicPut(request, { params }) {
 // DELETE item - public access with CSRF protection
 async function handlePublicDelete(request, { params }) {
     try {
+        // Check if API access is allowed
+        const accessCheck = await checkApiAccess(request);
+        if (!accessCheck.allowed) {
+            return NextResponse.json(
+                { error: accessCheck.error || 'API access denied' },
+                { status: accessCheck.status || 403 }
+            );
+        }
+        
+        // Track API usage if API key provided
+        await trackApiUsage(request);
+        
         const { slug } = await params;
         const url = new URL(request.url);
         const id = url.searchParams.get('id');
@@ -329,7 +452,7 @@ async function handlePublicDelete(request, { params }) {
     }
 }
 
-// Export handlers with secure public access middleware and permissions
+// Export handlers with secure public access middleware (API key tracking integrated)
 export const GET = withPublicAccess(handlePublicGet, {
     requireApiKey: false,
     requireIpWhitelist: false,
