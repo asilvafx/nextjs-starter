@@ -1,4 +1,5 @@
 // @/app/api/query/integrations/route.js
+import { NextResponse } from 'next/server';
 import { withAuth } from '@/lib/server/auth';
 import DBService from '@/data/rest.db.js';
 
