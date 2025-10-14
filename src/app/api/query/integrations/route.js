@@ -48,7 +48,7 @@ const defaultIntegrations = [
 ];
 
 // GET - Retrieve all integrations
-async function GET() {
+async function handleGet() {
   try {
     // Try to get existing integrations from database
     let integrations = await DBService.readAll('integrations');
@@ -126,7 +126,7 @@ async function GET() {
 }
 
 // POST - Create a new integration
-async function POST(request) {
+async function handlePost(request) {
   try {
     const body = await request.json();
     const { id, ...integrationData } = body;
@@ -177,5 +177,5 @@ async function POST(request) {
   }
 }
 
-export const wrappedGET = withAuth(GET);
-export const wrappedPOST = withAuth(POST); 
+export const GET = withAuth(handleGet);
+export const POST = withAuth(handlePost); 
