@@ -3,7 +3,7 @@ import { withPublicAccess } from '@/lib/server/auth';
 import DBService from '@/data/rest.db.js';
 
 // GET - Public endpoint to retrieve enabled integrations (without sensitive data)
-export async function GET(request) {
+async function handleGet(request) {
   try {
     // Allow same-host access without strict auth
     const origin = request.headers.get('origin');
@@ -93,4 +93,4 @@ function getPublicSettings(integration) {
 }
 
 // Export directly without middleware to allow same-host access
-export { GET };
+export const GET = { handleGet };
