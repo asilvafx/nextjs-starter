@@ -7,6 +7,7 @@ import { motion } from "framer-motion";
 import Link from "next/link";
 import {useRouter} from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { LoadingSpinner } from '@/components/ui/loading-spinner';
 
 export default function LogoutPage() { 
     const { logout, status, session } = useAuth();
@@ -90,7 +91,7 @@ export default function LogoutPage() {
             >
                 <div className="text-lg">Signing out...</div>
                 <div className="mt-4">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto"></div>
+                    <LoadingSpinner size="lg" className="mx-auto" />
                 </div>
             </motion.div>
         </div>

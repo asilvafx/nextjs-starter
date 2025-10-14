@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation';
 import { RegisterForm } from "@/components/register-form";
 import { useSession } from 'next-auth/react';
 import { motion } from 'framer-motion';
+import { LoadingSpinner } from '@/components/ui/loading-spinner';
 
 const RegisterPage = () => {
     const router = useRouter();
@@ -54,7 +55,7 @@ const RegisterPage = () => {
     if (status === "loading" || isLoading) {
         return (
             <div className="min-h-screen flex justify-center items-center">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+                <LoadingSpinner size="lg" />
             </div>
         );
     }

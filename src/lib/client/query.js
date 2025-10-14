@@ -175,7 +175,7 @@ class QueryAPI {
             method: 'DELETE'
         };
         const result = await this.makeRequest(url, options);
-        return result.data;
+        return result;
     }
 
     // DELETE item (public access)
@@ -185,7 +185,7 @@ class QueryAPI {
             method: 'DELETE'
         };
         const result = await this.makePublicRequest(url, options);
-        return result.data;
+        return result;
     }
 
     // UPLOAD file (authenticated)

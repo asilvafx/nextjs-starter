@@ -55,7 +55,9 @@ import {TableSkeleton} from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import ConfirmationDialog from "@/components/ui/confirmation-dialog";
-import { generatePDF } from "@/utils/generatePDF"; 
+import { generatePDF } from "@/utils/generatePDF";
+import { PhoneInput } from "@/components/ui/phone-input";
+import { CountryDropdown } from "@/components/ui/country-dropdown";
 
 
 const ORDER_STATUS = [
@@ -83,6 +85,9 @@ const initialFormData = {
   items: [],
   subtotal: 0,
   shippingCost: 0,
+  discountType: "fixed", // "fixed" or "percentage"
+  discountValue: 0,
+  discountAmount: 0,
   total: 0,
   status: "pending",
   paymentStatus: "pending",
@@ -277,11 +282,26 @@ export default function OrdersPage() {
 
       // Calculate totals
       const subtotal = formData.items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+      
+      // Calculate discount amount
+      let discountAmount = 0;
+      if (formData.discountValue > 0) {
+        if (formData.discountType === 'percentage') {
+          discountAmount = (subtotal * formData.discountValue) / 100;
+        } else {
+          discountAmount = formData.discountValue;
+        }
+      }
+      
+      const total = subtotal + (formData.shippingCost || 0) - discountAmount;
+      
       const orderData = {
         ...formData,
         subtotal,
-        total: subtotal + (formData.shippingCost || 0),
+        discountAmount,
+        total: Math.max(0, total), // Ensure total is not negative
         createdAt: new Date().toISOString(),
+        id: Math.floor(new Date().getTime() / 1000) + '_' + Math.floor(Math.random() * (9999 - 1000 + 1)) + 1000,
       };
 
       // Create customer if new
@@ -322,8 +342,8 @@ export default function OrdersPage() {
       }
 
       // Create order in database
-      const response = await create(orderData, "orders"); 
- 
+      const response = await create(orderData, "orders");  
+
       if (!response.id) { 
         throw new Error('Failed to create order');
       }
@@ -334,7 +354,7 @@ export default function OrdersPage() {
           type: 'order_confirmation',
           email: orderData.customer.email,
           customerName: `${orderData.customer.firstName} ${orderData.customer.lastName}`.trim(),
-          orderId: response.data.id,
+          orderId: response.id,
           orderDate: orderData.createdAt,
           items: orderData.items,
           subtotal: orderData.subtotal,
@@ -363,8 +383,7 @@ export default function OrdersPage() {
       setIsNewCustomer(false);
       setSelectedCustomerId("");
       fetchOrders();
-    } catch (error) {
-      console.error('Error creating order:', error);
+    } catch (error) { 
       toast.error(error.message || "Failed to create order");
     } finally {
       setIsSubmitting(false);
@@ -374,8 +393,7 @@ export default function OrdersPage() {
   const handleStatusChangeRequest = (orderId, newStatus) => { 
     
     const order = allOrders.find(o => o.id === orderId);
-    if (!order) {
-      console.error('Order not found:', orderId);
+    if (!order) { 
       toast.error('Order not found');
       return;
     }
@@ -439,14 +457,13 @@ export default function OrdersPage() {
             body: JSON.stringify(emailPayload),
           });
 
-          if (!emailResponse.ok) {
-            console.error('Failed to send notification email');
+          if (!emailResponse.ok) { 
             toast.warning("Order updated but email notification failed");
           } else {
             toast.success("Order status updated and customer notified");
           }
         } catch (emailError) {
-          console.error('Email notification error:', emailError);
+          console.log('Email notification error:', emailError);
           toast.warning("Order updated but email notification failed");
         }
       } else {
@@ -459,7 +476,7 @@ export default function OrdersPage() {
       setStatusChangeData(null);
       setTrackingNumber("");
     } catch (error) {
-      console.error('Error updating order status:', error);
+      console.log('Error updating order status:', error);
       toast.error("Failed to update order status");
     } finally {
       setIsConfirmingStatusChange(false);
@@ -472,7 +489,7 @@ export default function OrdersPage() {
       await generatePDF(order, storeSettings);
       toast.success("Invoice PDF generated successfully");
     } catch (error) {
-      console.error('Error generating PDF:', error);
+      console.log('Error generating PDF:', error);
       toast.error("Failed to generate invoice");
     } finally {
       setIsGeneratingPDF(false);
@@ -518,9 +535,9 @@ export default function OrdersPage() {
 
     try {
       setIsDeleting(true);
-      const response = await remove(orderToDelete.id, "orders");
+      const response = await remove(orderToDelete.id, "orders"); 
       
-      if (response.success) {
+      if (response && response.success) {
         toast.success("Order deleted successfully");
         setOrders(prev => prev.filter(order => order.id !== orderToDelete.id));
         setAllOrders(prev => prev.filter(order => order.id !== orderToDelete.id));
@@ -543,6 +560,9 @@ export default function OrdersPage() {
       "Order ID",
       "Customer",
       "Email",
+      "Subtotal", 
+      "Discount",
+      "Shipping",
       "Total",
       "Status",
       "Payment",
@@ -552,6 +572,9 @@ export default function OrdersPage() {
       order.id,
       `${order.customer.firstName} ${order.customer.lastName}`.trim(),
       order.customer.email,
+      order.subtotal || 0,
+      order.discountAmount || 0,
+      order.shippingCost || 0,
       order.total,
       order.status,
       order.paymentStatus,
@@ -662,7 +685,7 @@ export default function OrdersPage() {
                   onClick={() => handleSort("createdAt")}
                 >
                   <div className="flex items-center">
-                    Date
+                    Created At
                     <ArrowUpDown className="ml-2 h-4 w-4" />
                   </div>
                 </TableHead>
@@ -900,6 +923,13 @@ export default function OrdersPage() {
                                           <TableCell className="font-semibold">Shipping:</TableCell>
                                           <TableCell className="text-right font-semibold">{formatPrice(selectedOrder.shippingCost || 0)}</TableCell>
                                         </TableRow>
+                                        {selectedOrder.discountAmount && selectedOrder.discountAmount > 0 && (
+                                          <TableRow>
+                                            <TableCell colSpan={2}></TableCell>
+                                            <TableCell className="font-semibold text-green-600">Discount:</TableCell>
+                                            <TableCell className="text-right font-semibold text-green-600">-{formatPrice(selectedOrder.discountAmount)}</TableCell>
+                                          </TableRow>
+                                        )}
                                         <TableRow className="border-t">
                                           <TableCell colSpan={2}></TableCell>
                                           <TableCell className="font-bold">Total:</TableCell>
@@ -1261,15 +1291,15 @@ export default function OrdersPage() {
                   </div>
                   <div className="space-y-2">
                     <label htmlFor="phone">Phone</label>
-                    <Input
+                    <PhoneInput
                       id="phone"
                       value={formData.customer.phone}
-                      onChange={(e) =>
+                      onChange={(value) =>
                         setFormData({
                           ...formData,
                           customer: {
                             ...formData.customer,
-                            phone: e.target.value,
+                            phone: value || '',
                           },
                         })
                       }
@@ -1365,15 +1395,16 @@ export default function OrdersPage() {
                     </div>
                     <div className="space-y-2">
                       <label htmlFor="country">Country</label>
-                      <Input
+                      <CountryDropdown
                         id="country"
-                        value={formData.customer.country}
-                        onChange={(e) =>
+                        defaultValue={formData.customer.countryIso || 'FR'}
+                        onChange={(country) =>
                           setFormData({
                             ...formData,
                             customer: {
                               ...formData.customer,
-                              country: e.target.value,
+                              country: country.name,
+                              countryIso: country.alpha2,
                             },
                           })
                         }
@@ -1563,6 +1594,34 @@ export default function OrdersPage() {
                     onChange={(e) => setFormData({ ...formData, shippingCost: parseFloat(e.target.value) })}
                   />
                 </div>
+                
+                <div>
+                  <label className="text-sm font-medium">Discount</label>
+                  <div className="flex gap-2">
+                    <Select
+                      value={formData.discountType}
+                      onValueChange={(value) => setFormData({ ...formData, discountType: value })}
+                    >
+                      <SelectTrigger className="w-[120px]">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="fixed">Fixed</SelectItem>
+                        <SelectItem value="percentage">%</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Input
+                      type="number"
+                      min="0"
+                      step={formData.discountType === 'percentage' ? '1' : '0.01'}
+                      max={formData.discountType === 'percentage' ? '100' : undefined}
+                      value={formData.discountValue}
+                      onChange={(e) => setFormData({ ...formData, discountValue: parseFloat(e.target.value) || 0 })}
+                      placeholder={formData.discountType === 'percentage' ? '0-100' : '0.00'}
+                    />
+                  </div>
+                </div>
+                
                 <div className="pt-6">
                   <div className="flex justify-between text-sm">
                     <span>Subtotal:</span>
@@ -1572,12 +1631,38 @@ export default function OrdersPage() {
                     <span>Shipping:</span>
                     <span>{formatPrice(formData.shippingCost || 0)}</span>
                   </div>
+                  {(() => {
+                    const subtotal = formData.items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+                    let discountAmount = 0;
+                    if (formData.discountValue > 0) {
+                      if (formData.discountType === 'percentage') {
+                        discountAmount = (subtotal * formData.discountValue) / 100;
+                      } else {
+                        discountAmount = formData.discountValue;
+                      }
+                    }
+                    return discountAmount > 0 ? (
+                      <div className="flex justify-between text-sm text-green-600">
+                        <span>Discount ({formData.discountType === 'percentage' ? `${formData.discountValue}%` : 'Fixed'}):</span>
+                        <span>-{formatPrice(discountAmount)}</span>
+                      </div>
+                    ) : null;
+                  })()}
                   <div className="flex justify-between font-bold mt-2 pt-2 border-t">
                     <span>Total:</span>
-                    <span>{formatPrice(
-                      formData.items.reduce((sum, item) => sum + (item.price * item.quantity), 0) + 
-                      (formData.shippingCost || 0)
-                    )}</span>
+                    <span>{(() => {
+                      const subtotal = formData.items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+                      let discountAmount = 0;
+                      if (formData.discountValue > 0) {
+                        if (formData.discountType === 'percentage') {
+                          discountAmount = (subtotal * formData.discountValue) / 100;
+                        } else {
+                          discountAmount = formData.discountValue;
+                        }
+                      }
+                      const total = subtotal + (formData.shippingCost || 0) - discountAmount;
+                      return formatPrice(Math.max(0, total));
+                    })()}</span>
                   </div>
                 </div>
               </div>
@@ -1804,6 +1889,12 @@ export default function OrdersPage() {
                         <td colSpan="3" className="py-2 text-right font-semibold text-gray-900">Shipping:</td>
                         <td className="py-2 text-right font-semibold text-gray-900">{formatPrice(selectedOrderForInvoice.shippingCost || 0)}</td>
                       </tr>
+                      {selectedOrderForInvoice.discountAmount && selectedOrderForInvoice.discountAmount > 0 && (
+                        <tr>
+                          <td colSpan="3" className="py-2 text-right font-semibold text-green-600">Discount:</td>
+                          <td className="py-2 text-right font-semibold text-green-600">-{formatPrice(selectedOrderForInvoice.discountAmount)}</td>
+                        </tr>
+                      )}
                       <tr className="border-t border-gray-900">
                         <td colSpan="3" className="py-3 text-right font-bold text-lg text-gray-900">Total:</td>
                         <td className="py-3 text-right font-bold text-lg text-gray-900">{formatPrice(selectedOrderForInvoice.total)}</td>

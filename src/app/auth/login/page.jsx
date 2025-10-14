@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation';
 import { LoginForm } from "@/components/login-form";
 import { useSession } from 'next-auth/react';
 import { motion } from 'framer-motion';
+import { LoadingSpinner } from '@/components/ui/loading-spinner';
 
 const LoginPage = () => {
     const router = useRouter();
@@ -21,7 +22,7 @@ const LoginPage = () => {
     if (status === 'loading') {
         return (
             <div className='flex min-h-screen items-center justify-center'>
-                <div className='h-8 w-8 animate-spin rounded-full border-b-2 border-blue-500'></div>
+                <LoadingSpinner size="lg" />
             </div>
         );
     }
