@@ -3,7 +3,7 @@ import { withAuth } from '@/lib/server/auth';
 import DBService from '@/data/rest.db.js';
 
 // GET - Retrieve specific integration
-export async function GET(request, { params }) {
+async function GET(request, { params }) {
   try {
     const { id } = params;
     
@@ -30,7 +30,7 @@ export async function GET(request, { params }) {
 }
 
 // PUT - Update integration
-export async function PUT(request, { params }) {
+async function PUT(request, { params }) {
   try {
     const { id } = params;
     const body = await request.json();
@@ -78,7 +78,7 @@ export async function PUT(request, { params }) {
 }
 
 // DELETE - Delete integration
-export async function DELETE(request, { params }) {
+async function DELETE(request, { params }) {
   try {
     const { id } = params;
     
