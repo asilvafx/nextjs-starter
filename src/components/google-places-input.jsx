@@ -1,6 +1,7 @@
 // @/components/google-places-input.jsx
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Loader } from '@googlemaps/js-api-loader';
+import { isIntegrationEnabled } from '@/lib/client/integrations';
 
 // Global variables to track script loading state
 let isGoogleMapsLoading = false;
@@ -21,6 +22,7 @@ const GooglePlacesInput = ({
     const placeAutocompleteRef = useRef(null);
     const isLoadedRef = useRef(false);
     const addressInputRef = useRef(null);
+    const [isGoogleMapsEnabled, setIsGoogleMapsEnabled] = useState(false);
 
     // Detect if device is mobile
     const isMobile = () => {
@@ -355,13 +357,17 @@ const GooglePlacesInput = ({
         return googleMapsLoadPromise;
     };
 
-    const loadGoogleMaps = () => {
-        // Validate apiKey
-        if (!apiKey) {
-            console.warn('Google Maps API key not provided, using fallback input');
+    const loadGoogleMaps = async () => {
+        // Check if Google Maps integration is enabled
+        const googleMapsEnabled = await isIntegrationEnabled('google-maps');
+        setIsGoogleMapsEnabled(googleMapsEnabled);
+        
+        // If not enabled or no API key, use fallback
+        if (!googleMapsEnabled || !apiKey) {
+            console.warn(googleMapsEnabled ? 'Google Maps API key not provided' : 'Google Maps integration not enabled', ', using fallback input');
             createFallbackInput();
             if (onError) {
-                onError('Google Maps API key not provided');
+                onError(googleMapsEnabled ? 'Google Maps API key not provided' : 'Google Maps integration not enabled');
             }
             return;
         }
@@ -417,7 +423,10 @@ const GooglePlacesInput = ({
     };
 
     useEffect(() => {
-        loadGoogleMaps();
+        const initMaps = async () => {
+            await loadGoogleMaps();
+        };
+        initMaps();
 
         return () => {
             if (placeAutocompleteRef.current) {

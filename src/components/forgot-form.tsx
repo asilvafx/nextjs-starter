@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import Link from "next/link";
 import Turnstile from "react-turnstile";
 import { motion, AnimatePresence } from "framer-motion";
+import { getTurnstileSiteKey } from '@/lib/client/integrations';
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import {
@@ -16,8 +17,6 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 
-const TurnstileKey = process.env.NEXT_PUBLIC_CF_TURNSTILE_API || null;
-
 export function ForgotForm({
   className,
   ...props
@@ -29,10 +28,19 @@ export function ForgotForm({
   const [encryptedCode, setEncryptedCode] = useState("");
   const [loading, setLoading] = useState(false);
   const [isTurnstileVerified, setIsTurnstileVerified] = useState(false);
+  const [turnstileKey, setTurnstileKey] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchTurnstileKey = async () => {
+      const key = await getTurnstileSiteKey();
+      setTurnstileKey(key);
+    };
+    fetchTurnstileKey();
+  }, []);
 
   const handleSendCode = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (TurnstileKey && !isTurnstileVerified) {
+    if (turnstileKey && !isTurnstileVerified) {
       toast.error('Please complete the verification.');
       return;
     }
@@ -143,10 +151,10 @@ export function ForgotForm({
                   />
                 </div>
 
-                {TurnstileKey && (
+                {turnstileKey && (
                   <div className="flex justify-center">
                     <Turnstile
-                      sitekey={TurnstileKey}
+                      sitekey={turnstileKey}
                       theme="light"
                       size="flexible"
                       onVerify={() => setIsTurnstileVerified(true)}
@@ -156,7 +164,7 @@ export function ForgotForm({
 
                 <Button
                   type="submit"
-                  disabled={loading || (!!TurnstileKey && !isTurnstileVerified)}
+                  disabled={loading || (!!turnstileKey && !isTurnstileVerified)}
                   className="w-full"
                 >
                   {loading ? "Sending..." : "Send Reset Code"}

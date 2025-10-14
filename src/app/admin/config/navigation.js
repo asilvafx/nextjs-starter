@@ -148,6 +148,11 @@ export const navigation = {
       icon: Settings, 
     },
     {
+      title: "Integrations",
+      url: "/admin/system/integrations",
+      icon: Frame, 
+    },
+    {
       title: "Maintenance",
       url: "/admin/system/maintenance",
       icon: Wrench, 

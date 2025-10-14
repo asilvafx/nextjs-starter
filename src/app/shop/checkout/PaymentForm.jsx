@@ -15,6 +15,8 @@ import { useSession } from "next-auth/react";
 import ShippingMethodSelector from './ShippingMethodSelector.jsx';
 import GooglePlacesInput from '@/components/google-places-input';
 import { motion, AnimatePresence } from 'framer-motion';
+import Turnstile from 'react-turnstile';
+import { getTurnstileSiteKey, getGoogleMapsApiKey } from '@/lib/client/integrations';
 
 const PaymentForm = ({ cartTotal, subTotal, shippingCost, onShippingUpdate, selectedShippingMethod, isEligibleForFreeShipping, storeSettings }) => {
     const t = useTranslations('Checkout');
@@ -46,6 +48,11 @@ const PaymentForm = ({ cartTotal, subTotal, shippingCost, onShippingUpdate, sele
     // Shipping State
     const [localSelectedShippingMethod, setLocalSelectedShippingMethod] = useState(null);
     const [hasAutoSelectedFreeShipping, setHasAutoSelectedFreeShipping] = useState(false);
+    
+    // Integration State
+    const [turnstileKey, setTurnstileKey] = useState(null);
+    const [googleMapsApiKey, setGoogleMapsApiKey] = useState(null);
+    const [isTurnstileVerified, setIsTurnstileVerified] = useState(false);
 
     const handleShippingMethodSelect = (method) => {
         setLocalSelectedShippingMethod(method);
@@ -53,18 +60,37 @@ const PaymentForm = ({ cartTotal, subTotal, shippingCost, onShippingUpdate, sele
     };
 
     const handleCountryChange = (selectedCountry) => {
-        const countryCode = COUNTRIES.find(c => c.value === selectedCountry);
-        if (countryCode) {
-            setCountry(selectedCountry);
-            setCountryIso(countryCode.code);
-            // Reset shipping method when country changes
-            setLocalSelectedShippingMethod(null);
-            setHasAutoSelectedFreeShipping(false);
-            onShippingUpdate(0, null);
-        }
+        const countryData = getDefaultCountry(selectedCountry);
+        setCountryIso(countryData.iso);
+        setCountry(countryData.iso);
+        setState('');
+        setCity('');
+        setZipCode('');
+        onShippingUpdate({
+            country: countryData.iso,
+            state: '',
+            city: '',
+            zipCode: ''
+        });
     };
-
-    // Auto-select free shipping when eligible
+    
+    const handleGooglePlacesSelect = (placeDetails) => {
+        if (placeDetails) {
+            setStreetAddress(placeDetails.formatted_address || '');
+            setCity(placeDetails.city || '');
+            setState(placeDetails.state || '');
+            setZipCode(placeDetails.zipCode || '');
+            setCountryIso(placeDetails.countryIso || 'FR');
+            setCountry(placeDetails.countryIso || 'FR');
+            
+            onShippingUpdate({
+                country: placeDetails.countryIso || 'FR',
+                state: placeDetails.state || '',
+                city: placeDetails.city || '',
+                zipCode: placeDetails.zipCode || ''
+            });
+        }
+    };    // Auto-select free shipping when eligible
     const handleShippingMethodsLoaded = (shippingMethods) => {
         if (isEligibleForFreeShipping && !hasAutoSelectedFreeShipping && shippingMethods.length > 0) {
             // Find free shipping method (id: 3)
@@ -201,6 +227,12 @@ const PaymentForm = ({ cartTotal, subTotal, shippingCost, onShippingUpdate, sele
 
     const handleSubmit = async (event) => {
         event.preventDefault();
+
+        // Check Turnstile verification if enabled
+        if (turnstileKey && !isTurnstileVerified) {
+            setErrorMessage('Please complete the verification.');
+            return;
+        }
 
         if (!stripe || !elements) {
             return;
@@ -398,6 +430,18 @@ const PaymentForm = ({ cartTotal, subTotal, shippingCost, onShippingUpdate, sele
     useEffect(() => {
         const defaultC = getDefaultCountry();
         setCountry(defaultC);
+        
+        // Fetch integration keys
+        const fetchIntegrationKeys = async () => {
+            const [turnstileKey, googleMapsKey] = await Promise.all([
+                getTurnstileSiteKey(),
+                getGoogleMapsApiKey()
+            ]);
+            setTurnstileKey(turnstileKey);
+            setGoogleMapsApiKey(googleMapsKey);
+        };
+        
+        fetchIntegrationKeys();
     }, []);
 
     return (
@@ -477,7 +521,7 @@ const PaymentForm = ({ cartTotal, subTotal, shippingCost, onShippingUpdate, sele
                                             styles={{
                                                 width: '100%',
                                             }}
-                                            apiKey={process.env.NEXT_PUBLIC_GOOGLE_API_KEY}
+                                            apiKey={googleMapsApiKey}
                                         />
                                     </div>
                                 </div>
@@ -600,6 +644,21 @@ const PaymentForm = ({ cartTotal, subTotal, shippingCost, onShippingUpdate, sele
                                 </button>
                             </div>
 
+                            {/* Turnstile Verification */}
+                            {turnstileKey && (
+                                <div className="space-y-4">
+                                    <h2 className="text-lg font-semibold mb-4">Security Verification</h2>
+                                    <div className="flex justify-center">
+                                        <Turnstile
+                                            sitekey={turnstileKey}
+                                            theme="light"
+                                            size="flexible"
+                                            onVerify={() => setIsTurnstileVerified(true)}
+                                        />
+                                    </div>
+                                </div>
+                            )}
+
                             {/* Payment Element Section */}
                             <div>
                                 <h2 className="text-lg font-semibold mb-4">{t('cardInformation')}</h2>
@@ -610,7 +669,7 @@ const PaymentForm = ({ cartTotal, subTotal, shippingCost, onShippingUpdate, sele
                             <button
                                 className="w-full button primary"
                                 type="submit"
-                                disabled={!stripe || !elements || isProcessing}
+                                disabled={!stripe || !elements || isProcessing || (turnstileKey && !isTurnstileVerified)}
                             >
                                 {isProcessing ? (
                                     <div className="flex items-center justify-center space-x-2">

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { signIn } from 'next-auth/react';
 import { toast } from 'sonner';
@@ -6,6 +6,7 @@ import { IoMdEye, IoMdEyeOff } from 'react-icons/io';
 import Link from 'next/link';
 import Turnstile from 'react-turnstile';
 import Fingerprint from '@/utils/fingerprint.js';
+import { getTurnstileSiteKey } from '@/lib/client/integrations';
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import {
@@ -17,8 +18,6 @@ import {
 } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-
-const TurnstileKey = process.env.NEXT_PUBLIC_CF_TURNSTILE_API || null;
 
 export function RegisterForm({
   className,
@@ -32,8 +31,17 @@ export function RegisterForm({
   const [showPwd, setShowPwd] = useState(false);
   const [loading, setLoading] = useState(false);
   const [isTurnstileVerified, setIsTurnstileVerified] = useState(false);
+  const [turnstileKey, setTurnstileKey] = useState<string | null>(null);
 
   const showPassword = () => setShowPwd((prev) => !prev);
+
+  useEffect(() => {
+    const fetchTurnstileKey = async () => {
+      const key = await getTurnstileSiteKey();
+      setTurnstileKey(key);
+    };
+    fetchTurnstileKey();
+  }, []);
 
   const passwordValid = (pwd: string) => {
     return (
@@ -46,7 +54,7 @@ export function RegisterForm({
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (TurnstileKey && !isTurnstileVerified) {
+    if (turnstileKey && !isTurnstileVerified) {
       toast.error('Please complete the verification.');
       return;
     }
@@ -186,10 +194,10 @@ export function RegisterForm({
                 </div>
               </div>
 
-              {TurnstileKey && (
+              {turnstileKey && (
                 <div className="flex justify-center">
                   <Turnstile
-                    sitekey={TurnstileKey}
+                    sitekey={turnstileKey}
                     theme="light"
                     size="flexible"
                     onVerify={() => setIsTurnstileVerified(true)}
@@ -200,7 +208,7 @@ export function RegisterForm({
               <div className="flex flex-col gap-3">
                 <Button 
                   type="submit"
-                  disabled={loading || (!!TurnstileKey && !isTurnstileVerified)}
+                  disabled={loading || (!!turnstileKey && !isTurnstileVerified)}
                   className="w-full"
                 >
                   {loading ? 'Please wait...' : 'Create Account'}

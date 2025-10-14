@@ -1,9 +1,32 @@
 const getConfig = (translations = {}) => {
-    const GA_ID = process.env.NEXT_PUBLIC_GOOGLE_ANALYTICS || "G-XXXXXXX";
+    let GA_ID = null;
+    
+    // Fetch Google Analytics ID from integrations
+    const fetchGoogleAnalyticsId = async () => {
+        try {
+            const { getGoogleAnalyticsMeasurementId } = await import('@/lib/client/integrations');
+            GA_ID = await getGoogleAnalyticsMeasurementId();
+            return GA_ID;
+        } catch (error) {
+            console.warn('Failed to fetch Google Analytics measurement ID:', error);
+            return null;
+        }
+    };
 
     // Google Analytics loading function
-    const loadGoogleAnalytics = () => {
+    const loadGoogleAnalytics = async () => {
         if (document.getElementById("ga-script")) return;
+        
+        // Get measurement ID from database if not already cached
+        if (!GA_ID) {
+            GA_ID = await fetchGoogleAnalyticsId();
+        }
+        
+        // Only load if measurement ID is available and integration is enabled
+        if (!GA_ID) {
+            console.warn('Google Analytics measurement ID not found or integration not enabled');
+            return;
+        }
 
         const script = document.createElement("script");
         script.id = "ga-script";
@@ -18,6 +41,8 @@ const getConfig = (translations = {}) => {
         window.gtag = gtag;
         gtag("js", new Date());
         gtag("config", GA_ID);
+        
+        console.log('Google Analytics loaded with measurement ID:', GA_ID);
     };
 
     // Google Analytics removal function
@@ -65,7 +90,7 @@ const getConfig = (translations = {}) => {
 
             // Load Google Analytics if analytics category is accepted
             if (cookie.categories.includes('analytics')) {
-                loadGoogleAnalytics();
+                loadGoogleAnalytics().catch(err => console.error('Failed to load Google Analytics:', err));
             }
         },
 
@@ -74,7 +99,7 @@ const getConfig = (translations = {}) => {
 
             // Load Google Analytics if analytics category is accepted
             if (cookie.categories.includes('analytics')) {
-                loadGoogleAnalytics();
+                loadGoogleAnalytics().catch(err => console.error('Failed to load Google Analytics:', err));
             }
         },
 
@@ -85,7 +110,7 @@ const getConfig = (translations = {}) => {
             if (changedCategories.includes('analytics')) {
                 // Check if analytics is now accepted or rejected
                 if (cookie.categories.includes('analytics')) {
-                    loadGoogleAnalytics();
+                    loadGoogleAnalytics().catch(err => console.error('Failed to load Google Analytics:', err));
                 } else {
                     removeGoogleAnalytics();
                 }
@@ -141,7 +166,7 @@ const getConfig = (translations = {}) => {
                     ga: {
                         label: 'Google Analytics',
                         onAccept: () => {
-                            loadGoogleAnalytics();
+                            loadGoogleAnalytics().catch(err => console.error('Failed to load Google Analytics:', err));
                         },
                         onReject: () => {
                             removeGoogleAnalytics();
