@@ -14,7 +14,7 @@ import DBService from '@/data/rest.db.js';
  *       200:
  *         description: Synchronization completed successfully
  */
-async function POST(request) {
+async function postHandler(request) {
   try {
     console.log('Starting workspace synchronization...');
     
@@ -189,7 +189,7 @@ async function POST(request) {
  *     security:
  *       - bearerAuth: []
  */
-async function GET() {
+async function getHandler() {
   try {
     const [appointments, agendaItems, scheduleItems, tasks] = await Promise.all([
       DBService.readAll('appointments') || [],
@@ -248,8 +248,6 @@ async function GET() {
   }
 }
 
-export { GET, POST };
-
-// Apply authentication middleware
-export const withAuthGET = withAuth(GET);
-export const withAuthPOST = withAuth(POST);
+// Apply authentication middleware and export
+export const GET = withAuth(getHandler);
+export const POST = withAuth(postHandler);
