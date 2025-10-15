@@ -23,6 +23,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import {
   ArrowUpDown,
@@ -49,6 +50,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import {TableSkeleton} from "@/components/ui/skeleton";
@@ -94,6 +96,8 @@ const initialFormData = {
   paymentMethod: "",
   deliveryNotes: "",
   sendEmail: true,
+  appointmentId: null,
+  isServiceAppointment: false,
 };
 
 const PAYMENT_METHODS = [
@@ -913,6 +917,36 @@ export default function OrdersPage() {
                                         <div className="mt-2">
                                           <label className="text-sm font-medium text-gray-500">Description</label>
                                           <p className="text-sm">{selectedOrder.coupon.name}</p>
+                                        </div>
+                                      )}
+                                    </div>
+                                  )}
+                                  
+                                  {/* Service Appointment Information */}
+                                  {selectedOrder.isServiceAppointment && (
+                                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                                      <h4 className="font-medium text-blue-700 mb-2">Service Appointment</h4>
+                                      <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                          <label className="text-sm font-medium text-gray-500">Appointment ID</label>
+                                          <p className="text-sm font-mono bg-white px-2 py-1 rounded border">{selectedOrder.appointmentId}</p>
+                                        </div>
+                                        <div>
+                                          <label className="text-sm font-medium text-gray-500">Status</label>
+                                          <Badge variant={selectedOrder.status === 'completed' ? 'default' : 'outline'}>
+                                            {selectedOrder.status}
+                                          </Badge>
+                                        </div>
+                                      </div>
+                                      {selectedOrder.items.some(item => item.appointmentDate) && (
+                                        <div className="mt-2">
+                                          <label className="text-sm font-medium text-gray-500">Appointment Details</label>
+                                          {selectedOrder.items.filter(item => item.appointmentDate).map((item, index) => (
+                                            <div key={index} className="text-sm bg-white p-2 rounded border mt-1">
+                                              <p><strong>{item.name}</strong></p>
+                                              <p>📅 {item.appointmentDate} at {item.appointmentTime}</p>
+                                            </div>
+                                          ))}
                                         </div>
                                       )}
                                     </div>

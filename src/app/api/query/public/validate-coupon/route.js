@@ -205,7 +205,7 @@ async function POST(request) {
   }
 }
 
-export { POST };
+// Apply public access middleware and export
+const PublicPOST = withPublicAccess(POST);
 
-// Apply public access middleware
-export const withPublicPOST = withPublicAccess(POST);
+export { PublicPOST as POST };

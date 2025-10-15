@@ -609,6 +609,178 @@ export function CatalogItemForm({
                         className="h-24"
                       />
                     </div>
+                    
+                    {/* Appointment Booking Options */}
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id="requiresAppointment"
+                        checked={formData.requiresAppointment || false}
+                        onCheckedChange={(checked) =>
+                          setFormData({
+                            ...formData,
+                            requiresAppointment: checked,
+                          })
+                        }
+                      />
+                      <Label htmlFor="requiresAppointment">
+                        Requires Appointment Booking
+                      </Label>
+                    </div>
+                    
+                    {formData.requiresAppointment && (
+                      <Card className="p-4 bg-blue-50 border-blue-200">
+                        <h4 className="font-medium mb-3 text-blue-900">Appointment Settings</h4>
+                        <div className="space-y-4">
+                          
+                          <div className="flex items-center space-x-2">
+                            <Checkbox
+                              id="allowOnlineBooking"
+                              checked={formData.appointmentSettings?.allowOnlineBooking !== false}
+                              onCheckedChange={(checked) =>
+                                setFormData({
+                                  ...formData,
+                                  appointmentSettings: {
+                                    ...formData.appointmentSettings,
+                                    allowOnlineBooking: checked,
+                                  },
+                                })
+                              }
+                            />
+                            <Label htmlFor="allowOnlineBooking">
+                              Allow Online Booking
+                            </Label>
+                          </div>
+                          
+                          <div className="grid grid-cols-2 gap-4">
+                            <div>
+                              <Label htmlFor="bufferTime">Buffer Time (minutes)</Label>
+                              <Input
+                                id="bufferTime"
+                                type="number"
+                                min="0"
+                                value={formData.appointmentSettings?.bufferTime || 15}
+                                onChange={(e) =>
+                                  setFormData({
+                                    ...formData,
+                                    appointmentSettings: {
+                                      ...formData.appointmentSettings,
+                                      bufferTime: parseInt(e.target.value) || 15,
+                                    },
+                                  })
+                                }
+                                placeholder="15"
+                              />
+                            </div>
+                            <div>
+                              <Label htmlFor="advanceBookingDays">Advance Booking (days)</Label>
+                              <Input
+                                id="advanceBookingDays"
+                                type="number"
+                                min="1"
+                                value={formData.appointmentSettings?.advanceBookingDays || 30}
+                                onChange={(e) =>
+                                  setFormData({
+                                    ...formData,
+                                    appointmentSettings: {
+                                      ...formData.appointmentSettings,
+                                      advanceBookingDays: parseInt(e.target.value) || 30,
+                                    },
+                                  })
+                                }
+                                placeholder="30"
+                              />
+                            </div>
+                          </div>
+                          
+                          <div>
+                            <Label className="text-sm font-medium mb-2 block">Working Hours</Label>
+                            <div className="space-y-2 text-sm">
+                              {['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'].map((day) => {
+                                const daySettings = formData.appointmentSettings?.workingHours?.[day] || {
+                                  enabled: ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'].includes(day),
+                                  start: '09:00',
+                                  end: '17:00'
+                                };
+                                
+                                return (
+                                  <div key={day} className="flex items-center gap-4 p-2 bg-white rounded border">
+                                    <div className="flex items-center space-x-2 w-24">
+                                      <Checkbox
+                                        id={`${day}-enabled`}
+                                        checked={daySettings.enabled}
+                                        onCheckedChange={(checked) =>
+                                          setFormData({
+                                            ...formData,
+                                            appointmentSettings: {
+                                              ...formData.appointmentSettings,
+                                              workingHours: {
+                                                ...formData.appointmentSettings?.workingHours,
+                                                [day]: {
+                                                  ...daySettings,
+                                                  enabled: checked,
+                                                },
+                                              },
+                                            },
+                                          })
+                                        }
+                                      />
+                                      <Label htmlFor={`${day}-enabled`} className="capitalize text-xs">
+                                        {day.slice(0, 3)}
+                                      </Label>
+                                    </div>
+                                    {daySettings.enabled && (
+                                      <>
+                                        <Input
+                                          type="time"
+                                          value={daySettings.start}
+                                          onChange={(e) =>
+                                            setFormData({
+                                              ...formData,
+                                              appointmentSettings: {
+                                                ...formData.appointmentSettings,
+                                                workingHours: {
+                                                  ...formData.appointmentSettings?.workingHours,
+                                                  [day]: {
+                                                    ...daySettings,
+                                                    start: e.target.value,
+                                                  },
+                                                },
+                                              },
+                                            })
+                                          }
+                                          className="w-20 text-xs"
+                                        />
+                                        <span className="text-xs text-gray-500">to</span>
+                                        <Input
+                                          type="time"
+                                          value={daySettings.end}
+                                          onChange={(e) =>
+                                            setFormData({
+                                              ...formData,
+                                              appointmentSettings: {
+                                                ...formData.appointmentSettings,
+                                                workingHours: {
+                                                  ...formData.appointmentSettings?.workingHours,
+                                                  [day]: {
+                                                    ...daySettings,
+                                                    end: e.target.value,
+                                                  },
+                                                },
+                                              },
+                                            })
+                                          }
+                                          className="w-20 text-xs"
+                                        />
+                                      </>
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        </div>
+                      </Card>
+                    )}
                   </>
                 )}
               </CardContent>

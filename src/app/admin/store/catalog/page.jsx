@@ -68,6 +68,21 @@ const initialFormData = {
   downloadNotes: "",
   duration: 60,
   serviceNotes: "",
+  requiresAppointment: false,
+  appointmentSettings: {
+    allowOnlineBooking: true,
+    bufferTime: 15, // minutes between appointments
+    advanceBookingDays: 30, // how far in advance customers can book
+    workingHours: {
+      monday: { enabled: true, start: '09:00', end: '17:00' },
+      tuesday: { enabled: true, start: '09:00', end: '17:00' },
+      wednesday: { enabled: true, start: '09:00', end: '17:00' },
+      thursday: { enabled: true, start: '09:00', end: '17:00' },
+      friday: { enabled: true, start: '09:00', end: '17:00' },
+      saturday: { enabled: false, start: '09:00', end: '17:00' },
+      sunday: { enabled: false, start: '09:00', end: '17:00' }
+    }
+  },
   customAttributes: [],
   // Variant system for attributes with individual stock and images
   variants: [], // [{ attributes: {color: 'black'}, stock: 10, price: 0, sku: '', coverImage: null }]

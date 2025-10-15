@@ -1,3 +1,5 @@
+// @/app/admin/workspace/tasks/page.jsx
+
 "use client";
 
 import { useState, useEffect } from 'react';
@@ -5,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Plus, CheckCircle, Clock, AlertCircle, User } from "lucide-react";
+import { CheckCircle, Clock, User, AlertCircle, Plus, Star, Filter, Calendar, Users } from "lucide-react";
 import { getAll, create, update, remove } from "@/lib/client/query";
 import { toast } from "sonner";
 
@@ -14,17 +16,53 @@ export default function TasksPage() {
   const [tasks, setTasks] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Fetch tasks from database
+  // Fetch tasks and related workspace data
   const fetchTasks = async () => {
     try {
       setIsLoading(true);
-      const response = await getAll('tasks');
+      const [tasksResponse, appointmentsResponse, agendaResponse] = await Promise.all([
+        getAll('tasks'),
+        getAll('appointments'),
+        getAll('agenda_items')
+      ]);
       
-      if (response?.success && response.data) {
-        setTasks(response.data);
-      } else {
-        setTasks([]);
+      let allTasks = [];
+      
+      if (tasksResponse?.success && tasksResponse.data) {
+        allTasks = [...allTasks, ...tasksResponse.data];
       }
+      
+      // Create tasks from upcoming appointments
+      if (appointmentsResponse?.success && appointmentsResponse.data) {
+        const appointmentTasks = appointmentsResponse.data
+          .filter(apt => apt.status === 'confirmed' || apt.status === 'pending')
+          .map(apt => ({
+            id: `apt_task_${apt.id}`,
+            title: `Prepare for ${apt.serviceName}`,
+            description: `Customer appointment with ${apt.customerName} on ${apt.date} at ${apt.startTime}`,
+            status: 'todo',
+            priority: 'medium',
+            dueDate: apt.date,
+            type: 'appointment_prep',
+            appointmentId: apt.id,
+            assignedTo: 'System Generated',
+            createdAt: new Date().toISOString(),
+            linkedAppointment: apt
+          }));
+          
+        // Filter out duplicates
+        const existingAppointmentTaskIds = allTasks
+          .filter(task => task.appointmentId)
+          .map(task => task.appointmentId);
+          
+        const newAppointmentTasks = appointmentTasks.filter(task => 
+          !existingAppointmentTaskIds.includes(task.appointmentId)
+        );
+        
+        allTasks = [...allTasks, ...newAppointmentTasks];
+      }
+      
+      setTasks(allTasks);
     } catch (error) {
       console.error('Error fetching tasks:', error);
       toast.error('Failed to load tasks');
@@ -142,7 +180,15 @@ export default function TasksPage() {
             <Card key={task.id} className="hover:shadow-md transition-shadow">
               <CardHeader className="pb-3">
                 <div className="flex justify-between items-start">
-                  <CardTitle className="text-lg">{task.title || 'Untitled Task'}</CardTitle>
+                  <div className="flex items-center gap-2">
+                    <CardTitle className="text-lg">{task.title || 'Untitled Task'}</CardTitle>
+                    {task.type === 'appointment_prep' && (
+                      <Badge variant="outline" className="text-xs">
+                        <Calendar className="h-3 w-3 mr-1" />
+                        Appointment
+                      </Badge>
+                    )}
+                  </div>
                   <Badge className={priorityConfig[task.priority] || priorityConfig.medium}>
                     {task.priority || 'medium'}
                   </Badge>
@@ -150,6 +196,20 @@ export default function TasksPage() {
                 <CardDescription className="line-clamp-2">
                   {task.description || 'No description provided'}
                 </CardDescription>
+                
+                {/* Appointment details for appointment tasks */}
+                {task.linkedAppointment && (
+                  <div className="bg-blue-50 dark:bg-blue-950/20 p-2 rounded text-xs mt-2">
+                    <div className="flex items-center gap-2 text-blue-700 dark:text-blue-300">
+                      <Users className="h-3 w-3" />
+                      <span>{task.linkedAppointment.customerName}</span>
+                      <span>•</span>
+                      <span>{task.linkedAppointment.date} at {task.linkedAppointment.startTime}</span>
+                      <span>•</span>
+                      <span className="font-medium">€{task.linkedAppointment.price}</span>
+                    </div>
+                  </div>
+                )}
               </CardHeader>
               <CardContent className="space-y-4">
                 {/* Status and Assignee */}
@@ -162,7 +222,7 @@ export default function TasksPage() {
                   </div>
                   <div className="flex items-center gap-1 text-sm text-muted-foreground">
                     <User className="h-3 w-3" />
-                    {task.assignee || 'Unassigned'}
+                    {task.assignedTo || task.assignee || 'Unassigned'}
                   </div>
                 </div>
 

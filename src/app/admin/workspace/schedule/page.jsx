@@ -1,3 +1,5 @@
+// @/app/admin/workspace/schedule/page.jsx
+
 "use client";
 
 import { useState, useEffect } from 'react';
@@ -5,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Calendar, Clock, MapPin, Users, Plus, ChevronRight } from "lucide-react";
+import { Calendar, Clock, MapPin, Users, Plus, ChevronRight, Phone, Mail, Euro } from "lucide-react";
 import { getAll, create, update, remove } from "@/lib/client/query";
 import { toast } from "sonner";
 
@@ -14,17 +16,53 @@ export default function SchedulePage() {
   const [scheduleItems, setScheduleItems] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Fetch schedule items from database
+  // Fetch schedule items and appointments from database
   const fetchScheduleItems = async () => {
     try {
       setIsLoading(true);
-      const response = await getAll('schedule_items');
+      const [scheduleResponse, appointmentsResponse] = await Promise.all([
+        getAll('schedule_items'),
+        getAll('appointments')
+      ]);
       
-      if (response?.success && response.data) {
-        setScheduleItems(response.data);
-      } else {
-        setScheduleItems([]);
+      let allItems = [];
+      
+      if (scheduleResponse?.success && scheduleResponse.data) {
+        allItems = [...allItems, ...scheduleResponse.data];
       }
+      
+      // Add appointments that aren't already in schedule
+      if (appointmentsResponse?.success && appointmentsResponse.data) {
+        const appointmentItems = appointmentsResponse.data.map(apt => ({
+          id: `apt_${apt.id}`,
+          title: `${apt.serviceName}`,
+          type: 'appointment',
+          startTime: apt.startTime,
+          endTime: apt.endTime,
+          date: apt.date,
+          location: 'Office',
+          attendees: [apt.customerName],
+          description: `Service appointment with ${apt.customerName}`,
+          appointmentId: apt.id,
+          customerEmail: apt.customerEmail,
+          customerPhone: apt.customerPhone,
+          price: apt.price,
+          status: apt.status
+        }));
+        
+        // Filter out duplicates
+        const existingAppointmentIds = allItems
+          .filter(item => item.appointmentId)
+          .map(item => item.appointmentId);
+          
+        const newAppointments = appointmentItems.filter(apt => 
+          !existingAppointmentIds.includes(apt.appointmentId)
+        );
+        
+        allItems = [...allItems, ...newAppointments];
+      }
+      
+      setScheduleItems(allItems);
     } catch (error) {
       console.error('Error fetching schedule items:', error);
       toast.error('Failed to load schedule items');
@@ -243,6 +281,11 @@ export default function SchedulePage() {
                             <TypeIcon className="h-3 w-3 mr-1" />
                             {event.type || 'meeting'}
                           </Badge>
+                          {event.status && event.type === 'appointment' && (
+                            <Badge variant={event.status === 'confirmed' ? 'default' : 'outline'} className="text-xs">
+                              {event.status}
+                            </Badge>
+                          )}
                         </div>
                         
                         <p className="text-sm text-muted-foreground">
@@ -261,7 +304,31 @@ export default function SchedulePage() {
                               : event.attendees || '1 attendee'
                             }
                           </div>
+                          {event.price && (
+                            <div className="flex items-center gap-1 text-green-600">
+                              <Euro className="h-3 w-3" />
+                              {event.price}
+                            </div>
+                          )}
                         </div>
+                        
+                        {/* Appointment contact info */}
+                        {event.type === 'appointment' && (event.customerEmail || event.customerPhone) && (
+                          <div className="flex items-center gap-4 text-xs text-muted-foreground mt-1">
+                            {event.customerEmail && (
+                              <div className="flex items-center gap-1">
+                                <Mail className="h-3 w-3" />
+                                {event.customerEmail}
+                              </div>
+                            )}
+                            {event.customerPhone && (
+                              <div className="flex items-center gap-1">
+                                <Phone className="h-3 w-3" />
+                                {event.customerPhone}
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </div>
                       
                       <div className="flex gap-2">

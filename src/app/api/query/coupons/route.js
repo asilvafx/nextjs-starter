@@ -469,10 +469,10 @@ async function DELETE(request) {
   }
 }
 
-export { GET, POST, PUT, DELETE };
+// Apply authentication middleware and export
+const AuthenticatedGET = withAuth(GET);
+const AuthenticatedPOST = withAuth(POST);
+const AuthenticatedPUT = withAuth(PUT);
+const AuthenticatedDELETE = withAuth(DELETE);
 
-// Apply authentication middleware
-export const withAuthGET = withAuth(GET);
-export const withAuthPOST = withAuth(POST);
-export const withAuthPUT = withAuth(PUT);
-export const withAuthDELETE = withAuth(DELETE);
+export { AuthenticatedGET as GET, AuthenticatedPOST as POST, AuthenticatedPUT as PUT, AuthenticatedDELETE as DELETE };
