@@ -54,6 +54,13 @@ const PaymentForm = ({ cartTotal, subTotal, shippingCost, onShippingUpdate, sele
     const [googleMapsApiKey, setGoogleMapsApiKey] = useState(null);
     const [isTurnstileVerified, setIsTurnstileVerified] = useState(false);
 
+    // Promo Code State
+    const [promoCode, setPromoCode] = useState('');
+    const [appliedCoupon, setAppliedCoupon] = useState(null);
+    const [promoLoading, setPromoLoading] = useState(false);
+    const [promoError, setPromoError] = useState('');
+    const [discountAmount, setDiscountAmount] = useState(0);
+
     const handleShippingMethodSelect = (method) => {
         setLocalSelectedShippingMethod(method);
         onShippingUpdate(method.fixed_rate, method);
@@ -206,6 +213,60 @@ const PaymentForm = ({ cartTotal, subTotal, shippingCost, onShippingUpdate, sele
         // You can set a specific error state here if needed
     };
 
+    const validatePromoCode = async () => {
+        if (!promoCode.trim()) {
+            setPromoError('Please enter a promo code');
+            return;
+        }
+
+        setPromoLoading(true);
+        setPromoError('');
+
+        try {
+            const response = await fetch('/api/query/public/validate-coupon', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    code: promoCode.trim(),
+                    orderAmount: parseFloat(subTotal),
+                    customerEmail: emailInput
+                }),
+            });
+
+            const result = await response.json();
+
+            if (result.success && result.valid) {
+                setAppliedCoupon(result.coupon);
+                setDiscountAmount(result.discount.amount);
+                setPromoError('');
+                // Update cart total display
+                onShippingUpdate(shippingCost, selectedShippingMethod, result.discount.amount);
+            } else {
+                setPromoError(result.message || 'Invalid promo code');
+                setAppliedCoupon(null);
+                setDiscountAmount(0);
+            }
+        } catch (error) {
+            console.error('Promo code validation error:', error);
+            setPromoError('Failed to validate promo code. Please try again.');
+            setAppliedCoupon(null);
+            setDiscountAmount(0);
+        } finally {
+            setPromoLoading(false);
+        }
+    };
+
+    const removePromoCode = () => {
+        setPromoCode('');
+        setAppliedCoupon(null);
+        setDiscountAmount(0);
+        setPromoError('');
+        // Reset cart total display
+        onShippingUpdate(shippingCost, selectedShippingMethod, 0);
+    };
+
     const validateInformationStep = () => {
         const requiredFields = [
             emailInput,
@@ -294,11 +355,11 @@ const PaymentForm = ({ cartTotal, subTotal, shippingCost, onShippingUpdate, sele
                 type: 'catalog'
             }));
 
-            // Calculate pricing with potential discount (set to 0 for now)
+            // Calculate pricing with applied coupon discount
             const itemsTotal = parseFloat(subTotal);
             const shippingTotal = localSelectedShippingMethod?.fixed_rate || 0;
-            const discountAmount = 0; // Can be enhanced later
-            const finalTotal = itemsTotal + shippingTotal - discountAmount;
+            const couponDiscount = discountAmount || 0;
+            const finalTotal = itemsTotal + shippingTotal - couponDiscount;
 
             // Create order data matching the orders page structure
             const orderData = {
@@ -307,9 +368,16 @@ const PaymentForm = ({ cartTotal, subTotal, shippingCost, onShippingUpdate, sele
                 items: orderItems,
                 subtotal: itemsTotal,
                 shippingCost: shippingTotal,
-                discountType: 'fixed',
-                discountValue: 0,
-                discountAmount: discountAmount,
+                discountType: appliedCoupon ? appliedCoupon.type : 'fixed',
+                discountValue: appliedCoupon ? appliedCoupon.value : 0,
+                discountAmount: couponDiscount,
+                coupon: appliedCoupon ? {
+                    id: appliedCoupon.id,
+                    code: appliedCoupon.code,
+                    name: appliedCoupon.name,
+                    type: appliedCoupon.type,
+                    value: appliedCoupon.value
+                } : null,
                 total: Math.max(0, finalTotal),
                 status: 'pending',
                 paymentStatus: 'pending',
@@ -339,6 +407,28 @@ const PaymentForm = ({ cartTotal, subTotal, shippingCost, onShippingUpdate, sele
 
             if (error) {
                 throw new Error(error);
+            }
+
+            // Apply coupon usage if a coupon was used
+            if (appliedCoupon) {
+                try {
+                    await fetch('/api/query/public/apply-coupon', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            couponId: appliedCoupon.id,
+                            orderId: orderData.id,
+                            customerEmail: emailInput,
+                            orderAmount: itemsTotal,
+                            discountAmount: couponDiscount
+                        }),
+                    });
+                } catch (couponError) {
+                    console.error('Failed to apply coupon usage:', couponError);
+                    // Don't fail the payment for coupon tracking errors
+                }
             }
 
             // Confirm payment
@@ -532,6 +622,57 @@ const PaymentForm = ({ cartTotal, subTotal, shippingCost, onShippingUpdate, sele
                             />
                         </div>
 
+                        {/* Promo Code */}
+                        <div>
+                            <h2 className="text-lg font-semibold mb-4">Promo Code</h2>
+                            {!appliedCoupon ? (
+                                <div className="space-y-3">
+                                    <div className="flex gap-2">
+                                        <input
+                                            type="text"
+                                            value={promoCode}
+                                            onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
+                                            placeholder="Enter promo code"
+                                            className="flex-1 border rounded-xl px-3 py-2 focus:ring-2 focus:ring-primary/20 focus:border-primary uppercase"
+                                            disabled={promoLoading}
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={validatePromoCode}
+                                            disabled={promoLoading || !promoCode.trim()}
+                                            className="px-4 py-2 bg-primary text-white rounded-xl hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
+                                        >
+                                            {promoLoading ? 'Validating...' : 'Apply'}
+                                        </button>
+                                    </div>
+                                    {promoError && (
+                                        <div className="text-red-600 text-sm">{promoError}</div>
+                                    )}
+                                </div>
+                            ) : (
+                                <div className="bg-green-50 border border-green-200 rounded-xl p-4">
+                                    <div className="flex items-center justify-between">
+                                        <div>
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-green-600 font-semibold">✓ {appliedCoupon.code}</span>
+                                                <span className="text-sm text-gray-600">- {appliedCoupon.name}</span>
+                                            </div>
+                                            <div className="text-sm text-green-700 mt-1">
+                                                You saved €{discountAmount.toFixed(2)}
+                                            </div>
+                                        </div>
+                                        <button
+                                            type="button"
+                                            onClick={removePromoCode}
+                                            className="text-red-600 hover:text-red-700 text-sm"
+                                        >
+                                            Remove
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
                         {/* Delivery Notes */}
                         <div>
                             <h2 className="text-lg font-semibold mb-4">{t('deliveryNotes')}</h2>
@@ -591,6 +732,12 @@ const PaymentForm = ({ cartTotal, subTotal, shippingCost, onShippingUpdate, sele
                                         <span>{t('email')}:</span>
                                         <span>{emailInput}</span>
                                     </div>
+                                    {appliedCoupon && (
+                                        <div className="flex justify-between text-green-600">
+                                            <span>Discount ({appliedCoupon.code}):</span>
+                                            <span>-€{discountAmount.toFixed(2)}</span>
+                                        </div>
+                                    )}
                                 </div>
                                 <button
                                     type="button"

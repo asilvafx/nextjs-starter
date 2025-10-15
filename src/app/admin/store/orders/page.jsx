@@ -892,6 +892,32 @@ export default function OrdersPage() {
                                     </div>
                                   </div>
                                   
+                                  {/* Coupon Information */}
+                                  {selectedOrder.coupon && (
+                                    <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                                      <h4 className="font-medium text-green-700 mb-2">Applied Coupon</h4>
+                                      <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                          <label className="text-sm font-medium text-gray-500">Code</label>
+                                          <p className="text-sm font-mono bg-white px-2 py-1 rounded border">{selectedOrder.coupon.code}</p>
+                                        </div>
+                                        <div>
+                                          <label className="text-sm font-medium text-gray-500">Discount</label>
+                                          <p className="text-sm text-green-600 font-semibold">
+                                            {selectedOrder.coupon.type === 'percentage' ? `${selectedOrder.coupon.value}%` : `€${selectedOrder.coupon.value}`}
+                                            {' '}(€{selectedOrder.discountAmount?.toFixed(2)} saved)
+                                          </p>
+                                        </div>
+                                      </div>
+                                      {selectedOrder.coupon.name && (
+                                        <div className="mt-2">
+                                          <label className="text-sm font-medium text-gray-500">Description</label>
+                                          <p className="text-sm">{selectedOrder.coupon.name}</p>
+                                        </div>
+                                      )}
+                                    </div>
+                                  )}
+                                  
                                   {/* Order Items */}
                                   <div className="mt-6">
                                     <h4 className="font-medium mb-3">Order Items</h4>
@@ -926,7 +952,9 @@ export default function OrdersPage() {
                                         {selectedOrder.discountAmount && selectedOrder.discountAmount > 0 && (
                                           <TableRow>
                                             <TableCell colSpan={2}></TableCell>
-                                            <TableCell className="font-semibold text-green-600">Discount:</TableCell>
+                                            <TableCell className="font-semibold text-green-600">
+                                              Discount{selectedOrder.coupon ? ` (${selectedOrder.coupon.code})` : ''}:
+                                            </TableCell>
                                             <TableCell className="text-right font-semibold text-green-600">-{formatPrice(selectedOrder.discountAmount)}</TableCell>
                                           </TableRow>
                                         )}
@@ -1891,7 +1919,9 @@ export default function OrdersPage() {
                       </tr>
                       {selectedOrderForInvoice.discountAmount && selectedOrderForInvoice.discountAmount > 0 && (
                         <tr>
-                          <td colSpan="3" className="py-2 text-right font-semibold text-green-600">Discount:</td>
+                          <td colSpan="3" className="py-2 text-right font-semibold text-green-600">
+                            Discount{selectedOrderForInvoice.coupon ? ` (${selectedOrderForInvoice.coupon.code})` : ''}:
+                          </td>
                           <td className="py-2 text-right font-semibold text-green-600">-{formatPrice(selectedOrderForInvoice.discountAmount)}</td>
                         </tr>
                       )}

@@ -22,6 +22,7 @@ const Checkout = () => {
     const [selectedShippingMethod, setSelectedShippingMethod] = useState(null);
     const [storeSettings, setStoreSettings] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [discountAmount, setDiscountAmount] = useState(0);
 
     // Use store settings for free shipping threshold
     const FREE_SHIPPING_THRESHOLD = storeSettings?.freeShippingThreshold || 50;
@@ -42,17 +43,22 @@ const Checkout = () => {
 
     const subTotal = cartTotal.toFixed(2);
     const finalShippingCost = calculateShippingCost();
-    const totalPrice = (cartTotal + finalShippingCost).toFixed(2);
+    const totalPrice = Math.max(0, cartTotal + finalShippingCost - discountAmount).toFixed(2);
 
     // Handler for shipping cost updates from PaymentForm
-    const handleShippingUpdate = (newShippingCost, shippingMethod) => {
+    const handleShippingUpdate = (newShippingCost, shippingMethod, discountAmount = 0) => {
         setSelectedShippingMethod(shippingMethod);
 
         // Override shipping cost if free shipping is eligible and method supports it
         if (shippingMethod && shippingMethod.id === 3 && isEligibleForFreeShipping) {
             setShippingCost(0);
-        } else {
+        } else if (typeof newShippingCost === 'number') {
             setShippingCost(newShippingCost);
+        }
+        
+        // Handle discount amount if provided
+        if (discountAmount !== undefined) {
+            setDiscountAmount(discountAmount);
         }
     };
 
@@ -250,6 +256,13 @@ const Checkout = () => {
                                             <div className="flex justify-between text-sm text-gray-500">
                                                 <span>via {selectedShippingMethod.carrier_name}</span>
                                                 <span>{selectedShippingMethod.delivery_time}</span>
+                                            </div>
+                                        )}
+
+                                        {discountAmount > 0 && (
+                                            <div className="flex justify-between text-green-600">
+                                                <span>Discount</span>
+                                                <span>-{storeSettings?.currency === 'USD' ? '$' : '€'}{discountAmount.toFixed(2)}</span>
                                             </div>
                                         )}
 

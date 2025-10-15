@@ -74,6 +74,10 @@ export const navigation = {
           url: "/admin/store/customers", 
         },
         {
+          title: "Coupons",
+          url: "/admin/store/coupons", 
+        },
+        {
           title: "Store Settings",
           url: "/admin/store/settings", 
         },
