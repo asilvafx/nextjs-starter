@@ -1,3 +1,4 @@
+"use client"
 import { useBlocks } from '@/hooks/useBlocks';
 import Block from './Block';
 
