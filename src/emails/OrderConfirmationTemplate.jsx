@@ -27,6 +27,14 @@ export const OrderConfirmationTemplate = ({
                                               products = [
                                                   { name: 'T-shirt « Soleil »', size: 'M', quantity: 1 }
                                               ],
+                                              subtotal = 0,
+                                              shippingCost = 0,
+                                              discountAmount = 0,
+                                              taxEnabled = false,
+                                              taxRate = 0,
+                                              taxAmount = 0,
+                                              taxIncluded = false,
+                                              total = 0,
                                               orderSummaryUrl = 'https://yourapp.com/orders/12345',
                                               supportEmail = 'ton.email@domaine.com',
                                           }) => {
@@ -85,10 +93,47 @@ export const OrderConfirmationTemplate = ({
                             </div>
                             {products.map((product, index) => (
                                 <div key={index} style={emailStyles.orderDetailItem}>
-                                    • {product.name} – {product.size} – {product.quantity}x
+                                    • {product.name} {product.size ? `– ${product.size}` : ''} – {product.quantity}x {product.price ? `(${product.price}€ chacun)` : ''}
                                 </div>
                             ))}
                         </div>
+
+                        {/* Pricing Details */}
+                        {(subtotal > 0 || total > 0) && (
+                            <div style={emailStyles.pricingSection}>
+                                <div style={emailStyles.productsSectionTitle}>
+                                    <strong>Récapitulatif des prix :</strong>
+                                </div>
+                                
+                                {subtotal > 0 && (
+                                    <div style={emailStyles.orderDetailItem}>
+                                        • {taxEnabled && taxIncluded ? 'Sous-total (HT)' : 'Sous-total'} : {(taxEnabled && taxIncluded && taxAmount > 0 ? subtotal - taxAmount : subtotal).toFixed(2)}€
+                                    </div>
+                                )}
+                                
+                                {taxEnabled && taxAmount > 0 && (
+                                    <div style={emailStyles.orderDetailItem}>
+                                        • TVA ({taxRate}%) : {taxAmount.toFixed(2)}€
+                                    </div>
+                                )}
+                                
+                                {shippingCost > 0 && (
+                                    <div style={emailStyles.orderDetailItem}>
+                                        • Frais de port : {shippingCost.toFixed(2)}€
+                                    </div>
+                                )}
+                                
+                                {discountAmount > 0 && (
+                                    <div style={emailStyles.orderDetailItem}>
+                                        • Remise : -{discountAmount.toFixed(2)}€
+                                    </div>
+                                )}
+                                
+                                <div style={{...emailStyles.orderDetailItem, fontWeight: 'bold', borderTop: '1px solid #e0e0e0', paddingTop: '8px', marginTop: '8px'}}>
+                                    • <strong>Total : {total.toFixed(2)}€</strong>
+                                </div>
+                            </div>
+                        )}
                     </Section>
 
                     {/* Divider */}

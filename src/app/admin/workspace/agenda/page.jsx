@@ -33,21 +33,51 @@ export default function AgendaPage() {
       setIsLoading(true);
       const today = new Date().toISOString().split('T')[0];
       
-      const [agendaResponse, appointmentsResponse, scheduleResponse, tasksResponse] = await Promise.all([
-        getAll('agenda_items'),
-        getAll('appointments'),
-        getAll('schedule_items'),
-        getAll('tasks')
-      ]);
+      // Fetch appointments first as they're most critical
+      console.log('Fetching appointments...');
+      const appointmentsResponse = await getAll('appointments');
+      console.log('Appointments Response:', appointmentsResponse);
       
-      setAgendaItems(agendaResponse?.success ? agendaResponse.data : []);
-      setAppointments(appointmentsResponse?.success ? appointmentsResponse.data : []);
-      setScheduleItems(scheduleResponse?.success ? scheduleResponse.data : []);
-      setTasks(tasksResponse?.success ? tasksResponse.data : []);
+      if (appointmentsResponse?.success || Array.isArray(appointmentsResponse?.data)) {
+        const appointmentsData = appointmentsResponse.success ? appointmentsResponse.data : appointmentsResponse.data || [];
+        setAppointments(Array.isArray(appointmentsData) ? appointmentsData : []);
+        console.log('Appointments loaded:', appointmentsData.length);
+      } else {
+        console.warn('No appointments data found');
+        setAppointments([]);
+      }
+      
+      // Try to fetch other data with individual error handling
+      try {
+        const agendaResponse = await getAll('agenda_items');
+        const agendaData = agendaResponse?.success ? agendaResponse.data : agendaResponse?.data || [];
+        setAgendaItems(Array.isArray(agendaData) ? agendaData : []);
+      } catch (err) {
+        console.warn('Failed to load agenda items:', err);
+        setAgendaItems([]);
+      }
+      
+      try {
+        const scheduleResponse = await getAll('schedule_items');
+        const scheduleData = scheduleResponse?.success ? scheduleResponse.data : scheduleResponse?.data || [];
+        setScheduleItems(Array.isArray(scheduleData) ? scheduleData : []);
+      } catch (err) {
+        console.warn('Failed to load schedule items:', err);
+        setScheduleItems([]);
+      }
+      
+      try {
+        const tasksResponse = await getAll('tasks');
+        const tasksData = tasksResponse?.success ? tasksResponse.data : tasksResponse?.data || [];
+        setTasks(Array.isArray(tasksData) ? tasksData : []);
+      } catch (err) {
+        console.warn('Failed to load tasks:', err);
+        setTasks([]);
+      }
       
     } catch (error) {
       console.error('Error fetching data:', error);
-      toast.error('Failed to load data');
+      toast.error(`Failed to load data: ${error.message}`);
       setAgendaItems([]);
       setAppointments([]);
       setScheduleItems([]);
@@ -57,7 +87,36 @@ export default function AgendaPage() {
     }
   };
 
+  // Test API connection
+  const testAPIConnection = async () => {
+    try {
+      console.log('Testing API connection...');
+      
+      // Try a simple API call
+      const response = await fetch('/api/query/appointments', {
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      console.log('API Response status:', response.status);
+      console.log('API Response ok:', response.ok);
+      
+      if (response.ok) {
+        const data = await response.json();
+        console.log('API Response data:', data);
+      } else {
+        const errorText = await response.text();
+        console.log('API Error text:', errorText);
+      }
+    } catch (error) {
+      console.log('API Connection error:', error);
+    }
+  };
+
   useEffect(() => {
+    testAPIConnection();
     fetchAllData();
   }, [selectedDate]);
 

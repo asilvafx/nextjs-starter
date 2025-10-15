@@ -16,6 +16,13 @@ export const OrderStatusUpdateTemplate = ({
   orderId = "",
   status = "",
   items = [],
+  subtotal = 0,
+  shippingCost = 0,
+  discountAmount = 0,
+  taxEnabled = false,
+  taxRate = 0,
+  taxAmount = 0,
+  taxIncluded = false,
   total = 0,
 }) => {
   return (
@@ -44,10 +51,38 @@ export const OrderStatusUpdateTemplate = ({
             </Heading>
             {items.map((item, index) => (
               <Text key={index} style={styles.item}>
-                {item.quantity}x {item.name} - ${(item.price * item.quantity).toFixed(2)}
+                {item.quantity}x {item.name} - €{(item.price * item.quantity).toFixed(2)}
               </Text>
             ))}
-            <Text style={styles.total}>Total: ${total.toFixed(2)}</Text>
+            
+            {/* Pricing Breakdown */}
+            <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid #e0e0e0' }}>
+              {subtotal > 0 && (
+                <Text style={styles.priceItem}>
+                  {taxEnabled && taxIncluded ? 'Subtotal (excl. tax)' : 'Subtotal'}: €{(taxEnabled && taxIncluded && taxAmount > 0 ? subtotal - taxAmount : subtotal).toFixed(2)}
+                </Text>
+              )}
+              
+              {taxEnabled && taxAmount > 0 && (
+                <Text style={styles.priceItem}>
+                  Tax ({taxRate}%): €{taxAmount.toFixed(2)}
+                </Text>
+              )}
+              
+              {shippingCost > 0 && (
+                <Text style={styles.priceItem}>
+                  Shipping: €{shippingCost.toFixed(2)}
+                </Text>
+              )}
+              
+              {discountAmount > 0 && (
+                <Text style={styles.priceItem}>
+                  Discount: -€{discountAmount.toFixed(2)}
+                </Text>
+              )}
+              
+              <Text style={styles.total}>Total: €{total.toFixed(2)}</Text>
+            </div>
           </Section>
 
           <Text style={styles.text}>

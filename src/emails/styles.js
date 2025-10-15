@@ -207,6 +207,106 @@ export const emailStyles = {
         padding: `0 ${spacing.md}`,
         margin: `${spacing.md} 0`,
     },
+
+    // Pricing section styles
+    pricingSection: {
+        marginTop: spacing.sm,
+        paddingTop: spacing.xs,
+        borderTop: '1px solid #e0e0e0',
+    },
+};
+
+// Styles for OrderStatusUpdateTemplate compatibility
+export const styles = {
+    main: {
+        backgroundColor: colors.background,
+        fontFamily: typography.fontFamily,
+    },
+    container: {
+        backgroundColor: colors.white,
+        margin: '0 auto',
+        padding: `${spacing.md} 0 ${spacing.xl}`,
+        marginBottom: spacing.xxl,
+        maxWidth: '580px',
+    },
+    logo: {
+        padding: `${spacing.lg} ${spacing.md}`,
+        textAlign: 'center',
+    },
+    heading: {
+        fontSize: typography.sizes.heading,
+        fontWeight: typography.weights.bold,
+        color: colors.gray900,
+        textAlign: 'center',
+        margin: `0 0 30px`,
+        padding: `0 ${spacing.md}`,
+    },
+    subheading: {
+        fontSize: typography.sizes.subheading,
+        fontWeight: typography.weights.medium,
+        color: colors.gray900,
+        margin: `0 0 ${spacing.sm}`,
+    },
+    text: {
+        fontSize: typography.sizes.body,
+        lineHeight: typography.lineHeights.relaxed,
+        color: colors.gray700,
+        padding: `0 ${spacing.md}`,
+        margin: `0 0 ${spacing.md}`,
+    },
+    orderSection: {
+        maxWidth: '100%',
+        backgroundColor: colors.orange50,
+        borderRadius: '8px',
+        margin: `24px ${spacing.md}`,
+        padding: spacing.md,
+        border: `1px solid ${colors.primaryLight}`,
+    },
+    item: {
+        fontSize: typography.sizes.body,
+        lineHeight: typography.lineHeights.normal,
+        color: colors.gray700,
+        margin: `0 0 8px`,
+    },
+    priceItem: {
+        fontSize: typography.sizes.body,
+        lineHeight: typography.lineHeights.normal,
+        color: colors.gray700,
+        margin: `0 0 6px`,
+    },
+    total: {
+        fontSize: typography.sizes.body,
+        fontWeight: typography.weights.bold,
+        color: colors.gray900,
+        margin: `8px 0 0`,
+        paddingTop: '8px',
+        borderTop: '1px solid #e0e0e0',
+    },
+    buttonContainer: {
+        textAlign: 'center',
+        margin: `${spacing.lg} 0`,
+        padding: `0 ${spacing.md}`,
+    },
+    button: {
+        backgroundColor: colors.primary,
+        borderRadius: '8px',
+        color: colors.white,
+        fontSize: typography.sizes.body,
+        fontWeight: typography.weights.medium,
+        textDecoration: 'none',
+        textAlign: 'center',
+        display: 'inline-block',
+        padding: `14px ${spacing.lg}`,
+        border: 'none',
+        cursor: 'pointer',
+    },
+    footer: {
+        padding: `0 ${spacing.md}`,
+        margin: `${spacing.lg} 0 0`,
+        fontSize: typography.sizes.body,
+        lineHeight: typography.lineHeights.normal,
+        color: colors.gray700,
+    },
 };
 
 // Utility functions for creating custom styles

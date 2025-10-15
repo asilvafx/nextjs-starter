@@ -58,6 +58,7 @@ import ConfirmationDialog from "@/components/ui/confirmation-dialog";
 import { generatePDF } from "@/utils/generatePDF";
 import { PhoneInput } from "@/components/ui/phone-input";
 import { CountryDropdown } from "@/components/ui/country-dropdown";
+import { Label } from "@/components/ui/label";
 
 
 const ORDER_STATUS = [
@@ -88,6 +89,10 @@ const initialFormData = {
   discountType: "fixed", // "fixed" or "percentage"
   discountValue: 0,
   discountAmount: 0,
+  taxEnabled: false,
+  taxRate: 0, // Tax rate as percentage (e.g., 20 for 20%)
+  taxAmount: 0,
+  taxIncluded: false, // Whether tax is included in the item prices or added on top
   total: 0,
   status: "pending",
   paymentStatus: "pending",
@@ -105,6 +110,15 @@ const PAYMENT_METHODS = [
   { value: "bank_transfer", label: "Bank Transfer" },
   { value: "cash", label: "Cash" },
   { value: "crypto", label: "Cryptocurrency" }
+];
+
+const PAYMENT_STATUS = [
+  { value: "pending", label: "Pending" },
+  { value: "processing", label: "Processing" },
+  { value: "paid", label: "Paid" },
+  { value: "failed", label: "Failed" },
+  { value: "refunded", label: "Refunded" },
+  { value: "cancelled", label: "Cancelled" }
 ];
 
 export default function OrdersPage() {
@@ -141,6 +155,11 @@ export default function OrdersPage() {
     status: '',
     tracking: '',
     sendEmail: true
+  });
+  const [isEditingPayment, setIsEditingPayment] = useState(false);
+  const [editPaymentData, setEditPaymentData] = useState({
+    paymentStatus: '',
+    paymentMethod: ''
   });
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
   const [isConfirmingStatusChange, setIsConfirmingStatusChange] = useState(false);
@@ -295,12 +314,30 @@ export default function OrdersPage() {
         }
       }
       
-      const total = subtotal + (formData.shippingCost || 0) - discountAmount;
+      // Calculate tax amount
+      let taxAmount = 0;
+      let taxableAmount = subtotal;
+      
+      if (formData.taxEnabled && formData.taxRate > 0) {
+        if (formData.taxIncluded) {
+          // Tax is included in prices - extract tax amount
+          taxAmount = (subtotal * formData.taxRate) / (100 + formData.taxRate);
+          taxableAmount = subtotal - taxAmount;
+        } else {
+          // Tax is added on top
+          taxAmount = (subtotal * formData.taxRate) / 100;
+        }
+      }
+      
+      const total = formData.taxIncluded 
+        ? subtotal + (formData.shippingCost || 0) - discountAmount
+        : subtotal + (formData.shippingCost || 0) + taxAmount - discountAmount;
       
       const orderData = {
         ...formData,
         subtotal,
         discountAmount,
+        taxAmount,
         total: Math.max(0, total), // Ensure total is not negative
         createdAt: new Date().toISOString(),
         id: Math.floor(new Date().getTime() / 1000) + '_' + Math.floor(Math.random() * (9999 - 1000 + 1)) + 1000,
@@ -361,6 +398,11 @@ export default function OrdersPage() {
           items: orderData.items,
           subtotal: orderData.subtotal,
           shippingCost: orderData.shippingCost,
+          discountAmount: orderData.discountAmount,
+          taxEnabled: orderData.taxEnabled,
+          taxRate: orderData.taxRate,
+          taxAmount: orderData.taxAmount,
+          taxIncluded: orderData.taxIncluded,
           total: orderData.total,
           shippingAddress: {
             street: orderData.customer.streetAddress,
@@ -439,6 +481,11 @@ export default function OrdersPage() {
             items: order.items,
             subtotal: order.subtotal,
             shippingCost: order.shippingCost,
+            discountAmount: order.discountAmount,
+            taxEnabled: order.taxEnabled,
+            taxRate: order.taxRate,
+            taxAmount: order.taxAmount,
+            taxIncluded: order.taxIncluded,
             total: order.total,
             shippingAddress: {
               street: order.customer.streetAddress,
@@ -877,22 +924,141 @@ export default function OrdersPage() {
                             
                             <TabsContent value="payment" className="space-y-4 mt-4">
                               <Card>
-                                <CardHeader>
+                                <CardHeader className="flex flex-row items-center justify-between">
                                   <h3 className="font-semibold">Payment Details</h3>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => {
+                                      if (isEditingPayment) {
+                                        setIsEditingPayment(false);
+                                        setEditPaymentData({ paymentStatus: '', paymentMethod: '' });
+                                      } else {
+                                        setIsEditingPayment(true);
+                                        setEditPaymentData({
+                                          paymentStatus: selectedOrder.paymentStatus || 'pending',
+                                          paymentMethod: selectedOrder.paymentMethod || selectedOrder.method || 'credit_card'
+                                        });
+                                      }
+                                    }}
+                                  >
+                                    {isEditingPayment ? 'Cancel' : 'Edit Payment'}
+                                  </Button>
                                 </CardHeader>
                                 <CardContent className="space-y-4">
-                                  <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                      <label className="text-sm font-medium text-gray-500">Payment Method</label>
-                                      <p className="text-sm">{selectedOrder.paymentMethod || selectedOrder.method || 'Card'}</p>
+                                  {!isEditingPayment ? (
+                                    <div className="grid grid-cols-2 gap-4">
+                                      <div>
+                                        <label className="text-sm font-medium text-gray-500">Payment Method</label>
+                                        <p className="text-sm">{selectedOrder.paymentMethod || selectedOrder.method || 'Card'}</p>
+                                      </div>
+                                      <div>
+                                        <label className="text-sm font-medium text-gray-500">Payment Status</label>
+                                        <Badge variant={selectedOrder.paymentStatus === "paid" ? "default" : "outline"}>
+                                          {selectedOrder.paymentStatus}
+                                        </Badge>
+                                      </div>
                                     </div>
-                                    <div>
-                                      <label className="text-sm font-medium text-gray-500">Payment Status</label>
-                                      <Badge variant={selectedOrder.paymentStatus === "paid" ? "default" : "outline"}>
-                                        {selectedOrder.paymentStatus}
-                                      </Badge>
+                                  ) : (
+                                    // Edit Mode
+                                    <div className="space-y-4">
+                                      <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                          <Label htmlFor="payment-method">Payment Method</Label>
+                                          <Select
+                                            value={editPaymentData.paymentMethod}
+                                            onValueChange={(value) => setEditPaymentData({ ...editPaymentData, paymentMethod: value })}
+                                          >
+                                            <SelectTrigger>
+                                              <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                              {PAYMENT_METHODS.map((method) => (
+                                                <SelectItem key={method.value} value={method.value}>
+                                                  {method.label}
+                                                </SelectItem>
+                                              ))}
+                                            </SelectContent>
+                                          </Select>
+                                        </div>
+                                        <div>
+                                          <Label htmlFor="payment-status">Payment Status</Label>
+                                          <Select
+                                            value={editPaymentData.paymentStatus}
+                                            onValueChange={(value) => setEditPaymentData({ ...editPaymentData, paymentStatus: value })}
+                                          >
+                                            <SelectTrigger>
+                                              <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                              {PAYMENT_STATUS.map((status) => (
+                                                <SelectItem key={status.value} value={status.value}>
+                                                  {status.label}
+                                                </SelectItem>
+                                              ))}
+                                            </SelectContent>
+                                          </Select>
+                                        </div>
+                                      </div>
+                                      
+                                      <div className="flex gap-2 pt-2">
+                                        <Button
+                                          onClick={async () => {
+                                            try {
+                                              setIsSubmitting(true);
+                                              
+                                              const updateData = {
+                                                paymentStatus: editPaymentData.paymentStatus,
+                                                paymentMethod: editPaymentData.paymentMethod
+                                              };
+
+                                              const updateResponse = await update(selectedOrder.id, updateData, "orders");
+                                              
+                                              if (updateResponse) {
+                                                toast.success("Payment details updated successfully");
+                                                
+                                                // Update the selected order in state
+                                                setSelectedOrder({ ...selectedOrder, ...updateData });
+                                                
+                                                // Refresh orders list
+                                                fetchOrders();
+                                                
+                                                // Exit edit mode
+                                                setIsEditingPayment(false);
+                                                setEditPaymentData({ paymentStatus: '', paymentMethod: '' });
+                                              } else {
+                                                toast.error("Failed to update payment details");
+                                              }
+                                            } catch (error) {
+                                              console.error('Error updating payment:', error);
+                                              toast.error("Failed to update payment details");
+                                            } finally {
+                                              setIsSubmitting(false);
+                                            }
+                                          }}
+                                          disabled={isSubmitting}
+                                        >
+                                          {isSubmitting ? (
+                                            <>
+                                              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
+                                              Updating...
+                                            </>
+                                          ) : (
+                                            "Update Payment"
+                                          )}
+                                        </Button>
+                                        <Button
+                                          variant="outline"
+                                          onClick={() => {
+                                            setIsEditingPayment(false);
+                                            setEditPaymentData({ paymentStatus: '', paymentMethod: '' });
+                                          }}
+                                        >
+                                          Cancel
+                                        </Button>
+                                      </div>
                                     </div>
-                                  </div>
+                                  )}
                                   
                                   {/* Coupon Information */}
                                   {selectedOrder.coupon && (
@@ -981,7 +1147,16 @@ export default function OrdersPage() {
                                           <TableCell className="font-semibold">Shipping:</TableCell>
                                           <TableCell className="text-right font-semibold">{formatPrice(selectedOrder.shippingCost || 0)}</TableCell>
                                         </TableRow>
-                                        {selectedOrder.discountAmount && selectedOrder.discountAmount > 0 && (
+                                        {selectedOrder.taxEnabled && selectedOrder.taxAmount && selectedOrder.taxAmount > 0 ? (
+                                          <TableRow>
+                                            <TableCell colSpan={2}></TableCell>
+                                            <TableCell className="font-semibold">
+                                              Tax ({selectedOrder.taxRate}%):
+                                            </TableCell>
+                                            <TableCell className="text-right font-semibold">{formatPrice(selectedOrder.taxAmount)}</TableCell>
+                                          </TableRow>
+                                        ) : null}
+                                        {selectedOrder.discountAmount && selectedOrder.discountAmount > 0 ? (
                                           <TableRow>
                                             <TableCell colSpan={2}></TableCell>
                                             <TableCell className="font-semibold text-green-600">
@@ -989,7 +1164,7 @@ export default function OrdersPage() {
                                             </TableCell>
                                             <TableCell className="text-right font-semibold text-green-600">-{formatPrice(selectedOrder.discountAmount)}</TableCell>
                                           </TableRow>
-                                        )}
+                                        ) : null}
                                         <TableRow className="border-t">
                                           <TableCell colSpan={2}></TableCell>
                                           <TableCell className="font-bold">Total:</TableCell>
@@ -1127,7 +1302,7 @@ export default function OrdersPage() {
 
                                               const updateResponse = await update(selectedOrder.id, updateData, "orders");
                                               
-                                              if (updateResponse.success) {
+                                              if (updateResponse) {
                                                 // Send email notification if requested
                                                 if (editStatusData.sendEmail) {
                                                   const emailPayload = {
@@ -1681,18 +1856,64 @@ export default function OrdersPage() {
                     />
                   </div>
                 </div>
+
+                <div>
+                  <div className="flex items-center space-x-2 mb-3">
+                    <Checkbox
+                      id="taxEnabled"
+                      checked={formData.taxEnabled}
+                      onCheckedChange={(checked) =>
+                        setFormData({ ...formData, taxEnabled: checked })
+                      }
+                    />
+                    <label htmlFor="taxEnabled" className="text-sm font-medium">
+                      Apply Tax
+                    </label>
+                  </div>
+                  
+                  {formData.taxEnabled && (
+                    <div className="space-y-3">
+                      <div>
+                        <label className="text-sm font-medium">Tax Rate (%)</label>
+                        <Input
+                          type="number"
+                          min="0"
+                          max="100"
+                          step="0.01"
+                          value={formData.taxRate}
+                          onChange={(e) => setFormData({ ...formData, taxRate: parseFloat(e.target.value) || 0 })}
+                          placeholder="20.00"
+                        />
+                      </div>
+                      
+                      <div className="flex items-center space-x-2">
+                        <Checkbox
+                          id="taxIncluded"
+                          checked={formData.taxIncluded}
+                          onCheckedChange={(checked) =>
+                            setFormData({ ...formData, taxIncluded: checked })
+                          }
+                        />
+                        <label htmlFor="taxIncluded" className="text-sm">
+                          Tax included in item prices
+                        </label>
+                      </div>
+                      
+                      <div className="text-xs text-muted-foreground">
+                        {formData.taxIncluded 
+                          ? "Tax amount will be extracted from item prices" 
+                          : "Tax will be added on top of subtotal"
+                        }
+                      </div>
+                    </div>
+                  )}
+                </div>
                 
                 <div className="pt-6">
-                  <div className="flex justify-between text-sm">
-                    <span>Subtotal:</span>
-                    <span>{formatPrice(formData.items.reduce((sum, item) => sum + (item.price * item.quantity), 0))}</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span>Shipping:</span>
-                    <span>{formatPrice(formData.shippingCost || 0)}</span>
-                  </div>
                   {(() => {
                     const subtotal = formData.items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+                    
+                    // Calculate discount
                     let discountAmount = 0;
                     if (formData.discountValue > 0) {
                       if (formData.discountType === 'percentage') {
@@ -1701,29 +1922,59 @@ export default function OrdersPage() {
                         discountAmount = formData.discountValue;
                       }
                     }
-                    return discountAmount > 0 ? (
-                      <div className="flex justify-between text-sm text-green-600">
-                        <span>Discount ({formData.discountType === 'percentage' ? `${formData.discountValue}%` : 'Fixed'}):</span>
-                        <span>-{formatPrice(discountAmount)}</span>
-                      </div>
-                    ) : null;
-                  })()}
-                  <div className="flex justify-between font-bold mt-2 pt-2 border-t">
-                    <span>Total:</span>
-                    <span>{(() => {
-                      const subtotal = formData.items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-                      let discountAmount = 0;
-                      if (formData.discountValue > 0) {
-                        if (formData.discountType === 'percentage') {
-                          discountAmount = (subtotal * formData.discountValue) / 100;
-                        } else {
-                          discountAmount = formData.discountValue;
-                        }
+                    
+                    // Calculate tax
+                    let taxAmount = 0;
+                    let displaySubtotal = subtotal;
+                    
+                    if (formData.taxEnabled && formData.taxRate > 0) {
+                      if (formData.taxIncluded) {
+                        // Tax is included - extract tax amount
+                        taxAmount = (subtotal * formData.taxRate) / (100 + formData.taxRate);
+                        displaySubtotal = subtotal - taxAmount;
+                      } else {
+                        // Tax is added on top
+                        taxAmount = (subtotal * formData.taxRate) / 100;
                       }
-                      const total = subtotal + (formData.shippingCost || 0) - discountAmount;
-                      return formatPrice(Math.max(0, total));
-                    })()}</span>
-                  </div>
+                    }
+                    
+                    const total = formData.taxIncluded 
+                      ? subtotal + (formData.shippingCost || 0) - discountAmount
+                      : subtotal + (formData.shippingCost || 0) + taxAmount - discountAmount;
+                    
+                    return (
+                      <>
+                        <div className="flex justify-between text-sm">
+                          <span>{formData.taxEnabled && formData.taxIncluded ? 'Subtotal (excl. tax):' : 'Subtotal:'}</span>
+                          <span>{formatPrice(formData.taxEnabled && formData.taxIncluded ? displaySubtotal : subtotal)}</span>
+                        </div>
+                        
+                        {formData.taxEnabled && taxAmount > 0 && (
+                          <div className="flex justify-between text-sm">
+                            <span>Tax ({formData.taxRate}%):</span>
+                            <span>{formatPrice(taxAmount)}</span>
+                          </div>
+                        )}
+                        
+                        <div className="flex justify-between text-sm">
+                          <span>Shipping:</span>
+                          <span>{formatPrice(formData.shippingCost || 0)}</span>
+                        </div>
+                        
+                        {discountAmount > 0 && (
+                          <div className="flex justify-between text-sm text-green-600">
+                            <span>Discount ({formData.discountType === 'percentage' ? `${formData.discountValue}%` : 'Fixed'}):</span>
+                            <span>-{formatPrice(discountAmount)}</span>
+                          </div>
+                        )}
+                        
+                        <div className="flex justify-between font-bold mt-2 pt-2 border-t">
+                          <span>Total:</span>
+                          <span>{formatPrice(Math.max(0, total))}</span>
+                        </div>
+                      </>
+                    );
+                  })()}
                 </div>
               </div>
             </div>
@@ -1949,14 +2200,22 @@ export default function OrdersPage() {
                         <td colSpan="3" className="py-2 text-right font-semibold text-gray-900">Shipping:</td>
                         <td className="py-2 text-right font-semibold text-gray-900">{formatPrice(selectedOrderForInvoice.shippingCost || 0)}</td>
                       </tr>
-                      {selectedOrderForInvoice.discountAmount && selectedOrderForInvoice.discountAmount > 0 && (
+                      {selectedOrderForInvoice.taxEnabled && selectedOrderForInvoice.taxAmount && selectedOrderForInvoice.taxAmount > 0 ? (
+                        <tr>
+                          <td colSpan="3" className="py-2 text-right font-semibold text-gray-900">
+                            Tax ({selectedOrderForInvoice.taxRate}%):
+                          </td>
+                          <td className="py-2 text-right font-semibold text-gray-900">{formatPrice(selectedOrderForInvoice.taxAmount)}</td>
+                        </tr>
+                      ) : null}
+                      {selectedOrderForInvoice.discountAmount && selectedOrderForInvoice.discountAmount > 0 ? (
                         <tr>
                           <td colSpan="3" className="py-2 text-right font-semibold text-green-600">
                             Discount{selectedOrderForInvoice.coupon ? ` (${selectedOrderForInvoice.coupon.code})` : ''}:
                           </td>
                           <td className="py-2 text-right font-semibold text-green-600">-{formatPrice(selectedOrderForInvoice.discountAmount)}</td>
                         </tr>
-                      )}
+                      ) : null}
                       <tr className="border-t border-gray-900">
                         <td colSpan="3" className="py-3 text-right font-bold text-lg text-gray-900">Total:</td>
                         <td className="py-3 text-right font-bold text-lg text-gray-900">{formatPrice(selectedOrderForInvoice.total)}</td>

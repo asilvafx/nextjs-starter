@@ -199,11 +199,11 @@ export default function CustomersPage() {
         createdAt: new Date().toISOString(),
       };
       
-      const response = await create(customerData, "customers");
+      const newCustomer = await create(customerData, "customers");
       
-      if (response.success) {
+      if (newCustomer) {
         toast.success("Customer created successfully");
-        setCustomers(prev => [...prev, response.data]);
+        setCustomers(prev => [...prev, newCustomer]);
         setIsOpen(false);
         setFormData(initialFormData);
       }
@@ -252,16 +252,14 @@ export default function CustomersPage() {
     setIsSubmitting(true);
 
     try {
-      const response = await updateCustomer(selectedCustomer.id, formData);
-      if (response.success) {
+      const updatedCustomer = await update(selectedCustomer.id, formData, "customers");
+      if (updatedCustomer) {
         toast.success('Customer updated successfully!');
         setFormData(initialFormData);
         setIsEditOpen(false);
         setEditMode(false);
         setSelectedCustomer(null);
         await fetchCustomers();
-      } else {
-        toast.error(response.error || 'Failed to update customer');
       }
     } catch (error) {
       console.error('Error updating customer:', error);
@@ -279,15 +277,13 @@ export default function CustomersPage() {
 
     setIsDeleting(true);
     try {
-      const response = await removeCustomer(selectedCustomer.id);
-      if (response.success) {
+      const result = await remove(selectedCustomer.id, "customers");
+      if (result) {
         toast.success('Customer deleted successfully!');
         setIsDeleteOpen(false);
         setSelectedCustomer(null);
         setDeleteConfirmText("");
         await fetchCustomers();
-      } else {
-        toast.error(response.error || 'Failed to delete customer');
       }
     } catch (error) {
       console.error('Error deleting customer:', error);

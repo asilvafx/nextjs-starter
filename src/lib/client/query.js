@@ -290,7 +290,7 @@ class QueryAPI {
 const queryAPI = new QueryAPI();
 
 // Export individual functions (authenticated)
-export const get = (collection, id) => queryAPI.get(collection, id);
+export const get = (id, collection) => queryAPI.get(id, collection);
 export const getAll = (collection, params = {}) => queryAPI.getAll(collection, params);
 export const create = (data, collection) => queryAPI.create(data, collection);
 export const update = (id, data, collection) => queryAPI.update(id, data, collection);
@@ -298,7 +298,7 @@ export const remove = (id, collection) => queryAPI.delete(id, collection);
 export const upload = (files, path) => queryAPI.upload(files, path);
 
 // Export individual functions (public access)
-export const getPublic = (collection, id) => queryAPI.getPublic(collection, id);
+export const getPublic = (id, collection) => queryAPI.getPublic(id, collection);
 export const getAllPublic = (collection, params = {}) => queryAPI.getAllPublic(collection, params);
 export const createPublic = (data, collection) => queryAPI.createPublic(data, collection);
 export const updatePublic = (id, data, collection) => queryAPI.updatePublic(id, data, collection);

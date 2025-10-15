@@ -28,7 +28,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { Upload, X, Star, Image as ImageIcon, Shuffle, Plus, Trash2, Copy } from "lucide-react"; 
+import { Upload, X, Star, Image as ImageIcon, Shuffle, Plus, Trash2, Copy, Loader2 } from "lucide-react"; 
 
 const ITEM_TYPES = [
   { value: "physical", label: "Physical Product" },
@@ -61,6 +61,7 @@ export function CatalogItemForm({
   onSubmit,
   onImageUpload,
   editItem,
+  isSubmitting = false,
 }) {
   const [customAttributes, setCustomAttributes] = useState(
     formData.customAttributes || [{ name: "", value: "" }]
@@ -111,9 +112,10 @@ export function CatalogItemForm({
     try {
       if (onImageUpload) {
         await onImageUpload(files);
-        toast.success(`Uploaded ${files.length} image(s) successfully`);
+        // Success message is now handled in the parent component
       }
     } catch (error) {
+      console.error('Image upload error:', error);
       toast.error("Failed to upload images");
     } finally {
       setIsUploading(false);
@@ -578,34 +580,229 @@ export function CatalogItemForm({
 
                 {formData.type === "service" && (
                   <>
+                    {/* Service Type */}
                     <div>
-                      <Label htmlFor="duration">Duration (minutes)</Label>
-                      <Input
-                        id="duration"
-                        type="number"
-                        min="0"
-                        value={formData.duration}
+                      <Label htmlFor="serviceType">Service Type</Label>
+                      <Select
+                        value={formData.serviceType || "standard"}
+                        onValueChange={(value) =>
+                          setFormData({
+                            ...formData,
+                            serviceType: value,
+                          })
+                        }
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select service type" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="standard">Standard Service</SelectItem>
+                          <SelectItem value="consultation">Consultation</SelectItem>
+                          <SelectItem value="workshop">Workshop/Training</SelectItem>
+                          <SelectItem value="maintenance">Maintenance</SelectItem>
+                          <SelectItem value="custom">Custom Service</SelectItem>
+                          <SelectItem value="subscription">Subscription</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {/* Duration - now optional */}
+                    <div>
+                      <Label htmlFor="duration">Duration</Label>
+                      <div className="space-y-2">
+                        <div className="flex items-center space-x-2">
+                          <Checkbox
+                            id="hasDuration"
+                            checked={formData.hasDuration !== false}
+                            onCheckedChange={(checked) =>
+                              setFormData({
+                                ...formData,
+                                hasDuration: checked,
+                                duration: checked ? (formData.duration || 60) : null,
+                              })
+                            }
+                          />
+                          <Label htmlFor="hasDuration" className="text-sm">
+                            Service has fixed duration
+                          </Label>
+                        </div>
+                        
+                        {formData.hasDuration !== false && (
+                          <div className="grid grid-cols-2 gap-4">
+                            <div>
+                              <Input
+                                id="duration"
+                                type="number"
+                                min="0"
+                                value={formData.duration || ""}
+                                onChange={(e) =>
+                                  setFormData({
+                                    ...formData,
+                                    duration: parseInt(e.target.value) || 0,
+                                  })
+                                }
+                                placeholder="60"
+                              />
+                            </div>
+                            <div>
+                              <Select
+                                value={formData.durationUnit || "minutes"}
+                                onValueChange={(value) =>
+                                  setFormData({
+                                    ...formData,
+                                    durationUnit: value,
+                                  })
+                                }
+                              >
+                                <SelectTrigger>
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="minutes">Minutes</SelectItem>
+                                  <SelectItem value="hours">Hours</SelectItem>
+                                  <SelectItem value="days">Days</SelectItem>
+                                  <SelectItem value="weeks">Weeks</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          </div>
+                        )}
+                        
+                        {formData.hasDuration === false && (
+                          <p className="text-sm text-muted-foreground">
+                            Duration will be determined based on requirements
+                          </p>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Service Delivery Method */}
+                    <div>
+                      <Label htmlFor="deliveryMethod">Delivery Method</Label>
+                      <Select
+                        value={formData.deliveryMethod || "in-person"}
+                        onValueChange={(value) =>
+                          setFormData({
+                            ...formData,
+                            deliveryMethod: value,
+                          })
+                        }
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select delivery method" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="in-person">In-Person</SelectItem>
+                          <SelectItem value="remote">Remote/Online</SelectItem>
+                          <SelectItem value="hybrid">Hybrid</SelectItem>
+                          <SelectItem value="on-site">On-Site (Customer Location)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {/* Location/Platform Details */}
+                    {(formData.deliveryMethod === "remote" || formData.deliveryMethod === "hybrid") && (
+                      <div>
+                        <Label htmlFor="platform">Platform/Tool</Label>
+                        <Input
+                          id="platform"
+                          value={formData.platform || ""}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              platform: e.target.value,
+                            })
+                          }
+                          placeholder="e.g., Zoom, Google Meet, Microsoft Teams"
+                        />
+                      </div>
+                    )}
+
+                    {/* Service Capacity */}
+                    <div>
+                      <Label htmlFor="maxParticipants">Maximum Participants</Label>
+                      <div className="space-y-2">
+                        <div className="flex items-center space-x-2">
+                          <Checkbox
+                            id="hasCapacityLimit"
+                            checked={formData.hasCapacityLimit !== false}
+                            onCheckedChange={(checked) =>
+                              setFormData({
+                                ...formData,
+                                hasCapacityLimit: checked,
+                                maxParticipants: checked ? (formData.maxParticipants || 1) : null,
+                              })
+                            }
+                          />
+                          <Label htmlFor="hasCapacityLimit" className="text-sm">
+                            Limit number of participants
+                          </Label>
+                        </div>
+                        
+                        {formData.hasCapacityLimit !== false && (
+                          <Input
+                            id="maxParticipants"
+                            type="number"
+                            min="1"
+                            value={formData.maxParticipants || ""}
+                            onChange={(e) =>
+                              setFormData({
+                                ...formData,
+                                maxParticipants: parseInt(e.target.value) || 1,
+                              })
+                            }
+                            placeholder="1"
+                          />
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Prerequisites */}
+                    <div>
+                      <Label htmlFor="prerequisites">Prerequisites</Label>
+                      <Textarea
+                        id="prerequisites"
+                        value={formData.prerequisites || ""}
                         onChange={(e) =>
                           setFormData({
                             ...formData,
-                            duration: parseInt(e.target.value) || 0,
+                            prerequisites: e.target.value,
                           })
                         }
-                        placeholder="60"
+                        placeholder="Any requirements or preparations needed before the service"
+                        className="h-20"
                       />
                     </div>
+
+                    {/* Service Includes */}
                     <div>
-                      <Label htmlFor="serviceNotes">Service Notes</Label>
+                      <Label htmlFor="serviceIncludes">What's Included</Label>
+                      <Textarea
+                        id="serviceIncludes"
+                        value={formData.serviceIncludes || ""}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            serviceIncludes: e.target.value,
+                          })
+                        }
+                        placeholder="List what's included in this service (materials, tools, follow-up, etc.)"
+                        className="h-20"
+                      />
+                    </div>
+
+                    <div>
+                      <Label htmlFor="serviceNotes">Additional Notes</Label>
                       <Textarea
                         id="serviceNotes"
-                        value={formData.serviceNotes}
+                        value={formData.serviceNotes || ""}
                         onChange={(e) =>
                           setFormData({
                             ...formData,
                             serviceNotes: e.target.value,
                           })
                         }
-                        placeholder="Additional service information"
+                        placeholder="Additional service information, terms, or special instructions"
                         className="h-24"
                       />
                     </div>
@@ -1113,17 +1310,20 @@ export function CatalogItemForm({
                                       const file = e.target.files?.[0];
                                       if (file) {
                                         const uploadFormData = new FormData();
-                                        uploadFormData.append('file', file);
+                                        uploadFormData.append('files', file);
                                         try {
                                           const response = await fetch('/api/upload', {
                                             method: 'POST',
                                             body: uploadFormData,
                                           });
                                           const data = await response.json();
-                                          if (data.url) {
+                                          if (data.success && data.data?.[0]?.url) {
                                             const newVariants = [...formData.variants];
-                                            newVariants[variantIndex].coverImage = data.url;
+                                            newVariants[variantIndex].coverImage = data.data[0].url;
                                             setFormData({ ...formData, variants: newVariants });
+                                            toast.success('Variant image uploaded successfully');
+                                          } else {
+                                            throw new Error(data.error || 'Upload failed');
                                           }
                                         } catch (error) {
                                           toast.error('Failed to upload image');
@@ -1521,8 +1721,19 @@ export function CatalogItemForm({
         </Tabs>
 
         <div className="flex justify-end space-x-4 pt-6 border-t">
-          <Button type="submit">
-            {editItem ? "Update Item" : "Create Item"}
+          <Button 
+            type="submit" 
+            disabled={isSubmitting}
+            className="min-w-[120px]"
+          >
+            {isSubmitting ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                {editItem ? "Updating..." : "Creating..."}
+              </>
+            ) : (
+              editItem ? "Update Item" : "Create Item"
+            )}
           </Button>
         </div>
       </form>

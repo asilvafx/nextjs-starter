@@ -20,21 +20,27 @@ export default function TasksPage() {
   const fetchTasks = async () => {
     try {
       setIsLoading(true);
-      const [tasksResponse, appointmentsResponse, agendaResponse] = await Promise.all([
-        getAll('tasks'),
-        getAll('appointments'),
-        getAll('agenda_items')
-      ]);
+      
+      console.log('Fetching tasks...');
+      const tasksResponse = await getAll('tasks');
+      console.log('Tasks Response:', tasksResponse);
       
       let allTasks = [];
       
-      if (tasksResponse?.success && tasksResponse.data) {
-        allTasks = [...allTasks, ...tasksResponse.data];
+      // Handle tasks
+      const tasksData = tasksResponse?.success ? tasksResponse.data : tasksResponse?.data || [];
+      if (Array.isArray(tasksData)) {
+        allTasks = [...allTasks, ...tasksData];
+        console.log('Tasks loaded:', tasksData.length);
       }
       
-      // Create tasks from upcoming appointments
-      if (appointmentsResponse?.success && appointmentsResponse.data) {
-        const appointmentTasks = appointmentsResponse.data
+      // Fetch appointments to create tasks
+      console.log('Fetching appointments for task generation...');
+      const appointmentsResponse = await getAll('appointments');
+      const appointmentsData = appointmentsResponse?.success ? appointmentsResponse.data : appointmentsResponse?.data || [];
+      if (Array.isArray(appointmentsData)) {
+        console.log('Appointments for tasks:', appointmentsData.length);
+        const appointmentTasks = appointmentsData
           .filter(apt => apt.status === 'confirmed' || apt.status === 'pending')
           .map(apt => ({
             id: `apt_task_${apt.id}`,

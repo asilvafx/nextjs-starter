@@ -20,20 +20,19 @@ export default function SchedulePage() {
   const fetchScheduleItems = async () => {
     try {
       setIsLoading(true);
-      const [scheduleResponse, appointmentsResponse] = await Promise.all([
-        getAll('schedule_items'),
-        getAll('appointments')
-      ]);
+      
+      // Fetch appointments first
+      console.log('Fetching appointments for schedule...');
+      const appointmentsResponse = await getAll('appointments');
+      console.log('Appointments Response:', appointmentsResponse);
       
       let allItems = [];
       
-      if (scheduleResponse?.success && scheduleResponse.data) {
-        allItems = [...allItems, ...scheduleResponse.data];
-      }
-      
-      // Add appointments that aren't already in schedule
-      if (appointmentsResponse?.success && appointmentsResponse.data) {
-        const appointmentItems = appointmentsResponse.data.map(apt => ({
+      // Handle appointments
+      const appointmentsData = appointmentsResponse?.success ? appointmentsResponse.data : appointmentsResponse?.data || [];
+      if (Array.isArray(appointmentsData)) {
+        console.log('Processing appointments:', appointmentsData.length);
+        const appointmentItems = appointmentsData.map(apt => ({
           id: `apt_${apt.id}`,
           title: `${apt.serviceName}`,
           type: 'appointment',

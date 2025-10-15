@@ -67,6 +67,15 @@ const initialFormData = {
   downloadLink: "",
   downloadNotes: "",
   duration: 60,
+  hasDuration: true,
+  durationUnit: "minutes",
+  serviceType: "standard",
+  deliveryMethod: "in-person",
+  platform: "",
+  maxParticipants: 1,
+  hasCapacityLimit: true,
+  prerequisites: "",
+  serviceIncludes: "",
   serviceNotes: "",
   requiresAppointment: false,
   appointmentSettings: {
@@ -139,6 +148,7 @@ export default function CatalogPage() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const fetchData = async () => {
     try {
@@ -178,59 +188,80 @@ export default function CatalogPage() {
   }, []);
 
     const handleImageUpload = async (files) => {
-      const uploadedImages = await Promise.all(
-        files.map(async (file) => {
-          const formData = new FormData();
-          formData.append('file', file);
+      const uploadedImages = [];
+      for (const file of files) {
+        const uploadFormData = new FormData();
+        uploadFormData.append('files', file); // Use 'files' to match the upload route
+        try {
           const response = await fetch('/api/upload', {
             method: 'POST',
-            body: formData,
+            body: uploadFormData,
           });
           const data = await response.json();
-          return {
-            url: data.url,
-            alt: file.name,
-          };
-        })
-      );
-      setFormData((prev) => ({
-        ...prev,
-        images: [...prev.images, ...uploadedImages]
-      }));
+          if (data.success && data.data?.[0]) {
+            uploadedImages.push({
+              url: data.data[0].url,
+              alt: file.name,
+            });
+          } else {
+            throw new Error(data.error || 'Upload failed');
+          }
+        } catch (error) {
+          console.error('Upload error:', error);
+          toast.error(`Failed to upload ${file.name}: ${error.message}`);
+        }
+      }
+      
+      if (uploadedImages.length > 0) {
+        setFormData((prev) => ({
+          ...prev,
+          images: [...prev.images, ...uploadedImages]
+        }));
+        toast.success(`Successfully uploaded ${uploadedImages.length} image(s)`);
+      }
     };
     
     const handleSubmit = async (e) => {
       e.preventDefault();
+      setIsSubmitting(true);
+      
       try {
         const processedData = {
           ...formData,
         };
 
-      if (editItem) {
-        const response = await update(editItem.id, processedData, "catalog");
-        if (response.success) {
-          toast.success("Item updated successfully");
-          setCatalog((prev) =>
-            prev.map((item) =>
-              item.id === editItem.id ? { ...item, ...processedData } : item
-            )
-          );
+        if (editItem) {
+          const response = await update(editItem.id, processedData, "catalog");
+          if (response.success) {
+            toast.success("Item successfully updated!");
+            setCatalog((prev) =>
+              prev.map((item) =>
+                item.id === editItem.id ? { ...item, ...processedData } : item
+              )
+            );
+          } else {
+            throw new Error(response.error || 'Failed to update item');
+          }
+        } else {
+          const response = await create(processedData, "catalog");
+          if (response.success) {
+            toast.success("Item successfully created!");
+            setCatalog((prev) => [...prev, response.data]);
+          } else {
+            throw new Error(response.error || 'Failed to create item');
+          }
         }
-      } else {
-        const response = await create(processedData, "catalog");
-        if (response.success) {
-          toast.success("Item created successfully");
-          setCatalog((prev) => [...prev, response.data]);
-        }
+        
+        setIsOpen(false);
+        setFormData(initialFormData);
+        setEditItem(null);
+      } catch (error) {
+        console.error('Error saving item:', error);
+        toast.error(error.message || "Failed to save item");
+      } finally {
+        setIsSubmitting(false);
       }
-      setIsOpen(false);
-      setFormData(initialFormData);
-      setEditItem(null);
-    } catch (error) {
-      console.error('Error saving item:', error);
-      toast.error("Failed to save item");
-    }
-  };
+    };
 
   const handleEdit = (product) => {
     setEditItem(product);
@@ -365,6 +396,7 @@ export default function CatalogPage() {
                   defaultLanguage={defaultLanguage}
                   onSubmit={handleSubmit}
                   onImageUpload={handleImageUpload}
+                  isSubmitting={isSubmitting}
                 />
               </DialogContent>
             </Dialog>
