@@ -7,8 +7,8 @@ import {
     useStripe,
     useElements,
 } from '@stripe/react-stripe-js';
-import 'react-phone-input-2/lib/style.css'
-import PhoneInput from 'react-phone-input-2'
+import { PhoneInput } from '@/components/ui/phone-input';
+import { CountryDropdown } from '@/components/ui/country-dropdown';
 import { useCart } from 'react-use-cart';
 import { useTranslations } from 'next-intl';
 import { useSession } from "next-auth/react"; 
@@ -60,14 +60,13 @@ const PaymentForm = ({ cartTotal, subTotal, shippingCost, onShippingUpdate, sele
     };
 
     const handleCountryChange = (selectedCountry) => {
-        const countryData = getDefaultCountry(selectedCountry);
-        setCountryIso(countryData.iso);
-        setCountry(countryData.iso);
+        setCountryIso(selectedCountry.alpha2);
+        setCountry(selectedCountry.alpha2);
         setState('');
         setCity('');
         setZipCode('');
         onShippingUpdate({
-            country: countryData.iso,
+            country: selectedCountry.alpha2,
             state: '',
             city: '',
             zipCode: ''
@@ -75,19 +74,40 @@ const PaymentForm = ({ cartTotal, subTotal, shippingCost, onShippingUpdate, sele
     };
     
     const handleGooglePlacesSelect = (placeDetails) => {
-        if (placeDetails) {
+        if (placeDetails && placeDetails.address_components) {
+            // Parse address components from Google Places
+            let extractedCity = '';
+            let extractedState = '';
+            let extractedZipCode = '';
+            let extractedCountry = 'FR';
+            
+            placeDetails.address_components.forEach((component) => {
+                const types = component.types;
+                
+                if (types.includes('locality') || types.includes('administrative_area_level_2')) {
+                    extractedCity = component.long_name;
+                } else if (types.includes('administrative_area_level_1')) {
+                    extractedState = component.long_name;
+                } else if (types.includes('postal_code')) {
+                    extractedZipCode = component.long_name;
+                } else if (types.includes('country')) {
+                    extractedCountry = component.short_name;
+                }
+            });
+            
+            // Update form fields
             setStreetAddress(placeDetails.formatted_address || '');
-            setCity(placeDetails.city || '');
-            setState(placeDetails.state || '');
-            setZipCode(placeDetails.zipCode || '');
-            setCountryIso(placeDetails.countryIso || 'FR');
-            setCountry(placeDetails.countryIso || 'FR');
+            setCity(extractedCity);
+            setState(extractedState);
+            setZipCode(extractedZipCode);
+            setCountryIso(extractedCountry);
+            setCountry(extractedCountry);
             
             onShippingUpdate({
-                country: placeDetails.countryIso || 'FR',
-                state: placeDetails.state || '',
-                city: placeDetails.city || '',
-                zipCode: placeDetails.zipCode || ''
+                country: extractedCountry,
+                state: extractedState,
+                city: extractedCity,
+                zipCode: extractedZipCode
             });
         }
     };    // Auto-select free shipping when eligible
@@ -228,12 +248,6 @@ const PaymentForm = ({ cartTotal, subTotal, shippingCost, onShippingUpdate, sele
     const handleSubmit = async (event) => {
         event.preventDefault();
 
-        // Check Turnstile verification if enabled
-        if (turnstileKey && !isTurnstileVerified) {
-            setErrorMessage('Please complete the verification.');
-            return;
-        }
-
         if (!stripe || !elements) {
             return;
         }
@@ -242,168 +256,107 @@ const PaymentForm = ({ cartTotal, subTotal, shippingCost, onShippingUpdate, sele
         setErrorMessage('');
 
         try {
-            if (!emailInput) {
-                setErrorMessage(t('emailRequired'));
-                setIsProcessing(false);
-                return;
+            // Validate form data
+            if (!emailInput || !firstName || !lastName || !streetAddress || !city || !state || !zipCode || !localSelectedShippingMethod) {
+                throw new Error(t('fillAllFields'));
             }
 
-            // Validate the form
+            if (turnstileKey && !isTurnstileVerified) {
+                throw new Error('Please complete the security verification');
+            }
+
             const { error: submitError } = await elements.submit();
             if (submitError) {
-                setErrorMessage(submitError.message);
-                setIsProcessing(false);
-                return;
+                throw new Error(submitError.message);
             }
 
-            // Calculate the price in cents
-            const priceInCents = Math.round(cartTotal * 100);
+            // Create customer data to match orders structure
+            const customerData = {
+                firstName,
+                lastName,
+                email: emailInput,
+                phone,
+                streetAddress,
+                apartmentUnit,
+                city,
+                state,
+                zipCode,
+                country,
+                countryIso,
+            };
 
-            // Create the PaymentIntent on your backend
-            const response = await fetch(`/api/stripe`, {
+            // Order items data to match orders structure
+            const orderItems = items.map(item => ({
+                id: item.id,
+                name: item.name,
+                price: item.price,
+                quantity: item.quantity,
+                type: 'catalog'
+            }));
+
+            // Calculate pricing with potential discount (set to 0 for now)
+            const itemsTotal = parseFloat(subTotal);
+            const shippingTotal = localSelectedShippingMethod?.fixed_rate || 0;
+            const discountAmount = 0; // Can be enhanced later
+            const finalTotal = itemsTotal + shippingTotal - discountAmount;
+
+            // Create order data matching the orders page structure
+            const orderData = {
+                id: `ORD-${Date.now()}`,
+                customer: customerData,
+                items: orderItems,
+                subtotal: itemsTotal,
+                shippingCost: shippingTotal,
+                discountType: 'fixed',
+                discountValue: 0,
+                discountAmount: discountAmount,
+                total: Math.max(0, finalTotal),
+                status: 'pending',
+                paymentStatus: 'pending',
+                paymentMethod: 'card',
+                method: 'card', // Alternative field name used in some places
+                tracking: null,
+                deliveryNotes,
+                sendEmail: true,
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString(),
+            };
+
+            // Create payment intent
+            const response = await fetch('/api/checkout', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                    currency: (storeSettings?.currency || 'EUR').toLowerCase(),
-                    email: emailInput,
-                    amount: priceInCents,
-                    paymentMethodType: "card"
+                    orderData,
+                    storeSettings,
+                    returnUrl: window.location.origin + '/shop/checkout/success',
                 }),
             });
 
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.error || t('paymentError'));
+            const { clientSecret, error } = await response.json();
+
+            if (error) {
+                throw new Error(error);
             }
 
-            const { client_secret: clientSecret } = await response.json();
-
-            // Confirm the payment
-            const { error: confirmError, paymentIntent } = await stripe.confirmPayment({
+            // Confirm payment
+            const { error: confirmError } = await stripe.confirmPayment({
                 elements,
                 clientSecret,
                 confirmParams: {
-                    return_url: `${window.location.origin}/shop/checkout/success`,
-                    receipt_email: emailInput,
+                    return_url: window.location.origin + '/shop/checkout/success',
                 },
-                redirect: 'if_required'
             });
 
             if (confirmError) {
-                setErrorMessage(confirmError.message);
-                setIsProcessing(false);
-            } else if (paymentIntent && paymentIntent.status === 'succeeded') {
-                // Prepare shipping address
-                const shippingAddress = {
-                    name: `${firstName} ${lastName}`,
-                    street: streetAddress,
-                    apartment: apartmentUnit,
-                    city: city,
-                    state: state,
-                    zip: zipCode,
-                    country: country,
-                    phone: phone
-                };
-
-                // Format cart items for order storage
-                const orderItems = items.map(item => ({
-                    id: item.id,
-                    name: item.name,
-                    price: item.price,
-                    quantity: item.quantity,
-                    sku: item.sku || null,
-                    image: item.image || null,
-                }));
-
-                const orderId = `ORD-${paymentIntent.created}-${Math.floor(Math.random() * 1000)}`;
-
-                // Prepare order data for insertion
-                const newOrderData = {
-                    uid: orderId,
-                    cst_email: emailInput,
-                    cst_name: `${firstName} ${lastName}`,
-                    tx: paymentIntent.id,
-                    amount: paymentIntent.amount / 100,
-                    subtotal: subTotal,
-                    shipping: shippingCost,
-                    shipping_method: JSON.stringify(localSelectedShippingMethod),
-                    currency: (storeSettings?.currency || paymentIntent.currency),
-                    method: paymentIntent.payment_method_types[0],
-                    created_at: paymentIntent.created,
-                    status: "pending",
-                    tracking: "",
-                    shipping_address: JSON.stringify(shippingAddress),
-                    delivery_notes: deliveryNotes,
-                    items: JSON.stringify(orderItems),
-                    ref: localStorage.getItem('ref') || ''
-                }
-
-                // Prepare the complete payload with both orderData and emailPayload
-                const payload = {
-                    // Complete order data for DB storage
-                    orderData: {
-                        uid: newOrderData.uid || atob(orderId),
-                        tx: newOrderData.tx,
-                        cst_email: newOrderData.cst_email,
-                        cst_name: newOrderData.cst_name,
-                        items: newOrderData.items,
-                        amount: newOrderData.amount,
-                        subtotal: newOrderData.subtotal,
-                        shipping: newOrderData.shipping,
-                        totalItems: newOrderData.totalItems,
-                        shipping_address: newOrderData.shipping_address,
-                        currency: (storeSettings?.currency?.toLowerCase() || newOrderData.currency || 'eur'),
-                        method: newOrderData.method || 'Carte bancaire',
-                        status: newOrderData.status || 'Confirmé',
-                        created_at: new Date().toISOString(),
-                        // Add any other fields from your orderData
-                        ...newOrderData
-                    },
-                    // Email payload for sending confirmation email
-                    emailPayload: {
-                        email: newOrderData.cst_email,
-                        customerName: newOrderData.cst_name,
-                        orderId: newOrderData.uid || atob(orderId),
-                        orderDate: new Date().toLocaleDateString('fr-FR', {
-                            weekday: 'long',
-                            year: 'numeric',
-                            month: 'long',
-                            day: 'numeric',
-                            hour: '2-digit',
-                            minute: '2-digit'
-                        }),
-                        items: typeof newOrderData.items === 'string' ? JSON.parse(newOrderData.items) : newOrderData.items,
-                        subtotal: newOrderData.subtotal,
-                        shippingCost: newOrderData.shipping,
-                        total: newOrderData.amount,
-                        shippingAddress: typeof newOrderData.shipping_address === 'string'
-                            ? JSON.parse(newOrderData.shipping_address)
-                            : newOrderData.shipping_address,
-                    }
-                };
-
-                const response = await fetch('/api/checkout', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify(payload),
-                });
-
-                const result = await response.json();
-
-                if (response.ok && result.success) {
-                    localStorage.setItem('orderData', JSON.stringify(newOrderData));
-                    window.location.href = `${window.location.origin}/shop/checkout/success?tx=${btoa(orderId)}`;
-                } else {
-                    setErrorMessage(t('unexpectedError'));
-                    setIsProcessing(false);
-                }
+                throw new Error(confirmError.message);
             }
-        } catch (err) {
-            setErrorMessage(err.message || t('unexpectedError'));
+
+        } catch (error) {
+            console.error('Payment error:', error);
+            setErrorMessage(error.message || t('paymentError'));
             setIsProcessing(false);
         }
     };
@@ -411,9 +364,7 @@ const PaymentForm = ({ cartTotal, subTotal, shippingCost, onShippingUpdate, sele
     const getDefaultCountry = (countryCode = null) => {
         let lang = navigator.language || 'fr-FR';
         if (countryCode) {
-            lang = countryCode.code;
-            setCountry(countryCode.name);
-            setCountryIso(lang);
+            return countryCode;
         }
 
         const country = lang.split('-')[1] || 'US';
@@ -421,13 +372,11 @@ const PaymentForm = ({ cartTotal, subTotal, shippingCost, onShippingUpdate, sele
         const fallback = 'FR';
         const supportedCountries = ['US', 'CA', 'GB', 'FR', 'DE', 'AU', 'PT', 'ES'];
 
-        lang = supportedCountries.includes(country) ? country : fallback;
-        setCountryIso(lang.toLowerCase());
+        const detectedCountry = supportedCountries.includes(country) ? country : fallback;
+        setCountryIso(detectedCountry);
 
-        return lang;
-    };
-
-    useEffect(() => {
+        return detectedCountry;
+    };    useEffect(() => {
         const defaultC = getDefaultCountry();
         setCountry(defaultC);
         
@@ -469,13 +418,11 @@ const PaymentForm = ({ cartTotal, subTotal, shippingCost, onShippingUpdate, sele
                                     className="w-full border rounded-xl px-3 py-2 focus:ring-2 focus:ring-primary/20 focus:border-primary"
                                 />
                                 <PhoneInput
-                                    required
-                                    country={countryIso?.toLowerCase() || 'fr'}
                                     value={phone}
                                     onChange={setPhone}
-                                    inputStyle={{ width: "100%" }}
-                                    containerClass="phone-input-container rounded-xl border"
-                                    buttonClass="phone-input-button"
+                                    defaultCountry={countryIso?.toUpperCase() || 'FR'}
+                                    placeholder={'+000000000'}
+                                    className="w-full"
                                 />
                             </div>
                         </div>
@@ -511,11 +458,7 @@ const PaymentForm = ({ cartTotal, subTotal, shippingCost, onShippingUpdate, sele
                                             legacy="mobile"
                                             value={streetAddress}
                                             onChange={handleAddressChange}
-                                            onPlaceSelected={(placeDetails) => {
-                                                if (placeDetails.formatted_address) {
-                                                    handleAddressChange(placeDetails);
-                                                }
-                                            }}
+                                            onPlaceSelected={handleGooglePlacesSelect}
                                             onError={handleAddressError}
                                             placeholder={t('streetAddress')}
                                             styles={{
@@ -558,7 +501,24 @@ const PaymentForm = ({ cartTotal, subTotal, shippingCost, onShippingUpdate, sele
                                     className="border rounded-xl px-3 py-2 w-full focus:ring-2 focus:ring-primary/20 focus:border-primary"
                                 />
                                 <div className="w-full">
-                                    {/* Country Selector Component */}
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                        {t('country')}
+                                    </label>
+                                    <CountryDropdown
+                                        defaultValue={countryIso}
+                                        onChange={(selectedCountry) => {
+                                            setCountryIso(selectedCountry.alpha2);
+                                            setCountry(selectedCountry.alpha2);
+                                            // Update shipping when country changes
+                                            onShippingUpdate({
+                                                country: selectedCountry.alpha2,
+                                                state: state,
+                                                city: city,
+                                                zipCode: zipCode
+                                            });
+                                        }}
+                                        placeholder={'Select'}
+                                    />
                                 </div>
                             </div>
                         </div>
@@ -659,10 +619,34 @@ const PaymentForm = ({ cartTotal, subTotal, shippingCost, onShippingUpdate, sele
                                 </div>
                             )}
 
+                            {/* Payment Methods Information */}
+                            {storeSettings?.paymentMethods && (
+                                <div className="bg-gray-50 rounded-xl p-4 mb-4">
+                                    <h3 className="font-semibold mb-2">Available Payment Methods</h3>
+                                    <div className="flex flex-wrap gap-2 text-sm">
+                                        {storeSettings.paymentMethods.cardPayments && (
+                                            <span className="bg-white px-2 py-1 rounded border">💳 Card Payments</span>
+                                        )}
+                                        {storeSettings.paymentMethods.bankTransfer && (
+                                            <span className="bg-white px-2 py-1 rounded border">🏦 Bank Transfer</span>
+                                        )}
+                                        {storeSettings.paymentMethods.payOnDelivery && (
+                                            <span className="bg-white px-2 py-1 rounded border">📦 Pay on Delivery</span>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+
                             {/* Payment Element Section */}
                             <div>
                                 <h2 className="text-lg font-semibold mb-4">{t('cardInformation')}</h2>
-                                <PaymentElement theme="light" />
+                                {storeSettings?.paymentMethods?.cardPayments ? (
+                                    <PaymentElement theme="light" />
+                                ) : (
+                                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                                        <p className="text-yellow-800">Card payments are not currently available. Please contact support for alternative payment methods.</p>
+                                    </div>
+                                )}
                             </div>
 
                             {/* Submit Button */}

@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Loader } from '@googlemaps/js-api-loader';
 import { isIntegrationEnabled } from '@/lib/client/integrations';
+import { px } from 'framer-motion';
 
 // Global variables to track script loading state
 let isGoogleMapsLoading = false;
@@ -38,16 +39,17 @@ const GooglePlacesInput = ({
         return Boolean(legacy);
     };
 
-    // Default styles that can be overridden
+    // Default styles using shadcn/ui design tokens
     const defaultStyles = {
         width: '100%',
-        height: '2.75rem',
-        padding: '0.75rem',
-        border: '1px solid rgba(0,0,0,.2)',
-        borderRadius: '0.5rem',
-        fontSize: '16px', // Important: 16px or larger prevents zoom on iOS
-        backgroundColor: '#fff',
-        color: 'var(--text-primary)',
+        height: '2.5rem', // h-10 equivalent
+        padding: '0.5rem 0.75rem', // px-3 py-2 equivalent 
+        fontSize: '0.875rem', // text-sm equivalent, but use 16px on mobile to prevent zoom
+        lineHeight: '1.25rem',
+        backgroundColor: 'hsl(var(--background))',
+        color: 'hsl(var(--foreground))', 
+        outline: 'none',
+        fontFamily: 'inherit',
         ...styles // Override defaults with provided styles
     };
 
@@ -96,7 +98,8 @@ const GooglePlacesInput = ({
 
         Object.assign(input.style, {
             ...defaultStyles,
-            borderColor: hasError ? '#ef4444' : (defaultStyles.borderColor || 'var(--border)')
+            borderColor: hasError && 'hsl(var(--destructive))',
+            fontSize: isMobile() ? '16px' : '0.875rem' // Prevent zoom on mobile
         });
 
         // Add mobile-specific attributes to prevent zoom
@@ -157,13 +160,15 @@ const GooglePlacesInput = ({
 
         // Handle focus and blur events
         input.addEventListener('focus', () => {
-            input.style.borderColor = 'var(--border-focus)';
+            input.style.borderColor = 'hsl(var(--ring))';
+            input.style.boxShadow = '0 0 0 2px hsl(var(--ring) / 0.2)';
             input.style.outline = 'none';
             preventMobileZoom();
         });
 
         input.addEventListener('blur', () => {
-            input.style.borderColor = hasError ? '#ef4444' : (defaultStyles.borderColor || 'var(--border)');
+            input.style.borderColor = hasError && 'hsl(var(--destructive))';
+            input.style.boxShadow = 'none';
             setTimeout(restoreMobileZoom, 100);
         });
     };
@@ -183,7 +188,8 @@ const GooglePlacesInput = ({
         // Apply styles to the element
         Object.assign(placeAutocomplete.style, {
             ...defaultStyles,
-            borderColor: hasError ? '#ef4444' : (defaultStyles.borderColor || 'var(--border)')
+            borderColor: hasError && 'hsl(var(--destructive))',
+            fontSize: isMobile() ? '16px' : '0.875rem' // Prevent zoom on mobile
         });
 
         // Add mobile-specific attributes to prevent zoom
@@ -251,13 +257,15 @@ const GooglePlacesInput = ({
 
         // Handle focus and blur events for styling and zoom prevention
         placeAutocomplete.addEventListener('focus', () => {
-            placeAutocomplete.style.borderColor = 'var(--border-focus)';
+            placeAutocomplete.style.borderColor = 'hsl(var(--ring))';
+            placeAutocomplete.style.boxShadow = '0 0 0 2px hsl(var(--ring) / 0.2)';
             placeAutocomplete.style.outline = 'none';
             preventMobileZoom();
         });
 
         placeAutocomplete.addEventListener('blur', () => {
-            placeAutocomplete.style.borderColor = hasError ? '#ef4444' : (defaultStyles.borderColor || 'var(--border)');
+            placeAutocomplete.style.borderColor = hasError && 'hsl(var(--destructive))';
+            placeAutocomplete.style.boxShadow = 'none';
             setTimeout(restoreMobileZoom, 100);
         });
 
@@ -279,8 +287,14 @@ const GooglePlacesInput = ({
 
         Object.assign(fallbackInput.style, {
             ...defaultStyles,
-            borderColor: hasError ? '#ef4444' : (defaultStyles.borderColor || 'var(--border)')
+            borderColor: hasError && 'hsl(var(--destructive))',
+            fontSize: isMobile() ? '16px' : '0.875rem' // Prevent zoom on mobile
         });
+
+        fallbackInput.classList.add('border');
+        fallbackInput.classList.add('border');
+        fallbackInput.classList.add('rounded');
+        fallbackInput.classList.add('rounded-xl');
 
         // Add mobile-specific attributes to prevent zoom
         fallbackInput.setAttribute('autocomplete', 'address-line1');
@@ -293,13 +307,15 @@ const GooglePlacesInput = ({
             }
         });
 
-        fallbackInput.addEventListener('focus', () => {
-            fallbackInput.style.borderColor = 'var(--border-focus)';
+        fallbackInput.addEventListener('focus', () => { 
+            fallbackInput.style.boxShadow = '0 0 0 2px hsl(var(--ring) / 0.2)';
+            fallbackInput.style.outline = 'none';
             preventMobileZoom();
         });
 
         fallbackInput.addEventListener('blur', () => {
-            fallbackInput.style.borderColor = hasError ? '#ef4444' : (defaultStyles.borderColor || 'var(--border)');
+            fallbackInput.style.borderColor = hasError && 'hsl(var(--destructive))';
+            fallbackInput.style.boxShadow = 'none';
             setTimeout(restoreMobileZoom, 100);
         });
 
@@ -449,9 +465,9 @@ const GooglePlacesInput = ({
     useEffect(() => {
         const updateErrorStyle = () => {
             if (shouldUseLegacy() && addressInputRef.current) {
-                addressInputRef.current.style.borderColor = hasError ? '#ef4444' : (defaultStyles.borderColor || 'var(--border)');
+                addressInputRef.current.style.borderColor = hasError && 'hsl(var(--destructive))';
             } else if (!shouldUseLegacy() && placeAutocompleteRef.current) {
-                placeAutocompleteRef.current.style.borderColor = hasError ? '#ef4444' : (defaultStyles.borderColor || 'var(--border)');
+                placeAutocompleteRef.current.style.borderColor = hasError && 'hsl(var(--destructive))';
             }
         };
 
@@ -468,7 +484,7 @@ const GooglePlacesInput = ({
     }, [value, legacy]);
 
     return (
-        <div ref={containerRef} className="google-places-input-container">
+        <div ref={containerRef} className="google-places-input-container relative">
             {/* Container will be populated by JavaScript */}
         </div>
     );

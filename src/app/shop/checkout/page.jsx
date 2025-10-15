@@ -162,7 +162,7 @@ const Checkout = () => {
                                 animate={{ opacity: 1, x: 0 }}
                                 transition={{ duration: 0.3 }}
                             >
-                                <div className="bg-gray-50 border rounded-sm p-4">
+                                <div className="bg-accent border rounded-sm p-4">
                                     <h2 className="text-xl font-semibold mb-6">{t('checkoutInformation')}</h2>
                                     {stripeOptions && (
                                         <Elements stripe={stripePromise} options={stripeOptions}>
@@ -187,7 +187,7 @@ const Checkout = () => {
                                 animate={{ opacity: 1, x: 0 }}
                                 transition={{ duration: 0.3 }}
                             >
-                                <div className="bg-gray-50 border rounded-sm p-4 lg:sticky lg:top-24">
+                                <div className="bg-accent border rounded-sm p-4 lg:sticky lg:top-24">
                                     <h2 className="text-xl font-semibold mb-6">{t('orderSummary')}</h2>
 
                                     {/* Items */}
@@ -195,7 +195,7 @@ const Checkout = () => {
                                         {items.map(item => (
                                             <motion.div
                                                 key={item.id}
-                                                className="flex items-center space-x-4 p-3 border bg-white rounded-lg"
+                                                className="flex items-center space-x-4 p-3 border bg-border rounded-lg"
                                                 initial={{ opacity: 0, y: 10 }}
                                                 animate={{ opacity: 1, y: 0 }}
                                             >

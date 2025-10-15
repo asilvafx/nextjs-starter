@@ -1,8 +1,6 @@
 // app/api/shop/shipping/route.js
 import { NextRequest, NextResponse } from 'next/server';
-
-// Example database service - replace with your actual database service
-// import { DBService } from '@/lib/database';
+import DBService from '@/data/rest.db.js';
 
 export async function GET(request) {
     try {
@@ -16,64 +14,77 @@ export async function GET(request) {
             );
         }
 
-        // Example implementation - replace with your actual database query
-        // const shippingMethods = await DBService.query(
-        //     'shipping_methods',
-        //     { where: { countries_allowed: { contains: country } } }
-        // );
+        // Get store settings to fetch carriers
+        const storeSettingsResponse = await DBService.readAll('store_settings');
+        let storeSettings = null;
+        
+        if (storeSettingsResponse && storeSettingsResponse.length > 0) {
+            storeSettings = storeSettingsResponse[0];
+        }
 
-        // Mock data for demonstration - replace with actual database call
-        const mockShippingMethods = [
-            {
-                id: 1,
-                name: 'Standard Shipping',
-                description: 'Delivery within 5-7 business days',
-                fixed_rate: 5.99,
-                logo: 'https://placehold.co/400',
-                carrier_name: 'PostNL',
-                delivery_time: '5-7 business days',
-                countries_allowed: ['US', 'CA', 'GB', 'FR', 'DE', 'AU', 'PT', 'ES']
-            },
-            {
-                id: 2,
-                name: 'Express Shipping',
-                description: 'Fast delivery within 2-3 business days',
-                fixed_rate: 12.99,
-                logo: 'https://placehold.co/400',
-                carrier_name: 'DHL Express',
-                delivery_time: '2-3 business days',
-                countries_allowed: ['US', 'CA', 'GB', 'FR', 'DE', 'AU', 'PT', 'ES']
-            },
-            {
-                id: 3,
+        if (!storeSettings || !storeSettings.carriers || storeSettings.carriers.length === 0) {
+            // Return default shipping methods if no carriers configured
+            const defaultMethods = [
+                {
+                    id: 'standard',
+                    name: 'Standard Shipping',
+                    description: 'Delivery within 5-7 business days',
+                    fixed_rate: 5.99,
+                    logo: null,
+                    carrier_name: 'Standard',
+                    delivery_time: '5-7 business days'
+                }
+            ];
+
+            return NextResponse.json({
+                success: true,
+                shippingMethods: defaultMethods,
+                country: country
+            });
+        }
+
+        // Filter carriers based on country and enabled status
+        const availableCarriers = storeSettings.carriers
+            .filter(carrier => {
+                if (!carrier.enabled) return false;
+                if (!carrier.supportedCountries || carrier.supportedCountries.length === 0) return true;
+                
+                // Check if country matches (case-insensitive, handle both codes and names)
+                return carrier.supportedCountries.some(supportedCountry => 
+                    supportedCountry.toLowerCase() === country.toLowerCase() ||
+                    supportedCountry.toLowerCase().includes(country.toLowerCase()) ||
+                    country.toLowerCase().includes(supportedCountry.toLowerCase())
+                );
+            })
+            .map(carrier => ({
+                id: carrier.id,
+                name: carrier.name,
+                carrier_name: carrier.carrierName,
+                description: carrier.description,
+                delivery_time: carrier.deliveryTime,
+                fixed_rate: carrier.basePrice,
+                logo: carrier.logo
+            }));
+
+        // Add free shipping option if eligible
+        if (storeSettings.freeShippingEnabled && 
+            storeSettings.freeShippingCountries && 
+            storeSettings.freeShippingCountries.includes(country)) {
+            
+            availableCarriers.push({
+                id: 'free_shipping',
                 name: 'Free Shipping',
-                description: 'Free standard delivery (orders over €50)',
+                carrier_name: 'Standard',
+                description: `Free shipping for orders over €${storeSettings.freeShippingThreshold || 0}`,
+                delivery_time: '5-7 business days',
                 fixed_rate: 0,
-                logo: 'https://placehold.co/400',
-                carrier_name: 'PostNL',
-                delivery_time: '7-10 business days',
-                countries_allowed: ['FR', 'DE', 'BE', 'NL']
-            },
-            {
-                id: 4,
-                name: 'Next Day Delivery',
-                description: 'Delivered the next business day',
-                fixed_rate: 19.99,
-                logo: 'https://placehold.co/400',
-                carrier_name: 'UPS Next Day',
-                delivery_time: '1 business day',
-                countries_allowed: ['US', 'GB', 'FR', 'DE']
-            }
-        ];
-
-        // Filter shipping methods by country
-        const availableMethods = mockShippingMethods.filter(method =>
-            method.countries_allowed.includes(country)
-        );
+                logo: null
+            });
+        }
 
         return NextResponse.json({
             success: true,
-            shippingMethods: availableMethods,
+            shippingMethods: availableCarriers,
             country: country
         });
 

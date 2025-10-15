@@ -72,7 +72,7 @@ export const navigation = {
         {
           title: "Customers",
           url: "/admin/store/customers", 
-        }, 
+        },
         {
           title: "Store Settings",
           url: "/admin/store/settings", 
@@ -117,6 +117,11 @@ export const navigation = {
           url: "/admin/marketing/subscribers",
         },
       ]
+    },  
+    {
+      title: "Blocks",
+      url: "/admin/blocks", 
+      icon: Gauge, 
     }, 
   ],
   Developer: [

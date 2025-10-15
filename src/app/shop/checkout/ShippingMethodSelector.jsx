@@ -28,8 +28,18 @@ const ShippingMethodSelector = ({
             setError('');
 
             try {
-                // Replace this with your actual API endpoint
-                const response = await fetch(`/api/shop/shipping?country=${selectedCountry}`);
+                // Convert country name to country code if needed
+                let countryCode = selectedCountry;
+                
+                // If selectedCountry is a full country name, convert to code
+                // This might need adjustment based on your country data structure
+                if (selectedCountry.length > 3) {
+                    // You may need to implement a mapping from country names to codes
+                    // For now, using the country as-is
+                    countryCode = selectedCountry;
+                }
+
+                const response = await fetch(`/api/shop/shipping?country=${encodeURIComponent(countryCode)}`);
 
                 if (!response.ok) {
                     throw new Error('Failed to fetch shipping methods');
@@ -40,7 +50,7 @@ const ShippingMethodSelector = ({
 
                 // Filter out free shipping option if user is not eligible
                 if (!isEligibleForFreeShipping) {
-                    availableMethods = availableMethods.filter(method => method.id !== 3);
+                    availableMethods = availableMethods.filter(method => method.id !== 'free_shipping');
                 }
 
                 setShippingMethods(availableMethods);
