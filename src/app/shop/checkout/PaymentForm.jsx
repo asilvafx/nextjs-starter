@@ -500,10 +500,7 @@ const PaymentForm = ({ cartTotal, subTotal, shippingCost, onShippingUpdate, sele
                                     onChange={(e) => setZipCode(e.target.value)}
                                     className="border rounded-xl px-3 py-2 w-full focus:ring-2 focus:ring-primary/20 focus:border-primary"
                                 />
-                                <div className="w-full">
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                                        Country
-                                    </label>
+                                <div className="w-full"> 
                                     <CountryDropdown
                                         defaultValue={countryIso}
                                         onChange={(selectedCountry) => {

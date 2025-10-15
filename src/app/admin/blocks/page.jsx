@@ -36,14 +36,7 @@ import { TableSkeleton } from "@/components/ui/skeleton";
 import { Plus, Eye, Edit, Trash2, Code, Type, FileText, Layout, Copy } from "lucide-react";
 import { getAll, create, update, remove } from "@/lib/client/query.js";
 
-// Dynamically import ReactQuill to avoid SSR issues
-const ReactQuill = dynamic(() => import('react-quill'), { 
-  ssr: false,
-  loading: () => <div className="h-40 bg-gray-100 animate-pulse rounded-md"></div>
-});
-
-// Import Quill CSS
-import 'react-quill/dist/quill.snow.css';
+import RichTextEditor from '@/components/ui/rich-text-editor';
 
 const blockTypes = [
   { value: 'html', label: 'HTML Code', icon: Code },
@@ -63,26 +56,6 @@ const initialFormData = {
   customCSS: "",
   customJS: "",
 };
-
-// Quill editor configuration
-const quillModules = {
-  toolbar: [
-    [{ 'header': [1, 2, 3, 4, 5, 6, false] }],
-    ['bold', 'italic', 'underline', 'strike'],
-    [{ 'color': [] }, { 'background': [] }],
-    [{ 'align': [] }],
-    [{ 'list': 'ordered'}, { 'list': 'bullet' }],
-    ['blockquote', 'code-block'],
-    ['link', 'image'],
-    ['clean']
-  ],
-};
-
-const quillFormats = [
-  'header', 'bold', 'italic', 'underline', 'strike',
-  'color', 'background', 'align', 'list', 'bullet',
-  'blockquote', 'code-block', 'link', 'image'
-];
 
 export default function BlocksPage() {
   const [blocks, setBlocks] = useState([]);
@@ -109,11 +82,18 @@ export default function BlocksPage() {
       setLoading(true);
       const response = await getAll("blocks");
       
-      if (response.success) { 
+      if (response.success && Array.isArray(response.data)) { 
         setBlocks(response.data);
+      } else {
+        // Fallback to empty array if response doesn't contain valid data
+        setBlocks([]);
+        if (response.error) {
+          toast.error(response.error);
+        }
       }
     } catch (error) {
       console.error('Error fetching blocks:', error);
+      setBlocks([]); // Ensure blocks is always an array
       toast.error("Failed to fetch blocks");
     } finally {
       setLoading(false);
@@ -133,6 +113,11 @@ export default function BlocksPage() {
   };
 
   const getFilteredAndSortedBlocks = useCallback(() => {
+    // Ensure blocks is always an array
+    if (!Array.isArray(blocks)) {
+      return [];
+    }
+    
     let filtered = [...blocks];
 
     // Filter by search
@@ -506,12 +491,9 @@ export default function BlocksPage() {
                           className="font-mono"
                         />
                       ) : (
-                        <ReactQuill
-                          theme="snow"
+                        <RichTextEditor
                           value={formData.content}
                           onChange={handleContentChange}
-                          modules={quillModules}
-                          formats={quillFormats}
                           placeholder="Enter your content..."
                         />
                       )}
@@ -805,12 +787,9 @@ export default function BlocksPage() {
                     className="font-mono"
                   />
                 ) : (
-                  <ReactQuill
-                    theme="snow"
+                  <RichTextEditor
                     value={formData.content}
                     onChange={handleContentChange}
-                    modules={quillModules}
-                    formats={quillFormats}
                     placeholder="Enter your content..."
                   />
                 )}
