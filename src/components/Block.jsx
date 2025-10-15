@@ -1,3 +1,4 @@
+"use client"
 import { useBlock } from '@/hooks/useBlocks';
 import { useEffect } from 'react';
 
