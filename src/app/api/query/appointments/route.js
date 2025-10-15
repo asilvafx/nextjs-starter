@@ -14,7 +14,7 @@ import DBService from '@/data/rest.db.js';
  *       200:
  *         description: List of appointments
  */
-async function GET() {
+async function getHandler() {
   try {
     const appointments = await DBService.readAll('appointments') || [];
     
@@ -84,7 +84,7 @@ async function GET() {
  *               - customerEmail
  *               - price
  */
-async function POST(request) {
+async function postHandler(request) {
   try {
     const appointmentData = await request.json();
 
@@ -188,7 +188,7 @@ async function POST(request) {
  *     security:
  *       - bearerAuth: []
  */
-async function PUT(request) {
+async function putHandler(request) {
   try {
     const appointmentData = await request.json();
 
@@ -252,7 +252,7 @@ async function PUT(request) {
  *     security:
  *       - bearerAuth: []
  */
-async function DELETE(request) {
+async function deleteHandler(request) {
   try {
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
@@ -417,10 +417,8 @@ async function removeFromSchedule(appointmentId) {
   }
 }
 
-export { GET, POST, PUT, DELETE };
-
-// Apply authentication middleware
-export const withAuthGET = withAuth(GET);
-export const withAuthPOST = withAuth(POST);
-export const withAuthPUT = withAuth(PUT);
-export const withAuthDELETE = withAuth(DELETE);
+// Apply authentication middleware and export
+export const GET = withAuth(getHandler);
+export const POST = withAuth(postHandler);
+export const PUT = withAuth(putHandler);
+export const DELETE = withAuth(deleteHandler);
