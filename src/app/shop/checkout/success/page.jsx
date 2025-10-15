@@ -127,72 +127,67 @@ const PaymentSuccess = () => {
     }
 
     return (
-        <div className="section">
+        <div className="container mx-auto px-4 py-8">
             <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5 }}
-                className="text-center"
+                className="max-w-4xl mx-auto"
             >
                 {/* Success Icon */}
-                {error ? (
-                    <motion.div
-                        initial={{ scale: 0 }}
-                        animate={{ scale: 1 }}
-                        transition={{ type: "spring", stiffness: 260, damping: 20 }}
-                        className="mx-auto w-20 h-20 rounded-full bg-red-500 flex items-center justify-center text-white text-4xl mb-6"
-                    >
-                        <svg className="w-10 h-10" fill="currentColor" viewBox="0 0 20 20">
-                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                        </svg>
-                    </motion.div>
-                ) : (
-                    <motion.div
-                        initial={{ scale: 0 }}
-                        animate={{ scale: 1 }}
-                        transition={{ type: 'spring', stiffness: 260, damping: 20 }}
-                        className="mx-auto w-20 h-20 rounded-full bg-green-500 flex items-center justify-center text-white text-4xl mb-6"
-                    >
-                        <svg className="w-10 h-10" fill="currentColor" viewBox="0 0 20 20">
-                            <path fillRule="evenodd"
-                                  d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                                  clipRule="evenodd" />
-                        </svg>
-                    </motion.div>
-                )}
-
-
-                <h1 className="text-4xl font-bold text-gray-900 mb-4">
+                <div className="text-center mb-8">
                     {error ? (
-                        <span>{error}</span>
+                        <motion.div
+                            initial={{ scale: 0 }}
+                            animate={{ scale: 1 }}
+                            transition={{ type: "spring", stiffness: 260, damping: 20 }}
+                            className="mx-auto w-20 h-20 rounded-full bg-red-500 flex items-center justify-center text-white mb-6"
+                        >
+                            <XCircle className="w-10 h-10" />
+                        </motion.div>
                     ) : (
-                        <span>{t('paymentSuccessTitle')}</span>
-                    )
-                    }
+                        <motion.div
+                            initial={{ scale: 0 }}
+                            animate={{ scale: 1 }}
+                            transition={{ type: 'spring', stiffness: 260, damping: 20 }}
+                            className="mx-auto w-20 h-20 rounded-full bg-green-500 flex items-center justify-center text-white mb-6"
+                        >
+                            <CheckCircle className="w-10 h-10" />
+                        </motion.div>
+                    )}
+                    
+                    <h1 className="text-4xl font-bold mb-4">
+                        {error ? (
+                            <span>{error}</span>
+                        ) : (
+                            <span>{t('paymentSuccessTitle')}</span>
+                        )}
+                    </h1>
+                    
+                    {!error && (
+                        <p className="text-xl text-muted-foreground mb-4">
+                            {t('paymentSuccessMessage')}
+                        </p>
+                    )}
+                </div>
 
-                </h1>
-                {!error && (
-                <p className="text-xl text-gray-600 mb-4">
-                    {t('paymentSuccessMessage')}
-                </p>
-                )}
 
 
                 {error ? (
-                    <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        className="bg-red-50 border border-red-200 rounded-lg p-6 mb-8"
-                    >
-                        <div className="mt-6">
-                            <button
-                                onClick={handleContinue}
-                                className="inline-flex items-center px-6 py-3 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors duration-200"
+                    <Card className="border-red-200 bg-red-50 dark:bg-red-950/20">
+                        <CardContent className="pt-6 text-center">
+                            <motion.div
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                className="space-y-4"
                             >
-                                {t('backToHome')}
-                            </button>
-                        </div>
-                    </motion.div>
+                                <Button onClick={handleContinue} size="lg">
+                                    <Home className="mr-2 h-5 w-5" />
+                                    {t('backToHome')}
+                                </Button>
+                            </motion.div>
+                        </CardContent>
+                    </Card>
                 ) : orderDetails && (
                     <motion.div
                         initial={{ opacity: 0, y: 20 }}
@@ -272,21 +267,14 @@ const PaymentSuccess = () => {
                         transition={{ delay: 0.4 }}
                         className="flex flex-col sm:flex-row gap-4 justify-center items-center"
                     >
-                        <button
-                            onClick={handleContinue}
-                            className="button"
-                        >
+                        <Button variant="outline" size="lg" onClick={handleContinue}>
+                            <ShoppingBag className="mr-2 h-5 w-5" />
                             {t('continueShopping')}
-                        </button>
-                        <button
-                            onClick={downloadReceipt}
-                            className="primary"
-                        >
-                            <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                                <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clipRule="evenodd" />
-                            </svg>
+                        </Button>
+                        <Button size="lg" onClick={downloadReceipt}>
+                            <Download className="mr-2 h-5 w-5" />
                             {t('downloadReceipt')}
-                        </button>
+                        </Button>
                     </motion.div>
                 )}
 
@@ -306,14 +294,14 @@ const PaymentSuccess = () => {
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     transition={{ delay: 0.8 }}
-                    className="mt-8"
+                    className="mt-8 text-center"
                 >
-                    <Link
-                        href="/shop"
-                        className="text-gray-600 hover:text-primary transition-colors duration-200"
-                    >
-                        ← {t('backToShop')}
-                    </Link>
+                    <Button variant="ghost" asChild>
+                        <Link href="/shop">
+                            <ArrowLeft className="mr-2 h-4 w-4" />
+                            {t('backToShop')}
+                        </Link>
+                    </Button>
                 </motion.div>
             </motion.div>
         </div>

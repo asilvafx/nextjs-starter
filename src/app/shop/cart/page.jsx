@@ -7,10 +7,13 @@ import { useTranslations } from 'next-intl';
 import Image from 'next/image';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FaPlus, FaMinus, FaTrash, FaShoppingBag } from 'react-icons/fa';
-import FreeShippingProgressBar from '../components/FreeShippingProgressBar';
-import { Button } from '@/components/ui/button';
 import { useState, useEffect } from 'react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
+import { ShoppingCart, Plus, Minus, Trash2, ArrowLeft, ArrowRight, Lock } from 'lucide-react';
+import FreeShippingProgressBar from '../components/FreeShippingProgressBar';
 
 const Cart = () => {
     const t = useTranslations('Cart');
@@ -67,7 +70,7 @@ const Cart = () => {
 
     return (
         <>
-            <div className="section">
+            <div className="container mx-auto px-4 py-8">
                 <motion.div
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -76,133 +79,145 @@ const Cart = () => {
                     {totalItems > 0 && (
                         <>
                             <div className="flex items-center justify-between mb-8">
-                                <h1 className="text-4xl font-bold">{t('title')}</h1>
-                                <span
+                                <div className="flex items-center gap-3">
+                                    <ShoppingCart className="h-8 w-8" />
+                                    <h1 className="text-4xl font-bold">{t('title')}</h1>
+                                    <Badge variant="secondary" className="text-lg px-3 py-1">
+                                        {totalItems} {totalItems === 1 ? 'item' : 'items'}
+                                    </Badge>
+                                </div>
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
                                     onClick={handleEmptyCart}
-                                    className="bg-transparent pe-auto cursor-pointer text-sm text-red-500 hover:text-red-700 transition-colors duration-200 font-medium"
+                                    className="text-destructive hover:text-destructive hover:bg-destructive/10"
                                 >
+                                    <Trash2 className="h-4 w-4 mr-2" />
                                     {t('emptyCart')}
-                                </span>
+                                </Button>
                             </div>
                         </>
                     )}
 
                     {totalItems === 0 ? (
                         // Empty Cart State
-                        <motion.div
-                            initial={{ opacity: 0, scale: 0.9 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            transition={{ duration: 0.5 }}
-                            className="text-center py-16"
-                        >
-                            <div className="mb-8">
-                                <FaShoppingBag className="mx-auto text-8xl text-gray-300" />
-                            </div>
-                            <h2 className="text-3xl font-bold text-gray-800 mb-4">
-                                {t('emptyCartTitle')}
-                            </h2>
-                            <p className="text-lg text-gray-500 mb-8 max-w-md mx-auto">
-                                {t('emptyCartMessage')}
-                            </p>
-                            <Link
-                                href="/shop" 
-                            >
-                                <Button>
-                                    <FaShoppingBag className="mr-2" />
-                                    {t('goToShop')}
-                                </Button> 
-                            </Link>
-                        </motion.div>
+                        <Card className="max-w-md mx-auto">
+                            <CardContent className="text-center py-16">
+                                <motion.div
+                                    initial={{ opacity: 0, scale: 0.9 }}
+                                    animate={{ opacity: 1, scale: 1 }}
+                                    transition={{ duration: 0.5 }}
+                                >
+                                    <ShoppingCart className="mx-auto h-24 w-24 text-muted-foreground mb-8" />
+                                    <CardTitle className="text-3xl mb-4">
+                                        {t('emptyCartTitle')}
+                                    </CardTitle>
+                                    <CardDescription className="text-lg mb-8 max-w-md mx-auto">
+                                        {t('emptyCartMessage')}
+                                    </CardDescription>
+                                    <Button asChild size="lg">
+                                        <Link href="/shop">
+                                            <ShoppingCart className="mr-2 h-5 w-5" />
+                                            {t('goToShop')}
+                                        </Link>
+                                    </Button>
+                                </motion.div>
+                            </CardContent>
+                        </Card>
                     ) : (
                         <>
                         <div className="grid lg:grid-cols-3 gap-8">
                             {/* Cart Items */}
                             <div className="lg:col-span-2">
-                                <div className="card">
-                                    <div className="py-6 border-b border-gray-200">
-                                        <h2 className="text-xl font-semibold">
+                                <Card>
+                                    <CardHeader>
+                                        <CardTitle className="flex items-center gap-2">
+                                            <ShoppingCart className="h-5 w-5" />
                                             {t('items', { count: totalItems })}
-                                        </h2>
-                                    </div>
+                                        </CardTitle>
+                                    </CardHeader>
+                                    <CardContent>
 
-                                    <AnimatePresence>
-                                        {items.map((item, index) => (
-                                            <motion.div
-                                                key={item.id}
-                                                initial={{ opacity: 0, y: 20 }}
-                                                animate={{ opacity: 1, y: 0 }}
-                                                exit={{ opacity: 0, x: -100 }}
-                                                transition={{ duration: 0.3, delay: index * 0.1 }}
-                                                className="py-6 border-b border-gray-100 last:border-b-0"
-                                            >
-                                                <div className="flex items-center flex-wrap space-x-4">
-                                                    {/* Product Image */}
-                                                    {item.image && (
-                                                        <div className="flex-shrink-0">
-                                                            <Image
-                                                                width={20}
-                                                                height={20}
-                                                                src={item.image}
-                                                                alt={item.name}
-                                                                className="w-20 h-20 object-cover rounded-lg border p-1 border-gray-200"
-                                                            />
+                                        <AnimatePresence>
+                                            {items.map((item, index) => (
+                                                <motion.div
+                                                    key={item.id}
+                                                    initial={{ opacity: 0, y: 20 }}
+                                                    animate={{ opacity: 1, y: 0 }}
+                                                    exit={{ opacity: 0, x: -100 }}
+                                                    transition={{ duration: 0.3, delay: index * 0.1 }}
+                                                    className="py-6 border-b last:border-b-0"
+                                                >
+                                                    <div className="flex items-center flex-wrap gap-4">
+                                                        {/* Product Image */}
+                                                        {item.image && (
+                                                            <div className="flex-shrink-0">
+                                                                <Image
+                                                                    width={80}
+                                                                    height={80}
+                                                                    src={item.image}
+                                                                    alt={item.name}
+                                                                    className="w-20 h-20 object-cover rounded-lg border"
+                                                                />
+                                                            </div>
+                                                        )}
+
+                                                        {/* Product Info */}
+                                                        <div className="flex-1 min-w-0">
+                                                            <h3 className="text-lg font-semibold truncate">
+                                                                {item.name}
+                                                            </h3>
+                                                            <div className="mt-1 space-y-1">
+                                                                <Badge variant="outline">
+                                                                    {t('unitPrice', { price: `${storeSettings?.currency === 'USD' ? '$' : '€'}${item.price.toFixed(2)}` })}
+                                                                </Badge>
+                                                            </div>
                                                         </div>
-                                                    )}
 
-                                                    {/* Product Info */}
-                                                    <div className="flex-1 min-w-0">
-                                                        <h3 className="text-lg font-semibold text-gray-900 truncate">
-                                                            {item.name}
-                                                        </h3>
-                                                        <div className="mt-1 space-y-1">
-                                                            <p className="text-sm text-gray-500">
-                                                                                                            <p className="text-sm text-gray-500">
-                                                {t('unitPrice', { price: `${storeSettings?.currency === 'USD' ? '$' : '€'}${item.price.toFixed(2)}` })}
-                                            </p>
-                                                            </p>
-                                                        </div>
-                                                    </div>
-
-                                                    {/* Quantity Controls */}
-                                                    <div className="min-w-full w-full md:min-w-auto md:w-auto mx-auto my-3 flex items-center space-x-3">
-                                                        <div className="w-full flex items-center justify-between border border-gray-300 bg-gray-50 rounded-lg">
-                                                            <button
+                                                        {/* Quantity Controls */}
+                                                        <div className="flex items-center border rounded-lg bg-muted/30">
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="sm"
                                                                 onClick={() => handleQuantityDecrease(item.id, item.quantity)}
-                                                                className="p-2 border-none bg-transparent transition-colors duration-200 rounded-l-lg"
                                                                 disabled={item.quantity <= 1}
+                                                                className="h-10 w-10 p-0"
                                                             >
-                                                                <FaMinus className="w-3 h-3 text-dark" />
-                                                            </button>
+                                                                <Minus className="h-4 w-4" />
+                                                            </Button>
                                                             <span className="px-4 py-2 font-semibold min-w-[50px] text-center">
                                                                 {item.quantity}
                                                             </span>
-                                                            <button
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="sm"
                                                                 onClick={() => handleQuantityIncrease(item.id, item.quantity)}
-                                                                className="p-2 border-none bg-transparent transition-colors duration-200 rounded-r-lg"
+                                                                className="h-10 w-10 p-0"
                                                             >
-                                                                <FaPlus className="w-3 h-3 text-dark" />
-                                                            </button>
+                                                                <Plus className="h-4 w-4" />
+                                                            </Button>
+                                                        </div>
+
+                                                        {/* Price & Remove */}
+                                                        <div className="flex items-center gap-4">
+                                                            <span className="text-lg font-bold">
+                                                                {storeSettings?.currency === 'USD' ? '$' : '€'}{(item.price * item.quantity).toFixed(2)}
+                                                            </span>
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="sm"
+                                                                onClick={() => handleRemoveItem(item.id)}
+                                                                className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                                                            >
+                                                                <Trash2 className="h-4 w-4" />
+                                                            </Button>
                                                         </div>
                                                     </div>
-
-                                                    {/* Price & Remove */}
-                                                    <div className="w-full md:w-auto flex items-center md:items-end justify-between md:justify-center flex-row md:flex-col text-right py-2">
-                                                        <span className="text-lg font-bold text-gray-900 mb-2">
-                                                            {storeSettings?.currency === 'USD' ? '$' : '€'}{(item.price * item.quantity).toFixed(2)}
-                                                        </span>
-                                                        <span
-                                                            onClick={() => handleRemoveItem(item.id)}
-                                                            className="flex items-center gap-2 text-sm text-red-500 hover:text-red-700 transition-colors duration-200 cursor-pointer"
-                                                            title={t('removeItem')}
-                                                        >
-                                                            <FaTrash className="w-4 h-4" /> Suprimmer
-                                                        </span>
-                                                    </div>
-                                                </div>
-                                            </motion.div>
-                                        ))}
-                                    </AnimatePresence>
-                                </div>
+                                                </motion.div>
+                                            ))}
+                                        </AnimatePresence>
+                                    </CardContent>
+                                </Card>
 
                                 <FreeShippingProgressBar
                                     cartTotal={cartTotal}
@@ -288,13 +303,13 @@ const Cart = () => {
                         </div>
                         </>
                 )}
-                    <div className="w-full flex justify-center">
-                        <Link
-                            href="/"
-                            className="text-gray-600 hover:text-primary transition-colors duration-200"
-                        >
-                            ← {t('backToHome')}
-                        </Link>
+                    <div className="w-full flex justify-center mt-8">
+                        <Button variant="ghost" asChild>
+                            <Link href="/">
+                                <ArrowLeft className="mr-2 h-4 w-4" />
+                                {t('backToHome')}
+                            </Link>
+                        </Button>
                     </div>
                 </motion.div>
             </div>

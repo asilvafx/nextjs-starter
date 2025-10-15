@@ -9,6 +9,12 @@ import { motion } from 'framer-motion';
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements } from '@stripe/react-stripe-js';
 import { useTranslations } from 'next-intl';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Separator } from '@/components/ui/separator';
+import { ShoppingCart, Lock, ArrowLeft } from 'lucide-react';
 import PaymentForm from './PaymentForm.jsx';
 
 // Use environment variables
@@ -112,9 +118,21 @@ const Checkout = () => {
 
     if (loading) {
         return (
-            <div className="section">
-                <div className="flex items-center justify-center min-h-[400px]">
-                    <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
+            <div className="container mx-auto px-4 py-8">
+                <div className="space-y-6">
+                    <Skeleton className="h-10 w-64" />
+                    <div className="grid lg:grid-cols-2 gap-8">
+                        <div className="space-y-4">
+                            <Skeleton className="h-48 w-full" />
+                            <Skeleton className="h-32 w-full" />
+                            <Skeleton className="h-24 w-full" />
+                        </div>
+                        <div className="space-y-4">
+                            <Skeleton className="h-8 w-32" />
+                            <Skeleton className="h-32 w-full" />
+                            <Skeleton className="h-16 w-full" />
+                        </div>
+                    </div>
                 </div>
             </div>
         );
@@ -122,38 +140,41 @@ const Checkout = () => {
 
     return (
         <>
-            <div className="section">
+            <div className="container mx-auto px-4 py-8">
                 <motion.div
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.5 }}
                 >
-                    <h1 className="text-4xl font-bold mb-8 text-start">{t('checkoutTitle')}</h1>
+                    <div className="flex items-center gap-2 mb-8">
+                        <ShoppingCart className="h-8 w-8" />
+                        <h1 className="text-4xl font-bold">{t('checkoutTitle')}</h1>
+                    </div>
 
                     {totalItems === 0 ? (
-                        <motion.div
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            className="text-center py-12"
-                        >
-                            <div className="mb-6">
-                                <svg className="mx-auto h-24 w-24 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
-                                </svg>
-                            </div>
-                            <h3 className="text-2xl font-medium text-gray-900 mb-2">
-                                {t('emptyCartTitle')}
-                            </h3>
-                            <p className="text-gray-500 mb-8">
-                                {t('emptyCartMessage')}
-                            </p>
-                            <Link
-                                href="/shop"
-                                className="inline-flex items-center px-6 py-3 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors duration-200"
-                            >
-                                {t('continueShopping')}
-                            </Link>
-                        </motion.div>
+                        <Card className="max-w-md mx-auto">
+                            <CardContent className="text-center py-12">
+                                <motion.div
+                                    initial={{ opacity: 0, scale: 0.9 }}
+                                    animate={{ opacity: 1, scale: 1 }}
+                                    transition={{ duration: 0.5 }}
+                                >
+                                    <ShoppingCart className="mx-auto h-24 w-24 text-muted-foreground mb-6" />
+                                    <CardTitle className="text-2xl mb-2">
+                                        {t('emptyCartTitle')}
+                                    </CardTitle>
+                                    <CardDescription className="mb-6">
+                                        {t('emptyCartMessage')}
+                                    </CardDescription>
+                                    <Button asChild>
+                                        <Link href="/shop">
+                                            <ArrowLeft className="mr-2 h-4 w-4" />
+                                            {t('continueShopping')}
+                                        </Link>
+                                    </Button>
+                                </motion.div>
+                            </CardContent>
+                        </Card>
                     ) : (
                         <motion.div
                             className="grid lg:grid-cols-2 gap-8"
@@ -168,22 +189,26 @@ const Checkout = () => {
                                 animate={{ opacity: 1, x: 0 }}
                                 transition={{ duration: 0.3 }}
                             >
-                                <div className="bg-accent border rounded-sm p-4">
-                                    <h2 className="text-xl font-semibold mb-6">{t('checkoutInformation')}</h2>
-                                    {stripeOptions && (
-                                        <Elements stripe={stripePromise} options={stripeOptions}>
-                                            <PaymentForm
-                                                cartTotal={totalPrice}
-                                                subTotal={subTotal}
-                                                shippingCost={finalShippingCost}
-                                                onShippingUpdate={handleShippingUpdate}
-                                                selectedShippingMethod={selectedShippingMethod}
-                                                isEligibleForFreeShipping={isEligibleForFreeShipping}
-                                                storeSettings={storeSettings}
-                                            />
-                                        </Elements>
-                                    )}
-                                </div>
+                                <Card>
+                                    <CardHeader>
+                                        <CardTitle>{t('checkoutInformation')}</CardTitle>
+                                    </CardHeader>
+                                    <CardContent>
+                                        {stripeOptions && (
+                                            <Elements stripe={stripePromise} options={stripeOptions}>
+                                                <PaymentForm
+                                                    cartTotal={totalPrice}
+                                                    subTotal={subTotal}
+                                                    shippingCost={finalShippingCost}
+                                                    onShippingUpdate={handleShippingUpdate}
+                                                    selectedShippingMethod={selectedShippingMethod}
+                                                    isEligibleForFreeShipping={isEligibleForFreeShipping}
+                                                    storeSettings={storeSettings}
+                                                />
+                                            </Elements>
+                                        )}
+                                    </CardContent>
+                                </Card>
                             </motion.div>
 
                             {/* Right: Order Summary */}
@@ -193,133 +218,129 @@ const Checkout = () => {
                                 animate={{ opacity: 1, x: 0 }}
                                 transition={{ duration: 0.3 }}
                             >
-                                <div className="bg-accent border rounded-sm p-4 lg:sticky lg:top-24">
-                                    <h2 className="text-xl font-semibold mb-6">{t('orderSummary')}</h2>
+                                <Card className="lg:sticky lg:top-24">
+                                    <CardHeader>
+                                        <CardTitle>{t('orderSummary')}</CardTitle>
+                                    </CardHeader>
+                                    <CardContent>
 
-                                    {/* Items */}
-                                    <div className="space-y-4 mb-6">
-                                        {items.map(item => (
-                                            <motion.div
-                                                key={item.id}
-                                                className="flex items-center space-x-4 p-3 border bg-border rounded-lg"
-                                                initial={{ opacity: 0, y: 10 }}
-                                                animate={{ opacity: 1, y: 0 }}
-                                            >
-                                                {item.image && (
-                                                    <Image
-                                                        width={16}
-                                                        height={16}
-                                                        src={item.image}
-                                                        alt={item.name}
-                                                        className="w-16 h-16 object-cover rounded-md"
-                                                    />
-                                                )}
-                                                <div className="flex-1">
-                                                    <h3 className="font-medium">{item.name}</h3>
-                                                    <p className="text-sm text-gray-500">
-                                                        {t('quantity')}: {item.quantity}
-                                                    </p>
-                                                </div>
-                                                <div className="text-right">
-                                                    <p className="font-semibold">{storeSettings?.currency === 'USD' ? '$' : '€'}{(item.price * item.quantity).toFixed(2)}</p>
-                                                </div>
-                                            </motion.div>
-                                        ))}
-                                    </div>
-
-                                    {/* Price Breakdown */}
-                                    <div className="border-t border-gray-200 pt-4 space-y-3">
-                                        <div className="flex justify-between text-gray-600">
-                                            <span>{t('subtotal')}</span>
-                                            <span>{storeSettings?.currency === 'USD' ? '$' : '€'}{cartTotal.toFixed(2)}</span>
+                                        {/* Items */}
+                                        <div className="space-y-4 mb-6">
+                                            {items.map(item => (
+                                                <motion.div
+                                                    key={item.id}
+                                                    className="flex items-center space-x-4 p-3 border rounded-lg bg-muted/30"
+                                                    initial={{ opacity: 0, y: 10 }}
+                                                    animate={{ opacity: 1, y: 0 }}
+                                                >
+                                                    {item.image && (
+                                                        <Image
+                                                            width={64}
+                                                            height={64}
+                                                            src={item.image}
+                                                            alt={item.name}
+                                                            className="w-16 h-16 object-cover rounded-md border"
+                                                        />
+                                                    )}
+                                                    <div className="flex-1">
+                                                        <h3 className="font-medium">{item.name}</h3>
+                                                        <div className="flex items-center gap-2 mt-1">
+                                                            <Badge variant="outline">{t('quantity')}: {item.quantity}</Badge>
+                                                        </div>
+                                                    </div>
+                                                    <div className="text-right">
+                                                        <p className="font-semibold">{storeSettings?.currency === 'USD' ? '$' : '€'}{(item.price * item.quantity).toFixed(2)}</p>
+                                                    </div>
+                                                </motion.div>
+                                            ))}
                                         </div>
-                                        <div className="flex justify-between text-gray-600">
-                                            <span className="flex items-center">
-                                                {t('shipping')}
-                                            </span>
-                                            <span
-                                                className={finalShippingCost === 0 && isEligibleForFreeShipping ? 'text-gray-400' : ''}>
-                                                {finalShippingCost === 0 && isEligibleForFreeShipping ? (
-                                                    <>
-                                                        <span className="text-green-600 font-semibold">Gratuit</span>
-                                                    </>
-                                                ) : (
-                                                    selectedShippingMethod ? (
-                                                        <>{storeSettings?.currency === 'USD' ? '$' : '€'}{finalShippingCost.toFixed(2)}</>
+
+                                        <Separator className="my-4" />
+                                        
+                                        {/* Price Breakdown */}
+                                        <div className="space-y-3">
+                                            <div className="flex justify-between text-muted-foreground">
+                                                <span>{t('subtotal')}</span>
+                                                <span>{storeSettings?.currency === 'USD' ? '$' : '€'}{cartTotal.toFixed(2)}</span>
+                                            </div>
+                                            <div className="flex justify-between text-muted-foreground">
+                                                <span className="flex items-center">
+                                                    {t('shipping')}
+                                                </span>
+                                                <span>
+                                                    {finalShippingCost === 0 && isEligibleForFreeShipping ? (
+                                                        <Badge variant="secondary" className="text-green-600">Gratuit</Badge>
                                                     ) : (
-                                                        <>-</>
-                                                    )
-                                                )}
-                                            </span>
-                                        </div>
-                                        {selectedShippingMethod && (
-                                            <div className="flex justify-between text-sm text-gray-500">
-                                                <span>via {selectedShippingMethod.carrier_name}</span>
-                                                <span>{selectedShippingMethod.delivery_time}</span>
+                                                        selectedShippingMethod ? (
+                                                            <>{storeSettings?.currency === 'USD' ? '$' : '€'}{finalShippingCost.toFixed(2)}</>
+                                                        ) : (
+                                                            <>-</>
+                                                        )
+                                                    )}
+                                                </span>
                                             </div>
-                                        )}
+                                            {selectedShippingMethod && (
+                                                <div className="flex justify-between text-sm text-muted-foreground">
+                                                    <span>via {selectedShippingMethod.carrier_name}</span>
+                                                    <span>{selectedShippingMethod.delivery_time}</span>
+                                                </div>
+                                            )}
 
-                                        {discountAmount > 0 && (
-                                            <div className="flex justify-between text-green-600">
-                                                <span>Discount</span>
-                                                <span>-{storeSettings?.currency === 'USD' ? '$' : '€'}{discountAmount.toFixed(2)}</span>
+                                            {discountAmount > 0 && (
+                                                <div className="flex justify-between text-green-600">
+                                                    <span>Discount</span>
+                                                    <span>-{storeSettings?.currency === 'USD' ? '$' : '€'}{discountAmount.toFixed(2)}</span>
+                                                </div>
+                                            )}
+
+                                            <div className="flex justify-between text-muted-foreground">
+                                                <span>TVA ({storeSettings?.vatPercentage || 20}%)</span>
+                                                <Badge variant="outline" className="text-green-600">
+                                                    {storeSettings?.vatIncludedInPrice ? 'Inclus' : 'Exclu'}
+                                                </Badge>
                                             </div>
-                                        )}
 
-                                        <div className="flex justify-between text-gray-600">
-                                            <span>TVA ({storeSettings?.vatPercentage || 20}%)</span>
-                                            <span className="text-green-600 font-semibold">
-                                                {storeSettings?.vatIncludedInPrice ? 'Inclus' : 'Exclu'}
-                                            </span>
+                                            <Separator />
+                                            
+                                            <div className="flex justify-between text-lg font-bold">
+                                                <span>{t('total')}</span>
+                                                <span>{storeSettings?.currency === 'USD' ? '$' : '€'}{totalPrice}</span>
+                                            </div>
                                         </div>
 
-                                        <div
-                                            className="flex justify-between text-lg font-bold border-t border-gray-200 pt-3">
-                                            <span>{t('total')}</span>
-                                            <span>{storeSettings?.currency === 'USD' ? '$' : '€'}{totalPrice}</span>
+                                        {/* Security Notice */}
+                                        <div className="mt-6 p-3 bg-blue-50 dark:bg-blue-950/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                                            <div className="flex items-center space-x-2 text-sm text-blue-700 dark:text-blue-300">
+                                                <Lock className="w-4 h-4" />
+                                                <span>{t('securePayment')}</span>
+                                            </div>
                                         </div>
-
-                                        {/* Savings indicator (to do) */}
-
-                                    </div>
-
-                                    {/* Security Notice */}
-                                    <div className="mt-6 p-3 bg-blue-50 rounded-lg">
-                                        <div className="flex items-center space-x-2 text-sm text-blue-700">
-                                            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                                                <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2-2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
-                                            </svg>
-                                            <span>{t('securePayment')}</span>
-                                        </div>
-                                    </div>
-                                </div>
+                                    </CardContent>
+                                </Card>
                             </motion.div>
                         </motion.div>
                     )}
 
                     {/* Navigation Links */}
                     <motion.div
-                        className="mt-8 text-center space-x-4"
+                        className="mt-8 flex justify-center gap-4"
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         transition={{ delay: 0.3 }}
                     >
-                        <Link
-                            href="/shop"
-                            className="text-gray-600 hover:text-primary transition-colors duration-200"
-                        >
-                            ← {t('continueShopping')}
-                        </Link>
+                        <Button variant="ghost" asChild>
+                            <Link href="/shop">
+                                <ArrowLeft className="mr-2 h-4 w-4" />
+                                {t('continueShopping')}
+                            </Link>
+                        </Button>
                         {totalItems > 0 && (
-                            <>
-                                <span className="text-gray-300">|</span>
-                                <Link
-                                    href="/shop/cart"
-                                    className="text-gray-600 hover:text-primary transition-colors duration-200"
-                                >
+                            <Button variant="outline" asChild>
+                                <Link href="/shop/cart">
+                                    <ShoppingCart className="mr-2 h-4 w-4" />
                                     {t('modifyCart')}
                                 </Link>
-                            </>
+                            </Button>
                         )}
                     </motion.div>
                 </motion.div>

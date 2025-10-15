@@ -7,10 +7,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, Clock, Euro, User, Phone, Mail, CheckCircle } from "lucide-react";
+import { Calendar, Clock, Euro, User, Phone, Mail, CheckCircle, ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 
-const ServiceBooking = ({ service, onBookingComplete }) => {
+const ServiceBooking = ({ service, onBack, onBookingComplete }) => {
   const [selectedDate, setSelectedDate] = useState('');
   const [selectedTime, setSelectedTime] = useState('');
   const [customerName, setCustomerName] = useState('');
@@ -58,7 +58,7 @@ const ServiceBooking = ({ service, onBookingComplete }) => {
       // Generate all possible slots
       const allSlots = generateTimeSlots(
         workingHours,
-        service.duration || 60,
+        service.appointmentSettings?.duration || 60,
         service.appointmentSettings?.bufferTime || 15
       );
       
@@ -69,4 +69,257 @@ const ServiceBooking = ({ service, onBookingComplete }) => {
     } catch (error) {
       console.error('Error fetching available slots:', error);
       toast.error('Failed to load available time slots');
-    } finally {\n      setIsLoading(false);\n    }\n  };\n\n  useEffect(() => {\n    if (selectedDate) {\n      getAvailableSlotsForDate(selectedDate);\n    }\n  }, [selectedDate, service]);\n\n  const handleBookAppointment = async () => {\n    if (!customerName || !customerEmail || !selectedDate || !selectedTime) {\n      toast.error('Please fill in all required fields');\n      return;\n    }\n\n    setIsBooking(true);\n    try {\n      const response = await fetch('/api/query/public/book-appointment', {\n        method: 'POST',\n        headers: {\n          'Content-Type': 'application/json',\n        },\n        body: JSON.stringify({\n          serviceId: service.id,\n          date: selectedDate,\n          startTime: selectedTime,\n          customerName,\n          customerEmail,\n          customerPhone,\n          notes\n        }),\n      });\n\n      const result = await response.json();\n\n      if (result.success) {\n        toast.success('Appointment booked successfully!');\n        onBookingComplete?.(result.data);\n      } else {\n        toast.error(result.error || 'Failed to book appointment');\n      }\n    } catch (error) {\n      console.error('Error booking appointment:', error);\n      toast.error('Failed to book appointment');\n    } finally {\n      setIsBooking(false);\n    }\n  };\n\n  // Calculate minimum date (today + 1 day)\n  const minDate = new Date();\n  minDate.setDate(minDate.getDate() + 1);\n  const minDateString = minDate.toISOString().split('T')[0];\n\n  // Calculate maximum date (based on advance booking days)\n  const maxDate = new Date();\n  maxDate.setDate(maxDate.getDate() + (service.appointmentSettings?.advanceBookingDays || 30));\n  const maxDateString = maxDate.toISOString().split('T')[0];\n\n  return (\n    <Card className=\"w-full max-w-2xl mx-auto\">\n      <CardHeader>\n        <CardTitle className=\"flex items-center gap-2\">\n          <Calendar className=\"h-5 w-5\" />\n          Book Appointment\n        </CardTitle>\n        <CardDescription>\n          Schedule your {service.name} appointment\n        </CardDescription>\n      </CardHeader>\n      <CardContent className=\"space-y-6\">\n        {/* Service Info */}\n        <div className=\"bg-blue-50 border border-blue-200 rounded-lg p-4\">\n          <h3 className=\"font-semibold text-blue-900\">{service.name}</h3>\n          <div className=\"flex items-center gap-4 mt-2 text-sm text-blue-700\">\n            <div className=\"flex items-center gap-1\">\n              <Clock className=\"h-4 w-4\" />\n              {service.duration} minutes\n            </div>\n            <div className=\"flex items-center gap-1\">\n              <Euro className=\"h-4 w-4\" />\n              {service.price}\n            </div>\n          </div>\n          {service.description && (\n            <p className=\"text-sm text-blue-600 mt-2\">{service.description}</p>\n          )}\n        </div>\n\n        {/* Customer Information */}\n        <div className=\"space-y-4\">\n          <h4 className=\"font-medium flex items-center gap-2\">\n            <User className=\"h-4 w-4\" />\n            Your Information\n          </h4>\n          <div className=\"grid grid-cols-1 md:grid-cols-2 gap-4\">\n            <div>\n              <Label htmlFor=\"customerName\">Full Name *</Label>\n              <Input\n                id=\"customerName\"\n                value={customerName}\n                onChange={(e) => setCustomerName(e.target.value)}\n                placeholder=\"John Doe\"\n                required\n              />\n            </div>\n            <div>\n              <Label htmlFor=\"customerEmail\">Email Address *</Label>\n              <Input\n                id=\"customerEmail\"\n                type=\"email\"\n                value={customerEmail}\n                onChange={(e) => setCustomerEmail(e.target.value)}\n                placeholder=\"john@example.com\"\n                required\n              />\n            </div>\n          </div>\n          <div>\n            <Label htmlFor=\"customerPhone\">Phone Number</Label>\n            <Input\n              id=\"customerPhone\"\n              type=\"tel\"\n              value={customerPhone}\n              onChange={(e) => setCustomerPhone(e.target.value)}\n              placeholder=\"+1 (555) 123-4567\"\n            />\n          </div>\n        </div>\n\n        {/* Date Selection */}\n        <div>\n          <Label htmlFor=\"appointmentDate\">Select Date *</Label>\n          <Input\n            id=\"appointmentDate\"\n            type=\"date\"\n            value={selectedDate}\n            onChange={(e) => setSelectedDate(e.target.value)}\n            min={minDateString}\n            max={maxDateString}\n            required\n          />\n        </div>\n\n        {/* Time Selection */}\n        {selectedDate && (\n          <div>\n            <Label>Select Time *</Label>\n            {isLoading ? (\n              <div className=\"text-center py-4\">\n                <Clock className=\"h-8 w-8 mx-auto text-muted-foreground animate-spin mb-2\" />\n                <p className=\"text-sm text-muted-foreground\">Loading available times...</p>\n              </div>\n            ) : availableSlots.length > 0 ? (\n              <div className=\"grid grid-cols-3 md:grid-cols-4 gap-2 mt-2\">\n                {availableSlots.map((slot) => (\n                  <Button\n                    key={slot}\n                    variant={selectedTime === slot ? \"default\" : \"outline\"}\n                    size=\"sm\"\n                    onClick={() => setSelectedTime(slot)}\n                    className=\"text-xs\"\n                  >\n                    {slot}\n                  </Button>\n                ))}\n              </div>\n            ) : (\n              <div className=\"text-center py-4 text-muted-foreground\">\n                <p>No available time slots for this date</p>\n              </div>\n            )}\n          </div>\n        )}\n\n        {/* Notes */}\n        <div>\n          <Label htmlFor=\"notes\">Additional Notes</Label>\n          <Textarea\n            id=\"notes\"\n            value={notes}\n            onChange={(e) => setNotes(e.target.value)}\n            placeholder=\"Any special requests or information...\"\n            rows={3}\n          />\n        </div>\n\n        {/* Booking Summary */}\n        {selectedDate && selectedTime && (\n          <div className=\"bg-green-50 border border-green-200 rounded-lg p-4\">\n            <h4 className=\"font-medium text-green-900 mb-2\">Booking Summary</h4>\n            <div className=\"space-y-1 text-sm text-green-700\">\n              <p><strong>Service:</strong> {service.name}</p>\n              <p><strong>Date:</strong> {new Date(selectedDate).toLocaleDateString('en-US', {\n                weekday: 'long',\n                year: 'numeric',\n                month: 'long',\n                day: 'numeric'\n              })}</p>\n              <p><strong>Time:</strong> {selectedTime}</p>\n              <p><strong>Duration:</strong> {service.duration} minutes</p>\n              <p><strong>Price:</strong> €{service.price}</p>\n            </div>\n          </div>\n        )}\n\n        {/* Book Button */}\n        <Button \n          onClick={handleBookAppointment}\n          disabled={!customerName || !customerEmail || !selectedDate || !selectedTime || isBooking}\n          className=\"w-full\"\n          size=\"lg\"\n        >\n          {isBooking ? (\n            <>\n              <Clock className=\"h-4 w-4 mr-2 animate-spin\" />\n              Booking Appointment...\n            </>\n          ) : (\n            <>\n              <CheckCircle className=\"h-4 w-4 mr-2\" />\n              Book Appointment (€{service.price})\n            </>\n          )}\n        </Button>\n\n        <p className=\"text-xs text-center text-muted-foreground\">\n          You will receive a confirmation email after booking.\n        </p>\n      </CardContent>\n    </Card>\n  );\n};\n\nexport default ServiceBooking;"
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (selectedDate) {
+      getAvailableSlotsForDate(selectedDate);
+    }
+  }, [selectedDate, service]);
+
+  const handleBookAppointment = async () => {
+    if (!customerName || !customerEmail || !selectedDate || !selectedTime) {
+      toast.error('Please fill in all required fields');
+      return;
+    }
+
+    setIsBooking(true);
+    try {
+      const response = await fetch('/api/query/public/book-appointment', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          serviceId: service.id,
+          date: selectedDate,
+          startTime: selectedTime,
+          customerName,
+          customerEmail,
+          customerPhone,
+          notes
+        }),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        toast.success('Appointment booked successfully!');
+        onBookingComplete?.(result.data);
+        // Reset form
+        setSelectedDate('');
+        setSelectedTime('');
+        setCustomerName('');
+        setCustomerEmail('');
+        setCustomerPhone('');
+        setNotes('');
+      } else {
+        toast.error(result.error || 'Failed to book appointment');
+      }
+    } catch (error) {
+      console.error('Error booking appointment:', error);
+      toast.error('Failed to book appointment');
+    } finally {
+      setIsBooking(false);
+    }
+  };
+
+  // Calculate minimum date (today + 1 day)
+  const minDate = new Date();
+  minDate.setDate(minDate.getDate() + 1);
+  const minDateString = minDate.toISOString().split('T')[0];
+
+  // Calculate maximum date (based on advance booking days)
+  const maxDate = new Date();
+  maxDate.setDate(maxDate.getDate() + (service.appointmentSettings?.advanceBookingDays || 30));
+  const maxDateString = maxDate.toISOString().split('T')[0];
+
+  return (
+    <div className="space-y-6">
+      {/* Back Button */}
+      {onBack && (
+        <Button variant="ghost" onClick={onBack} className="mb-4">
+          <ArrowLeft className="h-4 w-4 mr-2" />
+          Back to Services
+        </Button>
+      )}
+
+      <Card className="w-full max-w-2xl mx-auto">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Calendar className="h-5 w-5" />
+            Book Appointment
+          </CardTitle>
+          <CardDescription>
+            Schedule your {service.name} appointment
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {/* Service Info */}
+          <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+            <h3 className="font-semibold text-blue-900 dark:text-blue-100">{service.name}</h3>
+            <div className="flex items-center gap-4 mt-2 text-sm text-blue-700 dark:text-blue-300">
+              <div className="flex items-center gap-1">
+                <Clock className="h-4 w-4" />
+                {service.appointmentSettings?.duration || 60} minutes
+              </div>
+              <div className="flex items-center gap-1">
+                <Euro className="h-4 w-4" />
+                {service.price}
+              </div>
+            </div>
+            {service.description && (
+              <p className="text-sm text-blue-600 dark:text-blue-400 mt-2">{service.description}</p>
+            )}
+          </div>
+
+          {/* Customer Information */}
+          <div className="space-y-4">
+            <h4 className="font-medium flex items-center gap-2">
+              <User className="h-4 w-4" />
+              Your Information
+            </h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="customerName">Full Name *</Label>
+                <Input
+                  id="customerName"
+                  value={customerName}
+                  onChange={(e) => setCustomerName(e.target.value)}
+                  placeholder="John Doe"
+                  required
+                />
+              </div>
+              <div>
+                <Label htmlFor="customerEmail">Email Address *</Label>
+                <Input
+                  id="customerEmail"
+                  type="email"
+                  value={customerEmail}
+                  onChange={(e) => setCustomerEmail(e.target.value)}
+                  placeholder="john@example.com"
+                  required
+                />
+              </div>
+            </div>
+            <div>
+              <Label htmlFor="customerPhone">Phone Number</Label>
+              <Input
+                id="customerPhone"
+                type="tel"
+                value={customerPhone}
+                onChange={(e) => setCustomerPhone(e.target.value)}
+                placeholder="+1 (555) 123-4567"
+              />
+            </div>
+          </div>
+
+          {/* Date Selection */}
+          <div>
+            <Label htmlFor="appointmentDate">Select Date *</Label>
+            <Input
+              id="appointmentDate"
+              type="date"
+              value={selectedDate}
+              onChange={(e) => setSelectedDate(e.target.value)}
+              min={minDateString}
+              max={maxDateString}
+              required
+            />
+          </div>
+
+          {/* Time Selection */}
+          {selectedDate && (
+            <div>
+              <Label>Select Time *</Label>
+              {isLoading ? (
+                <div className="text-center py-4">
+                  <Clock className="h-8 w-8 mx-auto text-muted-foreground animate-spin mb-2" />
+                  <p className="text-sm text-muted-foreground">Loading available times...</p>
+                </div>
+              ) : availableSlots.length > 0 ? (
+                <div className="grid grid-cols-3 md:grid-cols-4 gap-2 mt-2">
+                  {availableSlots.map((slot) => (
+                    <Button
+                      key={slot}
+                      variant={selectedTime === slot ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setSelectedTime(slot)}
+                      className="text-xs"
+                    >
+                      {slot}
+                    </Button>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-4 text-muted-foreground">
+                  <p>No available time slots for this date</p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Notes */}
+          <div>
+            <Label htmlFor="notes">Additional Notes</Label>
+            <Textarea
+              id="notes"
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="Any special requests or information..."
+              rows={3}
+            />
+          </div>
+
+          {/* Booking Summary */}
+          {selectedDate && selectedTime && (
+            <div className="bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800 rounded-lg p-4">
+              <h4 className="font-medium text-green-900 dark:text-green-100 mb-2">Booking Summary</h4>
+              <div className="space-y-1 text-sm text-green-700 dark:text-green-300">
+                <p><strong>Service:</strong> {service.name}</p>
+                <p><strong>Date:</strong> {new Date(selectedDate).toLocaleDateString('en-US', {
+                  weekday: 'long',
+                  year: 'numeric',
+                  month: 'long',
+                  day: 'numeric'
+                })}</p>
+                <p><strong>Time:</strong> {selectedTime}</p>
+                <p><strong>Duration:</strong> {service.appointmentSettings?.duration || 60} minutes</p>
+                <p><strong>Price:</strong> €{service.price}</p>
+              </div>
+            </div>
+          )}
+
+          {/* Book Button */}
+          <Button 
+            onClick={handleBookAppointment}
+            disabled={!customerName || !customerEmail || !selectedDate || !selectedTime || isBooking}
+            className="w-full"
+            size="lg"
+          >
+            {isBooking ? (
+              <>
+                <Clock className="h-4 w-4 mr-2 animate-spin" />
+                Booking Appointment...
+              </>
+            ) : (
+              <>
+                <CheckCircle className="h-4 w-4 mr-2" />
+                Book Appointment (€{service.price})
+              </>
+            )}
+          </Button>
+
+          <p className="text-xs text-center text-muted-foreground">
+            You will receive a confirmation email after booking.
+          </p>
+        </CardContent>
+      </Card>
+    </div>
+  );
+};
+
+export default ServiceBooking;
