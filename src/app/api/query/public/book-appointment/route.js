@@ -37,7 +37,7 @@ import DBService from '@/data/rest.db.js';
  *               - customerName
  *               - customerEmail
  */
-async function POST(request) {
+async function postHandler(request) {
   try {
     const bookingData = await request.json();
 
@@ -260,7 +260,5 @@ async function syncAppointmentToSchedule(appointment) {
   }
 }
 
-export { POST };
-
-// Apply public access middleware
-export const withPublicPOST = withPublicAccess(POST);
+// Apply public access middleware and export
+export const POST = withPublicAccess(postHandler);
