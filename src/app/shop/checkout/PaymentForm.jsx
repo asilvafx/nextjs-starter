@@ -502,7 +502,7 @@ const PaymentForm = ({ cartTotal, subTotal, shippingCost, onShippingUpdate, sele
                                 />
                                 <div className="w-full">
                                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                                        {t('country')}
+                                        Country
                                     </label>
                                     <CountryDropdown
                                         defaultValue={countryIso}
