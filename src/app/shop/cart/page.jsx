@@ -33,10 +33,10 @@ const Cart = () => {
     useEffect(() => {
         const fetchStoreSettings = async () => {
             try {
-                const response = await fetch('/api/store/settings');
+                const response = await fetch('/api/query/public/store_settings');
                 const result = await response.json();
-                if (result.success) {
-                    setStoreSettings(result.data);
+                if (result.success && result.data?.[0]) {
+                    setStoreSettings(result.data[0]);
                 }
             } catch (error) {
                 console.error('Failed to fetch store settings:', error);
@@ -248,10 +248,12 @@ const Cart = () => {
                                     </CardContent>
                                 </Card>
 
-                                <FreeShippingProgressBar
-                                    cartTotal={cartTotal}
-                                    storeSettings={storeSettings}
-                                />
+                                {storeSettings && storeSettings.freeShippingEnabled && (
+                                    <FreeShippingProgressBar
+                                        cartTotal={cartTotal}
+                                        storeSettings={storeSettings}
+                                    />
+                                )}
                             </div>
 
 

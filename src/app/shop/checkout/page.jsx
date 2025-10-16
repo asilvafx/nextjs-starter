@@ -18,8 +18,8 @@ import { ShoppingCart, Lock, ArrowLeft } from 'lucide-react';
 import PaymentForm from './PaymentForm.jsx';
 import FreeShippingProgressBar from '../components/FreeShippingProgressBar';
 
-// Use environment variables
-const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PK);
+// Stripe promise will be initialized dynamically from store settings
+let stripePromise = null;
 
 const Checkout = () => {
     const t = useTranslations('Checkout');
@@ -31,6 +31,7 @@ const Checkout = () => {
     const [loading, setLoading] = useState(true);
     const [discountAmount, setDiscountAmount] = useState(0);
     const [vatBreakdown, setVatBreakdown] = useState({ subtotal: 0, vatAmount: 0, total: 0 });
+    const [stripeReady, setStripeReady] = useState(false);
 
     // Use store settings for free shipping threshold
     const FREE_SHIPPING_THRESHOLD = storeSettings?.freeShippingThreshold || 50;
@@ -82,6 +83,8 @@ const Checkout = () => {
 
     // Handler for shipping cost updates from PaymentForm
     const handleShippingUpdate = (newShippingCost, shippingMethod, discountAmount = 0) => {
+        console.log('Shipping update:', { newShippingCost, shippingMethod, discountAmount });
+        
         setSelectedShippingMethod(shippingMethod);
 
         // Set shipping cost based on method selection
@@ -112,9 +115,24 @@ const Checkout = () => {
             const response = await fetch('/api/query/public/store_settings');
             const result = await response.json();
             if (result.success && result.data?.[0]) {
-                setStoreSettings(result.data[0]);
+                const settings = result.data[0];
+                setStoreSettings(settings);
+                
+                // Initialize Stripe if card payments are enabled and keys are available
+                if (settings.paymentMethods?.cardPayments && settings.paymentMethods?.stripePublicKey) {
+                    try {
+                        stripePromise = loadStripe(settings.paymentMethods.stripePublicKey);
+                        setStripeReady(true);
+                    } catch (error) {
+                        console.error('Failed to initialize Stripe:', error);
+                        setStripeReady(false);
+                    }
+                } else {
+                    setStripeReady(false);
+                }
+                
                 // Set initial shipping cost based on settings
-                const defaultCost = result.data[0].defaultShippingCost || 5.99;
+                const defaultCost = settings.defaultShippingCost || 5.99;
                 setShippingCost(defaultCost);
             }
         } catch (error) {
@@ -128,7 +146,7 @@ const Checkout = () => {
 
     useEffect(() => {
         // Set up Stripe options when cart total or shipping changes
-        if (cartTotal > 0 && storeSettings) {
+        if (cartTotal > 0 && storeSettings && stripeReady && storeSettings.paymentMethods?.cardPayments) {
             setStripeOptions({
                 mode: 'payment',
                 amount: Math.round(totalPrice * 100), // Convert to cents
@@ -146,8 +164,10 @@ const Checkout = () => {
                 },
                 payment_method_types: ['card'],
             });
+        } else {
+            setStripeOptions(null);
         }
-    }, [cartTotal, totalPrice, storeSettings]);
+    }, [cartTotal, totalPrice, storeSettings, stripeReady]);
 
     if (loading) {
         return (
@@ -229,7 +249,7 @@ const Checkout = () => {
                                         <CardTitle>{t('checkoutInformation')}</CardTitle>
                                     </CardHeader>
                                     <CardContent>
-                                        {stripeOptions ? (
+                                        {stripeOptions && stripePromise && stripeReady ? (
                                             <Elements stripe={stripePromise} options={stripeOptions}>
                                                 <PaymentForm
                                                     cartTotal={totalPrice}

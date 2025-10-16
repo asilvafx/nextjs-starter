@@ -1,6 +1,24 @@
-import Stripe from "stripe";
+// @/app/api/stripe/route.js
 
-const stripe = new Stripe(process.env.STRIPE_SK || 'your-sk-goes-here');
+import Stripe from "stripe";
+import DBService from '@/data/rest.db.js';
+
+// Function to get Stripe instance with settings-based key
+async function getStripeInstance() {
+    try {
+        const storeSettingsResponse = await DBService.readAll('store_settings');
+        const storeSettings = storeSettingsResponse?.[0];
+        
+        if (!storeSettings?.paymentMethods?.stripeSecretKey) {
+            throw new Error('Stripe secret key not configured in store settings');
+        }
+        
+        return new Stripe(storeSettings.paymentMethods.stripeSecretKey);
+    } catch (error) {
+        console.error('Failed to initialize Stripe:', error);
+        throw error;
+    }
+}
 
 export async function OPTIONS() {
     return new Response(null, {
@@ -15,7 +33,7 @@ export async function OPTIONS() {
 
 export async function POST(req) {
     try {
-        const { amount, currency = "usd", email = "", automatic_payment_methods } =
+        const { amount, currency = "eur", email = "", automatic_payment_methods } =
             await req.json();
 
         if (!amount || amount <= 0) {
@@ -31,6 +49,9 @@ export async function POST(req) {
                 headers: { "Access-Control-Allow-Origin": "*" },
             });
         }
+
+        // Get Stripe instance with store settings
+        const stripe = await getStripeInstance();
 
         const customer = await stripe.customers.create({
             email,

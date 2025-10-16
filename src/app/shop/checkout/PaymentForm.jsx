@@ -32,8 +32,8 @@ const PaymentForm = ({ cartTotal, subTotal, shippingCost, onShippingUpdate, sele
     const [isProcessing, setIsProcessing] = useState(false);
     const [errorMessage, setErrorMessage] = useState('');
 
-    // Form Data
-    const [emailInput, setEmailInput] = useState(session ? session?.email : '');
+    // Form Data - Initialize all values to prevent controlled/uncontrolled input issues
+    const [emailInput, setEmailInput] = useState(session?.email || '');
     const [firstName, setFirstName] = useState('');
     const [lastName, setLastName] = useState('');
     const [streetAddress, setStreetAddress] = useState('');
@@ -64,7 +64,8 @@ const PaymentForm = ({ cartTotal, subTotal, shippingCost, onShippingUpdate, sele
 
     const handleShippingMethodSelect = (method) => {
         setLocalSelectedShippingMethod(method);
-        onShippingUpdate(method.fixed_rate, method);
+        const shippingCost = method.fixed_rate || method.base_price || method.basePrice || 0;
+        onShippingUpdate(shippingCost, method, discountAmount);
     };
 
     const handleCountryChange = (selectedCountry) => {
@@ -73,12 +74,11 @@ const PaymentForm = ({ cartTotal, subTotal, shippingCost, onShippingUpdate, sele
         setState('');
         setCity('');
         setZipCode('');
-        onShippingUpdate({
-            country: selectedCountry.alpha2,
-            state: '',
-            city: '',
-            zipCode: ''
-        });
+        // Reset selected shipping method when country changes
+        setLocalSelectedShippingMethod(null);
+        setHasAutoSelectedFreeShipping(false);
+        // Notify parent that shipping method was reset
+        onShippingUpdate(0, null, discountAmount);
     };
     
     const handleGooglePlacesSelect = (placeDetails) => {
@@ -120,25 +120,40 @@ const PaymentForm = ({ cartTotal, subTotal, shippingCost, onShippingUpdate, sele
         }
     };    // Auto-select free shipping when eligible
     const handleShippingMethodsLoaded = (shippingMethods) => {
+        console.log('Shipping methods loaded:', shippingMethods);
+        console.log('Auto-selection check:', { isEligibleForFreeShipping, hasAutoSelectedFreeShipping, currentMethod: localSelectedShippingMethod });
+        
         if (isEligibleForFreeShipping && !hasAutoSelectedFreeShipping && shippingMethods.length > 0) {
-            // Find free shipping method (id: 3)
-            const freeShippingMethod = shippingMethods.find(method => method.id === 3);
+            // Find free shipping method (id: 'free_shipping')
+            const freeShippingMethod = shippingMethods.find(method => method.id === 'free_shipping');
 
             if (freeShippingMethod) {
+                console.log('Auto-selecting free shipping method:', freeShippingMethod);
                 setLocalSelectedShippingMethod(freeShippingMethod);
-                onShippingUpdate(0, freeShippingMethod);
+                onShippingUpdate(0, freeShippingMethod, discountAmount || 0);
                 setHasAutoSelectedFreeShipping(true);
             } else if (!localSelectedShippingMethod) {
                 // If no free shipping available but user is eligible, select first method
                 const firstMethod = shippingMethods[0];
+                const shippingCost = firstMethod.fixed_rate || firstMethod.base_price || firstMethod.basePrice || 0;
+                console.log('Auto-selecting first method (no free shipping available):', firstMethod, 'cost:', shippingCost);
                 setLocalSelectedShippingMethod(firstMethod);
-                onShippingUpdate(firstMethod.fixed_rate, firstMethod);
+                onShippingUpdate(shippingCost, firstMethod, discountAmount || 0);
             }
         } else if (!isEligibleForFreeShipping && !localSelectedShippingMethod && shippingMethods.length > 0) {
             // If not eligible for free shipping, auto-select first available method
             const firstMethod = shippingMethods[0];
+            const shippingCost = firstMethod.fixed_rate || firstMethod.base_price || firstMethod.basePrice || 0;
+            console.log('Auto-selecting first method (not eligible for free shipping):', firstMethod, 'cost:', shippingCost);
             setLocalSelectedShippingMethod(firstMethod);
-            onShippingUpdate(firstMethod.fixed_rate, firstMethod);
+            onShippingUpdate(shippingCost, firstMethod, discountAmount || 0);
+        } else if (shippingMethods.length === 1 && !localSelectedShippingMethod) {
+            // Always auto-select if only one method available
+            const onlyMethod = shippingMethods[0];
+            const shippingCost = onlyMethod.fixed_rate || onlyMethod.base_price || onlyMethod.basePrice || 0;
+            console.log('Auto-selecting only available method:', onlyMethod, 'cost:', shippingCost);
+            setLocalSelectedShippingMethod(onlyMethod);
+            onShippingUpdate(shippingCost, onlyMethod, discountAmount || 0);
         }
     };
 
@@ -147,12 +162,17 @@ const PaymentForm = ({ cartTotal, subTotal, shippingCost, onShippingUpdate, sele
         if (!isEligibleForFreeShipping) {
             setHasAutoSelectedFreeShipping(false);
             // If currently selected method is free shipping and user is no longer eligible, reset
-            if (localSelectedShippingMethod && localSelectedShippingMethod.id === 3) {
+            if (localSelectedShippingMethod && localSelectedShippingMethod.id === 'free_shipping') {
                 setLocalSelectedShippingMethod(null);
                 onShippingUpdate(0, null);
             }
         }
     }, [isEligibleForFreeShipping]);
+
+    // Direct address input handler for GooglePlacesInput onChange
+    const handleAddressInputChange = (value) => {
+        setStreetAddress(value);
+    };
 
     // Google Places Autocomplete handlers
     const handleAddressChange = (placeDetails = null) => {
@@ -269,30 +289,41 @@ const PaymentForm = ({ cartTotal, subTotal, shippingCost, onShippingUpdate, sele
     };
 
     const validateInformationStep = () => {
-        const requiredFields = [
-            emailInput,
-            firstName,
-            lastName,
-            streetAddress,
-            city,
-            state,
-            zipCode,
-            phone
-        ];
+        const requiredFields = {
+            email: emailInput,
+            firstName: firstName,
+            lastName: lastName,
+            streetAddress: streetAddress,
+            city: city,
+            state: state,
+            zipCode: zipCode,
+            phone: phone
+        };
 
-        const hasEmptyFields = requiredFields.some(field => !field || field.trim() === '');
-        const hasShippingMethod = localSelectedShippingMethod !== null;
+        // Debug logging
+        console.log('Form validation - Required fields:', requiredFields);
+        console.log('Form validation - Street address value:', streetAddress, 'length:', streetAddress?.length);
+        console.log('Form validation - Shipping method:', localSelectedShippingMethod);
 
-        if (hasEmptyFields) {
-            setErrorMessage(t('pleaseCompleteAllRequiredFields'));
+        // Check for empty required fields
+        const emptyFields = Object.entries(requiredFields)
+            .filter(([key, value]) => !value || value.toString().trim() === '')
+            .map(([key]) => key);
+
+        if (emptyFields.length > 0) {
+            console.log('Empty fields found:', emptyFields);
+            setErrorMessage(`Please complete the following required fields: ${emptyFields.join(', ')}`);
             return false;
         }
 
-        if (!hasShippingMethod) {
-            setErrorMessage(t('pleaseSelectShippingMethod'));
+        // Check for shipping method
+        if (!localSelectedShippingMethod) {
+            console.log('No shipping method selected');
+            setErrorMessage('Please select a shipping method');
             return false;
         }
 
+        console.log('Form validation passed');
         setErrorMessage('');
         return true;
     };
@@ -315,8 +346,27 @@ const PaymentForm = ({ cartTotal, subTotal, shippingCost, onShippingUpdate, sele
 
         try {
             // Validate form data
-            if (!emailInput || !firstName || !lastName || !streetAddress || !city || !state || !zipCode || !localSelectedShippingMethod) {
-                throw new Error(t('fillAllFields'));
+            const requiredFields = {
+                email: emailInput,
+                firstName: firstName,
+                lastName: lastName,
+                streetAddress: streetAddress,
+                city: city,
+                state: state,
+                zipCode: zipCode,
+                phone: phone
+            };
+
+            const emptyFields = Object.entries(requiredFields)
+                .filter(([key, value]) => !value || value.toString().trim() === '')
+                .map(([key]) => key);
+
+            if (emptyFields.length > 0) {
+                throw new Error(`Please complete the following required fields: ${emptyFields.join(', ')}`);
+            }
+
+            if (!localSelectedShippingMethod) {
+                throw new Error('Please select a shipping method');
             }
 
             if (turnstileKey && !isTurnstileVerified) {
@@ -404,19 +454,20 @@ const PaymentForm = ({ cartTotal, subTotal, shippingCost, onShippingUpdate, sele
             // Handle different payment methods
             if (paymentMethod === 'card' && hasStripe && stripe && elements) {
                 // Create payment intent for card payments
-                const response = await fetch('/api/checkout', {
+                const response = await fetch('/api/stripe', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                     },
                     body: JSON.stringify({
-                        orderData,
-                        storeSettings,
-                        returnUrl: window.location.origin + '/shop/checkout/success',
+                        amount: Math.round(parseFloat(cartTotal) * 100), // Convert to cents
+                        currency: (storeSettings?.currency || 'EUR').toLowerCase(),
+                        email: emailInput,
+                        automatic_payment_methods: true,
                     }),
                 });
 
-                const { clientSecret, error } = await response.json();
+                const { client_secret: clientSecret, error } = await response.json();
 
                 if (error) {
                     throw new Error(error);
@@ -444,18 +495,7 @@ const PaymentForm = ({ cartTotal, subTotal, shippingCost, onShippingUpdate, sele
                     }
                 }
 
-                // Confirm payment with Stripe
-                const { error: confirmError } = await stripe.confirmPayment({
-                    elements,
-                    clientSecret,
-                    confirmParams: {
-                        return_url: window.location.origin + '/shop/checkout/success',
-                    },
-                });
-
-                if (confirmError) {
-                    throw new Error(confirmError.message);
-                }
+                                // Store order data in localStorage before confirming payment\n                localStorage.setItem('orderData', JSON.stringify(orderData));\n\n                // Confirm payment with Stripe\n                const { error: confirmError } = await stripe.confirmPayment({\n                    elements,\n                    clientSecret,\n                    confirmParams: {\n                        return_url: `${window.location.origin}/shop/checkout/success?tx=${btoa(orderData.uid)}&payment_method=card`,\n                    },\n                });\n\n                if (confirmError) {\n                    // Remove order data if payment fails\n                    localStorage.removeItem('orderData');\n                    throw new Error(confirmError.message);\n                }
             } else {
                 // Handle alternative payment methods (bank transfer, pay on delivery)
                 const response = await fetch('/api/orders', {
@@ -559,13 +599,13 @@ const PaymentForm = ({ cartTotal, subTotal, shippingCost, onShippingUpdate, sele
                                 <input
                                     required
                                     type="email"
-                                    value={emailInput}
+                                    value={emailInput || ''}
                                     onChange={(e) => setEmailInput(e.target.value)}
                                     placeholder={t('emailAddress')}
                                     className="w-full border rounded-xl px-3 py-2 focus:ring-2 focus:ring-primary/20 focus:border-primary"
                                 />
                                 <PhoneInput
-                                    value={phone}
+                                    value={phone || ''}
                                     onChange={setPhone}
                                     defaultCountry={countryIso?.toUpperCase() || 'FR'}
                                     placeholder={'+000000000'}
@@ -582,7 +622,7 @@ const PaymentForm = ({ cartTotal, subTotal, shippingCost, onShippingUpdate, sele
                                     required
                                     type="text"
                                     placeholder={t('firstName')}
-                                    value={firstName}
+                                    value={firstName || ''}
                                     onChange={(e) => setFirstName(e.target.value)}
                                     className="border rounded-xl px-3 py-2 w-full focus:ring-2 focus:ring-primary/20 focus:border-primary"
                                 />
@@ -590,7 +630,7 @@ const PaymentForm = ({ cartTotal, subTotal, shippingCost, onShippingUpdate, sele
                                     required
                                     type="text"
                                     placeholder={t('lastName')}
-                                    value={lastName}
+                                    value={lastName || ''}
                                     onChange={(e) => setLastName(e.target.value)}
                                     className="border rounded-xl px-3 py-2 w-full focus:ring-2 focus:ring-primary/20 focus:border-primary"
                                 />
@@ -603,8 +643,8 @@ const PaymentForm = ({ cartTotal, subTotal, shippingCost, onShippingUpdate, sele
                                     <div className="google-places-container">
                                         <GooglePlacesInput
                                             legacy="mobile"
-                                            value={streetAddress}
-                                            onChange={handleAddressChange}
+                                            value={streetAddress || ''}
+                                            onChange={handleAddressInputChange}
                                             onPlaceSelected={handleGooglePlacesSelect}
                                             onError={handleAddressError}
                                             placeholder={t('streetAddress')}
@@ -613,13 +653,22 @@ const PaymentForm = ({ cartTotal, subTotal, shippingCost, onShippingUpdate, sele
                                             }}
                                             apiKey={googleMapsApiKey}
                                         />
+                                        {/* Fallback input in case GooglePlacesInput doesn't render */}
+                                        <input
+                                            type="text"
+                                            placeholder={t('streetAddress')}
+                                            value={streetAddress || ''}
+                                            onChange={(e) => setStreetAddress(e.target.value)}
+                                            className="hidden border rounded-xl px-3 py-2 w-full focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                                            style={{ display: 'none' }}
+                                        />
                                     </div>
                                 </div>
 
                                 <input
                                     type="text"
                                     placeholder={t('apartmentUnit')}
-                                    value={apartmentUnit}
+                                    value={apartmentUnit || ''}
                                     onChange={(e) => setApartmentUnit(e.target.value)}
                                     className="col-span-2 border rounded-xl px-3 py-2 w-full focus:ring-2 focus:ring-primary/20 focus:border-primary"
                                 />
@@ -627,7 +676,7 @@ const PaymentForm = ({ cartTotal, subTotal, shippingCost, onShippingUpdate, sele
                                     required
                                     type="text"
                                     placeholder={t('city')}
-                                    value={city}
+                                    value={city || ''}
                                     onChange={(e) => setCity(e.target.value)}
                                     className="border rounded-xl px-3 py-2 w-full focus:ring-2 focus:ring-primary/20 focus:border-primary"
                                 />
@@ -635,7 +684,7 @@ const PaymentForm = ({ cartTotal, subTotal, shippingCost, onShippingUpdate, sele
                                     required
                                     type="text"
                                     placeholder={t('stateProvince')}
-                                    value={state}
+                                    value={state || ''}
                                     onChange={(e) => setState(e.target.value)}
                                     className="border rounded-xl px-3 py-2 w-full focus:ring-2 focus:ring-primary/20 focus:border-primary"
                                 />
@@ -643,24 +692,14 @@ const PaymentForm = ({ cartTotal, subTotal, shippingCost, onShippingUpdate, sele
                                     required
                                     type="text"
                                     placeholder={t('zipPostalCode')}
-                                    value={zipCode}
+                                    value={zipCode || ''}
                                     onChange={(e) => setZipCode(e.target.value)}
                                     className="border rounded-xl px-3 py-2 w-full focus:ring-2 focus:ring-primary/20 focus:border-primary"
                                 />
                                 <div className="w-full"> 
                                     <CountryDropdown
                                         defaultValue={countryIso}
-                                        onChange={(selectedCountry) => {
-                                            setCountryIso(selectedCountry.alpha2);
-                                            setCountry(selectedCountry.alpha2);
-                                            // Update shipping when country changes
-                                            onShippingUpdate({
-                                                country: selectedCountry.alpha2,
-                                                state: state,
-                                                city: city,
-                                                zipCode: zipCode
-                                            });
-                                        }}
+                                        onChange={handleCountryChange}
                                         placeholder={'Select'}
                                     />
                                 </div>
@@ -687,7 +726,7 @@ const PaymentForm = ({ cartTotal, subTotal, shippingCost, onShippingUpdate, sele
                                     <div className="flex gap-2">
                                         <input
                                             type="text"
-                                            value={promoCode}
+                                            value={promoCode || ''}
                                             onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
                                             placeholder="Enter promo code"
                                             className="flex-1 border rounded-xl px-3 py-2 focus:ring-2 focus:ring-primary/20 focus:border-primary uppercase"
@@ -734,7 +773,7 @@ const PaymentForm = ({ cartTotal, subTotal, shippingCost, onShippingUpdate, sele
                         <div>
                             <h2 className="text-lg font-semibold mb-4">{t('deliveryNotes')}</h2>
                             <textarea
-                                value={deliveryNotes}
+                                value={deliveryNotes || ''}
                                 onChange={(e) => setDeliveryNotes(e.target.value)}
                                 placeholder={t('deliveryInstructions')}
                                 className="w-full border rounded-xl px-3 py-2 focus:ring-2 focus:ring-primary/20 focus:border-primary"
