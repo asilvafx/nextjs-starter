@@ -39,20 +39,16 @@ const Checkout = () => {
     // Calculate shipping cost based on free shipping eligibility
     const calculateShippingCost = () => {
         if (selectedShippingMethod) {
-            // If free shipping is eligible and this method supports it, return 0
-            if (isEligibleForFreeShipping && selectedShippingMethod.id === 3) {
+            // If free shipping is eligible and this is the free shipping method, return 0
+            if (isEligibleForFreeShipping && selectedShippingMethod.id === 'free_shipping') {
                 return 0;
             }
-            return selectedShippingMethod.base_price || selectedShippingMethod.basePrice || 0;
+            // Return the selected method's cost
+            return selectedShippingMethod.fixed_rate || selectedShippingMethod.base_price || selectedShippingMethod.basePrice || 0;
         }
         
-        // If no method selected but free shipping is eligible, return 0
-        if (isEligibleForFreeShipping) {
-            return 0;
-        }
-        
-        // Default shipping cost from store settings or fallback
-        return storeSettings?.defaultShippingCost || 5.99;
+        // If no method selected, return 0 (user needs to select a method)
+        return 0;
     };    // Calculate VAT breakdown
     const calculateVatBreakdown = () => {
         if (!storeSettings) return { subtotal: cartTotal, vatAmount: 0, total: cartTotal };
@@ -88,20 +84,23 @@ const Checkout = () => {
     const handleShippingUpdate = (newShippingCost, shippingMethod, discountAmount = 0) => {
         setSelectedShippingMethod(shippingMethod);
 
-        // Override shipping cost if free shipping is eligible and method supports it
-        if (shippingMethod && shippingMethod.id === 3 && isEligibleForFreeShipping) {
+        // Set shipping cost based on method selection
+        if (shippingMethod) {
+            const methodCost = shippingMethod.fixed_rate || shippingMethod.base_price || shippingMethod.basePrice || 0;
+            // If free shipping is eligible and this is the free shipping method, cost is 0
+            if (isEligibleForFreeShipping && shippingMethod.id === 'free_shipping') {
+                setShippingCost(0);
+            } else {
+                setShippingCost(methodCost);
+            }
+        } else {
             setShippingCost(0);
-        } else if (typeof newShippingCost === 'number') {
-            setShippingCost(newShippingCost);
         }
         
-        // Handle discount amount if provided
-        if (discountAmount !== undefined) {
+        if (typeof discountAmount === 'number') {
             setDiscountAmount(discountAmount);
         }
-    };
-
-    // Update shipping cost when cart total changes and affects free shipping eligibility
+    };    // Update shipping cost when cart total changes and affects free shipping eligibility
     useEffect(() => {
         const newShippingCost = calculateShippingCost();
         setShippingCost(newShippingCost);
@@ -185,13 +184,7 @@ const Checkout = () => {
                         <h1 className="text-4xl font-bold">{t('checkoutTitle')}</h1>
                     </div>
 
-                    {/* Free Shipping Progress Bar */}
-                    {totalItems > 0 && storeSettings?.freeShippingEnabled && (
-                        <FreeShippingProgressBar
-                            cartTotal={cartTotal}
-                            storeSettings={storeSettings}
-                        />
-                    )}
+
 
                     {totalItems === 0 ? (
                         <Card className="max-w-md mx-auto">
@@ -322,14 +315,14 @@ const Checkout = () => {
                                                     {t('shipping')}
                                                 </span>
                                                 <span>
-                                                    {finalShippingCost === 0 && isEligibleForFreeShipping ? (
-                                                        <Badge variant="secondary" className="text-green-600">Gratuit</Badge>
-                                                    ) : (
-                                                        selectedShippingMethod ? (
-                                                            <>{storeSettings?.currency === 'USD' ? '$' : '€'}{finalShippingCost.toFixed(2)}</>
+                                                    {selectedShippingMethod ? (
+                                                        finalShippingCost === 0 ? (
+                                                            <Badge variant="secondary" className="text-green-600">Gratuit</Badge>
                                                         ) : (
-                                                            <>-</>
+                                                            <>{storeSettings?.currency === 'USD' ? '$' : '€'}{finalShippingCost.toFixed(2)}</>
                                                         )
+                                                    ) : (
+                                                        <>-</>
                                                     )}
                                                 </span>
                                             </div>
