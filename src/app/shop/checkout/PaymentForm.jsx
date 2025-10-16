@@ -7,6 +7,7 @@ import {
     useStripe,
     useElements,
 } from '@stripe/react-stripe-js';
+import { Button } from '@/components/ui/button';
 import { PhoneInput } from '@/components/ui/phone-input';
 import { CountryDropdown } from '@/components/ui/country-dropdown';
 import { useCart } from 'react-use-cart';
@@ -18,11 +19,11 @@ import { motion, AnimatePresence } from 'framer-motion';
 import Turnstile from 'react-turnstile';
 import { getTurnstileSiteKey, getGoogleMapsApiKey } from '@/lib/client/integrations';
 
-const PaymentForm = ({ cartTotal, subTotal, shippingCost, onShippingUpdate, selectedShippingMethod, isEligibleForFreeShipping, storeSettings }) => {
+const PaymentForm = ({ cartTotal, subTotal, shippingCost, onShippingUpdate, selectedShippingMethod, isEligibleForFreeShipping, storeSettings, hasStripe = false }) => {
     const t = useTranslations('Checkout');
     const { data: session } = useSession();
-    const stripe = useStripe();
-    const elements = useElements();
+    const stripe = hasStripe ? useStripe() : null;
+    const elements = hasStripe ? useElements() : null;
     const { items } = useCart();
 
     // UI State
@@ -309,10 +310,6 @@ const PaymentForm = ({ cartTotal, subTotal, shippingCost, onShippingUpdate, sele
     const handleSubmit = async (event) => {
         event.preventDefault();
 
-        if (!stripe || !elements) {
-            return;
-        }
-
         setIsProcessing(true);
         setErrorMessage('');
 
@@ -326,9 +323,12 @@ const PaymentForm = ({ cartTotal, subTotal, shippingCost, onShippingUpdate, sele
                 throw new Error('Please complete the security verification');
             }
 
-            const { error: submitError } = await elements.submit();
-            if (submitError) {
-                throw new Error(submitError.message);
+            // Handle Stripe payment if available
+            if (hasStripe && stripe && elements) {
+                const { error: submitError } = await elements.submit();
+                if (submitError) {
+                    throw new Error(submitError.message);
+                }
             }
 
             // Create customer data to match orders structure
@@ -361,6 +361,16 @@ const PaymentForm = ({ cartTotal, subTotal, shippingCost, onShippingUpdate, sele
             const couponDiscount = discountAmount || 0;
             const finalTotal = itemsTotal + shippingTotal - couponDiscount;
 
+            // Determine payment method based on availability
+            let paymentMethod = 'pending';
+            if (hasStripe && storeSettings?.paymentMethods?.cardPayments) {
+                paymentMethod = 'card';
+            } else if (storeSettings?.paymentMethods?.bankTransfer) {
+                paymentMethod = 'bank_transfer';
+            } else if (storeSettings?.paymentMethods?.payOnDelivery) {
+                paymentMethod = 'pay_on_delivery';
+            }
+
             // Create order data matching the orders page structure
             const orderData = {
                 id: `ORD-${Date.now()}`,
@@ -380,9 +390,10 @@ const PaymentForm = ({ cartTotal, subTotal, shippingCost, onShippingUpdate, sele
                 } : null,
                 total: Math.max(0, finalTotal),
                 status: 'pending',
-                paymentStatus: 'pending',
-                paymentMethod: 'card',
-                method: 'card', // Alternative field name used in some places
+                paymentStatus: paymentMethod === 'card' ? 'pending' : 'awaiting_payment',
+                paymentMethod: paymentMethod,
+                method: paymentMethod,
+                shippingMethod: localSelectedShippingMethod,
                 tracking: null,
                 deliveryNotes,
                 sendEmail: true,
@@ -390,58 +401,104 @@ const PaymentForm = ({ cartTotal, subTotal, shippingCost, onShippingUpdate, sele
                 updatedAt: new Date().toISOString(),
             };
 
-            // Create payment intent
-            const response = await fetch('/api/checkout', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    orderData,
-                    storeSettings,
-                    returnUrl: window.location.origin + '/shop/checkout/success',
-                }),
-            });
+            // Handle different payment methods
+            if (paymentMethod === 'card' && hasStripe && stripe && elements) {
+                // Create payment intent for card payments
+                const response = await fetch('/api/checkout', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        orderData,
+                        storeSettings,
+                        returnUrl: window.location.origin + '/shop/checkout/success',
+                    }),
+                });
 
-            const { clientSecret, error } = await response.json();
+                const { clientSecret, error } = await response.json();
 
-            if (error) {
-                throw new Error(error);
-            }
-
-            // Apply coupon usage if a coupon was used
-            if (appliedCoupon) {
-                try {
-                    await fetch('/api/query/public/apply-coupon', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({
-                            couponId: appliedCoupon.id,
-                            orderId: orderData.id,
-                            customerEmail: emailInput,
-                            orderAmount: itemsTotal,
-                            discountAmount: couponDiscount
-                        }),
-                    });
-                } catch (couponError) {
-                    console.error('Failed to apply coupon usage:', couponError);
-                    // Don't fail the payment for coupon tracking errors
+                if (error) {
+                    throw new Error(error);
                 }
-            }
 
-            // Confirm payment
-            const { error: confirmError } = await stripe.confirmPayment({
-                elements,
-                clientSecret,
-                confirmParams: {
-                    return_url: window.location.origin + '/shop/checkout/success',
-                },
-            });
+                // Apply coupon usage if a coupon was used
+                if (appliedCoupon) {
+                    try {
+                        await fetch('/api/query/public/apply-coupon', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({
+                                couponId: appliedCoupon.id,
+                                orderId: orderData.id,
+                                customerEmail: emailInput,
+                                orderAmount: itemsTotal,
+                                discountAmount: couponDiscount
+                            }),
+                        });
+                    } catch (couponError) {
+                        console.error('Failed to apply coupon usage:', couponError);
+                        // Don't fail the payment for coupon tracking errors
+                    }
+                }
 
-            if (confirmError) {
-                throw new Error(confirmError.message);
+                // Confirm payment with Stripe
+                const { error: confirmError } = await stripe.confirmPayment({
+                    elements,
+                    clientSecret,
+                    confirmParams: {
+                        return_url: window.location.origin + '/shop/checkout/success',
+                    },
+                });
+
+                if (confirmError) {
+                    throw new Error(confirmError.message);
+                }
+            } else {
+                // Handle alternative payment methods (bank transfer, pay on delivery)
+                const response = await fetch('/api/orders', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(orderData),
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    // Apply coupon usage if a coupon was used
+                    if (appliedCoupon) {
+                        try {
+                            await fetch('/api/query/public/apply-coupon', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                },
+                                body: JSON.stringify({
+                                    couponId: appliedCoupon.id,
+                                    orderId: orderData.id,
+                                    customerEmail: emailInput,
+                                    orderAmount: itemsTotal,
+                                    discountAmount: couponDiscount
+                                }),
+                            });
+                        } catch (couponError) {
+                            console.error('Failed to apply coupon usage:', couponError);
+                        }
+                    }
+
+                    // Clear cart and redirect to success page
+                    if (typeof window !== 'undefined' && window.emptyCart) {
+                        window.emptyCart();
+                    }
+                    
+                    window.location.href = `/shop/checkout/success?order_id=${orderData.id}&payment_method=${paymentMethod}`;
+                } else {
+                    throw new Error(result.error || 'Failed to create order');
+                }
             }
 
         } catch (error) {
@@ -636,14 +693,14 @@ const PaymentForm = ({ cartTotal, subTotal, shippingCost, onShippingUpdate, sele
                                             className="flex-1 border rounded-xl px-3 py-2 focus:ring-2 focus:ring-primary/20 focus:border-primary uppercase"
                                             disabled={promoLoading}
                                         />
-                                        <button
-                                            type="button"
+                                        <Button
+                                            variant="ghost"
                                             onClick={validatePromoCode}
                                             disabled={promoLoading || !promoCode.trim()}
-                                            className="px-4 py-2 bg-primary text-white rounded-xl hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
+                                            className="disabled:opacity-50 disabled:cursor-not-allowed"
                                         >
                                             {promoLoading ? 'Validating...' : 'Apply'}
-                                        </button>
+                                        </Button>
                                     </div>
                                     {promoError && (
                                         <div className="text-red-600 text-sm">{promoError}</div>
@@ -781,14 +838,49 @@ const PaymentForm = ({ cartTotal, subTotal, shippingCost, onShippingUpdate, sele
                                 </div>
                             )}
 
-                            {/* Payment Element Section */}
+                            {/* Payment Methods Section */}
                             <div>
-                                <h2 className="text-lg font-semibold mb-4">{t('cardInformation')}</h2>
-                                {storeSettings?.paymentMethods?.cardPayments ? (
-                                    <PaymentElement theme="light" />
-                                ) : (
-                                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                                        <p className="text-yellow-800">Card payments are not currently available. Please contact support for alternative payment methods.</p>
+                                <h2 className="text-lg font-semibold mb-4">Payment Information</h2>
+                                
+                                {/* Card Payment */}
+                                {hasStripe && storeSettings?.paymentMethods?.cardPayments ? (
+                                    <div className="mb-6">
+                                        <h3 className="text-md font-medium mb-2">💳 Card Payment</h3>
+                                        <PaymentElement theme="light" />
+                                    </div>
+                                ) : storeSettings?.paymentMethods?.cardPayments ? (
+                                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
+                                        <h3 className="text-md font-medium mb-2">💳 Card Payment</h3>
+                                        <p className="text-yellow-800">Card payment integration is being set up. Please use alternative payment methods below.</p>
+                                    </div>
+                                ) : null}
+
+                                {/* Alternative Payment Methods */}
+                                {(!hasStripe || !storeSettings?.paymentMethods?.cardPayments) && (
+                                    <div className="space-y-4">
+                                        {storeSettings?.paymentMethods?.bankTransfer && (
+                                            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                                                <h3 className="text-md font-medium mb-2">🏦 Bank Transfer</h3>
+                                                <p className="text-blue-800 text-sm">
+                                                    You will receive bank transfer details via email after placing your order.
+                                                </p>
+                                            </div>
+                                        )}
+                                        
+                                        {storeSettings?.paymentMethods?.payOnDelivery && (
+                                            <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                                                <h3 className="text-md font-medium mb-2">📦 Pay on Delivery</h3>
+                                                <p className="text-green-800 text-sm">
+                                                    Pay when your order is delivered to your address.
+                                                </p>
+                                            </div>
+                                        )}
+                                        
+                                        {!storeSettings?.paymentMethods?.bankTransfer && !storeSettings?.paymentMethods?.payOnDelivery && (
+                                            <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                                                <p className="text-gray-600">Please contact support to complete your order.</p>
+                                            </div>
+                                        )}
                                     </div>
                                 )}
                             </div>
@@ -797,7 +889,7 @@ const PaymentForm = ({ cartTotal, subTotal, shippingCost, onShippingUpdate, sele
                             <button
                                 className="w-full button primary"
                                 type="submit"
-                                disabled={!stripe || !elements || isProcessing || (turnstileKey && !isTurnstileVerified)}
+                                disabled={isProcessing || (turnstileKey && !isTurnstileVerified) || (hasStripe && storeSettings?.paymentMethods?.cardPayments && (!stripe || !elements))}
                             >
                                 {isProcessing ? (
                                     <div className="flex items-center justify-center space-x-2">
@@ -805,7 +897,9 @@ const PaymentForm = ({ cartTotal, subTotal, shippingCost, onShippingUpdate, sele
                                         <span>{t('processing')}</span>
                                     </div>
                                 ) : (
-                                    t('payButton', { amount: cartTotal })
+                                    hasStripe && storeSettings?.paymentMethods?.cardPayments ? 
+                                        t('payButton', { amount: cartTotal }) :
+                                        'Place Order'
                                 )}
                             </button>
 

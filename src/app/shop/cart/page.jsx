@@ -27,6 +27,7 @@ const Cart = () => {
     } = useCart();
 
     const [storeSettings, setStoreSettings] = useState(null);
+    const [vatBreakdown, setVatBreakdown] = useState({ subtotal: 0, vatAmount: 0, total: 0 });
 
     // Fetch store settings for consistent pricing and shipping
     useEffect(() => {
@@ -46,7 +47,35 @@ const Cart = () => {
 
     const FREE_SHIPPING_THRESHOLD = storeSettings?.freeShippingThreshold || 50;
     const isEligibleForFreeShipping = storeSettings?.freeShippingEnabled && cartTotal >= FREE_SHIPPING_THRESHOLD;
-    const totalPrice = cartTotal.toFixed(2);
+    
+    // Calculate VAT breakdown
+    const calculateVatBreakdown = () => {
+        if (!storeSettings) return { subtotal: cartTotal, vatAmount: 0, total: cartTotal };
+        
+        const vatRate = storeSettings.vatPercentage / 100;
+        
+        if (storeSettings.vatIncludedInPrice) {
+            // VAT is already included in item prices
+            const subtotalExclVat = cartTotal / (1 + vatRate);
+            const vatAmount = cartTotal - subtotalExclVat;
+            return {
+                subtotal: subtotalExclVat,
+                vatAmount: vatAmount,
+                total: cartTotal
+            };
+        } else {
+            // VAT needs to be added
+            const vatAmount = storeSettings.applyVatAtCheckout ? cartTotal * vatRate : 0;
+            return {
+                subtotal: cartTotal,
+                vatAmount: vatAmount,
+                total: cartTotal + vatAmount
+            };
+        }
+    };
+    
+    const vatInfo = calculateVatBreakdown();
+    const totalPrice = vatInfo.total.toFixed(2);
 
     const handleQuantityIncrease = (id, currentQuantity) => {
         updateItemQuantity(id, currentQuantity + 1);
@@ -129,7 +158,7 @@ const Cart = () => {
                         <div className="grid lg:grid-cols-3 gap-8">
                             {/* Cart Items */}
                             <div className="lg:col-span-2">
-                                <Card>
+                                <Card className="mb-6">
                                     <CardHeader>
                                         <CardTitle className="flex items-center gap-2">
                                             <ShoppingCart className="h-5 w-5" />
@@ -221,7 +250,7 @@ const Cart = () => {
 
                                 <FreeShippingProgressBar
                                     cartTotal={cartTotal}
-                                    threshold={FREE_SHIPPING_THRESHOLD}
+                                    storeSettings={storeSettings}
                                 />
                             </div>
 
@@ -232,7 +261,7 @@ const Cart = () => {
                                     initial={{ opacity: 0, x: 20 }}
                                     animate={{ opacity: 1, x: 0 }}
                                     transition={{ duration: 0.3, delay: 0.2 }}
-                                    className="border rounded-sm p-4 bg-gray-50 h-fit sticky top-4"
+                                    className="border rounded-sm p-4 bg-card h-fit sticky top-4"
                                 >
                                     <h2 className="text-xl font-semibold mb-6">{t('orderSummary')}</h2>
 
@@ -274,24 +303,29 @@ const Cart = () => {
                                     </div>
 
                                     {/* Action Buttons */}
-                                    <div className="space-y-3">
+                                    <div className="space-y-3 flex flex-col">
+                                  
                                         <Link
                                             href="/shop/checkout"
-                                            className="button primary w-full"
+                                            className="w-full"
                                         >
+                                            <Button className="w-full">
                                             {t('proceedToCheckout')}
+                                            </Button> 
                                         </Link>
                                         <Link
                                             href="/shop"
-                                            className="button w-full"
+                                            className="w-full"
                                         >
+                                            <Button className="w-full" variant="secondary">
                                             {t('continueShopping')}
+                                            </Button> 
                                         </Link>
                                     </div>
 
                                     {/* Security Notice */}
                                     <div className="mt-6 p-3 bg-neutral-300/20 rounded-lg">
-                                        <div className="flex items-center space-x-2 text-xs text-blue-700">
+                                        <div className="flex items-center space-x-2 text-xs text-muted-foreground">
                                             <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                                                 <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
                                             </svg>

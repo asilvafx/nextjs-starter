@@ -16,6 +16,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Separator } from '@/components/ui/separator';
 import { ShoppingCart, Lock, ArrowLeft } from 'lucide-react';
 import PaymentForm from './PaymentForm.jsx';
+import FreeShippingProgressBar from '../components/FreeShippingProgressBar';
 
 // Use environment variables
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PK);
@@ -24,11 +25,12 @@ const Checkout = () => {
     const t = useTranslations('Checkout');
     const { cartTotal, items, totalItems } = useCart();
     const [stripeOptions, setStripeOptions] = useState(null);
-    const [shippingCost, setShippingCost] = useState(5.99);
+    const [shippingCost, setShippingCost] = useState(0);
     const [selectedShippingMethod, setSelectedShippingMethod] = useState(null);
     const [storeSettings, setStoreSettings] = useState(null);
     const [loading, setLoading] = useState(true);
     const [discountAmount, setDiscountAmount] = useState(0);
+    const [vatBreakdown, setVatBreakdown] = useState({ subtotal: 0, vatAmount: 0, total: 0 });
 
     // Use store settings for free shipping threshold
     const FREE_SHIPPING_THRESHOLD = storeSettings?.freeShippingThreshold || 50;
@@ -37,19 +39,50 @@ const Checkout = () => {
     // Calculate shipping cost based on free shipping eligibility
     const calculateShippingCost = () => {
         if (selectedShippingMethod) {
-            // If free shipping is selected and eligible, cost is 0
-            if (selectedShippingMethod.id === 3 && isEligibleForFreeShipping) {
+            // If free shipping is eligible and this method supports it, return 0
+            if (isEligibleForFreeShipping && selectedShippingMethod.id === 3) {
                 return 0;
             }
-            return selectedShippingMethod.fixed_rate;
+            return selectedShippingMethod.base_price || selectedShippingMethod.basePrice || 0;
         }
-        // Default shipping cost
-        return isEligibleForFreeShipping && 0;
+        
+        // If no method selected but free shipping is eligible, return 0
+        if (isEligibleForFreeShipping) {
+            return 0;
+        }
+        
+        // Default shipping cost from store settings or fallback
+        return storeSettings?.defaultShippingCost || 5.99;
+    };    // Calculate VAT breakdown
+    const calculateVatBreakdown = () => {
+        if (!storeSettings) return { subtotal: cartTotal, vatAmount: 0, total: cartTotal };
+        
+        const vatRate = storeSettings.vatPercentage / 100;
+        
+        if (storeSettings.vatIncludedInPrice) {
+            // VAT is already included in item prices
+            const subtotalExclVat = cartTotal / (1 + vatRate);
+            const vatAmount = cartTotal - subtotalExclVat;
+            return {
+                subtotal: subtotalExclVat,
+                vatAmount: vatAmount,
+                total: cartTotal
+            };
+        } else {
+            // VAT needs to be added at checkout if configured
+            const vatAmount = storeSettings.applyVatAtCheckout ? cartTotal * vatRate : 0;
+            return {
+                subtotal: cartTotal,
+                vatAmount: vatAmount,
+                total: cartTotal + vatAmount
+            };
+        }
     };
-
-    const subTotal = cartTotal.toFixed(2);
+    
+    const vatInfo = calculateVatBreakdown();
+    const subTotal = vatInfo.subtotal.toFixed(2);
     const finalShippingCost = calculateShippingCost();
-    const totalPrice = Math.max(0, cartTotal + finalShippingCost - discountAmount).toFixed(2);
+    const totalPrice = Math.max(0, vatInfo.total + finalShippingCost - discountAmount).toFixed(2);
 
     // Handler for shipping cost updates from PaymentForm
     const handleShippingUpdate = (newShippingCost, shippingMethod, discountAmount = 0) => {
@@ -77,19 +110,20 @@ const Checkout = () => {
     // Fetch store settings
     const fetchStoreSettings = async () => {
         try {
-            const response = await fetch('/api/store/settings');
+            const response = await fetch('/api/query/public/store_settings');
             const result = await response.json();
-            if (result.success) {
-                setStoreSettings(result.data);
+            if (result.success && result.data?.[0]) {
+                setStoreSettings(result.data[0]);
+                // Set initial shipping cost based on settings
+                const defaultCost = result.data[0].defaultShippingCost || 5.99;
+                setShippingCost(defaultCost);
             }
         } catch (error) {
             console.error('Failed to fetch store settings:', error);
         } finally {
             setLoading(false);
         }
-    };
-
-    useEffect(() => {
+    };    useEffect(() => {
         fetchStoreSettings();
     }, []);
 
@@ -151,6 +185,14 @@ const Checkout = () => {
                         <h1 className="text-4xl font-bold">{t('checkoutTitle')}</h1>
                     </div>
 
+                    {/* Free Shipping Progress Bar */}
+                    {totalItems > 0 && storeSettings?.freeShippingEnabled && (
+                        <FreeShippingProgressBar
+                            cartTotal={cartTotal}
+                            storeSettings={storeSettings}
+                        />
+                    )}
+
                     {totalItems === 0 ? (
                         <Card className="max-w-md mx-auto">
                             <CardContent className="text-center py-12">
@@ -194,7 +236,7 @@ const Checkout = () => {
                                         <CardTitle>{t('checkoutInformation')}</CardTitle>
                                     </CardHeader>
                                     <CardContent>
-                                        {stripeOptions && (
+                                        {stripeOptions ? (
                                             <Elements stripe={stripePromise} options={stripeOptions}>
                                                 <PaymentForm
                                                     cartTotal={totalPrice}
@@ -204,8 +246,20 @@ const Checkout = () => {
                                                     selectedShippingMethod={selectedShippingMethod}
                                                     isEligibleForFreeShipping={isEligibleForFreeShipping}
                                                     storeSettings={storeSettings}
+                                                    hasStripe={true}
                                                 />
                                             </Elements>
+                                        ) : (
+                                            <PaymentForm
+                                                cartTotal={totalPrice}
+                                                subTotal={subTotal}
+                                                shippingCost={finalShippingCost}
+                                                onShippingUpdate={handleShippingUpdate}
+                                                selectedShippingMethod={selectedShippingMethod}
+                                                isEligibleForFreeShipping={isEligibleForFreeShipping}
+                                                storeSettings={storeSettings}
+                                                hasStripe={false}
+                                            />
                                         )}
                                     </CardContent>
                                 </Card>

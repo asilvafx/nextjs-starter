@@ -33,6 +33,36 @@ function Shop() {
     const [categoryFilter, setCategoryFilter] = useState('all');
     const [collectionFilter, setCollectionFilter] = useState('all');
 
+    // VAT calculation helpers
+    const calculateDisplayPrice = (basePrice) => {
+        if (!storeSettings) return basePrice;
+        
+        const vatRate = storeSettings.vatPercentage / 100;
+        
+        if (storeSettings.vatIncludedInPrice) {
+            // If VAT is included in price, show the base price as-is
+            return basePrice;
+        } else {
+            // If VAT is not included, add it for display if configured to show VAT-inclusive prices
+            return basePrice * (1 + vatRate);
+        }
+    };
+
+    const getVatInfo = (basePrice) => {
+        if (!storeSettings) return null;
+        
+        const vatRate = storeSettings.vatPercentage / 100;
+        const vatAmount = storeSettings.vatIncludedInPrice 
+            ? basePrice * vatRate / (1 + vatRate)
+            : basePrice * vatRate;
+            
+        return {
+            rate: storeSettings.vatPercentage,
+            amount: vatAmount,
+            included: storeSettings.vatIncludedInPrice
+        };
+    };
+
     // Fetch all data on component mount
     useEffect(() => {
         loadAllData();

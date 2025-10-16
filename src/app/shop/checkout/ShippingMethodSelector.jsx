@@ -28,29 +28,55 @@ const ShippingMethodSelector = ({
             setError('');
 
             try {
-                // Convert country name to country code if needed
-                let countryCode = selectedCountry;
+                // Fetch store settings to get carriers
+                const response = await fetch('/api/query/public/store_settings');
                 
-                // If selectedCountry is a full country name, convert to code
-                // This might need adjustment based on your country data structure
-                if (selectedCountry.length > 3) {
-                    // You may need to implement a mapping from country names to codes
-                    // For now, using the country as-is
-                    countryCode = selectedCountry;
-                }
-
-                const response = await fetch(`/api/shop/shipping?country=${encodeURIComponent(countryCode)}`);
-
                 if (!response.ok) {
-                    throw new Error('Failed to fetch shipping methods');
+                    throw new Error('Failed to fetch store settings');
                 }
 
-                const data = await response.json();
-                let availableMethods = data.shippingMethods || [];
+                const storeData = await response.json();
+                const storeSettings = storeData?.data?.[0];
+                let availableMethods = [];
 
-                // Filter out free shipping option if user is not eligible
-                if (!isEligibleForFreeShipping) {
-                    availableMethods = availableMethods.filter(method => method.id !== 'free_shipping');
+                if (storeSettings?.carriers && storeSettings.carriers.length > 0) {
+                    // Filter carriers that support the selected country and are enabled
+                    const enabledCarriers = storeSettings.carriers.filter(carrier => 
+                        carrier.enabled && 
+                        (carrier.supportedCountries.includes(selectedCountry) || 
+                         carrier.supportedCountries.includes('ALL') ||
+                         carrier.supportedCountries.length === 0)
+                    );
+
+                    // Convert carriers to shipping method format
+                    availableMethods = enabledCarriers.map(carrier => ({
+                        id: carrier.id,
+                        name: carrier.name,
+                        carrier_name: carrier.carrierName,
+                        description: carrier.description,
+                        delivery_time: carrier.deliveryTime,
+                        fixed_rate: carrier.basePrice,
+                        logo: carrier.logo
+                    }));
+                }
+
+                // Add free shipping option if eligible and country is allowed
+                if (isEligibleForFreeShipping && storeSettings?.freeShippingEnabled) {
+                    const isCountryAllowed = !storeSettings.allowedCountries?.length || 
+                        storeSettings.allowedCountries.includes(selectedCountry);
+                    const isCountryBanned = storeSettings.bannedCountries?.includes(selectedCountry);
+                    
+                    if (isCountryAllowed && !isCountryBanned) {
+                        availableMethods.unshift({
+                            id: 'free_shipping',
+                            name: 'Free Shipping',
+                            carrier_name: 'Standard',
+                            description: `Free shipping on orders over €${storeSettings.freeShippingThreshold}`,
+                            delivery_time: '5-7 business days',
+                            fixed_rate: 0,
+                            logo: null
+                        });
+                    }
                 }
 
                 setShippingMethods(availableMethods);

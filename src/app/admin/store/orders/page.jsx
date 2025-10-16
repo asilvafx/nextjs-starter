@@ -170,10 +170,20 @@ export default function OrdersPage() {
 
   const fetchStoreSettings = async () => {
     try {
-      const response = await fetch('/api/shop/settings');
-      const result = await response.json();
-      if (result.success) {
-        setStoreSettings(result.data);
+      const response = await getAll("store_settings");
+      if (response?.success && response.data?.length > 0) {
+        const settings = response.data[0];
+        setStoreSettings(settings);
+        
+        // Update initial form data with VAT settings if they exist
+        if (settings.vatPercentage !== undefined) {
+          setFormData(prev => ({
+            ...prev,
+            taxEnabled: true,
+            taxRate: settings.vatPercentage,
+            taxIncluded: settings.vatIncludedInPrice
+          }));
+        }
       }
     } catch (error) {
       console.error('Failed to fetch store settings:', error);

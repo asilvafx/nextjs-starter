@@ -2,25 +2,15 @@
 
 "use client";
 
-import { useState, useEffect, useRef } from "react";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm, useFieldArray } from "react-hook-form";
-import * as z from "zod";
+import { useState, useEffect, useRef } from "react"; 
 import { toast } from "sonner";
-import { Loader2 } from "lucide-react";
+import { Loader2, ChevronsUpDown } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input"; 
+import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import {
-  Form,
-  FormControl,
-  FormDescription,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
+// Form components removed - using traditional React state management
 import {
   Select,
   SelectContent,
@@ -66,91 +56,86 @@ import {
   Check
 } from "lucide-react";
 
-// Form validation schema
-const storeSettingsSchema = z.object({
-  // Business Details
-  businessName: z.string().min(2, "Business name is required"),
-  tvaNumber: z.string().optional(),
-  address: z.string().optional(),
-  
-  // VAT Settings
-  vatPercentage: z.number().min(0).max(100),
-  vatIncludedInPrice: z.boolean(),
-  applyVatAtCheckout: z.boolean(),
-  
-  // Payment Methods
-  paymentMethods: z.object({
-    cardPayments: z.boolean(),
-    stripePublicKey: z.string().optional(),
-    stripeSecretKey: z.string().optional(),
-    bankTransfer: z.boolean(),
-    payOnDelivery: z.boolean(),
-  }),
-  
-  // Shipping Settings
-  freeShippingEnabled: z.boolean(),
-  freeShippingThreshold: z.number().optional(),
-  freeShippingCountries: z.array(z.string().length(3)).optional(), // Countries eligible for free shipping
-  internationalShipping: z.boolean(),
-  allowedCountries: z.array(z.string().length(3)), // ISO 3166-1 alpha-3 codes
-  bannedCountries: z.array(z.string().length(3)), // ISO 3166-1 alpha-3 codes
-  
-  // Carriers Configuration
-  carriers: z.array(z.object({
-    id: z.string(),
-    name: z.string(),
-    carrierName: z.string(),
-    description: z.string().optional(),
-    deliveryTime: z.string(),
-    basePrice: z.number(),
-    supportedCountries: z.array(z.string().length(3)),
-    logo: z.string().optional(),
-    enabled: z.boolean(),
-  })).optional(),
-  
-  // Store Settings
-  currency: z.enum(["EUR", "USD", "GBP", "AUD", "CAD", "JPY"]),
-});
+// Default form state
+const defaultFormState = {
+  businessName: "",
+  tvaNumber: "",
+  address: "",
+  vatPercentage: 20,
+  vatIncludedInPrice: true,
+  applyVatAtCheckout: false,
+  paymentMethods: {
+    cardPayments: false,
+    stripePublicKey: "",
+    stripeSecretKey: "",
+    bankTransfer: false,
+    payOnDelivery: false,
+  },
+  freeShippingEnabled: false,
+  freeShippingThreshold: 50,
+  internationalShipping: false,
+  allowedCountries: [],
+  bannedCountries: [],
+  carriers: [],
+  currency: "EUR",
+};
 
 export default function StoreSettingsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [settingsId, setSettingsId] = useState(null);
+  const [formData, setFormData] = useState(defaultFormState);
+  const [errors, setErrors] = useState({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedAllowedCountries, setSelectedAllowedCountries] = useState([]);
   const [selectedBannedCountries, setSelectedBannedCountries] = useState([]);
-  const [selectedFreeShippingCountries, setSelectedFreeShippingCountries] = useState([]);
   const [carriers, setCarriers] = useState([]);
   const [allowedOpen, setAllowedOpen] = useState(false);
   const [bannedOpen, setBannedOpen] = useState(false);
-  const [freeShippingOpen, setFreeShippingOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("business");
   const fetchedRef = useRef(false);
 
-  const form = useForm({
-    resolver: zodResolver(storeSettingsSchema),
-    defaultValues: {
-      businessName: "",
-      tvaNumber: "",
-      address: "",
-      vatPercentage: 0,
-      vatIncludedInPrice: false,
-      applyVatAtCheckout: true,
-      paymentMethods: {
-        cardPayments: false,
-        stripePublicKey: "",
-        stripeSecretKey: "",
-        bankTransfer: false,
-        payOnDelivery: false,
-      },
-      freeShippingEnabled: false,
-      freeShippingThreshold: 0,
-      freeShippingCountries: [],
-      internationalShipping: false,
-      allowedCountries: [],
-      bannedCountries: [],
-      carriers: [],
-      currency: "EUR",
-    },
-  });
+  const handleInputChange = (field, value) => {
+    setFormData(prev => ({
+      ...prev,
+      [field]: value
+    }));
+    // Clear error when user starts typing
+    if (errors[field]) {
+      setErrors(prev => ({
+        ...prev,
+        [field]: ''
+      }));
+    }
+  };
+
+  const handleNestedInputChange = (parent, field, value) => {
+    setFormData(prev => ({
+      ...prev,
+      [parent]: {
+        ...prev[parent],
+        [field]: value
+      }
+    }));
+  };
+
+  const validateForm = () => {
+    const newErrors = {};
+    
+    if (!formData.businessName || formData.businessName.length < 2) {
+      newErrors.businessName = "Business name is required (minimum 2 characters)";
+    }
+    
+    if (formData.vatPercentage < 0 || formData.vatPercentage > 100) {
+      newErrors.vatPercentage = "VAT percentage must be between 0 and 100";
+    }
+    
+    if (formData.freeShippingEnabled && (!formData.freeShippingThreshold || formData.freeShippingThreshold <= 0)) {
+      newErrors.freeShippingThreshold = "Free shipping threshold must be greater than 0";
+    }
+    
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
 
   useEffect(() => {
     const fetchSettings = async () => {
@@ -164,39 +149,33 @@ export default function StoreSettingsPage() {
         const settings = await getAll("store_settings"); 
         const settingsData = settings?.data[0];   
 
-        if (settings.success && settingsData?.id) { 
-          form.reset(settingsData);
+        if (settings.success && settingsData?.id) {
           setSettingsId(settingsData?.id);
+          setFormData({
+            businessName: settingsData.businessName || "",
+            tvaNumber: settingsData.tvaNumber || "",
+            address: settingsData.address || "",
+            vatPercentage: settingsData.vatPercentage || 20,
+            vatIncludedInPrice: settingsData.vatIncludedInPrice !== false,
+            applyVatAtCheckout: settingsData.applyVatAtCheckout || false,
+            paymentMethods: {
+              cardPayments: settingsData.paymentMethods?.cardPayments || false,
+              stripePublicKey: settingsData.paymentMethods?.stripePublicKey || "",
+              stripeSecretKey: settingsData.paymentMethods?.stripeSecretKey || "",
+              bankTransfer: settingsData.paymentMethods?.bankTransfer || false,
+              payOnDelivery: settingsData.paymentMethods?.payOnDelivery || false,
+            },
+            freeShippingEnabled: settingsData.freeShippingEnabled || false,
+            freeShippingThreshold: settingsData.freeShippingThreshold || 50,
+            internationalShipping: settingsData.internationalShipping || false,
+            allowedCountries: settingsData.allowedCountries || [],
+            bannedCountries: settingsData.bannedCountries || [],
+            carriers: settingsData.carriers || [],
+            currency: settingsData.currency || "EUR",
+          });
           setSelectedAllowedCountries(settingsData.allowedCountries || []);
           setSelectedBannedCountries(settingsData.bannedCountries || []);
-        } else { 
-          // Use form's default values as initial store settings
-          const defaultValues = {
-            businessName: "",
-            tvaNumber: "",
-            address: "",
-            vatPercentage: 0,
-            vatIncludedInPrice: false,
-            applyVatAtCheckout: true,
-            paymentMethods: {
-              cardPayments: false,
-              stripePublicKey: "",
-              stripeSecretKey: "",
-              bankTransfer: false,
-              payOnDelivery: false,
-            },
-            freeShippingEnabled: false,
-            freeShippingThreshold: 0,
-            internationalShipping: false,
-            allowedCountries: [],
-            bannedCountries: [],
-            currency: "EUR",
-          };
-          
-          // Reset form with default values
-          form.reset(defaultValues);
-          setSelectedAllowedCountries([]);
-          setSelectedBannedCountries([]); 
+          setCarriers(settingsData.carriers || []);
         }
       } catch (error) {
         // Reset fetched flag on error so it can try again
@@ -209,25 +188,37 @@ export default function StoreSettingsPage() {
     };
 
     fetchSettings();
-  }, [form]);
+  }, []);
 
-  const onSubmit = async (data) => {
+  const onSubmit = async (e) => {
+    e.preventDefault();
+    
+    if (!validateForm()) {
+      toast.error("Please fix the validation errors");
+      return;
+    }
+    
+    setIsSubmitting(true);
     try {
-      // Try to update first, if it fails (doesn't exist) then create
-      try { 
-        const res = await getAll("store_settings");
-        const resId = res?.data[0]?.id;
-        if(resId) {
-            await update(resId, data, "store_settings");
-        } else {
-            await create(data, "store_settings");  
-        } 
-      } catch {
-         toast.error("Failed to update store settings");
+      const submissionData = {
+        ...formData,
+        allowedCountries: selectedAllowedCountries,
+        bannedCountries: selectedBannedCountries,
+        carriers: carriers,
+      };
+      
+      if (settingsId) {
+        await update(settingsId, submissionData, "store_settings");
+      } else {
+        await create(submissionData, "store_settings");
       }
-      toast.success("Store settings updated successfully");
+      
+      toast.success("Store settings saved successfully!");
     } catch (error) {
-      toast.error("Failed to update store settings");
+      console.error('Save error:', error);
+      toast.error("Failed to save settings");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -246,8 +237,7 @@ export default function StoreSettingsPage() {
         </div>
       </div>
 
-      <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+        <form onSubmit={onSubmit} className="space-y-6">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
             <TabsList className="grid w-full grid-cols-4">
               <TabsTrigger value="business" className="flex items-center gap-2">
@@ -269,46 +259,67 @@ export default function StoreSettingsPage() {
             </TabsList>
 
             <TabsContent value="business" className="space-y-6">
-              <BusinessTab form={form} />
+              <BusinessTab 
+                formData={formData} 
+                handleInputChange={handleInputChange}
+                handleNestedInputChange={handleNestedInputChange}
+                errors={errors}
+              />
             </TabsContent>
 
             <TabsContent value="payments" className="space-y-6">
-              <PaymentsTab form={form} />
+              <PaymentsTab 
+                formData={formData} 
+                handleNestedInputChange={handleNestedInputChange}
+                errors={errors}
+              />
             </TabsContent>
 
             <TabsContent value="shipping" className="space-y-6">
               <ShippingTab 
-                form={form} 
+                formData={formData}
+                handleInputChange={handleInputChange}
                 selectedAllowedCountries={selectedAllowedCountries} 
                 selectedBannedCountries={selectedBannedCountries}
-                selectedFreeShippingCountries={selectedFreeShippingCountries}
-                setSelectedFreeShippingCountries={setSelectedFreeShippingCountries}
+                setSelectedAllowedCountries={setSelectedAllowedCountries}
+                setSelectedBannedCountries={setSelectedBannedCountries}
                 carriers={carriers}
                 setCarriers={setCarriers}
-                freeShippingOpen={freeShippingOpen}
-                setFreeShippingOpen={setFreeShippingOpen}
+                errors={errors}
               />
             </TabsContent>
 
             <TabsContent value="general" className="space-y-6">
-              <GeneralTab form={form} />
+              <GeneralTab 
+                formData={formData} 
+                handleInputChange={handleInputChange}
+                errors={errors}
+              />
             </TabsContent>
           </Tabs>
 
           <div className="flex justify-end">
-            <Button type="submit" size="lg">
-              <Store className="h-4 w-4 mr-2" />
-              Save Settings
+            <Button type="submit" size="lg" disabled={isSubmitting}>
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <Store className="h-4 w-4 mr-2" />
+                  Save Settings
+                </>
+              )}
             </Button>
           </div>
         </form>
-      </Form>
     </div>
   );
 }
 
 // Business Tab Component
-function BusinessTab({ form }) {
+function BusinessTab({ formData, handleInputChange, handleNestedInputChange, errors }) {
   return (
     <div className="grid gap-6">
       <Card>
@@ -323,47 +334,38 @@ function BusinessTab({ form }) {
         </CardHeader>
         <CardContent className="grid gap-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <FormField
-              control={form.control}
-              name="businessName"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Business Name</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Your Business Name" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
+            <div>
+              <Label htmlFor="businessName">Business Name</Label>
+              <Input 
+                id="businessName"
+                placeholder="Your Business Name" 
+                value={formData.businessName}
+                onChange={(e) => handleInputChange('businessName', e.target.value)}
+              />
+              {errors.businessName && (
+                <p className="text-sm text-red-500 mt-1">{errors.businessName}</p>
               )}
-            />
-            <FormField
-              control={form.control}
-              name="tvaNumber"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>TVA Number</FormLabel>
-                  <FormControl>
-                    <Input placeholder="TVA/VAT Number" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            </div>
+            <div>
+              <Label htmlFor="tvaNumber">TVA Number</Label>
+              <Input 
+                id="tvaNumber"
+                placeholder="TVA/VAT Number" 
+                value={formData.tvaNumber}
+                onChange={(e) => handleInputChange('tvaNumber', e.target.value)}
+              />
+            </div>
           </div>
 
-          <FormField
-            control={form.control}
-            name="address"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Business Address</FormLabel>
-                <FormControl>
-                  <Input placeholder="Complete Business Address" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+          <div>
+            <Label htmlFor="address">Business Address</Label>
+            <Input 
+              id="address"
+              placeholder="Complete Business Address" 
+              value={formData.address}
+              onChange={(e) => handleInputChange('address', e.target.value)}
+            />
+          </div>
         </CardContent>
       </Card>
 
@@ -378,70 +380,52 @@ function BusinessTab({ form }) {
           </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4">
-          <FormField
-            control={form.control}
-            name="vatPercentage"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>VAT Percentage</FormLabel>
-                <FormControl>
-                  <Input
-                    type="number"
-                    min="0"
-                    max="100"
-                    placeholder="20"
-                    {...field}
-                    onChange={(e) => field.onChange(parseFloat(e.target.value))}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
+          <div>
+            <Label htmlFor="vatPercentage">VAT Percentage</Label>
+            <Input
+              id="vatPercentage"
+              type="number"
+              min="0"
+              max="100"
+              placeholder="20"
+              value={formData.vatPercentage}
+              onChange={(e) => handleInputChange('vatPercentage', parseFloat(e.target.value) || 0)}
+            />
+            {errors.vatPercentage && (
+              <p className="text-sm text-red-500 mt-1">{errors.vatPercentage}</p>
             )}
-          />
-          <FormField
-            control={form.control}
-            name="vatIncludedInPrice"
-            render={({ field }) => (
-              <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                <div className="space-y-0.5">
-                  <FormLabel className="text-base">
-                    VAT Included in Price
-                  </FormLabel>
-                  <FormDescription>
-                    Display product prices with VAT included
-                  </FormDescription>
-                </div>
-                <FormControl>
-                  <Switch
-                    checked={field.value}
-                    onCheckedChange={field.onChange}
-                  />
-                </FormControl>
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="applyVatAtCheckout"
-            render={({ field }) => (
-              <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                <div className="space-y-0.5">
-                  <FormLabel className="text-base">
-                    Apply VAT at Checkout
-                  </FormLabel>
-                  <FormDescription>
-                    Calculate VAT during checkout process
-                  </FormDescription>
-                </div>
-                <FormControl>
-                  <Switch
-                    checked={field.value}
-                    onCheckedChange={field.onChange}
-                  />
-                </FormControl>
-              </FormItem>
-            )}
-          />
+          </div>
+          
+          <div className="flex flex-row items-center justify-between rounded-lg border p-4">
+            <div className="space-y-0.5">
+              <Label className="text-base">
+                VAT Included in Price
+              </Label>
+              <p className="text-sm text-muted-foreground">
+                Display product prices with VAT included
+              </p>
+            </div>
+            <Switch
+              checked={formData.vatIncludedInPrice}
+              onCheckedChange={(checked) => handleInputChange('vatIncludedInPrice', checked)}
+            />
+          </div>
+          
+          <div className="flex flex-row items-center justify-between rounded-lg border p-4">
+            <div className="space-y-0.5">
+              <Label className="text-base">
+                Apply VAT at Checkout
+              </Label>
+              <p className="text-sm text-muted-foreground">
+                Calculate VAT during checkout process (only if VAT not included in price)
+              </p>
+            </div>
+            <Switch
+              checked={formData.applyVatAtCheckout}
+              onCheckedChange={(checked) => handleInputChange('applyVatAtCheckout', checked)}
+              disabled={formData.vatIncludedInPrice}
+            />
+          </div>
         </CardContent>
       </Card>
     </div>
@@ -449,7 +433,7 @@ function BusinessTab({ form }) {
 }
 
 // Payments Tab Component
-function PaymentsTab({ form }) {
+function PaymentsTab({ formData, handleNestedInputChange, errors }) {
   return (
     <Card>
       <CardHeader>
@@ -462,112 +446,76 @@ function PaymentsTab({ form }) {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        <FormField
-          control={form.control}
-          name="paymentMethods.cardPayments"
-          render={({ field }) => (
-            <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-              <div className="space-y-0.5">
-                <FormLabel className="text-base">
-                  Accept Card Payments (Stripe)
-                </FormLabel>
-                <FormDescription>
-                  Process payments via Stripe
-                </FormDescription>
-              </div>
-              <FormControl>
-                <Switch
-                  checked={field.value}
-                  onCheckedChange={field.onChange}
-                />
-              </FormControl>
-            </FormItem>
-          )}
-        />
-        {form.watch("paymentMethods.cardPayments") && (
+        <div className="flex flex-row items-center justify-between rounded-lg border p-4">
+          <div className="space-y-0.5">
+            <Label className="text-base">
+              Accept Card Payments (Stripe)
+            </Label>
+            <p className="text-sm text-muted-foreground">
+              Process payments via Stripe
+            </p>
+          </div>
+          <Switch
+            checked={formData.paymentMethods?.cardPayments || false}
+            onCheckedChange={(checked) => handleNestedInputChange('paymentMethods', 'cardPayments', checked)}
+          />
+        </div>
+        {formData.paymentMethods?.cardPayments && (
           <>
-            <FormField
-              control={form.control}
-              name="paymentMethods.stripePublicKey"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Stripe Public Key</FormLabel>
-                  <FormControl>
-                    <Input placeholder="pk_..." {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="paymentMethods.stripeSecretKey"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Stripe Secret Key</FormLabel>
-                  <FormControl>
-                    <Input type="password" placeholder="sk_..." {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            <div>
+              <Label htmlFor="stripePublicKey">Stripe Public Key</Label>
+              <Input 
+                id="stripePublicKey"
+                placeholder="pk_..." 
+                value={formData.paymentMethods?.stripePublicKey || ''}
+                onChange={(e) => handleNestedInputChange('paymentMethods', 'stripePublicKey', e.target.value)}
+              />
+            </div>
+            <div>
+              <Label htmlFor="stripeSecretKey">Stripe Secret Key</Label>
+              <Input 
+                id="stripeSecretKey"
+                type="password" 
+                placeholder="sk_..." 
+                value={formData.paymentMethods?.stripeSecretKey || ''}
+                onChange={(e) => handleNestedInputChange('paymentMethods', 'stripeSecretKey', e.target.value)}
+              />
+            </div>
           </>
         )}
-        <FormField
-          control={form.control}
-          name="paymentMethods.bankTransfer"
-          render={({ field }) => (
-            <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-              <div className="space-y-0.5">
-                <FormLabel className="text-base">Bank Transfer</FormLabel>
-                <FormDescription>
-                  Accept bank transfer payments
-                </FormDescription>
-              </div>
-              <FormControl>
-                <Switch
-                  checked={field.value}
-                  onCheckedChange={field.onChange}
-                />
-              </FormControl>
-            </FormItem>
-          )}
-        />
-        <FormField
-          control={form.control}
-          name="paymentMethods.payOnDelivery"
-          render={({ field }) => (
-            <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-              <div className="space-y-0.5">
-                <FormLabel className="text-base">Pay on Delivery</FormLabel>
-                <FormDescription>
-                  Allow customers to pay when receiving their order
-                </FormDescription>
-              </div>
-              <FormControl>
-                <Switch
-                  checked={field.value}
-                  onCheckedChange={field.onChange}
-                />
-              </FormControl>
-            </FormItem>
-          )}
-        />
+        <div className="flex flex-row items-center justify-between rounded-lg border p-4">
+          <div className="space-y-0.5">
+            <Label className="text-base">Bank Transfer</Label>
+            <p className="text-sm text-muted-foreground">
+              Accept bank transfer payments
+            </p>
+          </div>
+          <Switch
+            checked={formData.paymentMethods?.bankTransfer || false}
+            onCheckedChange={(checked) => handleNestedInputChange('paymentMethods', 'bankTransfer', checked)}
+          />
+        </div>
+        <div className="flex flex-row items-center justify-between rounded-lg border p-4">
+          <div className="space-y-0.5">
+            <Label className="text-base">Pay on Delivery</Label>
+            <p className="text-sm text-muted-foreground">
+              Allow customers to pay when receiving their order
+            </p>
+          </div>
+          <Switch
+            checked={formData.paymentMethods?.payOnDelivery || false}
+            onCheckedChange={(checked) => handleNestedInputChange('paymentMethods', 'payOnDelivery', checked)}
+          />
+        </div>
       </CardContent>
     </Card>
   );
 }
 
 // Shipping Tab Component
-function ShippingTab({ form, selectedAllowedCountries, selectedBannedCountries, selectedFreeShippingCountries, setSelectedFreeShippingCountries, carriers, setCarriers, freeShippingOpen, setFreeShippingOpen }) {
-  const { fields: carrierFields, append: appendCarrier, remove: removeCarrier } = useFieldArray({
-    control: form.control,
-    name: "carriers"
-  });
-
+function ShippingTab({ formData, handleInputChange, selectedAllowedCountries, selectedBannedCountries, setSelectedAllowedCountries, setSelectedBannedCountries, carriers, setCarriers, errors }) {
   const addNewCarrier = () => {
-    appendCarrier({
+    const newCarrier = {
       id: `carrier_${Date.now()}`,
       name: "",
       carrierName: "",
@@ -577,7 +525,19 @@ function ShippingTab({ form, selectedAllowedCountries, selectedBannedCountries, 
       supportedCountries: [],
       logo: "",
       enabled: true
-    });
+    };
+    setCarriers([...carriers, newCarrier]);
+  };
+
+  const removeCarrier = (index) => {
+    const newCarriers = carriers.filter((_, i) => i !== index);
+    setCarriers(newCarriers);
+  };
+
+  const updateCarrier = (index, field, value) => {
+    const newCarriers = [...carriers];
+    newCarriers[index] = { ...newCarriers[index], [field]: value };
+    setCarriers(newCarriers);
   };
 
   return (
@@ -593,74 +553,51 @@ function ShippingTab({ form, selectedAllowedCountries, selectedBannedCountries, 
           </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4">
-          <FormField
-            control={form.control}
-            name="freeShippingEnabled"
-            render={({ field }) => (
-              <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                <div className="space-y-0.5">
-                  <FormLabel className="text-base">Free Shipping</FormLabel>
-                  <FormDescription>
-                    Offer free shipping to customers
-                  </FormDescription>
-                </div>
-                <FormControl>
-                  <Switch
-                    checked={field.value}
-                    onCheckedChange={field.onChange}
-                  />
-                </FormControl>
-              </FormItem>
-            )}
-          />
-          {form.watch("freeShippingEnabled") && (
-            <FormField
-              control={form.control}
-              name="freeShippingThreshold"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Free Shipping Threshold (€)</FormLabel>
-                  <FormControl>
-                    <Input
-                      type="number"
-                      min="0"
-                      placeholder="100"
-                      {...field}
-                      onChange={(e) =>
-                        field.onChange(parseFloat(e.target.value))
-                      }
-                    />
-                  </FormControl>
-                  <FormDescription>
-                    Minimum order amount for free shipping
-                  </FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
+          <div className="flex flex-row items-center justify-between rounded-lg border p-4">
+            <div className="space-y-0.5">
+              <Label className="text-base">Free Shipping</Label>
+              <p className="text-sm text-muted-foreground">
+                Offer free shipping to customers
+              </p>
+            </div>
+            <Switch
+              checked={formData.freeShippingEnabled}
+              onCheckedChange={(checked) => handleInputChange('freeShippingEnabled', checked)}
             />
+          </div>
+          {formData.freeShippingEnabled && (
+            <div>
+              <Label htmlFor="freeShippingThreshold">Free Shipping Threshold (€)</Label>
+              <Input
+                id="freeShippingThreshold"
+                type="number"
+                min="0"
+                placeholder="100"
+                value={formData.freeShippingThreshold}
+                onChange={(e) => handleInputChange('freeShippingThreshold', parseFloat(e.target.value) || 0)}
+              />
+              <p className="text-sm text-muted-foreground mt-2">
+                Minimum order amount for free shipping
+              </p>
+              {errors.freeShippingThreshold && (
+                <p className="text-sm text-red-500 mt-1">{errors.freeShippingThreshold}</p>
+              )}
+            </div>
           )}
-          <FormField
-            control={form.control}
-            name="internationalShipping"
-            render={({ field }) => (
-              <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                <div className="space-y-0.5">
-                  <FormLabel className="text-base">
-                    International Shipping
-                  </FormLabel>
-                  <FormDescription>
-                    Enable shipping to international destinations
-                  </FormDescription>
-                </div>
-                <FormControl>
-                  <Switch
-                    checked={field.value}
-                    onCheckedChange={field.onChange}
-                  />
-                </FormControl>
-              </FormItem>
-            )}
-          />
+          <div className="flex flex-row items-center justify-between rounded-lg border p-4">
+            <div className="space-y-0.5">
+              <Label className="text-base">
+                International Shipping
+              </Label>
+              <p className="text-sm text-muted-foreground">
+                Enable shipping to international destinations
+              </p>
+            </div>
+            <Switch
+              checked={formData.internationalShipping}
+              onCheckedChange={(checked) => handleInputChange('internationalShipping', checked)}
+            />
+          </div>
         </CardContent>
       </Card>
 
@@ -675,274 +612,121 @@ function ShippingTab({ form, selectedAllowedCountries, selectedBannedCountries, 
           </CardDescription>
         </CardHeader>
                 <CardContent className="grid gap-4">
-          <FormField
-            control={form.control}
-            name="allowedCountries"
-            render={({ field }) => (
-              <FormItem className="flex flex-col">
-                <FormLabel>Allowed Countries</FormLabel>
-                <FormControl>
-                  <div className="flex flex-wrap gap-2">
-                    <div className="flex-grow">
-                      <CountryDropdown
-                        onChange={(country) => {
-                          const values = new Set(field.value || []);
-                          if (!values.has(country.alpha3)) {
-                            values.add(country.alpha3);
-                            field.onChange(Array.from(values));
-                          }
-                        }}
-                        placeholder="Select countries..."
-                      />
-                    </div>
-                  </div>
-                </FormControl>
-                <FormDescription>
-                  Select countries where shipping is allowed
-                </FormDescription>
-                <FormMessage />
-                {field.value?.length > 0 && (
-                  <div className="flex gap-1 flex-wrap mt-2">
-                    {field.value.map((countryCode) => {
-                      const country = countries.all.find(
-                        (c) => c.alpha3 === countryCode
-                      );
-                      return (
-                        country && (
-                          <Badge
-                            key={countryCode}
-                            variant="secondary"
-                            className="mr-1 mb-1 flex items-center gap-2"
-                          >
-                            <span>{country.name}</span>
-                            <button
-                              type="button"
-                              className="hover:text-destructive"
-                              onClick={() => {
-                                const values = field.value.filter(
-                                  (c) => c !== countryCode
-                                );
-                                field.onChange(values);
-                              }}
-                            >
-                              ×
-                            </button>
-                          </Badge>
-                        )
-                      );
-                    })}
-                  </div>
-                )}
-              </FormItem>
+          <div>
+            <Label>Allowed Countries</Label>
+            <div className="flex flex-wrap gap-2 mb-4">
+              <div className="flex-grow">
+                <CountryDropdown
+                  onChange={(country) => {
+                    const values = new Set(selectedAllowedCountries || []);
+                    if (!values.has(country.alpha3)) {
+                      values.add(country.alpha3);
+                      const newValues = Array.from(values);
+                      handleInputChange('allowedCountries', newValues);
+                      setSelectedAllowedCountries(newValues);
+                    }
+                  }}
+                  placeholder="Select countries..."
+                />
+              </div>
+            </div>
+            <p className="text-sm text-muted-foreground mb-2">
+              Select countries where shipping is allowed (leave empty to allow all countries)
+            </p>
+            {selectedAllowedCountries?.length > 0 && (
+              <div className="flex gap-1 flex-wrap mb-2">
+                {selectedAllowedCountries.map((countryCode) => {
+                  const country = countries.all.find(
+                    (c) => c.alpha3 === countryCode
+                  );
+                  return (
+                    country && (
+                      <Badge
+                        key={countryCode}
+                        variant="secondary"
+                        className="mr-1 mb-1 flex items-center gap-2"
+                      >
+                        <span>{country.name}</span>
+                        <button
+                          type="button"
+                          className="hover:text-destructive"
+                          onClick={() => {
+                            const values = selectedAllowedCountries.filter(
+                              (c) => c !== countryCode
+                            );
+                            handleInputChange('allowedCountries', values);
+                            setSelectedAllowedCountries(values);
+                          }}
+                        >
+                          ×
+                        </button>
+                      </Badge>
+                    )
+                  );
+                })}
+              </div>
             )}
-          />
+          </div>
 
-          <FormField
-            control={form.control}
-            name="bannedCountries"
-            render={({ field }) => (
-              <FormItem className="flex flex-col">
-                <FormLabel>Banned Countries</FormLabel>
-                <FormControl>
-                  <div className="flex flex-wrap gap-2">
-                    <div className="flex-grow">
-                      <CountryDropdown
-                        onChange={(country) => {
-                          const values = new Set(field.value || []);
-                          if (!values.has(country.alpha3)) {
-                            values.add(country.alpha3);
-                            field.onChange(Array.from(values));
-                          }
-                        }}
-                        placeholder="Select countries..."
-                      />
-                    </div>
-                  </div>
-                </FormControl>
-                <FormDescription>
-                  Select countries where shipping is not allowed
-                </FormDescription>
-                <FormMessage />
-                {field.value?.length > 0 && (
-                  <div className="flex gap-1 flex-wrap mt-2">
-                    {field.value.map((countryCode) => {
-                      const country = countries.all.find(
-                        (c) => c.alpha3 === countryCode
-                      );
-                      return (
-                        country && (
-                          <Badge
-                            key={countryCode}
-                            variant="secondary"
-                            className="mr-1 mb-1 flex items-center gap-2"
-                          >
-                            <span>{country.name}</span>
-                            <button
-                              type="button"
-                              className="hover:text-destructive"
-                              onClick={() => {
-                                const values = field.value.filter(
-                                  (c) => c !== countryCode
-                                );
-                                field.onChange(values);
-                              }}
-                            >
-                              ×
-                            </button>
-                          </Badge>
-                        )
-                      );
-                    })}
-                  </div>
-                )}
-              </FormItem>
+          <div>
+            <Label>Banned Countries</Label>
+            <div className="flex flex-wrap gap-2 mb-4">
+              <div className="flex-grow">
+                <CountryDropdown
+                  onChange={(country) => {
+                    const values = new Set(selectedBannedCountries || []);
+                    if (!values.has(country.alpha3)) {
+                      values.add(country.alpha3);
+                      const newValues = Array.from(values);
+                      handleInputChange('bannedCountries', newValues);
+                      setSelectedBannedCountries(newValues);
+                    }
+                  }}
+                  placeholder="Select countries..."
+                />
+              </div>
+            </div>
+            <p className="text-sm text-muted-foreground mb-2">
+              Select countries where shipping is not allowed
+            </p>
+            {selectedBannedCountries?.length > 0 && (
+              <div className="flex gap-1 flex-wrap mb-2">
+                {selectedBannedCountries.map((countryCode) => {
+                  const country = countries.all.find(
+                    (c) => c.alpha3 === countryCode
+                  );
+                  return (
+                    country && (
+                      <Badge
+                        key={countryCode}
+                        variant="secondary"
+                        className="mr-1 mb-1 flex items-center gap-2"
+                      >
+                        <span>{country.name}</span>
+                        <button
+                          type="button"
+                          className="hover:text-destructive"
+                          onClick={() => {
+                            const values = selectedBannedCountries.filter(
+                              (c) => c !== countryCode
+                            );
+                            handleInputChange('bannedCountries', values);
+                            setSelectedBannedCountries(values);
+                          }}
+                        >
+                          ×
+                        </button>
+                      </Badge>
+                    )
+                  );
+                })}
+              </div>
             )}
-          />
+          </div>
         </CardContent>
       </Card>
 
-      {/* Free Shipping Countries Configuration */}
-      {form.watch("freeShippingEnabled") && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <MapPin className="h-5 w-5" />
-              Free Shipping Countries
-            </CardTitle>
-            <CardDescription>
-              Select countries eligible for free shipping
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <FormField
-              control={form.control}
-              name="freeShippingCountries"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Countries Eligible for Free Shipping</FormLabel>
-                  <div className="flex items-center gap-2 mb-2">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        const allCountryCodes = countries.all
-                          .filter(c => c.alpha3 && c.status !== "deleted")
-                          .map(c => c.alpha3);
-                        field.onChange(allCountryCodes);
-                        setSelectedFreeShippingCountries(allCountryCodes);
-                      }}
-                    >
-                      Select All
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        field.onChange([]);
-                        setSelectedFreeShippingCountries([]);
-                      }}
-                    >
-                      Clear All
-                    </Button>
-                  </div>
-                  <FormControl>
-                    <div className="relative">
-                      <Popover open={freeShippingOpen} onOpenChange={setFreeShippingOpen}>
-                        <PopoverTrigger asChild>
-                          <Button
-                            variant="outline"
-                            role="combobox"
-                            aria-expanded={freeShippingOpen}
-                            className="w-full justify-between"
-                          >
-                            {field.value?.length > 0
-                              ? `${field.value.length} countries selected`
-                              : "Select countries..."}
-                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-[400px] p-0">
-                          <Command>
-                            <CommandInput placeholder="Search countries..." />
-                            <CommandEmpty>No countries found.</CommandEmpty>
-                            <CommandGroup className="max-h-64 overflow-auto">
-                              {countries.all
-                                .filter(country => country.alpha3 && country.status !== "deleted")
-                                .map((country) => (
-                                  <CommandItem
-                                    key={country.alpha3}
-                                    value={country.name}
-                                    onSelect={() => {
-                                      const isSelected = field.value?.includes(country.alpha3);
-                                      let newValue;
-                                      if (isSelected) {
-                                        newValue = field.value.filter(c => c !== country.alpha3);
-                                      } else {
-                                        newValue = [...(field.value || []), country.alpha3];
-                                      }
-                                      field.onChange(newValue);
-                                      setSelectedFreeShippingCountries(newValue);
-                                    }}
-                                  >
-                                    <Check
-                                      className={`mr-2 h-4 w-4 ${
-                                        field.value?.includes(country.alpha3) ? "opacity-100" : "opacity-0"
-                                      }`}
-                                    />
-                                    {country.name}
-                                  </CommandItem>
-                                ))}
-                            </CommandGroup>
-                          </Command>
-                        </PopoverContent>
-                      </Popover>
-                    </div>
-                  </FormControl>
-                  <FormDescription>
-                    Countries where free shipping applies when threshold is met
-                  </FormDescription>
-                  <FormMessage />
-                  {field.value?.length > 0 && (
-                    <div className="flex gap-1 flex-wrap mt-2">
-                      {field.value.map((countryCode) => {
-                        const country = countries.all.find(
-                          (c) => c.alpha3 === countryCode
-                        );
-                        return (
-                          country && (
-                            <Badge
-                              key={countryCode}
-                              variant="secondary"
-                              className="mr-1 mb-1 flex items-center gap-2"
-                            >
-                              <span>{country.name}</span>
-                              <button
-                                type="button"
-                                className="hover:text-destructive"
-                                onClick={() => {
-                                  const values = field.value.filter(
-                                    (c) => c !== countryCode
-                                  );
-                                  field.onChange(values);
-                                  setSelectedFreeShippingCountries(values);
-                                }}
-                              >
-                                ×
-                              </button>
-                            </Badge>
-                          )
-                        );
-                      })}
-                    </div>
-                  )}
-                </FormItem>
-              )}
-            />
-          </CardContent>
-        </Card>
-      )}
+
 
       {/* Carriers Configuration */}
       <Card>
@@ -956,8 +740,8 @@ function ShippingTab({ form, selectedAllowedCountries, selectedBannedCountries, 
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {carrierFields.map((field, index) => (
-            <Card key={field.id} className="border-dashed">
+          {carriers.map((carrier, index) => (
+            <Card key={carrier.id} className="border-dashed">
               <CardContent className="pt-6">
                 <div className="grid gap-4">
                   <div className="flex items-center justify-between">
@@ -972,140 +756,96 @@ function ShippingTab({ form, selectedAllowedCountries, selectedBannedCountries, 
                     </Button>
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <FormField
-                      control={form.control}
-                      name={`carriers.${index}.name`}
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Service Name</FormLabel>
-                          <FormControl>
-                            <Input placeholder="Standard Delivery" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name={`carriers.${index}.carrierName`}
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Carrier Name</FormLabel>
-                          <FormControl>
-                            <Input placeholder="DHL, FedEx, UPS..." {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
+                    <div>
+                      <Label htmlFor={`carrier-name-${index}`}>Service Name</Label>
+                      <Input 
+                        id={`carrier-name-${index}`}
+                        placeholder="Standard Delivery" 
+                        value={carrier.name || ''}
+                        onChange={(e) => updateCarrier(index, 'name', e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor={`carrier-carrier-name-${index}`}>Carrier Name</Label>
+                      <Input 
+                        id={`carrier-carrier-name-${index}`}
+                        placeholder="DHL, FedEx, UPS..." 
+                        value={carrier.carrierName || ''}
+                        onChange={(e) => updateCarrier(index, 'carrierName', e.target.value)}
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <Label htmlFor={`carrier-description-${index}`}>Description</Label>
+                    <Input 
+                      id={`carrier-description-${index}`}
+                      placeholder="Reliable delivery service..." 
+                      value={carrier.description || ''}
+                      onChange={(e) => updateCarrier(index, 'description', e.target.value)}
                     />
                   </div>
-                  <FormField
-                    control={form.control}
-                    name={`carriers.${index}.description`}
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Description</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Reliable delivery service..." {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <FormField
-                      control={form.control}
-                      name={`carriers.${index}.deliveryTime`}
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Delivery Time</FormLabel>
-                          <FormControl>
-                            <Input placeholder="3-5 business days" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name={`carriers.${index}.basePrice`}
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Base Price (€)</FormLabel>
-                          <FormControl>
-                            <Input
-                              type="number"
-                              min="0"
-                              step="0.01"
-                              placeholder="9.99"
-                              {...field}
-                              onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
+                    <div>
+                      <Label htmlFor={`carrier-delivery-time-${index}`}>Delivery Time</Label>
+                      <Input 
+                        id={`carrier-delivery-time-${index}`}
+                        placeholder="3-5 business days" 
+                        value={carrier.deliveryTime || ''}
+                        onChange={(e) => updateCarrier(index, 'deliveryTime', e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor={`carrier-base-price-${index}`}>Base Price (€)</Label>
+                      <Input
+                        id={`carrier-base-price-${index}`}
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        placeholder="9.99"
+                        value={carrier.basePrice || 0}
+                        onChange={(e) => updateCarrier(index, 'basePrice', parseFloat(e.target.value) || 0)}
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <Label htmlFor={`carrier-logo-${index}`}>Logo URL (Optional)</Label>
+                    <Input 
+                      id={`carrier-logo-${index}`}
+                      placeholder="https://example.com/logo.png" 
+                      value={carrier.logo || ''}
+                      onChange={(e) => updateCarrier(index, 'logo', e.target.value)}
                     />
                   </div>
-                  <FormField
-                    control={form.control}
-                    name={`carriers.${index}.logo`}
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Logo URL (Optional)</FormLabel>
-                        <FormControl>
-                          <Input placeholder="https://example.com/logo.png" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name={`carriers.${index}.supportedCountries`}
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Supported Countries</FormLabel>
-                        <FormControl>
-                          <Input 
-                            placeholder="FR, DE, BE, NL (leave empty for all countries)" 
-                            value={field.value ? field.value.join(', ') : ''}
-                            onChange={(e) => {
-                              const countries = e.target.value
-                                .split(',')
-                                .map(c => c.trim().toUpperCase())
-                                .filter(c => c.length > 0);
-                              field.onChange(countries);
-                            }}
-                          />
-                        </FormControl>
-                        <FormDescription>
-                          Enter country codes separated by commas (e.g., FR, DE, BE) or leave empty to support all countries
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name={`carriers.${index}.enabled`}
-                    render={({ field }) => (
-                      <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3">
-                        <div className="space-y-0.5">
-                          <FormLabel className="text-base">Enabled</FormLabel>
-                          <FormDescription>
-                            Show this carrier as an option during checkout
-                          </FormDescription>
-                        </div>
-                        <FormControl>
-                          <Switch
-                            checked={field.value}
-                            onCheckedChange={field.onChange}
-                          />
-                        </FormControl>
-                      </FormItem>
-                    )}
-                  />
+                  <div>
+                    <Label htmlFor={`carrier-countries-${index}`}>Supported Countries</Label>
+                    <Input 
+                      id={`carrier-countries-${index}`}
+                      placeholder="FR, DE, BE, NL (leave empty for all countries)" 
+                      value={carrier.supportedCountries ? carrier.supportedCountries.join(', ') : ''}
+                      onChange={(e) => {
+                        const countries = e.target.value
+                          .split(',')
+                          .map(c => c.trim().toUpperCase())
+                          .filter(c => c.length > 0);
+                        updateCarrier(index, 'supportedCountries', countries);
+                      }}
+                    />
+                    <p className="text-sm text-muted-foreground mt-2">
+                      Enter country codes separated by commas (e.g., FR, DE, BE) or leave empty to support all countries
+                    </p>
+                  </div>
+                  <div className="flex flex-row items-center justify-between rounded-lg border p-3">
+                    <div className="space-y-0.5">
+                      <Label className="text-base">Enabled</Label>
+                      <p className="text-sm text-muted-foreground">
+                        Show this carrier as an option during checkout
+                      </p>
+                    </div>
+                    <Switch
+                      checked={carrier.enabled !== false}
+                      onCheckedChange={(checked) => updateCarrier(index, 'enabled', checked)}
+                    />
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -1126,7 +866,7 @@ function ShippingTab({ form, selectedAllowedCountries, selectedBannedCountries, 
 }
 
 // General Tab Component
-function GeneralTab({ form }) {
+function GeneralTab({ formData, handleInputChange, errors }) {
   return (
     <Card>
       <CardHeader>
@@ -1139,37 +879,28 @@ function GeneralTab({ form }) {
         </CardDescription>
       </CardHeader>
       <CardContent className="grid gap-4">
-        <FormField
-          control={form.control}
-          name="currency"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Store Currency</FormLabel>
-              <Select
-                onValueChange={field.onChange}
-                defaultValue={field.value}
-              >
-                <FormControl>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select a currency" />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  <SelectItem value="EUR">EUR (€)</SelectItem>
-                  <SelectItem value="USD">USD ($)</SelectItem>
-                  <SelectItem value="GBP">GBP (£)</SelectItem>
-                  <SelectItem value="AUD">AUD (A$)</SelectItem>
-                  <SelectItem value="CAD">CAD (C$)</SelectItem>
-                  <SelectItem value="JPY">JPY (¥)</SelectItem>
-                </SelectContent>
-              </Select>
-              <FormDescription>
-                Select the default currency for your store
-              </FormDescription>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+        <div>
+          <Label htmlFor="currency">Store Currency</Label>
+          <Select
+            value={formData.currency}
+            onValueChange={(value) => handleInputChange('currency', value)}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Select a currency" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="EUR">EUR (€)</SelectItem>
+              <SelectItem value="USD">USD ($)</SelectItem>
+              <SelectItem value="GBP">GBP (£)</SelectItem>
+              <SelectItem value="AUD">AUD (A$)</SelectItem>
+              <SelectItem value="CAD">CAD (C$)</SelectItem>
+              <SelectItem value="JPY">JPY (¥)</SelectItem>
+            </SelectContent>
+          </Select>
+          <p className="text-sm text-muted-foreground mt-2">
+            Select the default currency for your store
+          </p>
+        </div>
       </CardContent>
     </Card>
   );
