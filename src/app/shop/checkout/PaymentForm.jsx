@@ -62,6 +62,9 @@ const PaymentForm = ({ cartTotal, subTotal, shippingCost, onShippingUpdate, sele
     const [promoError, setPromoError] = useState('');
     const [discountAmount, setDiscountAmount] = useState(0);
 
+    // Payment Method State
+    const [selectedPaymentMethod, setSelectedPaymentMethod] = useState('');
+
     const handleShippingMethodSelect = (method) => {
         setLocalSelectedShippingMethod(method);
         const shippingCost = method.fixed_rate || method.base_price || method.basePrice || 0;
@@ -225,7 +228,6 @@ const PaymentForm = ({ cartTotal, subTotal, shippingCost, onShippingUpdate, sele
     };
 
     const handleAddressError = (error) => {
-        console.warn('Address input error:', error);
         // You can set a specific error state here if needed
     };
 
@@ -398,14 +400,11 @@ const PaymentForm = ({ cartTotal, subTotal, shippingCost, onShippingUpdate, sele
             const couponDiscount = discountAmount || 0;
             const finalTotal = itemsTotal + shippingTotal - couponDiscount;
 
-            // Determine payment method based on availability
-            let paymentMethod = 'pending';
-            if (hasStripe && storeSettings?.paymentMethods?.cardPayments) {
-                paymentMethod = 'card';
-            } else if (storeSettings?.paymentMethods?.bankTransfer) {
-                paymentMethod = 'bank_transfer';
-            } else if (storeSettings?.paymentMethods?.payOnDelivery) {
-                paymentMethod = 'pay_on_delivery';
+            // Use selected payment method
+            const paymentMethod = selectedPaymentMethod || 'pending';
+            
+            if (!selectedPaymentMethod) {
+                throw new Error(t('selectPaymentMethodFirst'));
             }
 
             // Create order data matching the orders page structure
@@ -440,6 +439,12 @@ const PaymentForm = ({ cartTotal, subTotal, shippingCost, onShippingUpdate, sele
 
             // Handle different payment methods
             if (paymentMethod === 'card' && hasStripe && stripe && elements) {
+                // Handle Stripe card payment
+                const { error: submitError } = await elements.submit();
+                if (submitError) {
+                    throw new Error(submitError.message);
+                }
+
                 // Create payment intent for card payments
                 const response = await fetch('/api/stripe', {
                     method: 'POST',
@@ -482,7 +487,23 @@ const PaymentForm = ({ cartTotal, subTotal, shippingCost, onShippingUpdate, sele
                     }
                 }
 
-                                // Store order data in localStorage before confirming payment\n                localStorage.setItem('orderData', JSON.stringify(orderData));\n\n                // Confirm payment with Stripe\n                const { error: confirmError } = await stripe.confirmPayment({\n                    elements,\n                    clientSecret,\n                    confirmParams: {\n                        return_url: `${window.location.origin}/shop/checkout/success?tx=${btoa(orderData.uid)}&payment_method=card`,\n                    },\n                });\n\n                if (confirmError) {\n                    // Remove order data if payment fails\n                    localStorage.removeItem('orderData');\n                    throw new Error(confirmError.message);\n                }
+                // Store order data in localStorage before confirming payment
+                localStorage.setItem('orderData', JSON.stringify(orderData));
+
+                // Confirm payment with Stripe
+                const { error: confirmError } = await stripe.confirmPayment({
+                    elements,
+                    clientSecret,
+                    confirmParams: {
+                        return_url: `${window.location.origin}/shop/checkout/success?tx=${btoa(orderData.id)}&payment_method=card`,
+                    },
+                });
+
+                if (confirmError) {
+                    // Remove order data if payment fails
+                    localStorage.removeItem('orderData');
+                    throw new Error(confirmError.message);
+                }
             } else {
                 // Handle alternative payment methods (bank transfer, pay on delivery)
                 const response = await fetch('/api/orders', {
@@ -550,6 +571,25 @@ const PaymentForm = ({ cartTotal, subTotal, shippingCost, onShippingUpdate, sele
         setCountryIso(detectedCountry);
 
         return detectedCountry;
+    };
+
+    // Get available payment methods based on store settings
+    const getAvailablePaymentMethods = () => {
+        const methods = [];
+        
+        if (hasStripe && storeSettings?.paymentMethods?.cardPayments) {
+            methods.push({ value: 'card', label: `💳 ${t('cardPayment')}`, description: t('cardPaymentDescription') });
+        }
+        
+        if (storeSettings?.paymentMethods?.bankTransfer) {
+            methods.push({ value: 'bank_transfer', label: `🏦 ${t('bankTransfer')}`, description: t('bankTransferDescription') });
+        }
+        
+        if (storeSettings?.paymentMethods?.payOnDelivery) {
+            methods.push({ value: 'pay_on_delivery', label: `📦 ${t('payOnDelivery')}`, description: t('payOnDeliveryDescription') });
+        }
+        
+        return methods;
     };    useEffect(() => {
         const defaultC = getDefaultCountry();
         setCountry(defaultC);
@@ -566,6 +606,16 @@ const PaymentForm = ({ cartTotal, subTotal, shippingCost, onShippingUpdate, sele
         
         fetchIntegrationKeys();
     }, []);
+
+    // Auto-select first available payment method when store settings are loaded
+    useEffect(() => {
+        if (storeSettings && !selectedPaymentMethod) {
+            const availableMethods = getAvailablePaymentMethods();
+            if (availableMethods.length > 0) {
+                setSelectedPaymentMethod(availableMethods[0].value);
+            }
+        }
+    }, [storeSettings, selectedPaymentMethod]);
 
     return (
         <div className="space-y-6">
@@ -707,7 +757,7 @@ const PaymentForm = ({ cartTotal, subTotal, shippingCost, onShippingUpdate, sele
 
                         {/* Promo Code */}
                         <div>
-                            <h2 className="text-lg font-semibold mb-4">Promo Code</h2>
+                            <h2 className="text-lg font-semibold mb-4">{t('promoCode')}</h2>
                             {!appliedCoupon ? (
                                 <div className="space-y-3">
                                     <div className="flex gap-2">
@@ -715,7 +765,7 @@ const PaymentForm = ({ cartTotal, subTotal, shippingCost, onShippingUpdate, sele
                                             type="text"
                                             value={promoCode || ''}
                                             onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
-                                            placeholder="Enter promo code"
+                                            placeholder={t('enterPromoCode')}
                                             className="flex-1 border rounded-xl px-3 py-2 focus:ring-2 focus:ring-primary/20 focus:border-primary uppercase"
                                             disabled={promoLoading}
                                         />
@@ -725,7 +775,7 @@ const PaymentForm = ({ cartTotal, subTotal, shippingCost, onShippingUpdate, sele
                                             disabled={promoLoading || !promoCode.trim()}
                                             className="disabled:opacity-50 disabled:cursor-not-allowed"
                                         >
-                                            {promoLoading ? 'Validating...' : 'Apply'}
+                                            {promoLoading ? t('validating') : t('apply')}
                                         </Button>
                                     </div>
                                     {promoError && (
@@ -741,7 +791,7 @@ const PaymentForm = ({ cartTotal, subTotal, shippingCost, onShippingUpdate, sele
                                                 <span className="text-sm text-gray-600">- {appliedCoupon.name}</span>
                                             </div>
                                             <div className="text-sm text-green-700 mt-1">
-                                                You saved €{discountAmount.toFixed(2)}
+                                                {t('youSaved', { amount: discountAmount.toFixed(2) })}
                                             </div>
                                         </div>
                                         <button
@@ -749,7 +799,7 @@ const PaymentForm = ({ cartTotal, subTotal, shippingCost, onShippingUpdate, sele
                                             onClick={removePromoCode}
                                             className="text-red-600 hover:text-red-700 text-sm"
                                         >
-                                            Remove
+                                            {t('remove')}
                                         </button>
                                     </div>
                                 </div>
@@ -796,7 +846,7 @@ const PaymentForm = ({ cartTotal, subTotal, shippingCost, onShippingUpdate, sele
                     >
                         <form onSubmit={handleSubmit} className="space-y-6">
                             {/* Order Summary */}
-                            <div className="bg-gray-50 rounded-xl p-4">
+                            <div className="bg-card rounded-xl">
                                 <h3 className="font-semibold mb-3">{t('orderConfirmation')}</h3>
                                 <div className="space-y-2 text-sm">
                                     <div className="flex justify-between">
@@ -817,7 +867,7 @@ const PaymentForm = ({ cartTotal, subTotal, shippingCost, onShippingUpdate, sele
                                     </div>
                                     {appliedCoupon && (
                                         <div className="flex justify-between text-green-600">
-                                            <span>Discount ({appliedCoupon.code}):</span>
+                                            <span>{t('discount', { code: appliedCoupon.code })}:</span>
                                             <span>-€{discountAmount.toFixed(2)}</span>
                                         </div>
                                     )}
@@ -834,7 +884,7 @@ const PaymentForm = ({ cartTotal, subTotal, shippingCost, onShippingUpdate, sele
                             {/* Turnstile Verification */}
                             {turnstileKey && (
                                 <div className="space-y-4">
-                                    <h2 className="text-lg font-semibold mb-4">Security Verification</h2>
+                                    <h2 className="text-lg font-semibold mb-4">{t('securityVerification')}</h2>
                                     <div className="flex justify-center">
                                         <Turnstile
                                             sitekey={turnstileKey}
@@ -846,76 +896,113 @@ const PaymentForm = ({ cartTotal, subTotal, shippingCost, onShippingUpdate, sele
                                 </div>
                             )}
 
-                            {/* Payment Methods Information */}
-                            {storeSettings?.paymentMethods && (
-                                <div className="bg-gray-50 rounded-xl p-4 mb-4">
-                                    <h3 className="font-semibold mb-2">Available Payment Methods</h3>
-                                    <div className="flex flex-wrap gap-2 text-sm">
-                                        {storeSettings.paymentMethods.cardPayments && (
-                                            <span className="bg-white px-2 py-1 rounded border">💳 Card Payments</span>
-                                        )}
-                                        {storeSettings.paymentMethods.bankTransfer && (
-                                            <span className="bg-white px-2 py-1 rounded border">🏦 Bank Transfer</span>
-                                        )}
-                                        {storeSettings.paymentMethods.payOnDelivery && (
-                                            <span className="bg-white px-2 py-1 rounded border">📦 Pay on Delivery</span>
-                                        )}
-                                    </div>
-                                </div>
-                            )}
-
                             {/* Payment Methods Section */}
                             <div>
-                                <h2 className="text-lg font-semibold mb-4">Payment Information</h2>
+                                <h2 className="text-lg font-semibold mb-4">{t('paymentMethod')}</h2>
                                 
-                                {/* Card Payment */}
-                                {hasStripe && storeSettings?.paymentMethods?.cardPayments ? (
-                                    <div className="mb-6">
-                                        <h3 className="text-md font-medium mb-2">💳 Card Payment</h3>
-                                        <PaymentElement theme="light" />
+                                {/* Payment Method Selection */}
+                                <div className="mb-6">
+                                    <label className="block text-sm font-medium mb-4">{t('selectPaymentMethod')}</label>
+                                    <div className="grid gap-3">
+                                        {getAvailablePaymentMethods().map((method) => (
+                                            <div
+                                                key={method.value}
+                                                onClick={() => setSelectedPaymentMethod(method.value)}
+                                                className={`
+                                                    relative cursor-pointer rounded-lg border-2 p-4 transition-all duration-200 hover:shadow-md
+                                                    ${
+                                                        selectedPaymentMethod === method.value
+                                                            ? 'border-primary bg-primary/5 shadow-sm'
+                                                            : 'border-border bg-card hover:border-primary/50'
+                                                    }
+                                                `}
+                                            >
+                                                {/* Radio indicator */}
+                                                <div className="absolute top-4 right-4">
+                                                    <div
+                                                        className={`
+                                                            w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors
+                                                            ${
+                                                                selectedPaymentMethod === method.value
+                                                                    ? 'border-primary bg-primary'
+                                                                    : 'border-gray-300'
+                                                            }
+                                                        `}
+                                                    >
+                                                        {selectedPaymentMethod === method.value && (
+                                                            <div className="w-2 h-2 bg-white rounded-full" />
+                                                        )}
+                                                    </div>
+                                                </div>
+                                                
+                                                {/* Payment method content */}
+                                                <div className="pr-8">
+                                                    <div className="font-medium text-base mb-1">{method.label}</div>
+                                                    <div className="text-sm text-muted-foreground">{method.description}</div>
+                                                </div>
+                                            </div>
+                                        ))}
                                     </div>
-                                ) : storeSettings?.paymentMethods?.cardPayments ? (
-                                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
-                                        <h3 className="text-md font-medium mb-2">💳 Card Payment</h3>
-                                        <p className="text-yellow-800">Card payment integration is being set up. Please use alternative payment methods below.</p>
-                                    </div>
-                                ) : null}
+                                    
+                                    {getAvailablePaymentMethods().length === 0 && (
+                                        <div className="text-center py-8 px-4 border-2 border-dashed border-border rounded-lg">
+                                            <p className="text-muted-foreground">{t('noPaymentMethods')}</p>
+                                            <p className="text-sm text-muted-foreground mt-1">{t('contactSupport')}</p>
+                                        </div>
+                                    )}
+                                </div>
 
-                                {/* Alternative Payment Methods */}
-                                {(!hasStripe || !storeSettings?.paymentMethods?.cardPayments) && (
+                                {/* Payment Method Details */}
+                                {selectedPaymentMethod && (
                                     <div className="space-y-4">
-                                        {storeSettings?.paymentMethods?.bankTransfer && (
-                                            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                                                <h3 className="text-md font-medium mb-2">🏦 Bank Transfer</h3>
-                                                <p className="text-blue-800 text-sm">
-                                                    You will receive bank transfer details via email after placing your order.
+                                        {selectedPaymentMethod === 'card' && hasStripe && (
+                                            <div className="bg-card border rounded-lg p-4">
+                                                <h3 className="text-md font-medium mb-2">💳 {t('cardPayment')}</h3>
+                                                <p className="text-muted-foreground text-sm mb-4">{t('cardPaymentDescription')}</p>
+                                                <PaymentElement theme="light" />
+                                            </div>
+                                        )}
+                                        
+                                        {selectedPaymentMethod === 'card' && !hasStripe && (
+                                            <div className="bg-accent border rounded-lg p-4">
+                                                <h3 className="text-md font-medium mb-2">💳 {t('cardPayment')}</h3>
+                                                <p className="text-muted-foreground text-sm">{t('cardPaymentSetup')}</p>
+                                            </div>
+                                        )}
+                                        
+                                        {selectedPaymentMethod === 'bank_transfer' && (
+                                            <div className="bg-accent border rounded-lg p-4">
+                                                <h3 className="text-md font-medium mb-2">🏦 {t('bankTransfer')}</h3>
+                                                <p className="text-muted-foreground text-sm">
+                                                    {t('bankTransferInstructions')}
                                                 </p>
                                             </div>
                                         )}
                                         
-                                        {storeSettings?.paymentMethods?.payOnDelivery && (
-                                            <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                                                <h3 className="text-md font-medium mb-2">📦 Pay on Delivery</h3>
-                                                <p className="text-green-800 text-sm">
-                                                    Pay when your order is delivered to your address.
+                                        {selectedPaymentMethod === 'pay_on_delivery' && (
+                                            <div className="bg-accent border rounded-lg p-4">
+                                                <h3 className="text-md font-medium mb-2">📦 {t('payOnDelivery')}</h3>
+                                                <p className="text-muted-foreground text-sm">
+                                                    {t('payOnDeliveryInstructions')}
                                                 </p>
-                                            </div>
-                                        )}
-                                        
-                                        {!storeSettings?.paymentMethods?.bankTransfer && !storeSettings?.paymentMethods?.payOnDelivery && (
-                                            <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-                                                <p className="text-gray-600">Please contact support to complete your order.</p>
                                             </div>
                                         )}
                                     </div>
                                 )}
+
+
                             </div>
 
                             {/* Submit Button */}
                             <button
                                 className="w-full button primary"
                                 type="submit"
-                                disabled={isProcessing || (turnstileKey && !isTurnstileVerified) || (hasStripe && storeSettings?.paymentMethods?.cardPayments && (!stripe || !elements))}
+                                disabled={
+                                    isProcessing || 
+                                    !selectedPaymentMethod ||
+                                    (turnstileKey && !isTurnstileVerified) || 
+                                    (selectedPaymentMethod === 'card' && (!stripe || !elements))
+                                }
                             >
                                 {isProcessing ? (
                                     <div className="flex items-center justify-center space-x-2">
@@ -923,9 +1010,9 @@ const PaymentForm = ({ cartTotal, subTotal, shippingCost, onShippingUpdate, sele
                                         <span>{t('processing')}</span>
                                     </div>
                                 ) : (
-                                    hasStripe && storeSettings?.paymentMethods?.cardPayments ? 
-                                        t('payButton', { amount: cartTotal }) :
-                                        'Place Order'
+                                    selectedPaymentMethod === 'card' ? 
+                                        t('payAmount', { amount: cartTotal }) :
+                                        t('placeOrder')
                                 )}
                             </button>
 

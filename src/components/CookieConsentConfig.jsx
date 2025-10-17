@@ -24,7 +24,6 @@ const getConfig = (translations = {}) => {
         
         // Only load if measurement ID is available and integration is enabled
         if (!GA_ID) {
-            console.warn('Google Analytics measurement ID not found or integration not enabled');
             return;
         }
 

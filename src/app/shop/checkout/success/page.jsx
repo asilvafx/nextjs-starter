@@ -25,8 +25,9 @@ const PaymentSuccess = () => {
     // Use ref to track if we've already processed the order
     const hasProcessedOrder = useRef(false);
 
-    // Get order ID from URL parameters
-    const orderId = searchParams.get('tx');
+    // Get order details from URL parameters
+    const orderId = searchParams.get('tx') || searchParams.get('order_id');
+    const paymentMethod = searchParams.get('payment_method');
 
     useEffect(() => {
         // Prevent multiple executions
@@ -36,31 +37,91 @@ const PaymentSuccess = () => {
 
         const fetchOrder = async () => {
             try {
-                // Try to get order data from localStorage first
-                const storedOrderData = localStorage.getItem('orderData');
-                if (storedOrderData) {
-                    const orderData = JSON.parse(storedOrderData);
+                if (!orderId) {
+                    setError(t('orderNotFound'));
+                    setLoading(false);
+                    return;
+                }
 
-                    if (!orderId || orderData.uid !== atob(orderId)) {
-                        setError(t('orderNotFound'));
-                        setLoading(false);
-                        return;
+                let actualOrderId = orderId;
+                let orderData = null;
+
+                // For Stripe payments, try to get order data from localStorage first
+                if (paymentMethod === 'card') {
+                    const storedOrderData = localStorage.getItem('orderData');
+                    if (storedOrderData) {
+                        orderData = JSON.parse(storedOrderData);
+                        
+                        // Decode base64 order ID for Stripe payments
+                        try {
+                            actualOrderId = atob(orderId);
+                        } catch (e) {
+                            actualOrderId = orderId;
+                        }
+
+                        if (orderData.id !== actualOrderId) {
+                            setError(t('orderNotFound'));
+                            setLoading(false);
+                            return;
+                        }
                     }
+                }
 
-                    const orderDetailsData = {
-                        orderId: orderData.uid || atob(orderId),
-                        paymentIntentId: orderData.tx,
-                        email: orderData.cst_email,
-                        customerName: orderData.cst_name,
-                        items: typeof orderData.items === 'string' ? JSON.parse(orderData.items) : orderData.items,
-                        total: orderData.amount,
-                        subtotal: orderData.subtotal,
-                        shipping: orderData.shipping,
-                        totalItems: orderData.totalItems,
-                        shippingAddress: typeof orderData.shipping_address === 'string'
-                            ? JSON.parse(orderData.shipping_address)
-                            : orderData.shipping_address,
-                        orderDate: new Date().toLocaleDateString('fr-FR', {
+                // For non-Stripe payments or if no localStorage data, fetch from database
+                if (!orderData) {
+                    try {
+                        const response = await fetch(`/api/orders/${actualOrderId}`);
+                        if (response.ok) {
+                            const result = await response.json();
+                            if (result.success) {
+                                orderData = result.data;
+                            }
+                        }
+                    } catch (e) {
+                        console.warn('Could not fetch order from database:', e);
+                    }
+                }
+
+                if (!orderData) {
+                    setError(t('orderDataNotFound'));
+                    setLoading(false);
+                    return;
+                }
+
+                const orderDetailsData = {
+                    orderId: orderData.id || actualOrderId,
+                    paymentIntentId: orderData.tx,
+                    paymentMethod: paymentMethod || orderData.paymentMethod || orderData.method,
+                    email: orderData.customer?.email || orderData.cst_email,
+                    customerName: orderData.customer?.firstName ? 
+                        `${orderData.customer.firstName} ${orderData.customer.lastName}` : 
+                        orderData.cst_name,
+                    items: typeof orderData.items === 'string' ? JSON.parse(orderData.items) : orderData.items,
+                    total: orderData.total || orderData.amount,
+                    subtotal: orderData.subtotal,
+                    shipping: orderData.shippingCost || orderData.shipping,
+                    totalItems: orderData.totalItems,
+                    shippingAddress: orderData.customer?.streetAddress ? {
+                        streetAddress: orderData.customer.streetAddress,
+                        apartmentUnit: orderData.customer.apartmentUnit,
+                        city: orderData.customer.city,
+                        state: orderData.customer.state,
+                        zipCode: orderData.customer.zipCode,
+                        country: orderData.customer.country,
+                        countryIso: orderData.customer.countryIso
+                    } : (typeof orderData.shipping_address === 'string'
+                        ? JSON.parse(orderData.shipping_address)
+                        : orderData.shipping_address),
+                    orderDate: orderData.createdAt ? 
+                        new Date(orderData.createdAt).toLocaleDateString('fr-FR', {
+                            weekday: 'long',
+                            year: 'numeric',
+                            month: 'long',
+                            day: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                        }) :
+                        new Date().toLocaleDateString('fr-FR', {
                             weekday: 'long',
                             year: 'numeric',
                             month: 'long',
@@ -68,18 +129,17 @@ const PaymentSuccess = () => {
                             hour: '2-digit',
                             minute: '2-digit'
                         })
-                    };
+                };
 
-                    // Mark as processed BEFORE setting state to prevent race conditions
-                    hasProcessedOrder.current = true;
+                // Mark as processed BEFORE setting state to prevent race conditions
+                hasProcessedOrder.current = true;
 
-                    setOrderDetails(orderDetailsData);
+                setOrderDetails(orderDetailsData);
 
-                    // Clear cart and stored order data AFTER everything is processed
-                    emptyCart();
+                // Clear cart and stored order data AFTER everything is processed
+                emptyCart();
+                if (paymentMethod === 'card') {
                     localStorage.removeItem('orderData');
-                } else {
-                    setError(t('orderDataNotFound'));
                 }
             } catch (e) {
                 console.error('Error fetching order:', e);
@@ -168,9 +228,25 @@ const PaymentSuccess = () => {
                     </h1>
                     
                     {!error && (
-                        <p className="text-xl text-muted-foreground mb-4">
-                            {t('paymentSuccessMessage')}
-                        </p>
+                        <>
+                            <p className="text-xl text-muted-foreground mb-4">
+                                {t('paymentSuccessMessage')}
+                            </p>
+                            {paymentMethod === 'bank_transfer' && (
+                                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+                                    <p className="text-blue-800 text-sm">
+                                        <strong>{t('bankTransfer')}:</strong> {t('bankTransferPayment')}
+                                    </p>
+                                </div>
+                            )}
+                            {paymentMethod === 'pay_on_delivery' && (
+                                <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
+                                    <p className="text-green-800 text-sm">
+                                        <strong>{t('payOnDelivery')}:</strong> {t('payOnDeliveryPayment')}
+                                    </p>
+                                </div>
+                            )}
+                        </>
                     )}
                 </div>
 
@@ -213,6 +289,14 @@ const PaymentSuccess = () => {
                             <h3 className="font-semibold mb-3">{t('customerInformation')}</h3>
                             <p><strong>{t('name')}:</strong> {orderDetails.customerName}</p>
                             <p><strong>{t('email')}:</strong> {orderDetails.email}</p>
+                            {orderDetails.paymentMethod && (
+                                <p><strong>{t('paymentMethod')}:</strong> {
+                                    orderDetails.paymentMethod === 'card' ? `💳 ${t('cardPayment')}` :
+                                    orderDetails.paymentMethod === 'bank_transfer' ? `🏦 ${t('bankTransfer')}` :
+                                    orderDetails.paymentMethod === 'pay_on_delivery' ? `📦 ${t('payOnDelivery')}` :
+                                    orderDetails.paymentMethod
+                                }</p>
+                            )}
                         </div>
 
                         {/* Order Items */}

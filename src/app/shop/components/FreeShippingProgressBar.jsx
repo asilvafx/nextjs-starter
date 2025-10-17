@@ -3,6 +3,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
+import { useTranslations } from 'next-intl';
 import Link from 'next/link';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -10,6 +11,7 @@ import { Progress } from '@/components/ui/progress';
 import { CheckCircle, Truck } from 'lucide-react';
 
 const FreeShippingProgressBar = ({ cartTotal, storeSettings = null }) => {
+    const t = useTranslations('Cart');
     const [threshold, setThreshold] = useState(50);
     const [currency, setCurrency] = useState('EUR');
     const [isEnabled, setIsEnabled] = useState(true);
@@ -53,16 +55,16 @@ const FreeShippingProgressBar = ({ cartTotal, storeSettings = null }) => {
                             <div>
                                 <h3 className={`font-semibold ${isEligible ? 'text-green-800 dark:text-green-300' : 'text-gray-700 dark:text-gray-300'}`}>
                                     {isEligible ? (
-                                        "Youpi ! Livraison gratuite débloquée 🎉"
+                                        t('freeShippingEligible')
                                     ) : (
-                                        `Presque là ! Livraison gratuite à ${currencySymbol}${threshold}`
+                                        t('almostFreeShipping', { amount: `${currencySymbol}${threshold}` })
                                     )}
                                 </h3>
                                 <p className={`text-sm ${isEligible ? 'text-green-800 dark:text-green-400' : 'text-muted-foreground'}`}>
                                     {isEligible ? (
-                                        "Ta commande bénéficie de la livraison gratuite"
+                                        t('freeShipping')
                                     ) : (
-                                        `Plus que ${currencySymbol}${remaining.toFixed(2)} pour débloquer la livraison gratuite`
+                                        t('almostFreeShipping', { amount: `${currencySymbol}${remaining.toFixed(2)}` })
                                     )}
                                 </p>
                             </div>
@@ -73,7 +75,7 @@ const FreeShippingProgressBar = ({ cartTotal, storeSettings = null }) => {
                                     {currencySymbol}{remaining.toFixed(2)}
                                 </Badge>
                                 <div className="text-xs text-muted-foreground">
-                                    restants
+                                    {t('remaining', { defaultValue: 'restants' })}
                                 </div>
                             </div>
                         )}
@@ -90,7 +92,7 @@ const FreeShippingProgressBar = ({ cartTotal, storeSettings = null }) => {
                     {/* Progress indicators */}
                     <div className="flex justify-between text-xs text-muted-foreground">
                         <span>{currencySymbol}0</span>
-                        <span className="font-medium">{currencySymbol}{threshold} - Livraison gratuite</span>
+                        <span className="font-medium">{currencySymbol}{threshold} - {t('freeShipping')}</span>
                     </div>
                 </CardContent>
             </Card>

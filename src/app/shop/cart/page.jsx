@@ -110,10 +110,7 @@ const Cart = () => {
                             <div className="flex items-center justify-between mb-8">
                                 <div className="flex items-center gap-3">
                                     <ShoppingCart className="h-8 w-8" />
-                                    <h1 className="text-4xl font-bold">{t('title')}</h1>
-                                    <Badge variant="secondary" className="text-lg px-3 py-1">
-                                        {totalItems} {totalItems === 1 ? 'item' : 'items'}
-                                    </Badge>
+                                    <h1 className="text-4xl font-bold">{t('title')}</h1> 
                                 </div>
                                 <Button
                                     variant="ghost"
@@ -263,7 +260,7 @@ const Cart = () => {
                                     initial={{ opacity: 0, x: 20 }}
                                     animate={{ opacity: 1, x: 0 }}
                                     transition={{ duration: 0.3, delay: 0.2 }}
-                                    className="border border-border rounded-lg p-4 bg-card/95 backdrop-blur-sm h-fit sticky top-4"
+                                    className="border border-border rounded-lg p-4 bg-card backdrop-blur-sm h-fit sticky top-4"
                                 >
                                     <h2 className="text-xl font-semibold mb-6">{t('orderSummary')}</h2>
 
