@@ -1,44 +1,159 @@
-# Next.js 15 Enterprise Starter - AI Coding Instructions
+# Next.js 15 Professional CMS & E-commerce Platform - AI Coding Instructions
 
-## Architecture Overview
+## Platform Overview
 
-This is a **Next.js 15** enterprise starter with multi-database support, role-based authentication, and admin panel. Key architectural patterns:
+This is a **Next.js 15** professional CMS and e-commerce platform designed for versatility and ease of deployment. It serves as:
 
-- **Database Abstraction**: `src/data/rest.db.js` acts as a provider registry that auto-detects and switches between Redis/PostgreSQL based on environment variables
-- **Dynamic Auth**: `src/auth.js` fetches OAuth provider configs from database at runtime using `buildAuthConfig()`
-- **Role-Based Middleware**: `src/middleware.js` caches roles/settings for 5 minutes and controls route access dynamically
-- **API Layer**: Unified query system with public/private endpoints in `src/app/api/query/`
+- **Full-Stack CMS**: Complete content management system with admin panel and optional frontend
+- **E-commerce Platform**: Integrated shopping cart, payment processing, order management, and inventory
+- **Backend-Only API**: Can operate as headless CMS/API for external applications
+- **Hybrid Solution**: Frontend + Backend + API in single deployment
 
-## Key Patterns & Conventions
+### Core Architecture Patterns
+
+- **Database Abstraction**: `src/data/rest.db.js` auto-detects and switches between Redis/PostgreSQL/Firebase based on environment variables
+- **Dynamic Authentication**: NextAuth v5 with runtime OAuth provider configuration from database
+- **Role-Based Access Control**: Cached middleware controlling route access with 5-minute cache duration
+- **Unified API System**: Public/private endpoints with CSRF protection and rate limiting
+- **E-commerce Integration**: Native shopping cart, Stripe payments, VAT calculations, order processing
+- **Email System**: Comprehensive email templates with Nodemailer integration
+- **CMS Blocks**: Dynamic content blocks system for flexible page building
+
+## Platform Features & Modules
+
+### E-commerce System
+- **Shopping Cart**: React-use-cart integration with persistent state management
+- **Payment Processing**: Stripe integration with dynamic configuration from database
+- **Order Management**: Complete order lifecycle with status updates and email notifications
+- **Inventory Management**: Product catalog, categories, collections, and attributes
+- **VAT/Tax System**: Configurable VAT calculations with included/excluded pricing
+- **Customer Management**: Customer profiles, order history, and communication
+- **Coupon System**: Discount codes and promotional campaigns
+
+### Content Management (CMS)
+- **Dynamic Blocks**: Flexible content blocks system for page building
+- **Media Management**: File upload, organization, and optimization
+- **Multi-language Support**: Internationalization with locale management
+- **SEO Optimization**: Meta tags, structured data, and search optimization
+
+### Workspace & Productivity
+- **Task Management**: Task board with status tracking and assignments
+- **Agenda System**: Calendar integration and scheduling functionality
+- **Analytics & Reports**: Business intelligence and performance metrics
+
+### Marketing & Communication
+- **Newsletter System**: Email campaigns with subscriber management
+- **Email Templates**: Professional email templates for all business communications
+- **Integration Hub**: Third-party service integrations (Analytics, Payment, etc.)
+
+## Key Development Patterns
 
 ### Database Operations
 Always use the unified `DBService` from `src/data/rest.db.js`:
 ```javascript
 import DBService from '@/data/rest.db.js';
-// Auto-detects provider: postgres if POSTGRES_URL, else redis if REDIS_URL
+// Auto-detects provider: postgres if POSTGRES_URL, redis if REDIS_URL, firebase if FIREBASE_CONFIG
 const data = await DBService.readAll('collection_name');
+const item = await DBService.getItemByKey('email', 'user@example.com', 'users');
+const result = await DBService.create(newItem, 'products');
 ```
 
-### Authentication Flow
-- NextAuth v5 with dynamic provider loading from database settings
-- Custom credentials provider calls `/auth/api/handler` for validation
-- Settings fetched via `fetchSettings()` function configures OAuth providers at runtime
-- Use `useAuth` hook from `src/hooks/useAuth.js` for client-side auth state
+### Client-Side API Integration
+Use the `QueryAPI` class from `src/lib/client/query.js` for all client operations:
+```javascript
+import { getAll, create, update, remove } from '@/lib/client/query.js';
 
-### API Routes Structure
-- **Private**: `/api/query/[slug]` - requires authentication via `withAuth()` HOC
-- **Public**: `/api/query/public/[slug]` - uses `withPublicAccess()` with CSRF/IP validation
+// CRUD operations
+const products = await getAll('products', { page: 1, limit: 10 });
+const newProduct = await create(productData, 'products');
+const updatedProduct = await update(productId, updates, 'products');
+await remove(productId, 'products');
+
+// Public endpoints (no auth required)
+import { getAllPublic, createPublic } from '@/lib/client/query.js';
+const publicData = await getAllPublic('site_settings');
+```
+
+### Authentication System
+- **NextAuth v5**: Dynamic provider configuration from database settings
+- **Role-Based Access**: Protected system roles (Admin/User) with custom role support
+- **Session Management**: JWT tokens with 30-day expiration
+- **Client Hooks**: Use `useAuth` hook from `src/hooks/useAuth.js` for auth state
+
+### API Architecture
+- **Private Routes**: `/api/query/[slug]` - requires authentication via `withAuth()` HOC
+- **Public Routes**: `/api/query/public/[slug]` - uses `withPublicAccess()` with CSRF/IP validation
 - **Role-Protected**: Use `withAuthAndRole(['admin'])` for role-specific endpoints
+- **Specialized APIs**: `/api/stripe`, `/api/checkout`, `/api/email` for specific functionality
 
-### UI Components (Shadcn/UI)
-- Located in `src/components/ui/` - use class-variance-authority (CVA) for variants
-- Custom components extend base with additional props (see `country-dropdown.tsx`, `phone-input.tsx`)
-- Forms use `react-hook-form` + `zod` validation pattern consistently
+### Email System
+Professional email system with Nodemailer integration:
+```javascript
+import EmailService from '@/lib/server/email.js';
 
-### Admin Panel Architecture
-- Layout: `src/app/admin/layout.jsx` with `layoutWrapper.jsx` for shared UI
-- Settings: `src/app/admin/system/settings/page.jsx` - dynamic form with useFieldArray for arrays
-- Uses `FormField` + `FormControl` pattern from shadcn/ui consistently
+// Send order confirmation
+await EmailService.sendOrderConfirmationEmail();
+
+// Send password reset
+await EmailService.sendPasswordResetEmail(email, resetCode, userName);
+
+// Custom email with template
+await EmailService.sendEmail(to, subject, TemplateComponent, props);
+```
+
+Available email templates:
+- Order confirmations with payment instructions
+- User account management (creation, updates, password reset)
+- Newsletter campaigns with unsubscribe handling
+- Status updates and notifications
+
+### E-commerce Integration
+Complete shopping cart system with react-use-cart:
+```javascript
+import { useCart } from 'react-use-cart';
+
+const {
+  items,
+  totalItems,
+  cartTotal,
+  addItem,
+  updateItemQuantity,
+  removeItem,
+  emptyCart
+} = useCart();
+
+// Add product to cart
+addItem({
+  id: product.id,
+  name: product.name,
+  price: product.price,
+  image: product.image
+});
+```
+
+### UI Components & Forms
+- **Shadcn/UI Base**: Located in `src/components/ui/` with CVA variants
+- **Enhanced Components**: `country-dropdown.tsx`, `phone-input.tsx`, `google-places-input.jsx`
+- **Form Pattern**: `react-hook-form` + `zod` validation consistently
+- **Shopping Components**: Cart management, checkout flow, payment forms
+
+### Admin Panel Structure
+Complete admin interface with modular navigation:
+
+**Core Modules:**
+- **Dashboard**: Analytics, reports, and overview metrics
+- **Access Control**: User management, roles, and permissions
+- **Store Management**: Orders, catalog, inventory, customers, coupons
+- **Content Management**: Media library, blocks system, SEO tools
+- **Workspace**: Task management, agenda, scheduling
+- **Marketing**: Newsletter campaigns, subscriber management
+- **Developer Tools**: Database management, API endpoints, system monitoring
+- **System Settings**: Configuration, integrations, maintenance
+
+**Layout Structure:**
+- Main layout: `src/app/admin/layout.jsx` with responsive sidebar navigation
+- Dynamic forms with `useFieldArray` for complex data structures
+- Consistent `FormField` + `FormControl` pattern from shadcn/ui
 
 ## Critical Developer Workflows
 
@@ -50,17 +165,33 @@ npm run format       # Prettier formatting
 npm run email-dev    # Preview emails in development
 ```
 
+### Easy Deployment Setup
+**Multi-Database Support**: Automatically detects and configures database provider:
+- Set `POSTGRES_URL` - Auto-selects PostgreSQL (recommended for production)
+- Set `REDIS_URL` - Auto-selects Redis (fast caching, good for development)
+- Firebase support available (configured via `FIREBASE_CONFIG`)
+
+**Hosting Compatibility**: 
+- ✅ **Vercel**: Zero-config deployment with environment variables
+- ✅ **Netlify**: Full Node.js support with serverless functions
+- ✅ **Railway**: One-click deployment with PostgreSQL
+- ✅ **DigitalOcean**: App Platform with managed databases
+- ✅ **Heroku**: Traditional hosting with add-on databases
+- ✅ **Self-hosted**: Any Node.js environment with PM2
+
 ### Database Provider Setup
-Set ONE of these environment variables:
+Set ONE of these environment variables for auto-detection:
 - `POSTGRES_URL` - Auto-selects PostgreSQL provider
 - `REDIS_URL` - Auto-selects Redis provider
 - Provider detection logic in `src/data/rest.db.js` constructor
 
-### Settings-Driven Features
-The app behavior changes based on database settings (fetched via `/api/query/public/site_settings`):
+### Configuration-Driven Features
+The platform behavior changes based on database settings (fetched via `/api/query/public/site_settings`):
 - `allowRegistration: false` - Blocks `/auth/register` access
 - `enableFrontend: false` - Forces all routes to `/auth/login` or `/admin` 
 - `providers` object - Enables OAuth providers dynamically in auth.js
+- `vatEnabled: true` - Enables VAT calculations in e-commerce
+- `paymentMethods` - Configures available payment options (Stripe, Bank Transfer, etc.)
 
 ## Integration Points
 
@@ -68,6 +199,24 @@ The app behavior changes based on database settings (fetched via `/api/query/pub
 - Roles cached for 5min in `getCachedRoles()` function
 - Settings cached similarly in `getCachedSettings()`  
 - Cache keys: `rolesCache`, `settingsCache` with timestamp validation
+
+### Third-Party Integrations
+Managed via `src/lib/client/integrations.js` with database configuration:
+```javascript
+import { getIntegration, isIntegrationEnabled } from '@/lib/client/integrations.js';
+
+// Check if integration is enabled
+const isStripeEnabled = await isIntegrationEnabled('stripe');
+const turnstileKey = await getTurnstileSiteKey();
+const googleMapsKey = await getGoogleMapsApiKey();
+```
+
+Available integrations:
+- **Stripe**: Payment processing with dynamic configuration
+- **Google Analytics**: Tracking and analytics
+- **Google Maps**: Location services and geocoding
+- **Cloudflare Turnstile**: CAPTCHA protection
+- **Email Services**: SMTP configuration for Nodemailer
 
 ### Form Patterns
 Dynamic arrays use `useFieldArray`:
@@ -96,10 +245,38 @@ const { fields, append, remove } = useFieldArray({
 - Client queries use QueryAPI class from `src/lib/client/query.js`
 - Toast notifications via `sonner` library consistently
 
+### Web3 Integration (Optional)
+Built-in Web3 support with `src/hooks/useWeb3.js`:
+```javascript
+import { useWeb3 } from '@/hooks/useWeb3.js';
+
+const {
+  web3Config,
+  userWallet,
+  balance,
+  sendTransaction,
+  formatBalance,
+  isWeb3Enabled
+} = useWeb3();
+```
+
+Features:
+- Wallet creation and management
+- Token balance tracking
+- Transaction history
+- Multi-chain support via configuration
+
 ### Environment Variables
 - `NEXTAUTH_URL` - Required for auth.js base URL detection  
-- `NEXT_SECRET` - NextAuth encryption secret
+- `NEXT_SECRET_KEY` - NextAuth encryption secret
 - Database: One of `POSTGRES_URL` or `REDIS_URL`
 - OAuth: Provider-specific `{PROVIDER}_CLIENT_ID/SECRET` pairs
+- Blob Storage: `BLOB_READ_WRITE_TOKEN` for Vercel Blob
+
+### Specialized Hook System
+- `useAuth()` - Authentication state and user management
+- `useBlocks()` - CMS blocks fetching and management
+- `useWeb3()` - Blockchain integration and wallet operations
+- `useMobile()` - Responsive design utilities
 
 When implementing new features, follow the existing patterns for database abstraction, role-based access, and dynamic configuration from database settings.

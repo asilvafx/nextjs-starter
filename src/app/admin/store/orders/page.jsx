@@ -22,6 +22,12 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
 import {
@@ -41,6 +47,7 @@ import {
   CreditCard,
   Info,
   Trash2,
+  MoreVertical,
 } from "lucide-react";
 import {
   Select,
@@ -98,6 +105,7 @@ const initialFormData = {
   paymentStatus: "pending",
   paymentMethod: "",
   deliveryNotes: "",
+  shippingNotes: "", // Admin-only shipping notes
   sendEmail: true,
   appointmentId: null,
   isServiceAppointment: false,
@@ -105,9 +113,9 @@ const initialFormData = {
 
 const PAYMENT_METHODS = [
   { value: "none", label: "None/Pending" },
-  { value: "credit_card", label: "Credit Card" },
-  { value: "debit_card", label: "Debit Card" },
+  { value: "card", label: "Credit/Debit Card" }, 
   { value: "bank_transfer", label: "Bank Transfer" },
+  { value: "pay_on_delivery", label: "Pay On Delivery" },
   { value: "cash", label: "Cash" },
   { value: "crypto", label: "Cryptocurrency" }
 ];
@@ -161,6 +169,9 @@ export default function OrdersPage() {
     paymentStatus: '',
     paymentMethod: ''
   });
+  const [isEditingShippingNotes, setIsEditingShippingNotes] = useState(false);
+  const [tempShippingNotes, setTempShippingNotes] = useState("");
+  const [isSavingShippingNotes, setIsSavingShippingNotes] = useState(false);
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
   const [isConfirmingStatusChange, setIsConfirmingStatusChange] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -225,6 +236,30 @@ export default function OrdersPage() {
     } catch (error) {
       toast.error("Failed to fetch catalog items");
     }
+  };
+
+  // Helper function to update order in state without full reload
+  const updateOrderInState = (orderId, updateData) => {
+    // Update allOrders
+    setAllOrders(prev => prev.map(order => 
+      order.id === orderId ? { ...order, ...updateData } : order
+    ));
+    
+    // Update filtered orders
+    setOrders(prev => prev.map(order => 
+      order.id === orderId ? { ...order, ...updateData } : order
+    ));
+    
+    // Update selectedOrder if it matches
+    if (selectedOrder && selectedOrder.id === orderId) {
+      setSelectedOrder(prev => ({ ...prev, ...updateData }));
+    }
+  };
+
+  // Helper function to add new order to state
+  const addOrderToState = (newOrder) => {
+    setAllOrders(prev => [newOrder, ...prev]);
+    setOrders(prev => [newOrder, ...prev]);
   };
 
   useEffect(() => {
@@ -436,7 +471,9 @@ export default function OrdersPage() {
       setFormData(initialFormData);
       setIsNewCustomer(false);
       setSelectedCustomerId("");
-      fetchOrders();
+      
+      // Add new order to state instead of full reload
+      addOrderToState(result);
     } catch (error) { 
       toast.error(error.message || "Failed to create order");
     } finally {
@@ -529,8 +566,8 @@ export default function OrdersPage() {
         toast.success("Order status updated successfully");
       }
 
-      // Refresh orders and close dialog
-      fetchOrders();
+      // Update orders in state and close dialog instead of full reload
+      updateOrderInState(statusChangeData.orderId, updateData);
       setIsStatusDialogOpen(false);
       setStatusChangeData(null);
       setTrackingNumber("");
@@ -838,7 +875,8 @@ export default function OrdersPage() {
                     {formatDate(order.createdAt)}
                   </TableCell>
                   <TableCell className="text-right">
-                    <div className="flex gap-1 justify-end">
+                    {/* Desktop Actions */}
+                    <div className="hidden md:flex gap-1 justify-end">
                       <Button
                         variant="outline"
                         size="icon"
@@ -926,6 +964,102 @@ export default function OrdersPage() {
                                     <div className="mt-3 pt-3 border-t">
                                       <label className="text-sm font-medium text-gray-500">Delivery Notes</label>
                                       <p className="text-sm">{selectedOrder.deliveryNotes}</p>
+                                    </div>
+                                  )}
+                                </CardContent>
+                              </Card>
+                              
+                              <Card>
+                                <CardHeader className="flex flex-row items-center justify-between">
+                                  <h3 className="font-semibold">Admin Shipping Notes</h3>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => {
+                                      if (isEditingShippingNotes) {
+                                        setIsEditingShippingNotes(false);
+                                        setTempShippingNotes("");
+                                      } else {
+                                        setIsEditingShippingNotes(true);
+                                        setTempShippingNotes(selectedOrder.shippingNotes || "");
+                                      }
+                                    }}
+                                  >
+                                    {isEditingShippingNotes ? 'Cancel' : 'Edit Notes'}
+                                  </Button>
+                                </CardHeader>
+                                <CardContent>
+                                  {!isEditingShippingNotes ? (
+                                    <div className="text-sm">
+                                      {selectedOrder.shippingNotes ? (
+                                        <p>{selectedOrder.shippingNotes}</p>
+                                      ) : (
+                                        <p className="text-gray-500 italic">No shipping notes added</p>
+                                      )}
+                                    </div>
+                                  ) : (
+                                    <div className="space-y-3">
+                                      <textarea
+                                        className="w-full p-3 border rounded-md resize-none"
+                                        rows={4}
+                                        placeholder="Add internal shipping notes (visible only to admins)..."
+                                        value={tempShippingNotes}
+                                        onChange={(e) => setTempShippingNotes(e.target.value)}
+                                      />
+                                      <div className="flex gap-2">
+                                        <Button
+                                          size="sm"
+                                          disabled={isSavingShippingNotes}
+                                          onClick={async () => {
+                                            try {
+                                              setIsSavingShippingNotes(true);
+                                              const updateData = {
+                                                shippingNotes: tempShippingNotes
+                                              };
+                                              
+                                              const response = await update(selectedOrder.id, updateData, "orders");
+                                              
+                                              if (response.success || response) {
+                                                toast.success("Shipping notes updated successfully");
+                                                
+                                                // Update orders in state instead of full reload
+                                                updateOrderInState(selectedOrder.id, updateData);
+                                                
+                                                // Exit edit mode
+                                                setIsEditingShippingNotes(false);
+                                                setTempShippingNotes("");
+                                              } else {
+                                                console.log(response);
+                                                toast.error("Failed to update shipping notes");
+                                              }
+                                            } catch (error) {
+                                              console.error('Error updating shipping notes:', error);
+                                              toast.error("Failed to update shipping notes");
+                                            } finally {
+                                              setIsSavingShippingNotes(false);
+                                            }
+                                          }}
+                                        >
+                                          {isSavingShippingNotes ? (
+                                            <>
+                                              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
+                                              Saving...
+                                            </>
+                                          ) : (
+                                            "Save Notes"
+                                          )}
+                                        </Button>
+                                        <Button
+                                          variant="outline"
+                                          size="sm"
+                                          onClick={() => {
+                                            setIsEditingShippingNotes(false);
+                                            setTempShippingNotes("");
+                                          }}
+                                        >
+                                          Cancel
+                                        </Button>
+                                      </div>
                                     </div>
                                   )}
                                 </CardContent>
@@ -1027,11 +1161,8 @@ export default function OrdersPage() {
                                               if (updateResponse) {
                                                 toast.success("Payment details updated successfully");
                                                 
-                                                // Update the selected order in state
-                                                setSelectedOrder({ ...selectedOrder, ...updateData });
-                                                
-                                                // Refresh orders list
-                                                fetchOrders();
+                                                // Update orders in state instead of full reload
+                                                updateOrderInState(selectedOrder.id, updateData);
                                                 
                                                 // Exit edit mode
                                                 setIsEditingPayment(false);
@@ -1349,11 +1480,8 @@ export default function OrdersPage() {
                                                   toast.success("Order status updated successfully");
                                                 }
 
-                                                // Update the selected order in state
-                                                setSelectedOrder({ ...selectedOrder, ...updateData });
-                                                
-                                                // Refresh orders list
-                                                fetchOrders();
+                                                // Update orders in state instead of full reload
+                                                updateOrderInState(selectedOrder.id, updateData);
                                                 
                                                 // Exit edit mode
                                                 setIsEditingStatus(false);
@@ -1406,6 +1534,39 @@ export default function OrdersPage() {
                     >
                       <Trash2 className="w-4 h-4" />
                     </Button>
+                    </div>
+                    
+                    {/* Mobile Actions Dropdown */}
+                    <div className="md:hidden">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="outline" size="icon">
+                            <MoreVertical className="w-4 h-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => openInvoiceDialog(order)}>
+                            <FileText className="w-4 h-4 mr-2" />
+                            Invoice
+                          </DropdownMenuItem>
+                          <DropdownMenuItem 
+                            onClick={() => {
+                              setSelectedOrder(order);
+                              setIsDetailsOpen(true);
+                            }}
+                          >
+                            <Eye className="w-4 h-4 mr-2" />
+                            View Order
+                          </DropdownMenuItem>
+                          <DropdownMenuItem 
+                            onClick={() => handleDeleteOrder(order)}
+                            className="text-red-600 focus:text-red-600"
+                          >
+                            <Trash2 className="w-4 h-4 mr-2" />
+                            Delete Order
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
                   </TableCell>
                 </TableRow>

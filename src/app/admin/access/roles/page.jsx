@@ -88,6 +88,14 @@ const initialFormData = {
   routes: []
 };
 
+// Protected system roles that cannot be deleted
+const PROTECTED_ROLES = ['Admin', 'User'];
+
+// Helper function to check if a role is protected
+const isProtectedRole = (roleTitle) => {
+  return PROTECTED_ROLES.includes(roleTitle);
+};
+
 const commonRoutes = [ 
   { path: "/admin", label: "Admin Dashboard" },
   { path: "/admin/analytics", label: "Dashboard Analytics" },
@@ -330,6 +338,10 @@ export default function RolesPage() {
   };
 
   const handleDeleteClick = (role) => {
+    if (isProtectedRole(role.title)) {
+      toast.error(`Cannot delete system role "${role.title}". This is a protected role.`);
+      return;
+    }
     setRoleToDelete(role);
     setDeleteConfirmOpen(true);
   };
@@ -528,8 +540,13 @@ export default function RolesPage() {
                     <TableRow key={role.id} className="hover:bg-muted/50">
                       <TableCell className="font-medium">
                         <div className="flex items-center gap-2">
-                          <Shield className="w-4 h-4 text-primary" />
-                          {role.title}
+                          <Shield className={`w-4 h-4 ${isProtectedRole(role.title) ? 'text-amber-500' : 'text-primary'}`} />
+                          <span>{role.title}</span>
+                          {isProtectedRole(role.title) && (
+                            <Badge variant="outline" className="text-xs text-amber-600 border-amber-300">
+                              System Role
+                            </Badge>
+                          )}
                         </div>
                       </TableCell>
                       <TableCell>
@@ -569,10 +586,11 @@ export default function RolesPage() {
                             </DropdownMenuItem>
                             <DropdownMenuItem 
                               onClick={() => handleDeleteClick(role)}
-                              className="text-destructive"
+                              className={isProtectedRole(role.title) ? "text-muted-foreground cursor-not-allowed" : "text-destructive"}
+                              disabled={isProtectedRole(role.title)}
                             >
                               <Trash className="w-4 h-4 mr-2" />
-                              Delete Role
+                              {isProtectedRole(role.title) ? "Protected Role" : "Delete Role"}
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>

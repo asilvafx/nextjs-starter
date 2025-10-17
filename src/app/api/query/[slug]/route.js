@@ -239,7 +239,7 @@ async function handlePut(request, { params }) {
         let tryId = data.id;
         const existingItem = await DBService.read(tryId, slug); 
         if (!existingItem) {
-            tryId = await DBService.getItemKey('id', id, slug);  
+            tryId = await DBService.getItemKey('id', tryId, slug);  
             if(!tryId){
               return NextResponse.json(
                 { error: 'Record not found' },
@@ -310,7 +310,7 @@ async function handleDelete(request, { params }) {
         let tryId = id; 
         const existingItem = await DBService.read(tryId, slug); 
         if (!existingItem) {
-            tryId = await DBService.getItemKey('id', id, slug);  
+            tryId = await DBService.getItemKey('id', tryId, slug);  
             if(!tryId){
               return NextResponse.json(
                 { error: 'Record not found' },
