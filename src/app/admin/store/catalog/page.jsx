@@ -157,7 +157,7 @@ export default function CatalogPage() {
         getAll("catalog"),
         getAll("categories"),
         getAll("collections"),
-        fetch('/api/shop/settings').then(res => res.json()),
+        getAll("store_settings"),
         getAll("site_settings")
       ]);
 
@@ -475,12 +475,7 @@ export default function CatalogPage() {
                         <TableCell>
                           <div>
                             <div className="font-medium">
-                              {item.nameML?.[defaultLanguage] || item.name || 'Untitled'}
-                              {availableLanguages.length > 1 && (
-                                <span className="ml-2 text-xs text-muted-foreground">
-                                  ({Object.keys(item.nameML || {}).length || 1}/{availableLanguages.length} lang)
-                                </span>
-                              )}
+                              {item.nameML?.[defaultLanguage] || item.name || 'Untitled'} 
                             </div>
                             <div className="text-sm text-muted-foreground">
                               {(() => {

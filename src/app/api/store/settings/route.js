@@ -4,37 +4,63 @@ import DBService from '@/data/rest.db.js';
 
 export async function GET(request) {
   try {
-    // Get store settings
-    const storeSettingsResponse = await DBService.readAll('store_settings');
-    let storeSettings = null;
+    const response = await DBService.readAll('store_settings');
     
-    if (storeSettingsResponse && storeSettingsResponse.length > 0) {
-      storeSettings = storeSettingsResponse[0];
+    let storeSettings = null;
+    if (response && Object.keys(response).length > 0) {
+      // Get the first settings record - handle both array and object responses
+      if (Array.isArray(response) && response.length > 0) {
+        storeSettings = response[0];
+      } else if (typeof response === 'object') {
+        storeSettings = Object.values(response)[0];
+      }
     }
-
+    
+    // Return default settings if none found
     if (!storeSettings) {
-      // Return default settings if none exist
       storeSettings = {
         businessName: "Your Store",
-        currency: "EUR",
+        tvaNumber: "",
+        address: "",
         vatPercentage: 20,
         vatIncludedInPrice: true,
         applyVatAtCheckout: true,
-        freeShippingEnabled: false,
-        freeShippingThreshold: 50,
-        freeShippingCountries: [],
         paymentMethods: {
-          cardPayments: false,
+          cardPayments: true,
+          stripePublicKey: process.env.NEXT_PUBLIC_STRIPE_PK || process.env.STRIPE_PUBLISHABLE_KEY || "",
+          stripeSecretKey: "",
           bankTransfer: false,
-          payOnDelivery: false
+          payOnDelivery: false,
+          bankTransferDetails: {
+            bankName: "",
+            accountHolder: "",
+            iban: "",
+            bic: "",
+            additionalInfo: ""
+          }
         },
+        freeShippingEnabled: true,
+        freeShippingThreshold: 50,
+        internationalShipping: true,
+        allowedCountries: ["FRA", "DEU", "ITA", "ESP", "BEL", "NLD", "LUX"],
+        bannedCountries: [],
+        currency: "EUR",
         carriers: []
       };
     }
+    
+    // Don't expose sensitive keys in public API
+    const publicSettings = {
+      ...storeSettings,
+      paymentMethods: {
+        ...storeSettings.paymentMethods,
+        stripeSecretKey: undefined, // Remove secret key from public response
+      }
+    };
 
     return NextResponse.json({
       success: true,
-      data: storeSettings
+      data: publicSettings
     });
 
   } catch (error) {
