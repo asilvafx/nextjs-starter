@@ -83,7 +83,7 @@ function Shop() {
                 getAllPublic('catalog'),
                 getAllPublic('categories'), 
                 getAllPublic('collections'),
-                fetch('/api/shop/settings').then(res => res.json())
+                getAllPublic('store_settings'),
             ]);
 
             // Set store settings
@@ -106,8 +106,8 @@ function Shop() {
                 // Transform the data to match component expectations
                 const transformedData = catalogResponse.data.map(item => ({
                     ...item,
-                    // Add inStock property based on stock number
-                    inStock: item.stock > 0,
+                    // Add inStock property based on stock number - treat -1 as unlimited stock
+                    inStock: item.stock > 0 || item.stock === -1,
                     // Use cover image from images array or fallback
                     image: item.images?.[item.coverImageIndex >= 0 ? item.coverImageIndex : 0]?.url || item.images?.[0]?.url || '/placeholder-image.jpg',
                     // Ensure collections is always an array
@@ -423,7 +423,7 @@ function Shop() {
                                 )}
 
                                 {/* Low Stock Badge */}
-                                {item.inStock && item.stock <= (item.lowStockAlert || 5) && (
+                                {item.inStock && item.stock !== -1 && item.stock <= (item.lowStockAlert || 5) && (
                                     <div className="absolute top-2 left-2 z-10">
                                         <Badge variant="secondary" className="bg-orange-100 text-orange-800 hover:bg-orange-200">
                                             Low Stock
@@ -458,7 +458,7 @@ function Shop() {
                                             <p>Category: {categories.find(c => c.id === item.categoryId)?.name}</p>
                                         )}
                                         {item.type === 'physical' && (
-                                            <p>Stock: {item.stock} available</p>
+                                            <p>Stock: {item.stock === -1 ? 'Unlimited' : `${item.stock} available`}</p>
                                         )}
                                         {item.sku && (
                                             <p>SKU: {item.sku}</p>

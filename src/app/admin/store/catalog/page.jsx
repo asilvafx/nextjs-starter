@@ -116,6 +116,7 @@ const initialFormData = {
     twitterImage: "",
   },
   isActive: true,
+  featured: false,
 };
 
 export default function CatalogPage() {
@@ -149,6 +150,8 @@ export default function CatalogPage() {
   const [itemToDelete, setItemToDelete] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [uploadingImages, setUploadingImages] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
 
   const fetchData = async () => {
     try {
@@ -188,10 +191,39 @@ export default function CatalogPage() {
   }, []);
 
     const handleImageUpload = async (files) => {
+      if (uploadingImages) {
+        toast.error("Please wait for the current upload to finish");
+        return;
+      }
+
+      setUploadingImages(true);
+      setUploadProgress(0);
+      
+      // Simulate progress for better UX
+      const progressInterval = setInterval(() => {
+        setUploadProgress(prev => {
+          if (prev >= 90) {
+            clearInterval(progressInterval);
+            return 90;
+          }
+          return prev + Math.random() * 20;
+        });
+      }, 200);
+
       const uploadedImages = [];
       for (const file of files) {
+        if (!file.type.startsWith('image/')) {
+          toast.error("Please upload image files only");
+          continue;
+        }
+
+        if (file.size > 10 * 1024 * 1024) {
+          toast.error(`File ${file.name} is too large (max 10MB)`);
+          continue;
+        }
+
         const uploadFormData = new FormData();
-        uploadFormData.append('files', file); // Use 'files' to match the upload route
+        uploadFormData.append('files', file);
         try {
           const response = await fetch('/api/upload', {
             method: 'POST',
@@ -200,17 +232,20 @@ export default function CatalogPage() {
           const data = await response.json();
           if (data.success && data.data?.[0]) {
             uploadedImages.push({
-              url: data.data[0].url,
+              url: data.data[0].publicUrl,
               alt: file.name,
             });
           } else {
-            throw new Error(data.error || 'Upload failed');
+            toast.error(`Failed to upload ${file.name}`);
           }
         } catch (error) {
           console.error('Upload error:', error);
           toast.error(`Failed to upload ${file.name}: ${error.message}`);
         }
       }
+      
+      clearInterval(progressInterval);
+      setUploadProgress(100);
       
       if (uploadedImages.length > 0) {
         setFormData((prev) => ({
@@ -219,13 +254,30 @@ export default function CatalogPage() {
         }));
         toast.success(`Successfully uploaded ${uploadedImages.length} image(s)`);
       }
-    };
-    
-    const handleSubmit = async (e) => {
+      
+      setTimeout(() => {
+        setUploadingImages(false);
+        setUploadProgress(0);
+      }, 800);
+    };    const handleSubmit = async (e) => {
       e.preventDefault();
       setIsSubmitting(true);
       
       try {
+        // Check for slug uniqueness
+        if (formData.slug) {
+          const existingItems = catalog.filter(item => 
+            item.slug === formData.slug && 
+            (!editItem || item.id !== editItem.id)
+          );
+          
+          if (existingItems.length > 0) {
+            toast.error("Slug already exists. Please choose a different slug.");
+            setIsSubmitting(false);
+            return;
+          }
+        }
+
         const processedData = {
           ...formData,
         };
@@ -307,6 +359,7 @@ export default function CatalogPage() {
       lowStockAlert: product.lowStockAlert || 5,
       duration: product.duration || 60,
       coverImageIndex: product.coverImageIndex || 0,
+      featured: product.featured || false,
     });
     setIsOpen(true);
   };
@@ -397,6 +450,8 @@ export default function CatalogPage() {
                   onSubmit={handleSubmit}
                   onImageUpload={handleImageUpload}
                   isSubmitting={isSubmitting}
+                  uploadingImages={uploadingImages}
+                  uploadProgress={uploadProgress}
                 />
               </DialogContent>
             </Dialog>
@@ -513,12 +568,12 @@ export default function CatalogPage() {
                           ) : (
                             <span
                               className={`px-2 py-1 rounded-full text-xs ${
-                                item.stock > 0
+                                item.stock > 0 || item.stock === -1
                                   ? "bg-green-100 text-green-800"
                                   : "bg-red-100 text-red-800"
                               }`}
                             >
-                              {item.stock > 0 ? "In Stock" : "Out of Stock"}
+                              {item.stock === -1 ? "Unlimited" : item.stock > 0 ? "In Stock" : "Out of Stock"}
                             </span>
                           )}
                         </TableCell>

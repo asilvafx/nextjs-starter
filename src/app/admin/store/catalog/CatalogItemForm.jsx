@@ -62,11 +62,12 @@ export function CatalogItemForm({
   onImageUpload,
   editItem,
   isSubmitting = false,
+  uploadingImages = false,
+  uploadProgress = 0,
 }) {
   const [customAttributes, setCustomAttributes] = useState(
     formData.customAttributes || [{ name: "", value: "" }]
   );
-  const [isUploading, setIsUploading] = useState(false);
   const [availableAttributes, setAvailableAttributes] = useState([]);
   const [unlimitedStock, setUnlimitedStock] = useState(formData.stock === -1);
   const [currentLanguage, setCurrentLanguage] = useState(defaultLanguage);
@@ -108,17 +109,16 @@ export function CatalogItemForm({
     const files = Array.from(event.target.files);
     if (files.length === 0) return;
 
-    setIsUploading(true);
     try {
       if (onImageUpload) {
         await onImageUpload(files);
         // Success message is now handled in the parent component
+        // Reset the input value to allow re-uploading the same file
+        event.target.value = '';
       }
     } catch (error) {
       console.error('Image upload error:', error);
       toast.error("Failed to upload images");
-    } finally {
-      setIsUploading(false);
     }
   };
 
@@ -449,14 +449,26 @@ export function CatalogItemForm({
                   </div>
                 </div>
 
-                <div className="flex items-center space-x-2">
-                  <Switch
-                    checked={formData.isActive}
-                    onCheckedChange={(checked) =>
-                      setFormData({ ...formData, isActive: checked })
-                    }
-                  />
-                  <Label>Active Item</Label>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="flex items-center space-x-2">
+                    <Switch
+                      checked={formData.isActive}
+                      onCheckedChange={(checked) =>
+                        setFormData({ ...formData, isActive: checked })
+                      }
+                    />
+                    <Label>Active Item</Label>
+                  </div>
+                  
+                  <div className="flex items-center space-x-2">
+                    <Switch
+                      checked={formData.featured || false}
+                      onCheckedChange={(checked) =>
+                        setFormData({ ...formData, featured: checked })
+                      }
+                    />
+                    <Label>Featured Item</Label>
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -991,29 +1003,50 @@ export function CatalogItemForm({
               </CardHeader>
               <CardContent className="space-y-4">
                 {/* Image Upload Area */}
-                <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-6">
+                <div className={`border-2 border-dashed rounded-lg p-6 transition-colors ${
+                  uploadingImages 
+                    ? "border-primary bg-primary/10 pointer-events-none"
+                    : "border-muted-foreground/25 hover:border-primary/50 hover:bg-primary/5"
+                }`}>
                   <div className="flex flex-col items-center justify-center space-y-2">
-                    <Upload className="h-8 w-8 text-muted-foreground" />
-                    <div className="text-center">
-                      <Label htmlFor="image-upload" className="cursor-pointer text-sm font-medium">
-                        Click to upload images
-                      </Label>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        PNG, JPG, WEBP up to 10MB each
-                      </p>
-                    </div>
+                    {uploadingImages ? (
+                      <>
+                        <Loader2 className="h-8 w-8 text-primary animate-spin" />
+                        <p className="text-sm text-primary font-medium">
+                          Uploading images...
+                        </p>
+                        <div className="w-32 h-2 bg-muted rounded-full overflow-hidden">
+                          <div 
+                            className="h-full bg-primary rounded-full transition-all duration-300 ease-out"
+                            style={{ width: `${uploadProgress}%` }}
+                          />
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          {Math.round(uploadProgress)}%
+                        </p>
+                      </>
+                    ) : (
+                      <>
+                        <Upload className="h-8 w-8 text-muted-foreground" />
+                        <div className="text-center">
+                          <Label htmlFor="image-upload" className="cursor-pointer text-sm font-medium">
+                            Click to upload images
+                          </Label>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            PNG, JPG, WEBP up to 10MB each
+                          </p>
+                        </div>
+                      </>
+                    )}
                     <Input
                       id="image-upload"
                       type="file"
                       accept="image/*"
                       multiple
                       onChange={handleImageUploadLocal}
-                      disabled={isUploading}
+                      disabled={uploadingImages}
                       className="hidden"
                     />
-                    {isUploading && (
-                      <p className="text-sm text-muted-foreground">Uploading...</p>
-                    )}
                   </div>
                 </div>
 
@@ -1024,17 +1057,21 @@ export function CatalogItemForm({
                     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mt-2">
                       {formData.images.map((image, index) => (
                         <div key={index} className="relative group">
-                          <div className="aspect-square overflow-hidden rounded-lg border">
+                          <div className="aspect-square overflow-hidden rounded-lg border bg-muted">
                             <img
                               src={image.url}
                               alt={image.alt || `Image ${index + 1}`}
-                              className="w-full h-full object-cover"
+                              className="w-full h-full object-cover cursor-pointer transition-transform hover:scale-105"
+                              onClick={() => {
+                                // Preview functionality can be added here
+                                console.log('Image preview clicked:', image);
+                              }}
                             />
                           </div>
                           
                           {/* Cover Image Badge */}
                           {formData.coverImageIndex === index && (
-                            <Badge className="absolute top-2 left-2 bg-primary">
+                            <Badge className="absolute top-2 left-2 bg-primary text-primary-foreground">
                               <Star className="h-3 w-3 mr-1" />
                               Cover
                             </Badge>
@@ -1048,8 +1085,13 @@ export function CatalogItemForm({
                                   type="button"
                                   size="sm"
                                   variant="secondary"
-                                  onClick={() => handleCoverImageChange(index)}
-                                  className="h-8 w-8 p-0"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleCoverImageChange(index);
+                                    toast.success('Cover image updated');
+                                  }}
+                                  className="h-8 w-8 p-0 bg-white/90 hover:bg-white"
+                                  title="Set as cover image"
                                 >
                                   <Star className="h-4 w-4" />
                                 </Button>
@@ -1058,12 +1100,22 @@ export function CatalogItemForm({
                                 type="button"
                                 size="sm"
                                 variant="destructive"
-                                onClick={() => removeImage(index)}
-                                className="h-8 w-8 p-0"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  removeImage(index);
+                                  toast.success('Image removed');
+                                }}
+                                className="h-8 w-8 p-0 bg-white/90 hover:bg-destructive"
+                                title="Remove image"
                               >
                                 <X className="h-4 w-4" />
                               </Button>
                             </div>
+                          </div>
+                          
+                          {/* Image info */}
+                          <div className="absolute bottom-0 left-0 right-0 bg-black/50 text-white text-xs p-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <p className="truncate">{image.alt || `Image ${index + 1}`}</p>
                           </div>
                         </div>
                       ))}

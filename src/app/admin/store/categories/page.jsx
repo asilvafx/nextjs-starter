@@ -70,6 +70,7 @@ export default function CategoriesPage() {
   const [categoryToDelete, setCategoryToDelete] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
 
   const fetchCategories = async () => {
     try {
@@ -92,6 +93,19 @@ export default function CategoriesPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
+      // Check for slug uniqueness
+      if (formData.slug) {
+        const existingCategories = categories.filter(category => 
+          category.slug === formData.slug && 
+          (!editCategory || category.id !== editCategory.id)
+        );
+        
+        if (existingCategories.length > 0) {
+          toast.error("Slug already exists. Please choose a different slug.");
+          return;
+        }
+      }
+
       if (editCategory) {
         await update(editCategory.id, formData, "categories");
         toast.success("Category updated successfully");
@@ -128,10 +142,40 @@ export default function CategoriesPage() {
     const file = event.target.files?.[0];
     if (!file) return;
 
+    // Prevent multiple uploads
+    if (isUploading) {
+      toast.error("Please wait for the current upload to finish");
+      return;
+    }
+
+    if (!file.type.startsWith('image/')) {
+      toast.error("Please upload an image file");
+      return;
+    }
+
+    // Validate file size (10MB limit)
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error("File size must be less than 10MB");
+      return;
+    }
+
     setIsUploading(true);
+    setUploadProgress(0);
+    
     try {
+      // Simulate progress for better UX
+      const progressInterval = setInterval(() => {
+        setUploadProgress(prev => {
+          if (prev >= 90) {
+            clearInterval(progressInterval);
+            return 90;
+          }
+          return prev + Math.random() * 20;
+        });
+      }, 200);
+
       const uploadFormData = new FormData();
-      uploadFormData.append('file', file);
+      uploadFormData.append('files', file);
       
       const response = await fetch('/api/upload', {
         method: 'POST',
@@ -140,9 +184,15 @@ export default function CategoriesPage() {
       
       const data = await response.json();
       
-      if (data.url) {
-        setFormData({ ...formData, imageUrl: data.url });
+      clearInterval(progressInterval);
+      setUploadProgress(100);
+      
+      if (data.success && data.data?.[0]) {
+        setFormData({ ...formData, imageUrl: data.data[0].publicUrl });
         toast.success('Image uploaded successfully');
+        
+        // Reset the input value to allow re-uploading the same file
+        event.target.value = '';
       } else {
         toast.error('Failed to upload image');
       }
@@ -150,7 +200,10 @@ export default function CategoriesPage() {
       console.error('Upload error:', error);
       toast.error('Failed to upload image');
     } finally {
-      setIsUploading(false);
+      setTimeout(() => {
+        setIsUploading(false);
+        setUploadProgress(0);
+      }, 800);
     }
   };
 
@@ -309,17 +362,41 @@ export default function CategoriesPage() {
                     </div>
                   </div>
                 ) : (
-                  <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-6">
+                  <div className={`border-2 border-dashed rounded-lg p-6 transition-colors ${
+                    isUploading 
+                      ? "border-primary bg-primary/10 pointer-events-none"
+                      : "border-muted-foreground/25 hover:border-primary/50 hover:bg-primary/5"
+                  }`}>
                     <div className="flex flex-col items-center justify-center space-y-2">
-                      <Upload className="h-8 w-8 text-muted-foreground" />
-                      <div className="text-center">
-                        <Label htmlFor="image-upload" className="cursor-pointer text-sm font-medium">
-                          Click to upload image
-                        </Label>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          PNG, JPG, WEBP up to 10MB
-                        </p>
-                      </div>
+                      {isUploading ? (
+                        <>
+                          <Loader2 className="h-8 w-8 text-primary animate-spin" />
+                          <p className="text-sm text-primary font-medium">
+                            Uploading image...
+                          </p>
+                          <div className="w-32 h-2 bg-muted rounded-full overflow-hidden">
+                            <div 
+                              className="h-full bg-primary rounded-full transition-all duration-300 ease-out"
+                              style={{ width: `${uploadProgress}%` }}
+                            />
+                          </div>
+                          <p className="text-xs text-muted-foreground">
+                            {Math.round(uploadProgress)}%
+                          </p>
+                        </>
+                      ) : (
+                        <>
+                          <Upload className="h-8 w-8 text-muted-foreground" />
+                          <div className="text-center">
+                            <Label htmlFor="image-upload" className="cursor-pointer text-sm font-medium">
+                              Click to upload image
+                            </Label>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              PNG, JPG, WEBP up to 10MB
+                            </p>
+                          </div>
+                        </>
+                      )}
                       <Input
                         id="image-upload"
                         type="file"
@@ -328,9 +405,6 @@ export default function CategoriesPage() {
                         disabled={isUploading}
                         className="hidden"
                       />
-                      {isUploading && (
-                        <p className="text-sm text-muted-foreground">Uploading...</p>
-                      )}
                     </div>
                   </div>
                 )}
