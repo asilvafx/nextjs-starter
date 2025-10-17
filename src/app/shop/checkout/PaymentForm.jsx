@@ -119,16 +119,12 @@ const PaymentForm = ({ cartTotal, subTotal, shippingCost, onShippingUpdate, sele
             });
         }
     };    // Auto-select free shipping when eligible
-    const handleShippingMethodsLoaded = (shippingMethods) => {
-        console.log('Shipping methods loaded:', shippingMethods);
-        console.log('Auto-selection check:', { isEligibleForFreeShipping, hasAutoSelectedFreeShipping, currentMethod: localSelectedShippingMethod });
-        
+    const handleShippingMethodsLoaded = (shippingMethods) => { 
         if (isEligibleForFreeShipping && !hasAutoSelectedFreeShipping && shippingMethods.length > 0) {
             // Find free shipping method (id: 'free_shipping')
             const freeShippingMethod = shippingMethods.find(method => method.id === 'free_shipping');
 
             if (freeShippingMethod) {
-                console.log('Auto-selecting free shipping method:', freeShippingMethod);
                 setLocalSelectedShippingMethod(freeShippingMethod);
                 onShippingUpdate(0, freeShippingMethod, discountAmount || 0);
                 setHasAutoSelectedFreeShipping(true);
@@ -136,7 +132,7 @@ const PaymentForm = ({ cartTotal, subTotal, shippingCost, onShippingUpdate, sele
                 // If no free shipping available but user is eligible, select first method
                 const firstMethod = shippingMethods[0];
                 const shippingCost = firstMethod.fixed_rate || firstMethod.base_price || firstMethod.basePrice || 0;
-                console.log('Auto-selecting first method (no free shipping available):', firstMethod, 'cost:', shippingCost);
+                
                 setLocalSelectedShippingMethod(firstMethod);
                 onShippingUpdate(shippingCost, firstMethod, discountAmount || 0);
             }
@@ -144,14 +140,13 @@ const PaymentForm = ({ cartTotal, subTotal, shippingCost, onShippingUpdate, sele
             // If not eligible for free shipping, auto-select first available method
             const firstMethod = shippingMethods[0];
             const shippingCost = firstMethod.fixed_rate || firstMethod.base_price || firstMethod.basePrice || 0;
-            console.log('Auto-selecting first method (not eligible for free shipping):', firstMethod, 'cost:', shippingCost);
+            
             setLocalSelectedShippingMethod(firstMethod);
             onShippingUpdate(shippingCost, firstMethod, discountAmount || 0);
         } else if (shippingMethods.length === 1 && !localSelectedShippingMethod) {
             // Always auto-select if only one method available
             const onlyMethod = shippingMethods[0];
             const shippingCost = onlyMethod.fixed_rate || onlyMethod.base_price || onlyMethod.basePrice || 0;
-            console.log('Auto-selecting only available method:', onlyMethod, 'cost:', shippingCost);
             setLocalSelectedShippingMethod(onlyMethod);
             onShippingUpdate(shippingCost, onlyMethod, discountAmount || 0);
         }
@@ -298,32 +293,24 @@ const PaymentForm = ({ cartTotal, subTotal, shippingCost, onShippingUpdate, sele
             state: state,
             zipCode: zipCode,
             phone: phone
-        };
-
-        // Debug logging
-        console.log('Form validation - Required fields:', requiredFields);
-        console.log('Form validation - Street address value:', streetAddress, 'length:', streetAddress?.length);
-        console.log('Form validation - Shipping method:', localSelectedShippingMethod);
+        }; 
 
         // Check for empty required fields
         const emptyFields = Object.entries(requiredFields)
             .filter(([key, value]) => !value || value.toString().trim() === '')
             .map(([key]) => key);
 
-        if (emptyFields.length > 0) {
-            console.log('Empty fields found:', emptyFields);
+        if (emptyFields.length > 0) { 
             setErrorMessage(`Please complete the following required fields: ${emptyFields.join(', ')}`);
             return false;
         }
 
         // Check for shipping method
-        if (!localSelectedShippingMethod) {
-            console.log('No shipping method selected');
+        if (!localSelectedShippingMethod) { 
             setErrorMessage('Please select a shipping method');
             return false;
         }
-
-        console.log('Form validation passed');
+ 
         setErrorMessage('');
         return true;
     };

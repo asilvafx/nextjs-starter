@@ -263,7 +263,7 @@ const Cart = () => {
                                     initial={{ opacity: 0, x: 20 }}
                                     animate={{ opacity: 1, x: 0 }}
                                     transition={{ duration: 0.3, delay: 0.2 }}
-                                    className="border rounded-sm p-4 bg-card h-fit sticky top-4"
+                                    className="border border-border rounded-lg p-4 bg-card/95 backdrop-blur-sm h-fit sticky top-4"
                                 >
                                     <h2 className="text-xl font-semibold mb-6">{t('orderSummary')}</h2>
 
@@ -326,11 +326,9 @@ const Cart = () => {
                                     </div>
 
                                     {/* Security Notice */}
-                                    <div className="mt-6 p-3 bg-neutral-300/20 rounded-lg">
+                                    <div className="mt-6 p-3 bg-accent/50 rounded-lg border border-border">
                                         <div className="flex items-center space-x-2 text-xs text-muted-foreground">
-                                            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                                                <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
-                                            </svg>
+                                            <Lock className="w-4 h-4" />
                                             <span>{t('securePayment')}</span>
                                         </div>
                                     </div>

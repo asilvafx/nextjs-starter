@@ -9,6 +9,9 @@ import { useCart } from 'react-use-cart';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import { generatePDF } from '@/utils/generatePDF.js';
+import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { CheckCircle, XCircle, Home, ShoppingBag, Download, ArrowLeft } from 'lucide-react';
 
 const PaymentSuccess = () => {
     const t = useTranslations('Checkout');
@@ -174,7 +177,7 @@ const PaymentSuccess = () => {
 
 
                 {error ? (
-                    <Card className="border-red-200 bg-red-50 dark:bg-red-950/20">
+                    <Card className="border-destructive/50 bg-destructive/10">
                         <CardContent className="pt-6 text-center">
                             <motion.div
                                 initial={{ opacity: 0 }}
@@ -193,7 +196,7 @@ const PaymentSuccess = () => {
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: 0.2 }}
-                        className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 text-left mb-8"
+                        className="bg-card/95 backdrop-blur-sm rounded-lg shadow-sm border border-border p-8 text-left mb-8"
                     >
                         <div className="text-center mb-8">
                             <h2 className="text-2xl font-semibold mb-2">{t('orderDetailsTitle')}</h2>
@@ -206,7 +209,7 @@ const PaymentSuccess = () => {
                         </div>
 
                         {/* Customer Information */}
-                        <div className="mb-8 p-4 bg-gray-50 rounded-lg">
+                        <div className="mb-8 p-4 bg-muted/50 rounded-lg">
                             <h3 className="font-semibold mb-3">{t('customerInformation')}</h3>
                             <p><strong>{t('name')}:</strong> {orderDetails.customerName}</p>
                             <p><strong>{t('email')}:</strong> {orderDetails.email}</p>
@@ -217,7 +220,7 @@ const PaymentSuccess = () => {
                             <h3 className="font-semibold mb-4">{t('orderedItems')}</h3>
                             <div className="space-y-4">
                                 {orderDetails.items.map((item, i) => (
-                                    <div key={i} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                                    <div key={i} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
                                         <div className="flex items-center space-x-4">
                                             {item.image && (
                                                 <img
@@ -240,17 +243,17 @@ const PaymentSuccess = () => {
                         </div>
 
                         {/* Order Summary */}
-                        <div className="border-t border-gray-200 pt-6">
+                        <div className="border-t border-border pt-6">
                             <div className="space-y-3">
-                                <div className="flex justify-between text-gray-600">
+                                <div className="flex justify-between text-muted-foreground">
                                     <span>{t('subtotal')}</span>
                                     <span>€{orderDetails.subtotal}</span>
                                 </div>
-                                <div className="flex justify-between text-gray-600">
+                                <div className="flex justify-between text-muted-foreground">
                                     <span>{t('shipping')}</span>
                                     <span>€{orderDetails.shipping}</span>
                                 </div>
-                                <div className="flex justify-between text-xl font-bold border-t border-gray-200 pt-3">
+                                <div className="flex justify-between text-xl font-bold border-t border-border pt-3">
                                     <span>{t('total')}</span>
                                     <span>€{parseFloat(orderDetails.total).toFixed(2)}</span>
                                 </div>

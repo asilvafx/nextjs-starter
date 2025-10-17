@@ -132,8 +132,7 @@ const GooglePlacesInput = ({
 
         // Handle place selection
         autocomplete.addListener('place_changed', () => {
-            const place = autocomplete.getPlace();
-            console.log('Legacy place selected:', place);
+            const place = autocomplete.getPlace(); 
 
             if (place && place.formatted_address) {
                 input.value = place.formatted_address;
@@ -380,7 +379,6 @@ const GooglePlacesInput = ({
         
         // If not enabled or no API key, use fallback
         if (!googleMapsEnabled || !apiKey) {
-            console.warn(googleMapsEnabled ? 'Google Maps API key not provided' : 'Google Maps integration not enabled', ', using fallback input');
             createFallbackInput();
             if (onError) {
                 onError(googleMapsEnabled ? 'Google Maps API key not provided' : 'Google Maps integration not enabled');

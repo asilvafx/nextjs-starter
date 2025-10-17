@@ -83,8 +83,7 @@ const Checkout = () => {
 
     // Handler for shipping cost updates from PaymentForm
     const handleShippingUpdate = (newShippingCost, shippingMethod, discountAmount = 0) => {
-        console.log('Shipping update:', { newShippingCost, shippingMethod, discountAmount });
-        
+    
         setSelectedShippingMethod(shippingMethod);
 
         // Set shipping cost based on method selection
@@ -376,8 +375,8 @@ const Checkout = () => {
                                         </div>
 
                                         {/* Security Notice */}
-                                        <div className="mt-6 p-3 bg-blue-50 dark:bg-blue-950/20 rounded-lg border border-blue-200 dark:border-blue-800">
-                                            <div className="flex items-center space-x-2 text-sm text-blue-700 dark:text-blue-300">
+                                        <div className="mt-6 p-3 bg-accent/50 rounded-lg border border-border">
+                                            <div className="flex items-center space-x-2 text-sm text-muted-foreground">
                                                 <Lock className="w-4 h-4" />
                                                 <span>{t('securePayment')}</span>
                                             </div>
