@@ -50,35 +50,7 @@ const Checkout = () => {
         
         // If no method selected, return 0 (user needs to select a method)
         return 0;
-    };
-
-    // Calculate VAT breakdown
-    const calculateVatBreakdown = () => {
-        if (!storeSettings || !storeSettings.vatEnabled) {
-            return { subtotal: cartTotal, vatAmount: 0, total: cartTotal };
-        }
-        
-        const vatRate = storeSettings.vatPercentage / 100;
-        
-        if (storeSettings.vatIncludedInPrice) {
-            // VAT is already included in item prices
-            const subtotalExclVat = cartTotal / (1 + vatRate);
-            const vatAmount = cartTotal - subtotalExclVat;
-            return {
-                subtotal: subtotalExclVat,
-                vatAmount: vatAmount,
-                total: cartTotal
-            };
-        } else {
-            // VAT needs to be added at checkout if configured
-            const vatAmount = storeSettings.applyVatAtCheckout ? cartTotal * vatRate : 0;
-            return {
-                subtotal: cartTotal,
-                vatAmount: vatAmount,
-                total: cartTotal + vatAmount
-            };
-        }
-    };
+    };        // Calculate VAT breakdown\n    const calculateVatBreakdown = () => {\n        if (!storeSettings || !storeSettings.vatEnabled) {\n            return { subtotal: cartTotal, vatAmount: 0, total: cartTotal };\n        }\n        \n        const vatRate = storeSettings.vatPercentage / 100;\n        \n        if (storeSettings.vatIncludedInPrice) {\n            // VAT is already included in item prices\n            const subtotalExclVat = cartTotal / (1 + vatRate);\n            const vatAmount = cartTotal - subtotalExclVat;\n            return {\n                subtotal: subtotalExclVat,\n                vatAmount: vatAmount,\n                total: cartTotal\n            };\n        } else {\n            // VAT needs to be added at checkout if configured\n            const vatAmount = storeSettings.applyVatAtCheckout ? cartTotal * vatRate : 0;\n            return {\n                subtotal: cartTotal,\n                vatAmount: vatAmount,\n                total: cartTotal + vatAmount\n            };\n        }\n    };
     
     const vatInfo = calculateVatBreakdown();
     const subTotal = vatInfo.subtotal.toFixed(2);
@@ -87,6 +59,7 @@ const Checkout = () => {
 
     // Handler for shipping cost updates from PaymentForm
     const handleShippingUpdate = (newShippingCost, shippingMethod, discountAmount = 0) => {
+    
         setSelectedShippingMethod(shippingMethod);
 
         // Set shipping cost based on method selection
@@ -105,9 +78,7 @@ const Checkout = () => {
         if (typeof discountAmount === 'number') {
             setDiscountAmount(discountAmount);
         }
-    };
-
-    // Update shipping cost when cart total changes and affects free shipping eligibility
+    };    // Update shipping cost when cart total changes and affects free shipping eligibility
     useEffect(() => {
         const newShippingCost = calculateShippingCost();
         setShippingCost(newShippingCost);
@@ -144,9 +115,7 @@ const Checkout = () => {
         } finally {
             setLoading(false);
         }
-    };
-
-    useEffect(() => {
+    };    useEffect(() => {
         fetchStoreSettings();
     }, []);
 
@@ -208,6 +177,8 @@ const Checkout = () => {
                     <div className="flex items-center gap-2 mb-8"> 
                         <h1 className="text-4xl font-bold">{t('checkoutTitle')}</h1>
                     </div>
+
+
 
                     {totalItems === 0 ? (
                         <Card className="max-w-md mx-auto">
@@ -293,6 +264,7 @@ const Checkout = () => {
                                         <CardTitle>{t('orderSummary')}</CardTitle>
                                     </CardHeader>
                                     <CardContent>
+
                                         {/* Items */}
                                         <div className="space-y-4 mb-6">
                                             {items.map(item => (
@@ -330,7 +302,7 @@ const Checkout = () => {
                                         <div className="space-y-3">
                                             <div className="flex justify-between text-muted-foreground">
                                                 <span>{t('subtotal')}</span>
-                                                <span>{storeSettings?.currency === 'USD' ? '$' : '€'}{(storeSettings?.vatEnabled && storeSettings?.vatIncludedInPrice ? vatInfo.subtotal : cartTotal).toFixed(2)}</span>
+                                                <span>{storeSettings?.currency === 'USD' ? '$' : '€'}{cartTotal.toFixed(2)}</span>
                                             </div>
                                             <div className="flex justify-between text-muted-foreground">
                                                 <span className="flex items-center">
@@ -362,18 +334,7 @@ const Checkout = () => {
                                                 </div>
                                             )}
 
-                                            {storeSettings?.vatEnabled && (
-                                                <div className="flex justify-between text-muted-foreground">
-                                                    <span>TVA ({storeSettings.vatPercentage}%)</span>
-                                                    {storeSettings.vatIncludedInPrice ? (
-                                                        <Badge variant="outline" className="text-green-600">
-                                                            Inclus
-                                                        </Badge>
-                                                    ) : (
-                                                        <span>{storeSettings?.currency === 'USD' ? '$' : '€'}{vatInfo.vatAmount.toFixed(2)}</span>
-                                                    )}
-                                                </div>
-                                            )}
+                                                                                        {storeSettings?.vatEnabled && (\n                                                <div className=\"flex justify-between text-muted-foreground\">\n                                                    <span>TVA ({storeSettings.vatPercentage}%)</span>\n                                                    {storeSettings.vatIncludedInPrice ? (\n                                                        <Badge variant=\"outline\" className=\"text-green-600\">\n                                                            Inclus\n                                                        </Badge>\n                                                    ) : (\n                                                        <span>{storeSettings?.currency === 'USD' ? '$' : '€'}{vatInfo.vatAmount.toFixed(2)}</span>\n                                                    )}\n                                                </div>\n                                            )}
 
                                             <Separator />
                                             

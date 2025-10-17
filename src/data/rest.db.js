@@ -128,6 +128,36 @@ class DBService {
         }
     }
 
+    async getItemByKey(key, value, table) {
+        if (!this.service) {
+            console.error('Database service not initialized');
+            return null;
+        }
+        try {
+            if (typeof this.service.getItemByKey === 'function') {
+                return await this.service.getItemByKey(key, value, table);
+            } else if (typeof this.service.readBy === 'function') {
+                // Fallback to readBy method
+                return await this.service.readBy(key, value, table);
+            } else if (typeof this.service.getItemsByKeyValue === 'function') {
+                // Fallback to getItemsByKeyValue and return first result
+                const results = await this.service.getItemsByKeyValue(key, value, table);
+                if (results && Array.isArray(results) && results.length > 0) {
+                    return results[0];
+                } else if (results && typeof results === 'object' && Object.keys(results).length > 0) {
+                    return Object.values(results)[0];
+                }
+                return null;
+            } else {
+                console.warn(`getItemByKey not implemented for ${this.provider} provider`);
+                return null;
+            }
+        } catch (error) {
+            console.error(`Error in getItemByKey (${this.provider}):`, error);
+            return null;
+        }
+    }
+
     async read(id, table) {
         if (!this.service) {
             console.error('Database service not initialized');

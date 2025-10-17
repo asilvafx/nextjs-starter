@@ -394,11 +394,36 @@ const PaymentForm = ({ cartTotal, subTotal, shippingCost, onShippingUpdate, sele
                 type: 'catalog'
             }));
 
-            // Calculate pricing with applied coupon discount
+            // Calculate pricing with applied coupon discount and VAT
             const itemsTotal = parseFloat(subTotal);
             const shippingTotal = localSelectedShippingMethod?.fixed_rate || 0;
             const couponDiscount = discountAmount || 0;
-            const finalTotal = itemsTotal + shippingTotal - couponDiscount;
+            
+            // Calculate VAT correctly based on store settings
+            let vatAmount = 0;
+            let finalTotal = 0;
+            let subtotalExclVat = itemsTotal;
+            
+            if (storeSettings?.vatEnabled) {
+                const vatRate = (storeSettings.vatPercentage || 20) / 100;
+                
+                if (storeSettings.vatIncludedInPrice) {
+                    // VAT is already included in item prices
+                    subtotalExclVat = itemsTotal / (1 + vatRate);
+                    vatAmount = itemsTotal - subtotalExclVat;
+                    finalTotal = itemsTotal + shippingTotal - couponDiscount;
+                } else if (storeSettings.applyVatAtCheckout) {
+                    // VAT needs to be added at checkout
+                    vatAmount = itemsTotal * vatRate;
+                    finalTotal = itemsTotal + vatAmount + shippingTotal - couponDiscount;
+                } else {
+                    // No VAT applied
+                    finalTotal = itemsTotal + shippingTotal - couponDiscount;
+                }
+            } else {
+                // VAT disabled
+                finalTotal = itemsTotal + shippingTotal - couponDiscount;
+            }
 
             // Use selected payment method
             const paymentMethod = selectedPaymentMethod || 'pending';
@@ -412,8 +437,13 @@ const PaymentForm = ({ cartTotal, subTotal, shippingCost, onShippingUpdate, sele
                 id: Math.floor(new Date().getTime() / 1000) + '_' + Math.floor(Math.random() * (9999 - 1000 + 1)) + 1000,
                 customer: customerData,
                 items: orderItems,
-                subtotal: itemsTotal,
+                subtotal: subtotalExclVat,
+                subtotalInclVat: itemsTotal,
                 shippingCost: shippingTotal,
+                vatEnabled: storeSettings?.vatEnabled || false,
+                vatPercentage: storeSettings?.vatPercentage || 20,
+                vatAmount: vatAmount,
+                vatIncludedInPrice: storeSettings?.vatIncludedInPrice || false,
                 discountType: appliedCoupon ? appliedCoupon.type : 'fixed',
                 discountValue: appliedCoupon ? appliedCoupon.value : 0,
                 discountAmount: couponDiscount,

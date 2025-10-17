@@ -61,6 +61,7 @@ const defaultFormState = {
   businessName: "",
   tvaNumber: "",
   address: "",
+  vatEnabled: true,
   vatPercentage: 20,
   vatIncludedInPrice: true,
   applyVatAtCheckout: false,
@@ -387,52 +388,71 @@ function BusinessTab({ formData, handleInputChange, handleNestedInputChange, err
           </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4">
-          <div>
-            <Label htmlFor="vatPercentage">VAT Percentage</Label>
-            <Input
-              id="vatPercentage"
-              type="number"
-              min="0"
-              max="100"
-              placeholder="20"
-              value={formData.vatPercentage}
-              onChange={(e) => handleInputChange('vatPercentage', parseFloat(e.target.value) || 0)}
-            />
-            {errors.vatPercentage && (
-              <p className="text-sm text-red-500 mt-1">{errors.vatPercentage}</p>
-            )}
-          </div>
-          
           <div className="flex flex-row items-center justify-between rounded-lg border p-4">
             <div className="space-y-0.5">
               <Label className="text-base">
-                VAT Included in Price
+                Enable VAT/TVA
               </Label>
               <p className="text-sm text-muted-foreground">
-                Display product prices with VAT included
+                Enable or disable VAT/TVA calculations for your store
               </p>
             </div>
             <Switch
-              checked={formData.vatIncludedInPrice}
-              onCheckedChange={(checked) => handleInputChange('vatIncludedInPrice', checked)}
+              checked={formData.vatEnabled}
+              onCheckedChange={(checked) => handleInputChange('vatEnabled', checked)}
             />
           </div>
           
-          <div className="flex flex-row items-center justify-between rounded-lg border p-4">
-            <div className="space-y-0.5">
-              <Label className="text-base">
-                Apply VAT at Checkout
-              </Label>
-              <p className="text-sm text-muted-foreground">
-                Calculate VAT during checkout process (only if VAT not included in price)
-              </p>
-            </div>
-            <Switch
-              checked={formData.applyVatAtCheckout}
-              onCheckedChange={(checked) => handleInputChange('applyVatAtCheckout', checked)}
-              disabled={formData.vatIncludedInPrice}
-            />
-          </div>
+          {formData.vatEnabled && (
+            <>
+              <div>
+                <Label htmlFor="vatPercentage">VAT Percentage</Label>
+                <Input
+                  id="vatPercentage"
+                  type="number"
+                  min="0"
+                  max="100"
+                  placeholder="20"
+                  value={formData.vatPercentage}
+                  onChange={(e) => handleInputChange('vatPercentage', parseFloat(e.target.value) || 0)}
+                />
+                {errors.vatPercentage && (
+                  <p className="text-sm text-red-500 mt-1">{errors.vatPercentage}</p>
+                )}
+              </div>
+          
+              <div className="flex flex-row items-center justify-between rounded-lg border p-4">
+                <div className="space-y-0.5">
+                  <Label className="text-base">
+                    VAT Included in Price
+                  </Label>
+                  <p className="text-sm text-muted-foreground">
+                    Display product prices with VAT included
+                  </p>
+                </div>
+                <Switch
+                  checked={formData.vatIncludedInPrice}
+                  onCheckedChange={(checked) => handleInputChange('vatIncludedInPrice', checked)}
+                />
+              </div>
+          
+              <div className="flex flex-row items-center justify-between rounded-lg border p-4">
+                <div className="space-y-0.5">
+                  <Label className="text-base">
+                    Apply VAT at Checkout
+                  </Label>
+                  <p className="text-sm text-muted-foreground">
+                    Calculate VAT during checkout process (only if VAT not included in price)
+                  </p>
+                </div>
+                <Switch
+                  checked={formData.applyVatAtCheckout}
+                  onCheckedChange={(checked) => handleInputChange('applyVatAtCheckout', checked)}
+                  disabled={formData.vatIncludedInPrice}
+                />
+              </div>
+            </>
+          )}
         </CardContent>
       </Card>
     </div>

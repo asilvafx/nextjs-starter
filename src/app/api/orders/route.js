@@ -100,19 +100,10 @@ export async function POST(request) {
                     console.warn('Failed to fetch store settings for email:', error);
                 }
 
-                // Calculate VAT if applicable
-                let vatAmount = 0;
-                let vatPercentage = storeSettings?.vatPercentage || 20;
-                let finalTotal = orderData.total;
-
-                if (storeSettings?.applyVatAtCheckout && !storeSettings?.vatIncludedInPrice) {
-                    // VAT not included in price, so calculate and add it
-                    vatAmount = (orderData.subtotal * vatPercentage) / 100;
-                    finalTotal = orderData.total + vatAmount;
-                } else if (storeSettings?.vatIncludedInPrice) {
-                    // VAT included in price, calculate the VAT portion
-                    vatAmount = (orderData.total * vatPercentage) / (100 + vatPercentage);
-                }
+                // Use VAT data from order (already calculated correctly in PaymentForm)
+                const vatAmount = orderData.vatAmount || 0;
+                const vatPercentage = orderData.vatPercentage || storeSettings?.vatPercentage || 20;
+                const finalTotal = orderData.total;
 
                 const emailPayload = {
                     customerName: `${orderData.customer.firstName} ${orderData.customer.lastName}`,
@@ -126,12 +117,13 @@ export async function POST(request) {
                         minute: '2-digit'
                     }),
                     items: orderData.items,
-                    subtotal: orderData.subtotal?.toFixed(2) || '0.00',
+                    subtotal: (orderData.vatIncludedInPrice ? orderData.subtotal : orderData.subtotalInclVat || orderData.subtotal)?.toFixed(2) || '0.00',
                     shippingCost: orderData.shippingCost?.toFixed(2) || '0.00',
                     total: finalTotal.toFixed(2),
+                    vatEnabled: orderData.vatEnabled || false,
                     vatAmount: vatAmount.toFixed(2),
                     vatPercentage: vatPercentage,
-                    vatIncluded: storeSettings?.vatIncludedInPrice || false,
+                    vatIncluded: orderData.vatIncludedInPrice || false,
                     currency: storeSettings?.currency || 'EUR',
                     shippingAddress: finalOrderData.shipping_address,
                     paymentMethod: orderData.paymentMethod,

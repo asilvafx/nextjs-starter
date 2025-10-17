@@ -109,30 +109,30 @@ export const OrderConfirmationTemplate = ({
                                 
                                 {subtotal > 0 && (
                                     <div style={emailStyles.orderDetailItem}>
-                                        • {taxEnabled && taxIncluded ? 'Sous-total (HT)' : 'Sous-total'} : {(taxEnabled && taxIncluded && taxAmount > 0 ? subtotal - taxAmount : subtotal).toFixed(2)}€
+                                        • {taxEnabled && taxIncluded ? 'Sous-total (HT)' : 'Sous-total'} : {(taxEnabled && taxIncluded && taxAmount > 0 ? Number(subtotal) - Number(taxAmount) : Number(subtotal)).toFixed(2)}€
                                     </div>
                                 )}
                                 
                                 {taxEnabled && taxAmount > 0 && (
                                     <div style={emailStyles.orderDetailItem}>
-                                        • TVA ({taxRate}%) : {taxAmount.toFixed(2)}€
+                                        • TVA ({taxRate}%) : {Number(taxAmount).toFixed(2)}€
                                     </div>
                                 )}
                                 
                                 {shippingCost > 0 && (
                                     <div style={emailStyles.orderDetailItem}>
-                                        • Frais de port : {shippingCost.toFixed(2)}€
+                                        • Frais de port : {Number(shippingCost).toFixed(2)}€
                                     </div>
                                 )}
                                 
                                 {discountAmount > 0 && (
                                     <div style={emailStyles.orderDetailItem}>
-                                        • Remise : -{discountAmount.toFixed(2)}€
+                                        • Remise : -{Number(discountAmount).toFixed(2)}€
                                     </div>
                                 )}
                                 
                                 <div style={{...emailStyles.orderDetailItem, fontWeight: 'bold', borderTop: '1px solid #e0e0e0', paddingTop: '8px', marginTop: '8px'}}>
-                                    • <strong>Total : {total.toFixed(2)}€</strong>
+                                    • <strong>Total : {Number(total).toFixed(2)}€</strong>
                                 </div>
                             </div>
                         )}
@@ -173,7 +173,7 @@ export const OrderConfirmationTemplate = ({
                                         • <strong>Référence :</strong> {orderId}
                                     </div>
                                     <div style={emailStyles.orderDetailItem}>
-                                        • <strong>Montant à virer :</strong> {total.toFixed(2)}€
+                                        • <strong>Montant à virer :</strong> {Number(total).toFixed(2)}€
                                     </div>
                                     {bankTransferDetails.additionalInstructions && (
                                         <div style={{...emailStyles.orderDetailItem, fontStyle: 'italic', marginTop: '12px'}}>
