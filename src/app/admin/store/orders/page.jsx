@@ -380,14 +380,14 @@ export default function OrdersPage() {
           throw new Error('Failed to create customer');
         } 
 
-        orderData.customerId = customerResponse.id;
+        orderData.email = customerResponse.id;
       } else {
         // Validate that the selected customer exists
-        const existingCustomer = customers.find(c => c.id === selectedCustomerId);
+        const existingCustomer = customers.find(c => c.email === selectedCustomerId);
         if (!existingCustomer) {
           throw new Error('Selected customer not found. Please select a valid customer or create a new one.');
         }
-        orderData.customerId = selectedCustomerId;
+        orderData.email = selectedCustomerId;
       }
 
       // Create order in database
@@ -403,7 +403,7 @@ export default function OrdersPage() {
           type: 'order_confirmation',
           email: orderData.customer.email,
           customerName: `${orderData.customer.firstName} ${orderData.customer.lastName}`.trim(),
-          orderId: response.id,
+          orderId: orderData.id,
           orderDate: orderData.createdAt,
           items: orderData.items,
           subtotal: orderData.subtotal,

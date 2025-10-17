@@ -112,6 +112,17 @@ const Homepage = () => {
                     </Button>
                     </>
                 )} 
+
+
+                
+                <Link
+                    href="/shop"
+                    className="relative"
+                >
+                    <Button> 
+                        Shop 
+                    </Button>
+                </Link>
                 
                 <Link
                     href="/shop/cart"

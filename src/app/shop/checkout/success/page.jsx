@@ -46,43 +46,34 @@ const PaymentSuccess = () => {
                 let actualOrderId = orderId;
                 let orderData = null;
 
-                // For Stripe payments, try to get order data from localStorage first
-                if (paymentMethod === 'card') {
-                    const storedOrderData = localStorage.getItem('orderData');
-                    if (storedOrderData) {
+                // Always try to get order data from localStorage first
+                const storedOrderData = localStorage.getItem('orderData');
+                if (storedOrderData) {
+                    try {
                         orderData = JSON.parse(storedOrderData);
                         
-                        // Decode base64 order ID for Stripe payments
-                        try {
-                            actualOrderId = atob(orderId);
-                        } catch (e) {
-                            actualOrderId = orderId;
-                        }
-
-                        if (orderData.id !== actualOrderId) {
-                            setError(t('orderNotFound'));
-                            setLoading(false);
-                            return;
-                        }
-                    }
-                }
-
-                // For non-Stripe payments or if no localStorage data, fetch from database
-                if (!orderData) {
-                    try {
-                        const response = await fetch(`/api/orders/${actualOrderId}`);
-                        if (response.ok) {
-                            const result = await response.json();
-                            if (result.success) {
-                                orderData = result.data;
+                        // For Stripe payments, decode base64 order ID
+                        if (paymentMethod === 'card') {
+                            try {
+                                actualOrderId = atob(orderId);
+                            } catch (e) {
+                                actualOrderId = orderId;
                             }
                         }
+
+                        // Verify the order ID matches (for Stripe payments) or just use the data (for other methods)
+                        if (paymentMethod === 'card' && orderData.id !== actualOrderId) {
+                            console.warn('Order ID mismatch in localStorage for card payment');
+                            orderData = null;
+                        }
                     } catch (e) {
-                        console.warn('Could not fetch order from database:', e);
+                        console.error('Failed to parse order data from localStorage:', e);
+                        orderData = null;
                     }
                 }
 
                 if (!orderData) {
+                    console.error('Order data not found in localStorage for ID:', actualOrderId);
                     setError(t('orderDataNotFound'));
                     setLoading(false);
                     return;
@@ -138,9 +129,7 @@ const PaymentSuccess = () => {
 
                 // Clear cart and stored order data AFTER everything is processed
                 emptyCart();
-                if (paymentMethod === 'card') {
-                    localStorage.removeItem('orderData');
-                }
+                localStorage.removeItem('orderData');
             } catch (e) {
                 console.error('Error fetching order:', e);
                 setError(t('orderRetrievalError'));

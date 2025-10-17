@@ -198,8 +198,7 @@ const Checkout = () => {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.5 }}
                 >
-                    <div className="flex items-center gap-2 mb-8">
-                        <ShoppingCart className="h-8 w-8" />
+                    <div className="flex items-center gap-2 mb-8"> 
                         <h1 className="text-4xl font-bold">{t('checkoutTitle')}</h1>
                     </div>
 

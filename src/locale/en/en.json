@@ -38,7 +38,7 @@
         "emptyCartMessage": "Discover our exceptional products and start shopping now.",
         "goToShop": "Go to Shop",
         "items": "Items ({count})",
-        "unitPrice": "Unit price: €{price}",
+        "unitPrice": "Unit price: {price}",
         "removeItem": "Remove this item",
         "orderSummary": "Order Summary",
         "subtotal": "Subtotal ({count} items)",
@@ -139,7 +139,13 @@
         "noShippingAvailable": "No shipping methods available for this country at the moment.",
         "shippingError": "Unable to load shipping methods. Please try again later.",
         "bankTransferPayment": "You will receive bank transfer details via email after placing your order.",
-        "payOnDeliveryPayment": "Payment will be collected when your order is delivered to your address."
+        "payOnDeliveryPayment": "Payment will be collected when your order is delivered to your address.",
+        "bankName": "Bank Name",
+        "accountHolder": "Account Holder",
+        "bankTransferDetails": "Bank Transfer Details",
+        "transferReference": "Transfer Reference",
+        "transferAmount": "Amount to Transfer",
+        "bankTransferNote": "Don't forget to include the order number as transfer reference."
     },
     "GDPR": {
         "consentModal": {

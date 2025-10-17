@@ -34,11 +34,11 @@
     "Cart": {
         "title": "Mon Panier",
         "emptyCart": "Vider le panier ?",
-        "emptyCartTitle": "Ton panier est vide 😅",
+        "emptyCartTitle": "Ton panier est vide",
         "emptyCartMessage": "Check nos produits stylés et lance ton shopping !",
         "goToShop": "Aller à la boutique",
         "items": "Articles ({count})",
-        "unitPrice": "Prix unitaire : €{price}",
+        "unitPrice": "Prix unitaire : {price}",
         "removeItem": "Retirer cet article",
         "orderSummary": "Récap de la commande",
         "articles": "Article|Articles",
@@ -129,7 +129,7 @@
         "selectCountryFirst": "Sélectionne ton pays d'abord pour voir les options de livraison",
         "noShippingMethods": "Aucun mode de livraison dispo pour ce pays",
         "shippingMethodsError": "Impossible de charger les modes de livraison",
-        "paymentError": "Un souci avec le paiement 😬",
+        "paymentError": "Un souci avec le paiement",
         "unexpectedError": "Oups, une erreur imprévue est arrivée",
         "paymentMethod": "Méthode de paiement",
         "selectPaymentMethod": "Sélectionne ta méthode de paiement",
@@ -161,7 +161,13 @@
         "noShippingAvailable": "Aucune livraison dispo pour ce pays pour le moment.",
         "shippingError": "Impossible de charger les modes de livraison. Réessaie plus tard.",
         "bankTransferPayment": "Tu recevras les détails de virement par mail après ta commande.",
-        "payOnDeliveryPayment": "Le paiement sera collecté à la livraison."
+        "payOnDeliveryPayment": "Le paiement sera collecté à la livraison.",
+        "bankName": "Nom de la banque",
+        "accountHolder": "Titulaire du compte",
+        "bankTransferDetails": "Détails du virement bancaire",
+        "transferReference": "Référence du virement",
+        "transferAmount": "Montant à virer",
+        "bankTransferNote": "N'oublie pas d'indiquer le numéro de commande en référence de ton virement."
     },
     "GDPR": {
         "consentModal": {

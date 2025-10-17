@@ -108,8 +108,7 @@ const Cart = () => {
                     {totalItems > 0 && (
                         <>
                             <div className="flex items-center justify-between mb-8">
-                                <div className="flex items-center gap-3">
-                                    <ShoppingCart className="h-8 w-8" />
+                                <div className="flex items-center gap-3"> 
                                     <h1 className="text-4xl font-bold">{t('title')}</h1> 
                                 </div>
                                 <Button

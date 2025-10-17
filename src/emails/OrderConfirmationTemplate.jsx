@@ -37,6 +37,8 @@ export const OrderConfirmationTemplate = ({
                                               total = 0,
                                               orderSummaryUrl = 'https://yourapp.com/orders/12345',
                                               supportEmail = 'ton.email@domaine.com',
+                                              paymentMethod = null,
+                                              bankTransferDetails = null,
                                           }) => {
 
     const logo_img = "https://bplw5mbobnwdstj8.public.blob.vercel-storage.com/logo.png";
@@ -135,6 +137,57 @@ export const OrderConfirmationTemplate = ({
                             </div>
                         )}
                     </Section>
+
+                    {/* Bank Transfer Details */}
+                    {paymentMethod === 'bank_transfer' && bankTransferDetails && (
+                        <>\n                            {/* Divider */}
+                            <Section style={emailStyles.dividerSection}>
+                                <div style={emailStyles.divider}>⸻</div>
+                            </Section>
+
+                            <Section style={emailStyles.featuresSection}>
+                                <Text style={emailStyles.featuresTitle}>🏦 Détails pour le virement bancaire :</Text>
+                                
+                                <div style={emailStyles.productsSection}>
+                                    {bankTransferDetails.bankName && (
+                                        <div style={emailStyles.orderDetailItem}>
+                                            • <strong>Banque :</strong> {bankTransferDetails.bankName}
+                                        </div>
+                                    )}
+                                    {bankTransferDetails.accountHolder && (
+                                        <div style={emailStyles.orderDetailItem}>
+                                            • <strong>Titulaire du compte :</strong> {bankTransferDetails.accountHolder}
+                                        </div>
+                                    )}
+                                    {bankTransferDetails.iban && (
+                                        <div style={emailStyles.orderDetailItem}>
+                                            • <strong>IBAN :</strong> {bankTransferDetails.iban}
+                                        </div>
+                                    )}
+                                    {bankTransferDetails.bic && (
+                                        <div style={emailStyles.orderDetailItem}>
+                                            • <strong>BIC :</strong> {bankTransferDetails.bic}
+                                        </div>
+                                    )}
+                                    <div style={emailStyles.orderDetailItem}>
+                                        • <strong>Référence :</strong> {orderId}
+                                    </div>
+                                    <div style={emailStyles.orderDetailItem}>
+                                        • <strong>Montant à virer :</strong> {total.toFixed(2)}€
+                                    </div>
+                                    {bankTransferDetails.additionalInstructions && (
+                                        <div style={{...emailStyles.orderDetailItem, fontStyle: 'italic', marginTop: '12px'}}>
+                                            ℹ️ <strong>Instructions :</strong> {bankTransferDetails.additionalInstructions}
+                                        </div>
+                                    )}
+                                </div>
+
+                                <Text style={emailStyles.paragraph}>
+                                    <strong>Important :</strong> N'oublie pas d'indiquer le numéro de commande <strong>{orderId}</strong> en référence de ton virement. Ta commande sera traitée dès réception du paiement.
+                                </Text>
+                            </Section>
+                        </>
+                    )}
 
                     {/* Divider */}
                     <Section style={emailStyles.dividerSection}>

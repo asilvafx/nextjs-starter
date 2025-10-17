@@ -409,7 +409,7 @@ const PaymentForm = ({ cartTotal, subTotal, shippingCost, onShippingUpdate, sele
 
             // Create order data matching the orders page structure
             const orderData = {
-                id: `ORD-${Date.now()}`,
+                id: Math.floor(new Date().getTime() / 1000) + '_' + Math.floor(Math.random() * (9999 - 1000 + 1)) + 1000,
                 customer: customerData,
                 items: orderItems,
                 subtotal: itemsTotal,
@@ -426,7 +426,7 @@ const PaymentForm = ({ cartTotal, subTotal, shippingCost, onShippingUpdate, sele
                 } : null,
                 total: Math.max(0, finalTotal),
                 status: 'pending',
-                paymentStatus: paymentMethod === 'card' ? 'pending' : 'awaiting_payment',
+                paymentStatus: paymentMethod === 'card' ? 'paid' : 'pending',
                 paymentMethod: paymentMethod,
                 method: paymentMethod,
                 shippingMethod: localSelectedShippingMethod,
@@ -537,6 +537,9 @@ const PaymentForm = ({ cartTotal, subTotal, shippingCost, onShippingUpdate, sele
                             console.error('Failed to apply coupon usage:', couponError);
                         }
                     }
+
+                    // Store order data in localStorage before redirecting
+                    localStorage.setItem('orderData', JSON.stringify(orderData));
 
                     // Clear cart and redirect to success page
                     if (typeof window !== 'undefined' && window.emptyCart) {
@@ -970,16 +973,49 @@ const PaymentForm = ({ cartTotal, subTotal, shippingCost, onShippingUpdate, sele
                                             </div>
                                         )}
                                         
-                                        {selectedPaymentMethod === 'bank_transfer' && (
-                                            <div className="bg-accent border rounded-lg p-4">
-                                                <h3 className="text-md font-medium mb-2">🏦 {t('bankTransfer')}</h3>
-                                                <p className="text-muted-foreground text-sm">
-                                                    {t('bankTransferInstructions')}
+                        {selectedPaymentMethod === 'bank_transfer' && (
+                            <div className="bg-accent border rounded-lg p-4">
+                                <h3 className="text-md font-medium mb-2">🏦 {t('bankTransfer')}</h3>
+                                {storeSettings?.paymentMethods?.bankTransferDetails && (
+                                    <div className="space-y-2 mb-3">
+                                        {storeSettings.paymentMethods.bankTransferDetails.bankName && (
+                                            <div className="flex justify-between">
+                                                <span className="font-medium">{t('bankName')}:</span>
+                                                <span>{storeSettings.paymentMethods.bankTransferDetails.bankName}</span>
+                                            </div>
+                                        )}
+                                        {storeSettings.paymentMethods.bankTransferDetails.accountHolder && (
+                                            <div className="flex justify-between">
+                                                <span className="font-medium">{t('accountHolder')}:</span>
+                                                <span>{storeSettings.paymentMethods.bankTransferDetails.accountHolder}</span>
+                                            </div>
+                                        )}
+                                        {storeSettings.paymentMethods.bankTransferDetails.iban && (
+                                            <div className="flex justify-between">
+                                                <span className="font-medium">IBAN:</span>
+                                                <span className="font-mono text-sm">{storeSettings.paymentMethods.bankTransferDetails.iban}</span>
+                                            </div>
+                                        )}
+                                        {storeSettings.paymentMethods.bankTransferDetails.bic && (
+                                            <div className="flex justify-between">
+                                                <span className="font-medium">BIC:</span>
+                                                <span className="font-mono text-sm">{storeSettings.paymentMethods.bankTransferDetails.bic}</span>
+                                            </div>
+                                        )}
+                                        {storeSettings.paymentMethods.bankTransferDetails.additionalInstructions && (
+                                            <div className="mt-3 pt-2 border-t">
+                                                <p className="text-xs text-muted-foreground">
+                                                    {storeSettings.paymentMethods.bankTransferDetails.additionalInstructions}
                                                 </p>
                                             </div>
                                         )}
-                                        
-                                        {selectedPaymentMethod === 'pay_on_delivery' && (
+                                    </div>
+                                )}
+                                <p className="text-muted-foreground text-sm">
+                                    {t('bankTransferInstructions')}
+                                </p>
+                            </div>
+                        )}                                        {selectedPaymentMethod === 'pay_on_delivery' && (
                                             <div className="bg-accent border rounded-lg p-4">
                                                 <h3 className="text-md font-medium mb-2">📦 {t('payOnDelivery')}</h3>
                                                 <p className="text-muted-foreground text-sm">

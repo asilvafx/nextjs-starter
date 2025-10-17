@@ -69,6 +69,13 @@ const defaultFormState = {
     stripePublicKey: "",
     stripeSecretKey: "",
     bankTransfer: false,
+    bankTransferDetails: {
+      bankName: "",
+      accountHolder: "",
+      iban: "",
+      bic: "",
+      additionalInstructions: "",
+    },
     payOnDelivery: false,
   },
   freeShippingEnabled: false,
@@ -495,6 +502,74 @@ function PaymentsTab({ formData, handleNestedInputChange, errors }) {
             onCheckedChange={(checked) => handleNestedInputChange('paymentMethods', 'bankTransfer', checked)}
           />
         </div>
+        {formData.paymentMethods?.bankTransfer && (
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="bankName">Bank Name</Label>
+                <Input 
+                  id="bankName"
+                  placeholder="Bank Name" 
+                  value={formData.paymentMethods?.bankTransferDetails?.bankName || ''}
+                  onChange={(e) => {
+                    const newDetails = { ...formData.paymentMethods?.bankTransferDetails, bankName: e.target.value };
+                    handleNestedInputChange('paymentMethods', 'bankTransferDetails', newDetails);
+                  }}
+                />
+              </div>
+              <div>
+                <Label htmlFor="accountHolder">Account Holder</Label>
+                <Input 
+                  id="accountHolder"
+                  placeholder="Account Holder Name" 
+                  value={formData.paymentMethods?.bankTransferDetails?.accountHolder || ''}
+                  onChange={(e) => {
+                    const newDetails = { ...formData.paymentMethods?.bankTransferDetails, accountHolder: e.target.value };
+                    handleNestedInputChange('paymentMethods', 'bankTransferDetails', newDetails);
+                  }}
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="iban">IBAN</Label>
+                <Input 
+                  id="iban"
+                  placeholder="FR76 XXXX XXXX XXXX XXXX XXXX XXX" 
+                  value={formData.paymentMethods?.bankTransferDetails?.iban || ''}
+                  onChange={(e) => {
+                    const newDetails = { ...formData.paymentMethods?.bankTransferDetails, iban: e.target.value };
+                    handleNestedInputChange('paymentMethods', 'bankTransferDetails', newDetails);
+                  }}
+                />
+              </div>
+              <div>
+                <Label htmlFor="bic">BIC/SWIFT</Label>
+                <Input 
+                  id="bic"
+                  placeholder="BNPAFRPPXXX" 
+                  value={formData.paymentMethods?.bankTransferDetails?.bic || ''}
+                  onChange={(e) => {
+                    const newDetails = { ...formData.paymentMethods?.bankTransferDetails, bic: e.target.value };
+                    handleNestedInputChange('paymentMethods', 'bankTransferDetails', newDetails);
+                  }}
+                />
+              </div>
+            </div>
+            <div>
+              <Label htmlFor="additionalInstructions">Additional Instructions</Label>
+              <Input 
+                id="additionalInstructions"
+                placeholder="Additional transfer instructions (optional)" 
+                value={formData.paymentMethods?.bankTransferDetails?.additionalInstructions || ''}
+                onChange={(e) => {
+                  const newDetails = { ...formData.paymentMethods?.bankTransferDetails, additionalInstructions: e.target.value };
+                  handleNestedInputChange('paymentMethods', 'bankTransferDetails', newDetails);
+                }}
+              />
+            </div>
+          </>
+        )}
         <div className="flex flex-row items-center justify-between rounded-lg border p-4">
           <div className="space-y-0.5">
             <Label className="text-base">Pay on Delivery</Label>

@@ -282,7 +282,9 @@ class EmailService {
         subtotal,
         shippingCost,
         total,
-        shippingAddress
+        shippingAddress,
+        paymentMethod = null,
+        bankTransferDetails = null
     }) {
         try {
             const { OrderConfirmationTemplate } = await import('@/emails/OrderConfirmationTemplate');
@@ -303,6 +305,8 @@ class EmailService {
                     shippingAddress: shippingAddress || {},
                     companyName: this.fromName,
                     companyUrl: process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
+                    paymentMethod,
+                    bankTransferDetails,
                 }
             );
 

@@ -134,6 +134,10 @@ export async function POST(request) {
                     vatIncluded: storeSettings?.vatIncludedInPrice || false,
                     currency: storeSettings?.currency || 'EUR',
                     shippingAddress: finalOrderData.shipping_address,
+                    paymentMethod: orderData.paymentMethod,
+                    bankTransferDetails: orderData.paymentMethod === 'bank_transfer' && storeSettings?.paymentMethods?.bankTransferDetails 
+                        ? storeSettings.paymentMethods.bankTransferDetails 
+                        : null,
                 };
 
                 await EmailService.sendOrderConfirmationEmail(
