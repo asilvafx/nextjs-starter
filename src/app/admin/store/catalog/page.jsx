@@ -23,10 +23,16 @@ import {
 } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
-import { Plus, Pencil, Trash2, Image, ArrowUpDown, Loader2 } from "lucide-react";
+import { Plus, Pencil, Trash2, Image, ArrowUpDown, Loader2, MoreHorizontal } from "lucide-react";
 import { useTableState } from "../hooks/useTableState";
 import { TableSkeleton } from "@/components/ui/skeleton";
 import { CatalogItemForm } from "./CatalogItemForm";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   Pagination,
   PaginationContent,
@@ -283,25 +289,17 @@ export default function CatalogPage() {
         };
 
         if (editItem) {
-          const response = await update(editItem.id, processedData, "catalog");
-          if (response.success) {
-            toast.success("Item successfully updated!");
-            setCatalog((prev) =>
-              prev.map((item) =>
-                item.id === editItem.id ? { ...item, ...processedData } : item
-              )
-            );
-          } else {
-            throw new Error(response.error || 'Failed to update item');
-          }
+          const updatedItem = await update(editItem.id, processedData, "catalog");
+          toast.success("Item successfully updated!");
+          setCatalog((prev) =>
+            prev.map((item) =>
+              item.id === editItem.id ? { ...item, ...processedData } : item
+            )
+          );
         } else {
-          const response = await create(processedData, "catalog");
-          if (response.success) {
-            toast.success("Item successfully created!");
-            setCatalog((prev) => [...prev, response.data]);
-          } else {
-            throw new Error(response.error || 'Failed to create item');
-          }
+          const newItem = await create(processedData, "catalog");
+          toast.success("Item successfully created!");
+          setCatalog((prev) => [...prev, newItem]);
         }
         
         setIsOpen(false);
@@ -568,35 +566,77 @@ export default function CatalogPage() {
                           ) : (
                             <span
                               className={`px-2 py-1 rounded-full text-xs ${
-                                item.stock > 0 || item.stock === -1
+                                item.type === 'service' || item.type === 'digital' || item.stock > 0 || item.stock === -1
                                   ? "bg-green-100 text-green-800"
                                   : "bg-red-100 text-red-800"
                               }`}
                             >
-                              {item.stock === -1 ? "Unlimited" : item.stock > 0 ? "In Stock" : "Out of Stock"}
+                              {item.type === 'service' || item.type === 'digital' 
+                                ? (item.isActive ? "Available" : "Not available") 
+                                : item.stock === -1 
+                                ? "Unlimited" 
+                                : item.stock > 0 
+                                ? "In Stock" 
+                                : "Out of Stock"}
                             </span>
                           )}
                         </TableCell>
                         <TableCell className="text-right space-x-2">
-                          <Button
-                            variant="outline"
-                            size="icon"
-                            onClick={() => handleEdit(item)}
-                          >
-                            <Pencil className="w-4 h-4" />
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="icon"
-                            onClick={() => handleDeleteClick(item)}
-                            disabled={isDeleting && itemToDelete?.id === item.id}
-                          >
-                            {isDeleting && itemToDelete?.id === item.id ? (
-                              <Loader2 className="w-4 h-4 animate-spin" />
-                            ) : (
-                              <Trash2 className="w-4 h-4" />
-                            )}
-                          </Button>
+                          {/* Mobile view - show individual buttons */}
+                          <div className="flex space-x-2 sm:hidden">
+                            <Button
+                              variant="outline"
+                              size="icon"
+                              onClick={() => handleEdit(item)}
+                            >
+                              <Pencil className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="icon"
+                              onClick={() => handleDeleteClick(item)}
+                              disabled={isDeleting && itemToDelete?.id === item.id}
+                            >
+                              {isDeleting && itemToDelete?.id === item.id ? (
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                              ) : (
+                                <Trash2 className="w-4 h-4" />
+                              )}
+                            </Button>
+                          </div>
+                          
+                          {/* Desktop view - show dropdown menu */}
+                          <div className="hidden sm:block">
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8"
+                                  disabled={isDeleting && itemToDelete?.id === item.id}
+                                >
+                                  {isDeleting && itemToDelete?.id === item.id ? (
+                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                  ) : (
+                                    <MoreHorizontal className="w-4 h-4" />
+                                  )}
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" className="w-[160px]">
+                                <DropdownMenuItem onClick={() => handleEdit(item)}>
+                                  <Pencil className="w-4 h-4 mr-2" />
+                                  Edit Item
+                                </DropdownMenuItem>
+                                <DropdownMenuItem 
+                                  onClick={() => handleDeleteClick(item)}
+                                  className="text-destructive focus:text-destructive"
+                                >
+                                  <Trash2 className="w-4 h-4 mr-2" />
+                                  Delete Item
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))

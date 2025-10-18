@@ -77,10 +77,25 @@ export async function POST(request) {
 
             case 'newsletter':
                 // Handle newsletter bulk sending
-                const { campaign, subscribers, senderName, senderEmail } = body;
+                const { campaign, subscribers, manualRecipients, senderName, senderEmail } = body;
                 
-                if (!campaign || !subscribers || subscribers.length === 0) {
-                    throw new Error('Campaign and subscribers are required');
+                if (!campaign) {
+                    throw new Error('Campaign is required');
+                }
+
+                // Combine subscribers and manual recipients
+                const allRecipients = [
+                    ...(subscribers || []),
+                    ...(manualRecipients || []).map(r => ({
+                        id: `manual_${Date.now()}_${Math.random()}`,
+                        email: r.email,
+                        name: r.name || null,
+                        status: 'active'
+                    }))
+                ];
+
+                if (allRecipients.length === 0) {
+                    throw new Error('At least one recipient is required');
                 }
 
                 const baseUrl = process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
@@ -91,21 +106,21 @@ export async function POST(request) {
                 const finalSenderName = senderName || (await EmailService.getEmailName ? await EmailService.getEmailName() : 'Your App Name');
                 const finalSenderEmail = senderEmail || process.env.SMTP_USER || 'noreply@yourdomain.com';
 
-                // Send newsletter to each subscriber
-                for (const subscriber of subscribers) {
+                // Send newsletter to each recipient
+                for (const recipient of allRecipients) {
                     try {
-                        const unsubscribeUrl = `${baseUrl}/newsletter/unsubscribe?email=${encodeURIComponent(subscriber.email)}&id=${subscriber.id}`;
+                        const unsubscribeUrl = `${baseUrl}/newsletter/unsubscribe?email=${encodeURIComponent(recipient.email)}&id=${recipient.id}`;
                         const webVersionUrl = `${baseUrl}/newsletter/campaign/${campaign.id}`;
 
                         await EmailService.sendEmail(
-                            subscriber.email,
+                            recipient.email,
                             campaign.subject,
                             NewsletterTemplate,
                             {
                                 subject: campaign.subject,
                                 content: campaign.content || campaign.previewText || 'Thank you for subscribing to our newsletter.',
-                                previewText: campaign.previewText || '',
-                                subscriberName: subscriber.name || null,
+                                previewText: campaign.previewText || campaign.subject || '',
+                                subscriberName: recipient.name || null,
                                 companyName: finalSenderName,
                                 senderName: finalSenderName,
                                 senderEmail: finalSenderEmail,
@@ -123,7 +138,7 @@ export async function POST(request) {
                         // Small delay to avoid overwhelming the email service
                         await new Promise(resolve => setTimeout(resolve, 100));
                     } catch (error) {
-                        console.error(`Failed to send newsletter to ${subscriber.email}:`, error);
+                        console.error(`Failed to send newsletter to ${recipient.email}:`, error);
                         failureCount++;
                     }
                 }
@@ -135,7 +150,7 @@ export async function POST(request) {
                     data: {
                         sent: successCount,
                         failed: failureCount,
-                        total: subscribers.length
+                        total: allRecipients.length
                     }
                 });
 
@@ -160,7 +175,7 @@ export async function POST(request) {
                     {
                         subject: testCampaign.subject,
                         content: testCampaign.content || testCampaign.previewText || 'Thank you for subscribing to our newsletter.',
-                        previewText: testCampaign.previewText || '',
+                        previewText: testCampaign.previewText || testCampaign.subject || '',
                         subscriberName: testName || 'Test User',
                         companyName: testFinalSenderName,
                         senderName: testFinalSenderName,

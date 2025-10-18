@@ -23,7 +23,7 @@ import {
 } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
-import { Plus, Pencil, Trash2, ArrowUpDown, Loader2, Upload, X, Image as ImageIcon } from "lucide-react";
+import { Plus, Pencil, Trash2, ArrowUpDown, Loader2, Upload, X, Image as ImageIcon, MoreHorizontal } from "lucide-react";
 import { TableSkeleton } from "@/components/ui/skeleton";
 import {
   AlertDialog,
@@ -35,6 +35,12 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -499,25 +505,61 @@ export default function CollectionsPage() {
                     {new Date(collection.createdAt).toLocaleDateString()}
                   </TableCell>
                   <TableCell className="text-right space-x-2">
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      onClick={() => handleEdit(collection)}
-                    >
-                      <Pencil className="w-4 h-4" />
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      onClick={() => handleDeleteClick(collection)}
-                      disabled={isDeleting && collectionToDelete?.id === collection.id}
-                    >
-                      {isDeleting && collectionToDelete?.id === collection.id ? (
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                      ) : (
-                        <Trash2 className="w-4 h-4" />
-                      )}
-                    </Button>
+                    {/* Mobile view - show individual buttons */}
+                    <div className="flex space-x-2 sm:hidden">
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={() => handleEdit(collection)}
+                      >
+                        <Pencil className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={() => handleDeleteClick(collection)}
+                        disabled={isDeleting && collectionToDelete?.id === collection.id}
+                      >
+                        {isDeleting && collectionToDelete?.id === collection.id ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <Trash2 className="w-4 h-4" />
+                        )}
+                      </Button>
+                    </div>
+                    
+                    {/* Desktop view - show dropdown menu */}
+                    <div className="hidden sm:block">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            disabled={isDeleting && collectionToDelete?.id === collection.id}
+                          >
+                            {isDeleting && collectionToDelete?.id === collection.id ? (
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                              <MoreHorizontal className="w-4 h-4" />
+                            )}
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-[160px]">
+                          <DropdownMenuItem onClick={() => handleEdit(collection)}>
+                            <Pencil className="w-4 h-4 mr-2" />
+                            Edit Collection
+                          </DropdownMenuItem>
+                          <DropdownMenuItem 
+                            onClick={() => handleDeleteClick(collection)}
+                            className="text-destructive focus:text-destructive"
+                          >
+                            <Trash2 className="w-4 h-4 mr-2" />
+                            Delete Collection
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))

@@ -446,6 +446,7 @@ export default function GalleryPage() {
               <Card key={item.id} className="group">
                 <CardHeader className="relative">
                   <Button
+                    role="button"
                     variant="ghost"
                     size="icon"
                     className={`absolute right-2 top-2 ${
@@ -470,27 +471,29 @@ export default function GalleryPage() {
                     />
                   </div>
                 </CardContent>
-                <CardFooter className="flex justify-between">
+                <CardFooter className="flex flex-col gap-2">
                   <Button
                     variant="ghost"
                     size="sm"
                     onClick={() => copyToClipboard(item.url)}
+                    className="w-full sm:w-auto flex-1"
                   >
                     <Copy className="h-4 w-4 mr-2" />
-                    Copy URL
+                    <span className="truncate">Copy URL</span>
                   </Button>
                   <Button
                     variant="ghost"
                     size="sm"
                     onClick={() => handleDeleteClick(item)}
                     disabled={isDeleting && itemToDelete?.id === item.id}
+                    className="w-full sm:w-auto flex-1"
                   >
                     {isDeleting && itemToDelete?.id === item.id ? (
                       <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                     ) : (
                       <Trash2 className="h-4 w-4 mr-2" />
                     )}
-                    Delete
+                    <span className="truncate">Delete</span>
                   </Button>
                 </CardFooter>
               </Card>

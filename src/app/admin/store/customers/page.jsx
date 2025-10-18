@@ -15,7 +15,7 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
 import { TableSkeleton } from "@/components/ui/skeleton";
-import { Eye, Plus, Edit, Trash2, MoreVertical } from "lucide-react";
+import { Eye, Plus, Edit, Trash2, MoreVertical, MoreHorizontal } from "lucide-react";
 import { PhoneInput } from "@/components/ui/phone-input";
 import {
   DropdownMenu,
@@ -224,8 +224,15 @@ export default function CustomersPage() {
   const handleEdit = (customer) => {
     setSelectedCustomer(customer);
     setFormData({
-      ...customer,
+      firstName: customer.firstName || "",
+      lastName: customer.lastName || "",
+      email: customer.email || "",
       phone: customer.phone || "",
+      streetAddress: customer.streetAddress || "",
+      apartmentUnit: customer.apartmentUnit || "",
+      city: customer.city || "",
+      state: customer.state || "",
+      zipCode: customer.zipCode || "",
       country: customer.country || "France",
       countryIso: customer.countryIso || "FR",
       isBusinessCustomer: customer.isBusinessCustomer || false,
@@ -601,8 +608,8 @@ export default function CustomersPage() {
                         <TableCell>{formatCurrency(totalSpent)}</TableCell>
                         <TableCell>{lastOrderDate ? formatDate(lastOrderDate) : 'No orders'}</TableCell>
                         <TableCell className="text-right">
-                          {/* Desktop actions - show on medium screens and up */}
-                          <div className="hidden md:flex gap-2 justify-end">
+                          {/* Mobile view - show individual buttons */}
+                          <div className="flex space-x-2 sm:hidden">
                             <Button
                               variant="outline"
                               size="icon"
@@ -630,28 +637,32 @@ export default function CustomersPage() {
                             </Button>
                           </div>
                           
-                          {/* Mobile actions - show on small screens only */}
-                          <div className="md:hidden">
+                          {/* Desktop view - show dropdown menu */}
+                          <div className="hidden sm:block">
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
-                                <Button variant="outline" size="icon">
-                                  <MoreVertical className="h-4 w-4" />
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8"
+                                >
+                                  <MoreHorizontal className="w-4 h-4" />
                                 </Button>
                               </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end">
+                              <DropdownMenuContent align="end" className="w-[160px]">
                                 <DropdownMenuItem onClick={() => handleView(customer)}>
-                                  <Eye className="h-4 w-4 mr-2" />
+                                  <Eye className="w-4 h-4 mr-2" />
                                   View Details
                                 </DropdownMenuItem>
                                 <DropdownMenuItem onClick={() => handleEdit(customer)}>
-                                  <Edit className="h-4 w-4 mr-2" />
+                                  <Edit className="w-4 h-4 mr-2" />
                                   Edit Customer
                                 </DropdownMenuItem>
                                 <DropdownMenuItem 
                                   onClick={() => handleDelete(customer)}
-                                  className="text-red-600 focus:text-red-600"
+                                  className="text-destructive focus:text-destructive"
                                 >
-                                  <Trash2 className="h-4 w-4 mr-2" />
+                                  <Trash2 className="w-4 h-4 mr-2" />
                                   Delete Customer
                                 </DropdownMenuItem>
                               </DropdownMenuContent>
@@ -691,7 +702,12 @@ export default function CustomersPage() {
         </div>
 
         {/* Edit Customer Dialog */}
-        <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
+        <Dialog open={isEditOpen} onOpenChange={(open) => {
+          setIsEditOpen(open);
+          if (!open) {
+            handleCloseDialogs();
+          }
+        }}>
           <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Edit Customer</DialogTitle>
@@ -917,7 +933,12 @@ export default function CustomersPage() {
         </Dialog>
 
         {/* View Customer Dialog */}
-        <Dialog open={isViewOpen} onOpenChange={setIsViewOpen}>
+        <Dialog open={isViewOpen} onOpenChange={(open) => {
+          setIsViewOpen(open);
+          if (!open) {
+            handleCloseDialogs();
+          }
+        }}>
           <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Customer Details</DialogTitle>
@@ -1051,7 +1072,12 @@ export default function CustomersPage() {
         </Dialog>
 
         {/* Delete Customer Dialog */}
-        <Dialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
+        <Dialog open={isDeleteOpen} onOpenChange={(open) => {
+          setIsDeleteOpen(open);
+          if (!open) {
+            handleCloseDialogs();
+          }
+        }}>
           <DialogContent className="sm:max-w-[425px]">
             <DialogHeader>
               <DialogTitle>Delete Customer</DialogTitle>

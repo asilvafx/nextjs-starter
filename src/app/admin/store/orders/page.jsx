@@ -388,41 +388,88 @@ export default function OrdersPage() {
         id: Math.floor(new Date().getTime() / 1000) + '_' + Math.floor(Math.random() * (9999 - 1000 + 1)) + 1000,
       };
 
-      // Create customer if new
+      // Create customer if new or update existing customer
       if (isNewCustomer) {
-        const customerData = {
-          firstName: orderData.customer.firstName,
-          lastName: orderData.customer.lastName,
-          email: orderData.customer.email,
-          phone: orderData.customer.phone,
-          streetAddress: orderData.customer.streetAddress,
-          apartmentUnit: orderData.customer.apartmentUnit,
-          city: orderData.customer.city,
-          state: orderData.customer.state,
-          zipCode: orderData.customer.zipCode,
-          country: orderData.customer.country,
-          countryIso: orderData.customer.countryIso,
-          // Add default values for new customers
-          orders: 0,
-          totalSpent: 0,
-          lastOrder: null,
-          createdAt: new Date().toISOString(),
-        };
+        // Check if customer with this email already exists
+        const existingCustomer = customers.find(c => c.email === orderData.customer.email);
         
-        const customerResponse = await create(customerData, "customers");
+        if (existingCustomer) {
+          // Update existing customer with new information
+          const updatedCustomerData = {
+            firstName: orderData.customer.firstName,
+            lastName: orderData.customer.lastName,
+            email: orderData.customer.email,
+            phone: orderData.customer.phone,
+            streetAddress: orderData.customer.streetAddress,
+            apartmentUnit: orderData.customer.apartmentUnit,
+            city: orderData.customer.city,
+            state: orderData.customer.state,
+            zipCode: orderData.customer.zipCode,
+            country: orderData.customer.country,
+            countryIso: orderData.customer.countryIso,
+            // Preserve existing customer data
+            isBusinessCustomer: existingCustomer.isBusinessCustomer || false,
+            businessName: existingCustomer.businessName || "",
+            legalBusinessName: existingCustomer.legalBusinessName || "",
+            tvaNumber: existingCustomer.tvaNumber || "",
+            businessType: existingCustomer.businessType || "",
+            businessAddress: existingCustomer.businessAddress || "",
+            businessPhone: existingCustomer.businessPhone || "",
+            businessEmail: existingCustomer.businessEmail || "",
+            notes: existingCustomer.notes || "",
+            orders: existingCustomer.orders || 0,
+            totalSpent: existingCustomer.totalSpent || 0,
+            lastOrder: existingCustomer.lastOrder,
+            createdAt: existingCustomer.createdAt,
+          };
+          
+          const customerResponse = await update(existingCustomer.id, updatedCustomerData, "customers");
+          orderData.email = existingCustomer.email;
+        } else {
+          // Create new customer
+          const customerData = {
+            firstName: orderData.customer.firstName,
+            lastName: orderData.customer.lastName,
+            email: orderData.customer.email,
+            phone: orderData.customer.phone,
+            streetAddress: orderData.customer.streetAddress,
+            apartmentUnit: orderData.customer.apartmentUnit,
+            city: orderData.customer.city,
+            state: orderData.customer.state,
+            zipCode: orderData.customer.zipCode,
+            country: orderData.customer.country,
+            countryIso: orderData.customer.countryIso,
+            // Add default values for new customers
+            isBusinessCustomer: false,
+            businessName: "",
+            legalBusinessName: "",
+            tvaNumber: "",
+            businessType: "",
+            businessAddress: "",
+            businessPhone: "",
+            businessEmail: "",
+            notes: "",
+            orders: 0,
+            totalSpent: 0,
+            lastOrder: null,
+            createdAt: new Date().toISOString(),
+          };
+          
+          const customerResponse = await create(customerData, "customers");
 
-        if (!customerResponse.id) { 
-          throw new Error('Failed to create customer');
-        } 
+          if (!customerResponse.id) { 
+            throw new Error('Failed to create customer');
+          } 
 
-        orderData.email = customerResponse.id;
+          orderData.email = orderData.customer.email;
+        }
       } else {
         // Validate that the selected customer exists
-        const existingCustomer = customers.find(c => c.email === selectedCustomerId);
+        const existingCustomer = customers.find(c => c.id === selectedCustomerId);
         if (!existingCustomer) {
           throw new Error('Selected customer not found. Please select a valid customer or create a new one.');
         }
-        orderData.email = selectedCustomerId;
+        orderData.email = existingCustomer.email;
       }
 
       // Create order in database
@@ -473,7 +520,7 @@ export default function OrdersPage() {
       setSelectedCustomerId("");
       
       // Add new order to state instead of full reload
-      addOrderToState(result);
+      addOrderToState(response);
     } catch (error) { 
       toast.error(error.message || "Failed to create order");
     } finally {

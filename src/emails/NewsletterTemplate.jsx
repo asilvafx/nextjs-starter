@@ -63,7 +63,15 @@ export const NewsletterTemplate = ({
                         )}
 
                         <Section style={contentSection}>
-                            <div dangerouslySetInnerHTML={{ __html: htmlContent }} />
+                            <div 
+                                style={{
+                                    fontSize: '16px',
+                                    lineHeight: '26px',
+                                    color: '#374151',
+                                    margin: '20px 0'
+                                }}
+                                dangerouslySetInnerHTML={{ __html: htmlContent }} 
+                            />
                         </Section>
                     </Section>
 

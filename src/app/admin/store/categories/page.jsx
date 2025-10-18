@@ -23,7 +23,7 @@ import {
 } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
-import { Plus, Pencil, Trash2, ArrowUpDown, Loader2, Upload, X, Image as ImageIcon } from "lucide-react";
+import { Plus, Pencil, Trash2, ArrowUpDown, Loader2, Upload, X, Image as ImageIcon, MoreHorizontal } from "lucide-react";
 import { TableSkeleton } from "@/components/ui/skeleton";
 import {
   AlertDialog,
@@ -35,6 +35,12 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -474,25 +480,61 @@ export default function CategoriesPage() {
                     {new Date(category.createdAt).toLocaleDateString()}
                   </TableCell>
                   <TableCell className="text-right space-x-2">
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      onClick={() => handleEdit(category)}
-                    >
-                      <Pencil className="w-4 h-4" />
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      onClick={() => handleDeleteClick(category)}
-                      disabled={isDeleting && categoryToDelete?.id === category.id}
-                    >
-                      {isDeleting && categoryToDelete?.id === category.id ? (
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                      ) : (
-                        <Trash2 className="w-4 h-4" />
-                      )}
-                    </Button>
+                    {/* Mobile view - show individual buttons */}
+                    <div className="flex space-x-2 sm:hidden">
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={() => handleEdit(category)}
+                      >
+                        <Pencil className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={() => handleDeleteClick(category)}
+                        disabled={isDeleting && categoryToDelete?.id === category.id}
+                      >
+                        {isDeleting && categoryToDelete?.id === category.id ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <Trash2 className="w-4 h-4" />
+                        )}
+                      </Button>
+                    </div>
+                    
+                    {/* Desktop view - show dropdown menu */}
+                    <div className="hidden sm:block">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            disabled={isDeleting && categoryToDelete?.id === category.id}
+                          >
+                            {isDeleting && categoryToDelete?.id === category.id ? (
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                              <MoreHorizontal className="w-4 h-4" />
+                            )}
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-[160px]">
+                          <DropdownMenuItem onClick={() => handleEdit(category)}>
+                            <Pencil className="w-4 h-4 mr-2" />
+                            Edit Category
+                          </DropdownMenuItem>
+                          <DropdownMenuItem 
+                            onClick={() => handleDeleteClick(category)}
+                            className="text-destructive focus:text-destructive"
+                          >
+                            <Trash2 className="w-4 h-4 mr-2" />
+                            Delete Category
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))

@@ -37,17 +37,18 @@ export default function NewsletterPage() {
   const [isEditingCampaign, setIsEditingCampaign] = useState(false);
   const [isSendingCampaign, setIsSendingCampaign] = useState(false);
   const [isPreviewingCampaign, setIsPreviewingCampaign] = useState(false);
+  const [isPreviewingTemplate, setIsPreviewingTemplate] = useState(false);
   const [selectedCampaign, setSelectedCampaign] = useState(null);
+  const [selectedTemplate, setSelectedTemplate] = useState(null);
   const [newCampaign, setNewCampaign] = useState({
     subject: '',
     content: '',
     previewText: ''
   });
   const [sendConfig, setSendConfig] = useState({
-    senderName: '',
-    senderEmail: '',
     selectedSubscribers: [],
-    selectAll: true
+    selectAll: true,
+    manualRecipients: []
   });
 
   // Fetch data from database
@@ -83,7 +84,48 @@ export default function NewsletterPage() {
         description: "Welcome new subscribers to your newsletter",
         thumbnail: "📧",
         category: "onboarding",
-        content: "<h2>Welcome to our newsletter!</h2><p>Thank you for subscribing. We're excited to share updates with you.</p>",
+        content: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #ffffff;">
+            <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 40px 20px; text-align: center;">
+              <h1 style="color: #ffffff; margin: 0; font-size: 28px; font-weight: bold;">Welcome to Our Newsletter!</h1>
+              <p style="color: #ffffff; margin: 10px 0 0 0; font-size: 16px; opacity: 0.9;">Thank you for joining our community</p>
+            </div>
+            
+            <div style="padding: 40px 20px;">
+              <h2 style="color: #333333; font-size: 24px; margin: 0 0 20px 0;">Welcome Aboard! 🎉</h2>
+              
+              <p style="color: #666666; font-size: 16px; line-height: 1.6; margin: 0 0 20px 0;">
+                We're thrilled to have you as part of our community! You've just joined thousands of subscribers who stay updated with our latest news, insights, and exclusive content.
+              </p>
+              
+              <div style="background-color: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                <h3 style="color: #333333; font-size: 18px; margin: 0 0 15px 0;">What to expect:</h3>
+                <ul style="color: #666666; font-size: 14px; line-height: 1.6; margin: 0; padding-left: 20px;">
+                  <li>Weekly updates on industry trends</li>
+                  <li>Exclusive content and insights</li>
+                  <li>Special offers and promotions</li>
+                  <li>Community highlights and stories</li>
+                </ul>
+              </div>
+              
+              <div style="text-align: center; margin: 30px 0;">
+                <a href="#" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #ffffff; text-decoration: none; padding: 12px 30px; border-radius: 6px; font-weight: bold; display: inline-block;">
+                  Get Started
+                </a>
+              </div>
+              
+              <p style="color: #666666; font-size: 14px; line-height: 1.6; margin: 20px 0 0 0;">
+                If you have any questions, feel free to reply to this email. We're here to help!
+              </p>
+            </div>
+            
+            <div style="background-color: #f8f9fa; padding: 20px; text-align: center; border-top: 1px solid #e9ecef;">
+              <p style="color: #999999; font-size: 12px; margin: 0;">
+                Follow us on social media for daily updates and behind-the-scenes content.
+              </p>
+            </div>
+          </div>
+        `,
         createdAt: new Date().toISOString()
       },
       {
@@ -91,7 +133,58 @@ export default function NewsletterPage() {
         description: "Share product updates and new features",
         thumbnail: "🚀", 
         category: "promotional",
-        content: "<h2>New Product Updates</h2><p>Check out our latest features and improvements.</p>",
+        content: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #ffffff;">
+            <div style="background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%); padding: 40px 20px; text-align: center;">
+              <h1 style="color: #ffffff; margin: 0; font-size: 28px; font-weight: bold;">🚀 New Product Updates</h1>
+              <p style="color: #ffffff; margin: 10px 0 0 0; font-size: 16px; opacity: 0.9;">Exciting new features and improvements</p>
+            </div>
+            
+            <div style="padding: 40px 20px;">
+              <h2 style="color: #333333; font-size: 24px; margin: 0 0 20px 0;">What's New This Month</h2>
+              
+              <div style="border-left: 4px solid #ff6b6b; padding-left: 20px; margin: 20px 0;">
+                <h3 style="color: #ff6b6b; font-size: 18px; margin: 0 0 10px 0;">✨ Enhanced Dashboard</h3>
+                <p style="color: #666666; font-size: 16px; line-height: 1.6; margin: 0;">
+                  We've completely redesigned our dashboard to give you better insights and faster access to your most important data.
+                </p>
+              </div>
+              
+              <div style="border-left: 4px solid #ff6b6b; padding-left: 20px; margin: 20px 0;">
+                <h3 style="color: #ff6b6b; font-size: 18px; margin: 0 0 10px 0;">⚡ Performance Improvements</h3>
+                <p style="color: #666666; font-size: 16px; line-height: 1.6; margin: 0;">
+                  Our latest update includes significant performance improvements, making everything 40% faster than before.
+                </p>
+              </div>
+              
+              <div style="border-left: 4px solid #ff6b6b; padding-left: 20px; margin: 20px 0;">
+                <h3 style="color: #ff6b6b; font-size: 18px; margin: 0 0 10px 0;">🔒 Advanced Security</h3>
+                <p style="color: #666666; font-size: 16px; line-height: 1.6; margin: 0;">
+                  New security features including two-factor authentication and advanced encryption protocols.
+                </p>
+              </div>
+              
+              <div style="background-color: #fff5f5; padding: 20px; border-radius: 8px; margin: 30px 0; border: 1px solid #fed7d7;">
+                <h3 style="color: #e53e3e; font-size: 18px; margin: 0 0 15px 0;">🎯 Coming Soon</h3>
+                <p style="color: #666666; font-size: 14px; line-height: 1.6; margin: 0;">
+                  Stay tuned for our upcoming mobile app launch and AI-powered analytics features coming next month!
+                </p>
+              </div>
+              
+              <div style="text-align: center; margin: 30px 0;">
+                <a href="#" style="background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%); color: #ffffff; text-decoration: none; padding: 12px 30px; border-radius: 6px; font-weight: bold; display: inline-block;">
+                  Try New Features
+                </a>
+              </div>
+            </div>
+            
+            <div style="background-color: #f8f9fa; padding: 20px; text-align: center; border-top: 1px solid #e9ecef;">
+              <p style="color: #999999; font-size: 12px; margin: 0;">
+                Have feedback on our updates? Reply to this email - we'd love to hear from you!
+              </p>
+            </div>
+          </div>
+        `,
         createdAt: new Date().toISOString()
       },
       {
@@ -99,7 +192,83 @@ export default function NewsletterPage() {
         description: "Regular monthly newsletter template",
         thumbnail: "📰",
         category: "newsletter",
-        content: "<h2>Monthly Newsletter</h2><p>Here's what happened this month...</p>",
+        content: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #ffffff;">
+            <div style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); padding: 40px 20px; text-align: center;">
+              <h1 style="color: #ffffff; margin: 0; font-size: 28px; font-weight: bold;">📰 Monthly Digest</h1>
+              <p style="color: #ffffff; margin: 10px 0 0 0; font-size: 16px; opacity: 0.9;">${new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' })} Edition</p>
+            </div>
+            
+            <div style="padding: 40px 20px;">
+              <h2 style="color: #333333; font-size: 24px; margin: 0 0 20px 0;">This Month's Highlights</h2>
+              
+              <div style="display: flex; margin: 20px 0;">
+                <div style="background-color: #4facfe; width: 60px; height: 60px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-right: 15px; flex-shrink: 0;">
+                  <span style="color: #ffffff; font-size: 24px;">📈</span>
+                </div>
+                <div style="flex: 1;">
+                  <h3 style="color: #333333; font-size: 18px; margin: 0 0 10px 0;">Growth & Analytics</h3>
+                  <p style="color: #666666; font-size: 14px; line-height: 1.6; margin: 0;">
+                    This month we saw a 25% increase in user engagement and launched three new features based on your feedback.
+                  </p>
+                </div>
+              </div>
+              
+              <div style="display: flex; margin: 20px 0;">
+                <div style="background-color: #4facfe; width: 60px; height: 60px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-right: 15px; flex-shrink: 0;">
+                  <span style="color: #ffffff; font-size: 24px;">🎯</span>
+                </div>
+                <div style="flex: 1;">
+                  <h3 style="color: #333333; font-size: 18px; margin: 0 0 10px 0;">Community Spotlight</h3>
+                  <p style="color: #666666; font-size: 14px; line-height: 1.6; margin: 0;">
+                    Meet Sarah Johnson, who increased her productivity by 300% using our new workflow automation tools.
+                  </p>
+                </div>
+              </div>
+              
+              <div style="display: flex; margin: 20px 0;">
+                <div style="background-color: #4facfe; width: 60px; height: 60px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-right: 15px; flex-shrink: 0;">
+                  <span style="color: #ffffff; font-size: 24px;">💡</span>
+                </div>
+                <div style="flex: 1;">
+                  <h3 style="color: #333333; font-size: 18px; margin: 0 0 10px 0;">Industry Insights</h3>
+                  <p style="color: #666666; font-size: 14px; line-height: 1.6; margin: 0;">
+                    The latest trends in automation and AI, plus expert predictions for the upcoming quarter.
+                  </p>
+                </div>
+              </div>
+              
+              <div style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); padding: 20px; border-radius: 8px; margin: 30px 0; text-align: center;">
+                <h3 style="color: #ffffff; font-size: 18px; margin: 0 0 15px 0;">🎉 Special Offer</h3>
+                <p style="color: #ffffff; font-size: 14px; line-height: 1.6; margin: 0 0 15px 0;">
+                  Get 20% off our premium features this month. Limited time offer for newsletter subscribers only!
+                </p>
+                <a href="#" style="background-color: #ffffff; color: #f5576c; text-decoration: none; padding: 10px 25px; border-radius: 6px; font-weight: bold; display: inline-block;">
+                  Claim Offer
+                </a>
+              </div>
+              
+              <div style="border-top: 2px solid #e9ecef; padding-top: 20px; margin-top: 30px;">
+                <h3 style="color: #333333; font-size: 18px; margin: 0 0 15px 0;">📚 Recommended Reading</h3>
+                <ul style="color: #666666; font-size: 14px; line-height: 1.8; margin: 0; padding-left: 20px;">
+                  <li><a href="#" style="color: #4facfe; text-decoration: none;">The Future of Remote Work: Trends for 2024</a></li>
+                  <li><a href="#" style="color: #4facfe; text-decoration: none;">Automation Best Practices: A Complete Guide</a></li>
+                  <li><a href="#" style="color: #4facfe; text-decoration: none;">Building Productive Teams in Digital Age</a></li>
+                </ul>
+              </div>
+            </div>
+            
+            <div style="background-color: #f8f9fa; padding: 20px; text-align: center; border-top: 1px solid #e9ecef;">
+              <p style="color: #999999; font-size: 12px; margin: 0 0 10px 0;">
+                Thank you for being part of our community! See you next month.
+              </p>
+              <p style="color: #999999; font-size: 12px; margin: 0;">
+                <a href="#" style="color: #4facfe; text-decoration: none;">Update Preferences</a> | 
+                <a href="#" style="color: #4facfe; text-decoration: none;">View in Browser</a>
+              </p>
+            </div>
+          </div>
+        `,
         createdAt: new Date().toISOString()
       }
     ];
@@ -200,18 +369,17 @@ export default function NewsletterPage() {
   const handleSendCampaignClick = (campaign) => {
     setSelectedCampaign(campaign);
     setSendConfig({
-      senderName: '',
-      senderEmail: '',
       selectedSubscribers: [],
-      selectAll: true
+      selectAll: true,
+      manualRecipients: []
     });
     setIsSendingCampaign(true);
   };
 
   const handleTestSend = async () => {
     try {
-      if (!selectedCampaign || !sendConfig.senderEmail.trim()) {
-        toast.error('Please enter a sender email for testing');
+      if (!selectedCampaign) {
+        toast.error('No campaign selected for testing');
         return;
       }
 
@@ -220,15 +388,11 @@ export default function NewsletterPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           type: 'newsletter_test',
-          campaign: selectedCampaign,
-          testEmail: sendConfig.senderEmail,
-          testName: sendConfig.senderName || 'Test User',
-          senderName: sendConfig.senderName,
-          senderEmail: sendConfig.senderEmail
+          campaign: selectedCampaign
         })
       });
 
-      toast.success(`Test email sent to ${sendConfig.senderEmail}`);
+      toast.success('Test email sent successfully');
     } catch (error) {
       console.error('Error sending test email:', error);
       toast.error('Failed to send test email');
@@ -246,12 +410,18 @@ export default function NewsletterPage() {
       await update(selectedCampaign.id, { status: 'sending' }, 'newsletter_campaigns');
       
       // Get subscribers to send to
-      const recipientList = sendConfig.selectAll 
+      const subscriberList = sendConfig.selectAll 
         ? subscribers.filter(s => s.status === 'active')
         : sendConfig.selectedSubscribers;
       
-      if (recipientList.length === 0) {
-        toast.error('No subscribers selected');
+      // Combine subscribers with manual recipients
+      const allRecipients = [
+        ...subscriberList,
+        ...sendConfig.manualRecipients.filter(r => r.email.trim())
+      ];
+      
+      if (allRecipients.length === 0) {
+        toast.error('No recipients selected');
         return;
       }
 
@@ -262,9 +432,8 @@ export default function NewsletterPage() {
         body: JSON.stringify({
           type: 'newsletter',
           campaign: selectedCampaign,
-          subscribers: recipientList,
-          senderName: sendConfig.senderName,
-          senderEmail: sendConfig.senderEmail
+          subscribers: subscriberList,
+          manualRecipients: sendConfig.manualRecipients.filter(r => r.email.trim())
         })
       });
 
@@ -275,7 +444,7 @@ export default function NewsletterPage() {
         const updatedCampaign = {
           status: 'sent',
           sentDate: new Date().toISOString(),
-          recipients: result.data?.sent || recipientList.length
+          recipients: result.data?.sent || allRecipients.length
         };
         
         setCampaigns(prev => prev.map(c => 
@@ -284,7 +453,7 @@ export default function NewsletterPage() {
         
         await update(selectedCampaign.id, updatedCampaign, 'newsletter_campaigns');
         
-        toast.success(`Newsletter sent to ${result.data?.sent || recipientList.length} subscribers`);
+        toast.success(`Newsletter sent to ${result.data?.sent || allRecipients.length} recipients`);
         setIsSendingCampaign(false);
         setSelectedCampaign(null);
       } else {
@@ -316,6 +485,34 @@ export default function NewsletterPage() {
       console.error('Error deleting campaign:', error);
       toast.error('Failed to delete campaign');
     }
+  };
+
+  const addManualRecipient = () => {
+    setSendConfig(prev => ({
+      ...prev,
+      manualRecipients: [...prev.manualRecipients, { name: '', email: '' }]
+    }));
+  };
+
+  const updateManualRecipient = (index, field, value) => {
+    setSendConfig(prev => ({
+      ...prev,
+      manualRecipients: prev.manualRecipients.map((recipient, i) => 
+        i === index ? { ...recipient, [field]: value } : recipient
+      )
+    }));
+  };
+
+  const removeManualRecipient = (index) => {
+    setSendConfig(prev => ({
+      ...prev,
+      manualRecipients: prev.manualRecipients.filter((_, i) => i !== index)
+    }));
+  };
+
+  const handlePreviewTemplate = (template) => {
+    setSelectedTemplate(template);
+    setIsPreviewingTemplate(true);
   };
 
   const handleUseTemplate = async (template) => {
@@ -473,6 +670,58 @@ export default function NewsletterPage() {
           </DialogContent>
         </Dialog>
 
+        {/* Preview Template Dialog */}
+        <Dialog open={isPreviewingTemplate} onOpenChange={setIsPreviewingTemplate}>
+          <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Template Preview</DialogTitle>
+              <DialogDescription>
+                {selectedTemplate?.name || 'Template Preview'}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="border rounded p-4">
+                <div className="text-sm text-muted-foreground mb-2">
+                  <strong>Template:</strong> {selectedTemplate?.name || 'No name'}
+                </div>
+                <div className="text-sm text-muted-foreground mb-2">
+                  <strong>Category:</strong> {selectedTemplate?.category || 'No category'}
+                </div>
+                <div className="text-sm text-muted-foreground mb-4">
+                  <strong>Description:</strong> {selectedTemplate?.description || 'No description'}
+                </div>
+                <div className="border-t pt-4">
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <h4 className="text-sm font-medium text-gray-700 mb-3">Template Preview:</h4>
+                    <div 
+                      className="bg-white border rounded shadow-sm overflow-hidden"
+                      style={{ 
+                        maxHeight: '400px', 
+                        overflowY: 'auto',
+                        fontSize: '14px'
+                      }}
+                      dangerouslySetInnerHTML={{ 
+                        __html: selectedTemplate?.content || 'No content available' 
+                      }}
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsPreviewingTemplate(false)}>
+                Close
+              </Button>
+              <Button onClick={() => {
+                setIsPreviewingTemplate(false);
+                handleUseTemplate(selectedTemplate);
+              }}>
+                Use Template
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
         {/* Preview Campaign Dialog */}
         <Dialog open={isPreviewingCampaign} onOpenChange={setIsPreviewingCampaign}>
           <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto">
@@ -516,43 +765,17 @@ export default function NewsletterPage() {
 
         {/* Send Campaign Dialog */}
         <Dialog open={isSendingCampaign} onOpenChange={setIsSendingCampaign}>
-          <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto">
+          <DialogContent className="sm:max-w-[700px] max-h-[80vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Send Campaign</DialogTitle>
               <DialogDescription>
-                Configure and send "{selectedCampaign?.subject}" to your subscribers
+                Configure and send "{selectedCampaign?.subject}" to your recipients
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-6">
-              {/* Sender Information */}
+              {/* Recipients Section */}
               <div className="space-y-4">
-                <h3 className="text-lg font-semibold">Sender Information</h3>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="senderName">Sender Name</Label>
-                    <Input 
-                      id="senderName"
-                      value={sendConfig.senderName}
-                      onChange={(e) => setSendConfig(prev => ({ ...prev, senderName: e.target.value }))}
-                      placeholder="Your Name"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="senderEmail">Sender Email</Label>
-                    <Input 
-                      id="senderEmail"
-                      type="email"
-                      value={sendConfig.senderEmail}
-                      onChange={(e) => setSendConfig(prev => ({ ...prev, senderEmail: e.target.value }))}
-                      placeholder="sender@yourdomain.com"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Recipients */}
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold">Recipients</h3>
+                <h3 className="text-lg font-semibold">Subscribers</h3>
                 <div className="space-y-3">
                   <div className="flex items-center space-x-2">
                     <input
@@ -574,33 +797,82 @@ export default function NewsletterPage() {
                   </div>
                   
                   {!sendConfig.selectAll && (
-                    <div className="border rounded p-3 max-h-48 overflow-y-auto">
-                      <div className="space-y-2">
+                    <div className="space-y-3">
+                      <Label htmlFor="subscriberSelect">
+                        Select Subscribers ({sendConfig.selectedSubscribers.length} selected)
+                      </Label>
+                      <select
+                        id="subscriberSelect"
+                        multiple
+                        className="w-full border rounded-md p-2 min-h-[200px] focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        value={sendConfig.selectedSubscribers.map(s => s.id)}
+                        onChange={(e) => {
+                          const selectedIds = Array.from(e.target.selectedOptions, option => option.value);
+                          const selectedSubs = subscribers.filter(s => selectedIds.includes(s.id));
+                          setSendConfig(prev => ({
+                            ...prev,
+                            selectedSubscribers: selectedSubs
+                          }));
+                        }}
+                      >
                         {subscribers.filter(s => s.status === 'active').map(subscriber => (
-                          <div key={subscriber.id} className="flex items-center space-x-2">
-                            <input
-                              type="checkbox"
-                              id={`subscriber-${subscriber.id}`}
-                              checked={sendConfig.selectedSubscribers.some(s => s.id === subscriber.id)}
-                              onChange={(e) => {
-                                setSendConfig(prev => ({
-                                  ...prev,
-                                  selectedSubscribers: e.target.checked
-                                    ? [...prev.selectedSubscribers, subscriber]
-                                    : prev.selectedSubscribers.filter(s => s.id !== subscriber.id)
-                                }));
-                              }}
-                              className="rounded"
-                            />
-                            <Label htmlFor={`subscriber-${subscriber.id}`} className="text-sm">
-                              {subscriber.name || 'Anonymous'} ({subscriber.email})
-                            </Label>
-                          </div>
+                          <option key={subscriber.id} value={subscriber.id} className="p-2">
+                            {subscriber.name || 'Anonymous'} ({subscriber.email})
+                          </option>
                         ))}
-                      </div>
+                      </select>
+                      <p className="text-sm text-muted-foreground">
+                        Hold Ctrl (Cmd on Mac) to select multiple subscribers
+                      </p>
                     </div>
                   )}
                 </div>
+              </div>
+
+              {/* Manual Recipients Section */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-semibold">Additional Recipients</h3>
+                  <Button type="button" variant="outline" size="sm" onClick={addManualRecipient}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add Recipient
+                  </Button>
+                </div>
+                
+                {sendConfig.manualRecipients.length > 0 && (
+                  <div className="space-y-3 border rounded p-3 max-h-48 overflow-y-auto">
+                    {sendConfig.manualRecipients.map((recipient, index) => (
+                      <div key={index} className="flex gap-2 items-center">
+                        <Input
+                          placeholder="Name (optional)"
+                          value={recipient.name}
+                          onChange={(e) => updateManualRecipient(index, 'name', e.target.value)}
+                          className="flex-1"
+                        />
+                        <Input
+                          type="email"
+                          placeholder="Email address *"
+                          value={recipient.email}
+                          onChange={(e) => updateManualRecipient(index, 'email', e.target.value)}
+                          className="flex-1"
+                          required
+                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => removeManualRecipient(index)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                
+                <p className="text-sm text-muted-foreground">
+                  Add email addresses that are not in your subscriber list. These recipients will receive the newsletter but won't be added to your subscriber database.
+                </p>
               </div>
 
               {/* Test Send Section */}
@@ -611,24 +883,30 @@ export default function NewsletterPage() {
                     variant="outline" 
                     size="sm"
                     onClick={handleTestSend}
-                    disabled={!sendConfig.senderEmail.trim()}
                   >
                     Send Test Email
                   </Button>
                 </div>
                 <p className="text-sm text-muted-foreground">
-                  Send a test email to {sendConfig.senderEmail || 'your email'} before sending to all subscribers.
+                  Send a test email to the configured test address in your site settings.
                 </p>
               </div>
 
               {/* Campaign Summary */}
-              <div className="bg-gray-50 p-4 rounded">
+              <div className="bg-accent p-4 rounded">
                 <h4 className="font-semibold mb-2">Campaign Summary</h4>
                 <div className="text-sm space-y-1">
                   <div><strong>Subject:</strong> {selectedCampaign?.subject}</div>
-                  <div><strong>Recipients:</strong> {sendConfig.selectAll 
+                  <div><strong>Subscribers:</strong> {sendConfig.selectAll 
                     ? subscribers.filter(s => s.status === 'active').length 
-                    : sendConfig.selectedSubscribers.length} subscribers</div>
+                    : sendConfig.selectedSubscribers.length}</div>
+                  <div><strong>Additional Recipients:</strong> {sendConfig.manualRecipients.filter(r => r.email.trim()).length}</div>
+                  <div><strong>Total Recipients:</strong> {
+                    (sendConfig.selectAll 
+                      ? subscribers.filter(s => s.status === 'active').length 
+                      : sendConfig.selectedSubscribers.length) + 
+                    sendConfig.manualRecipients.filter(r => r.email.trim()).length
+                  }</div>
                   <div><strong>Status:</strong> Ready to send</div>
                 </div>
               </div>
@@ -643,8 +921,8 @@ export default function NewsletterPage() {
               <Button 
                 onClick={handleSendCampaign}
                 disabled={
-                  (!sendConfig.selectAll && sendConfig.selectedSubscribers.length === 0) ||
-                  (sendConfig.selectAll && subscribers.filter(s => s.status === 'active').length === 0)
+                  (!sendConfig.selectAll && sendConfig.selectedSubscribers.length === 0) &&
+                  sendConfig.manualRecipients.filter(r => r.email.trim()).length === 0
                 }
               >
                 Send Campaign
@@ -853,10 +1131,19 @@ export default function NewsletterPage() {
                       {template.description}
                     </p>
                     <div className="flex gap-2">
-                      <Button variant="outline" size="sm" className="flex-1">
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="flex-1"
+                        onClick={() => handlePreviewTemplate(template)}
+                      >
                         Preview
                       </Button>
-                      <Button size="sm" className="flex-1" onClick={() => handleUseTemplate(template)}>
+                      <Button 
+                        size="sm" 
+                        className="flex-1" 
+                        onClick={() => handleUseTemplate(template)}
+                      >
                         Use Template
                       </Button>
                     </div>

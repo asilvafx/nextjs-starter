@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Calendar, Plus, Clock, Users, Phone, Mail, Edit, Trash2, CheckCircle, XCircle } from "lucide-react";
+import { Calendar, Plus, Clock, Users, Phone, Mail, Edit, Trash2, CheckCircle, XCircle, Euro } from "lucide-react";
 import { getAll, create, update, remove } from "@/lib/client/query";
 import { toast } from "sonner";
 
@@ -22,107 +22,176 @@ export default function AgendaPage() {
   const [appointments, setAppointments] = useState([]);
   const [scheduleItems, setScheduleItems] = useState([]);
   const [tasks, setTasks] = useState([]);
+  const [orders, setOrders] = useState([]);
+  const [catalog, setCatalog] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedAppointment, setSelectedAppointment] = useState(null);
   const [isAppointmentDialogOpen, setIsAppointmentDialogOpen] = useState(false);
   const [appointmentStatus, setAppointmentStatus] = useState('');
+  const [isOrderDetailsOpen, setIsOrderDetailsOpen] = useState(false);
+  const [selectedOrder, setSelectedOrder] = useState(null);
 
   // Fetch all data for synchronization
   const fetchAllData = async () => {
     try {
       setIsLoading(true);
-      const today = new Date().toISOString().split('T')[0];
       
-      // Fetch appointments first as they're most critical
-      console.log('Fetching appointments...');
-      const appointmentsResponse = await getAll('appointments');
-      console.log('Appointments Response:', appointmentsResponse);
+      // Initialize all arrays to prevent undefined errors
+      setAppointments([]);
+      setAgendaItems([]);
+      setScheduleItems([]);
+      setTasks([]);
+      setOrders([]);
+      setCatalog([]);
       
-      if (appointmentsResponse?.success || Array.isArray(appointmentsResponse?.data)) {
-        const appointmentsData = appointmentsResponse.success ? appointmentsResponse.data : appointmentsResponse.data || [];
-        setAppointments(Array.isArray(appointmentsData) ? appointmentsData : []);
-        console.log('Appointments loaded:', appointmentsData.length);
-      } else {
-        console.warn('No appointments data found');
+      // Fetch appointments with proper error handling
+      try { 
+        const appointmentsResponse = await getAll('appointments'); 
+        
+        if (appointmentsResponse?.success && Array.isArray(appointmentsResponse.data)) {
+          setAppointments(appointmentsResponse.data); 
+        } else if (Array.isArray(appointmentsResponse)) {
+          setAppointments(appointmentsResponse); 
+        } else {
+          console.warn('No appointments data found or invalid format');
+          setAppointments([]);
+        }
+      } catch (err) {
+        console.warn('Failed to load appointments:', err.message);
         setAppointments([]);
+      }
+      
+      // Fetch orders (including service bookings)
+      try {
+        const ordersResponse = await getAll('orders');
+        if (ordersResponse?.success && Array.isArray(ordersResponse.data)) {
+          setOrders(ordersResponse.data);
+        } else if (Array.isArray(ordersResponse)) {
+          setOrders(ordersResponse);
+        } else {
+          setOrders([]);
+        }
+      } catch (err) {
+        console.warn('Failed to load orders:', err.message);
+        setOrders([]);
+      }
+      
+      // Fetch catalog items (services)
+      try {
+        const catalogResponse = await getAll('catalog_items');
+        if (catalogResponse?.success && Array.isArray(catalogResponse.data)) {
+          setCatalog(catalogResponse.data);
+        } else if (Array.isArray(catalogResponse)) {
+          setCatalog(catalogResponse);
+        } else {
+          setCatalog([]);
+        }
+      } catch (err) {
+        console.warn('Failed to load catalog:', err.message);
+        setCatalog([]);
       }
       
       // Try to fetch other data with individual error handling
       try {
         const agendaResponse = await getAll('agenda_items');
-        const agendaData = agendaResponse?.success ? agendaResponse.data : agendaResponse?.data || [];
-        setAgendaItems(Array.isArray(agendaData) ? agendaData : []);
+        if (agendaResponse?.success && Array.isArray(agendaResponse.data)) {
+          setAgendaItems(agendaResponse.data);
+        } else if (Array.isArray(agendaResponse)) {
+          setAgendaItems(agendaResponse);
+        } else {
+          setAgendaItems([]);
+        }
       } catch (err) {
-        console.warn('Failed to load agenda items:', err);
+        console.warn('Failed to load agenda items:', err.message);
         setAgendaItems([]);
       }
       
       try {
         const scheduleResponse = await getAll('schedule_items');
-        const scheduleData = scheduleResponse?.success ? scheduleResponse.data : scheduleResponse?.data || [];
-        setScheduleItems(Array.isArray(scheduleData) ? scheduleData : []);
+        if (scheduleResponse?.success && Array.isArray(scheduleResponse.data)) {
+          setScheduleItems(scheduleResponse.data);
+        } else if (Array.isArray(scheduleResponse)) {
+          setScheduleItems(scheduleResponse);
+        } else {
+          setScheduleItems([]);
+        }
       } catch (err) {
-        console.warn('Failed to load schedule items:', err);
+        console.warn('Failed to load schedule items:', err.message);
         setScheduleItems([]);
       }
       
       try {
         const tasksResponse = await getAll('tasks');
-        const tasksData = tasksResponse?.success ? tasksResponse.data : tasksResponse?.data || [];
-        setTasks(Array.isArray(tasksData) ? tasksData : []);
+        if (tasksResponse?.success && Array.isArray(tasksResponse.data)) {
+          setTasks(tasksResponse.data);
+        } else if (Array.isArray(tasksResponse)) {
+          setTasks(tasksResponse);
+        } else {
+          setTasks([]);
+        }
       } catch (err) {
-        console.warn('Failed to load tasks:', err);
+        console.warn('Failed to load tasks:', err.message);
         setTasks([]);
       }
       
     } catch (error) {
       console.error('Error fetching data:', error);
-      toast.error(`Failed to load data: ${error.message}`);
-      setAgendaItems([]);
+      // Don't show error toast unless it's a critical failure
+      // Most workspace data is optional
       setAppointments([]);
+      setAgendaItems([]);
       setScheduleItems([]);
       setTasks([]);
     } finally {
       setIsLoading(false);
     }
+  }; 
+
+  // Helper function to get service details from catalog
+  const getServiceDetails = (serviceId) => {
+    return catalog.find(item => item.id === serviceId) || {};
   };
 
-  // Test API connection
-  const testAPIConnection = async () => {
-    try {
-      console.log('Testing API connection...');
-      
-      // Try a simple API call
-      const response = await fetch('/api/query/appointments', {
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json'
-        }
-      });
-      
-      console.log('API Response status:', response.status);
-      console.log('API Response ok:', response.ok);
-      
-      if (response.ok) {
-        const data = await response.json();
-        console.log('API Response data:', data);
-      } else {
-        const errorText = await response.text();
-        console.log('API Error text:', errorText);
+  // Helper function to get order details
+  const getOrderDetails = (orderId) => {
+    return orders.find(order => order.id === orderId) || {};
+  };
+
+  // Create enriched appointments with service and order data
+  const enrichedAppointments = appointments.map(apt => {
+    const serviceDetails = getServiceDetails(apt.serviceId);
+    const orderDetails = getOrderDetails(apt.orderId);
+    
+    return {
+      ...apt,
+      // Service details from catalog
+      serviceType: serviceDetails.serviceType || 'standard',
+      deliveryMethod: serviceDetails.deliveryMethod || 'in-person',
+      maxParticipants: serviceDetails.maxParticipants || 1,
+      serviceIncludes: serviceDetails.serviceIncludes || '',
+      serviceNotes: serviceDetails.serviceNotes || '',
+      prerequisites: serviceDetails.prerequisites || '',
+      // Order details
+      orderStatus: orderDetails.status || 'pending',
+      paymentStatus: orderDetails.paymentStatus || 'pending',
+      paymentMethod: orderDetails.paymentMethod || '',
+      orderTotal: orderDetails.total || apt.price || 0,
+      customerDetails: {
+        ...orderDetails.customer,
+        name: apt.customerName || (orderDetails.customer?.firstName + ' ' + orderDetails.customer?.lastName) || '',
+        email: apt.customerEmail || orderDetails.customer?.email || '',
+        phone: apt.customerPhone || orderDetails.customer?.phone || ''
       }
-    } catch (error) {
-      console.log('API Connection error:', error);
-    }
-  };
+    };
+  });
 
-  useEffect(() => {
-    testAPIConnection();
+  useEffect(() => { 
     fetchAllData();
   }, [selectedDate]);
 
-  // Get today's items
+  // Get today's items using enriched data
   const today = new Date().toISOString().split('T')[0];
-  const todaysAppointments = appointments.filter(apt => apt.date === today);
+  const todaysAppointments = enrichedAppointments.filter(apt => apt.date === today);
   const todaysAgenda = agendaItems.filter(item => item.date === today);
   const todaysSchedule = scheduleItems.filter(item => item.date === today);
   const todaysTasks = tasks.filter(task => {
@@ -132,10 +201,23 @@ export default function AgendaPage() {
     return false;
   });
 
-  // Calculate stats
+  // Calculate enhanced stats
   const totalAppointments = todaysAppointments.length;
   const totalDuration = todaysAppointments.reduce((sum, apt) => sum + (apt.duration || 60), 0);
-  const totalRevenue = todaysAppointments.reduce((sum, apt) => sum + (apt.price || 0), 0);
+  const totalRevenue = todaysAppointments.reduce((sum, apt) => sum + (apt.orderTotal || apt.price || 0), 0);
+  const confirmedAppointments = todaysAppointments.filter(apt => apt.status === 'confirmed').length;
+  const pendingAppointments = todaysAppointments.filter(apt => apt.status === 'scheduled' || apt.status === 'pending').length;
+  const completedAppointments = todaysAppointments.filter(apt => apt.status === 'completed').length;
+  const paidBookings = todaysAppointments.filter(apt => apt.paymentStatus === 'paid').length;
+
+  const handleViewOrderDetails = (appointment) => {
+    const orderDetails = getOrderDetails(appointment.orderId);
+    setSelectedOrder({
+      ...orderDetails,
+      appointment: appointment
+    });
+    setIsOrderDetailsOpen(true);
+  };
 
   const handleUpdateAppointmentStatus = async (appointmentId, newStatus) => {
     try {
@@ -230,14 +312,15 @@ export default function AgendaPage() {
         </div>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+      {/* Enhanced Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Today's Appointments</p>
                 <p className="text-2xl font-bold">{totalAppointments}</p>
+                <p className="text-xs text-muted-foreground">{confirmedAppointments} confirmed</p>
               </div>
               <Calendar className="h-8 w-8 text-muted-foreground" />
             </div>
@@ -250,6 +333,7 @@ export default function AgendaPage() {
               <div>
                 <p className="text-sm text-muted-foreground">Total Duration</p>
                 <p className="text-2xl font-bold">{Math.round(totalDuration / 60)}h</p>
+                <p className="text-xs text-muted-foreground">{totalDuration} minutes</p>
               </div>
               <Clock className="h-8 w-8 text-muted-foreground" />
             </div>
@@ -262,6 +346,7 @@ export default function AgendaPage() {
               <div>
                 <p className="text-sm text-muted-foreground">Expected Revenue</p>
                 <p className="text-2xl font-bold">€{totalRevenue.toFixed(0)}</p>
+                <p className="text-xs text-muted-foreground">{paidBookings} paid</p>
               </div>
               <Users className="h-8 w-8 text-muted-foreground" />
             </div>
@@ -272,10 +357,24 @@ export default function AgendaPage() {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">Due Tasks</p>
-                <p className="text-2xl font-bold">{todaysTasks.length}</p>
+                <p className="text-sm text-muted-foreground">Pending</p>
+                <p className="text-2xl font-bold">{pendingAppointments}</p>
+                <p className="text-xs text-muted-foreground">need confirmation</p>
               </div>
-              <CheckCircle className="h-8 w-8 text-muted-foreground" />
+              <Clock className="h-8 w-8 text-orange-500" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">Completed</p>
+                <p className="text-2xl font-bold">{completedAppointments}</p>
+                <p className="text-xs text-muted-foreground">finished today</p>
+              </div>
+              <CheckCircle className="h-8 w-8 text-green-500" />
             </div>
           </CardContent>
         </Card>
@@ -307,11 +406,19 @@ export default function AgendaPage() {
                   <div className="flex items-start justify-between mb-2">
                     <div className="flex-1">
                       <h3 className="font-medium">{appointment.serviceName}</h3>
-                      <p className="text-sm text-muted-foreground">{appointment.customerName}</p>
+                      <p className="text-sm text-muted-foreground">{appointment.customerDetails?.name || appointment.customerName}</p>
+                      {appointment.serviceType && (
+                        <p className="text-xs text-blue-600 capitalize">{appointment.serviceType} • {appointment.deliveryMethod}</p>
+                      )}
                     </div>
-                    <Badge className={getStatusColor(appointment.status)}>
-                      {appointment.status}
-                    </Badge>
+                    <div className="flex flex-col gap-1 items-end">
+                      <Badge className={getStatusColor(appointment.status)}>
+                        {appointment.status}
+                      </Badge>
+                      <Badge variant="outline" className="text-xs">
+                        {appointment.paymentStatus}
+                      </Badge>
+                    </div>
                   </div>
                   <div className="flex items-center gap-4 text-sm text-muted-foreground mb-3">
                     <div className="flex items-center gap-1">
@@ -322,19 +429,34 @@ export default function AgendaPage() {
                       <Users className="h-3 w-3" />
                       {appointment.duration}min
                     </div>
-                    <span className="font-medium text-green-600">€{appointment.price}</span>
+                    <span className="font-medium text-green-600">€{appointment.orderTotal || appointment.price}</span>
+                    {appointment.maxParticipants > 1 && (
+                      <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
+                        Max {appointment.maxParticipants} people
+                      </span>
+                    )}
                   </div>
                   <div className="flex items-center gap-2 text-xs text-muted-foreground mb-3">
                     <Mail className="h-3 w-3" />
-                    {appointment.customerEmail}
-                    {appointment.customerPhone && (
+                    {appointment.customerDetails?.email || appointment.customerEmail}
+                    {(appointment.customerDetails?.phone || appointment.customerPhone) && (
                       <>
                         <Phone className="h-3 w-3 ml-2" />
-                        {appointment.customerPhone}
+                        {appointment.customerDetails?.phone || appointment.customerPhone}
                       </>
                     )}
                   </div>
-                  <div className="flex gap-2">
+                  {(appointment.serviceIncludes || appointment.serviceNotes) && (
+                    <div className="bg-gray-50 p-2 rounded text-xs mb-3">
+                      {appointment.serviceIncludes && (
+                        <p><strong>Includes:</strong> {appointment.serviceIncludes}</p>
+                      )}
+                      {appointment.serviceNotes && (
+                        <p><strong>Notes:</strong> {appointment.serviceNotes}</p>
+                      )}
+                    </div>
+                  )}
+                  <div className="flex gap-2 flex-wrap">
                     <Dialog>
                       <DialogTrigger asChild>
                         <Button variant="outline" size="sm" onClick={() => setSelectedAppointment(appointment)}>
@@ -342,25 +464,43 @@ export default function AgendaPage() {
                           Manage
                         </Button>
                       </DialogTrigger>
-                      <DialogContent>
+                      <DialogContent className="sm:max-w-[600px]">
                         <DialogHeader>
-                          <DialogTitle>Manage Appointment</DialogTitle>
+                          <DialogTitle>Manage Service Appointment</DialogTitle>
                         </DialogHeader>
                         <div className="space-y-4">
-                          <div>
-                            <Label>Service</Label>
-                            <p className="text-sm">{appointment.serviceName}</p>
+                          <div className="grid grid-cols-2 gap-4">
+                            <div>
+                              <Label>Service</Label>
+                              <p className="text-sm">{appointment.serviceName}</p>
+                              <p className="text-xs text-muted-foreground">{appointment.serviceType} • {appointment.deliveryMethod}</p>
+                            </div>
+                            <div>
+                              <Label>Customer</Label>
+                              <p className="text-sm">{appointment.customerDetails?.name || appointment.customerName}</p>
+                              <p className="text-xs text-muted-foreground">{appointment.customerDetails?.email || appointment.customerEmail}</p>
+                            </div>
                           </div>
-                          <div>
-                            <Label>Customer</Label>
-                            <p className="text-sm">{appointment.customerName} ({appointment.customerEmail})</p>
+                          <div className="grid grid-cols-2 gap-4">
+                            <div>
+                              <Label>Date & Time</Label>
+                              <p className="text-sm">{appointment.date} at {formatTime(appointment.startTime)}</p>
+                              <p className="text-xs text-muted-foreground">Duration: {appointment.duration} minutes</p>
+                            </div>
+                            <div>
+                              <Label>Payment</Label>
+                              <p className="text-sm">€{appointment.orderTotal || appointment.price}</p>
+                              <p className="text-xs text-muted-foreground">{appointment.paymentStatus} • {appointment.paymentMethod || 'Not specified'}</p>
+                            </div>
                           </div>
+                          {appointment.serviceIncludes && (
+                            <div>
+                              <Label>Service Includes</Label>
+                              <p className="text-sm text-muted-foreground">{appointment.serviceIncludes}</p>
+                            </div>
+                          )}
                           <div>
-                            <Label>Date & Time</Label>
-                            <p className="text-sm">{appointment.date} at {formatTime(appointment.startTime)}</p>
-                          </div>
-                          <div>
-                            <Label htmlFor="status">Status</Label>
+                            <Label htmlFor="status">Appointment Status</Label>
                             <Select 
                               value={appointmentStatus || appointment.status} 
                               onValueChange={setAppointmentStatus}
@@ -388,10 +528,28 @@ export default function AgendaPage() {
                             >
                               Update Status
                             </Button>
+                            {appointment.orderId && (
+                              <Button 
+                                variant="outline"
+                                onClick={() => handleViewOrderDetails(appointment)}
+                              >
+                                View Order
+                              </Button>
+                            )}
                           </div>
                         </div>
                       </DialogContent>
                     </Dialog>
+                    
+                    {appointment.orderId && (
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={() => handleViewOrderDetails(appointment)}
+                      >
+                        Order #{appointment.orderId.slice(-6)}
+                      </Button>
+                    )}
                     
                     {appointment.status === 'scheduled' && (
                       <Button 
@@ -421,11 +579,11 @@ export default function AgendaPage() {
           </CardContent>
         </Card>
 
-        {/* Synchronized Overview */}
+        {/* Enhanced Overview with Task Count */}
         <Card>
           <CardHeader>
             <CardTitle>Today's Overview</CardTitle>
-            <CardDescription>Synchronized agenda, schedule, and tasks</CardDescription>
+            <CardDescription>Synchronized agenda, schedule, and {todaysTasks.length} due tasks</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4 max-h-96 overflow-y-auto">
             {/* Tasks Due Today */}
@@ -488,6 +646,126 @@ export default function AgendaPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Order Details Dialog */}
+      <Dialog open={isOrderDetailsOpen} onOpenChange={setIsOrderDetailsOpen}>
+        <DialogContent className="sm:max-w-[700px]">
+          <DialogHeader>
+            <DialogTitle>Service Booking Order Details</DialogTitle>
+          </DialogHeader>
+          {selectedOrder && (
+            <div className="space-y-6">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-sm font-medium text-muted-foreground">Order ID</Label>
+                  <p className="text-sm font-mono">#{selectedOrder.id}</p>
+                </div>
+                <div>
+                  <Label className="text-sm font-medium text-muted-foreground">Status</Label>
+                  <div className="flex gap-2">
+                    <Badge variant="outline">{selectedOrder.status}</Badge>
+                    <Badge variant="outline">{selectedOrder.paymentStatus}</Badge>
+                  </div>
+                </div>
+              </div>
+              
+              <div>
+                <Label className="text-sm font-medium text-muted-foreground">Customer Information</Label>
+                <div className="bg-gray-50 p-3 rounded mt-1">
+                  <p className="font-medium">{selectedOrder.customer?.firstName} {selectedOrder.customer?.lastName}</p>
+                  <p className="text-sm text-muted-foreground">{selectedOrder.customer?.email}</p>
+                  <p className="text-sm text-muted-foreground">{selectedOrder.customer?.phone}</p>
+                  {selectedOrder.customer?.streetAddress && (
+                    <p className="text-sm text-muted-foreground">
+                      {selectedOrder.customer.streetAddress}, {selectedOrder.customer.city}
+                    </p>
+                  )}
+                </div>
+              </div>
+              
+              <div>
+                <Label className="text-sm font-medium text-muted-foreground">Service Details</Label>
+                <div className="bg-blue-50 p-3 rounded mt-1">
+                  <p className="font-medium">{selectedOrder.appointment?.serviceName}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {selectedOrder.appointment?.date} at {formatTime(selectedOrder.appointment?.startTime || '')}
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    Duration: {selectedOrder.appointment?.duration} minutes
+                  </p>
+                  {selectedOrder.appointment?.serviceType && (
+                    <p className="text-sm text-muted-foreground capitalize">
+                      {selectedOrder.appointment.serviceType} • {selectedOrder.appointment.deliveryMethod}
+                    </p>
+                  )}
+                </div>
+              </div>
+              
+              {selectedOrder.items && selectedOrder.items.length > 0 && (
+                <div>
+                  <Label className="text-sm font-medium text-muted-foreground">Order Items</Label>
+                  <div className="border rounded mt-1">
+                    {selectedOrder.items.map((item, index) => (
+                      <div key={index} className="flex justify-between p-3 border-b last:border-b-0">
+                        <div>
+                          <p className="font-medium">{item.name}</p>
+                          <p className="text-sm text-muted-foreground">Qty: {item.quantity}</p>
+                        </div>
+                        <p className="font-medium">€{(item.price * item.quantity).toFixed(2)}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              
+              <div>
+                <Label className="text-sm font-medium text-muted-foreground">Order Summary</Label>
+                <div className="bg-gray-50 p-3 rounded mt-1">
+                  <div className="flex justify-between text-sm">
+                    <span>Subtotal:</span>
+                    <span>€{selectedOrder.subtotal?.toFixed(2) || '0.00'}</span>
+                  </div>
+                  {selectedOrder.taxAmount > 0 && (
+                    <div className="flex justify-between text-sm">
+                      <span>Tax ({selectedOrder.taxRate}%):</span>
+                      <span>€{selectedOrder.taxAmount?.toFixed(2)}</span>
+                    </div>
+                  )}
+                  {selectedOrder.shippingCost > 0 && (
+                    <div className="flex justify-between text-sm">
+                      <span>Shipping:</span>
+                      <span>€{selectedOrder.shippingCost?.toFixed(2)}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between font-medium text-lg border-t pt-2 mt-2">
+                    <span>Total:</span>
+                    <span>€{selectedOrder.total?.toFixed(2) || '0.00'}</span>
+                  </div>
+                </div>
+              </div>
+              
+              {selectedOrder.deliveryNotes && (
+                <div>
+                  <Label className="text-sm font-medium text-muted-foreground">Delivery Notes</Label>
+                  <p className="text-sm bg-yellow-50 p-2 rounded mt-1">{selectedOrder.deliveryNotes}</p>
+                </div>
+              )}
+              
+              <div className="flex justify-end space-x-2">
+                <Button variant="outline" onClick={() => setIsOrderDetailsOpen(false)}>
+                  Close
+                </Button>
+                <Button onClick={() => {
+                  // Navigate to order management page
+                  window.open(`/admin/store/orders`, '_blank');
+                }}>
+                  Manage in Orders
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
