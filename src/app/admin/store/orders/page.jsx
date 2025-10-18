@@ -194,9 +194,7 @@ export default function OrdersPage() {
             if (isRetry) {
                 setIsRetrying(true);
                 setFetchError(null);
-            } else {
-                setLoading(true);
-            }
+            }  
             
             const response = await getAll('orders', { limit: 0 });
             if (response.success) {
