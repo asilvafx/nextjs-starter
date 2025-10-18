@@ -284,6 +284,24 @@ class QueryAPI {
         }
         return results;
     }
+
+    // Revalidate Next.js cache for a collection
+    async revalidate(collection, tag = null) {
+        try {
+            const url = '/api/revalidate';
+            const options = {
+                method: 'POST',
+                body: JSON.stringify({ 
+                    path: `/api/query/${collection}`,
+                    tag: tag || collection 
+                })
+            };
+            return await this.makeRequest(url, options);
+        } catch (error) {
+            console.error('Revalidate error:', error);
+            throw error;
+        }
+    }
 }
 
 // Create and export a singleton instance
@@ -309,6 +327,9 @@ export const batchCreate = (items, collection) => queryAPI.batchCreate(items, co
 export const batchCreatePublic = (items, collection) => queryAPI.batchCreatePublic(items, collection);
 export const batchUpdate = (updates, collection) => queryAPI.batchUpdate(updates, collection);
 export const batchDelete = (ids, collection) => queryAPI.batchDelete(ids, collection);
+
+// Export revalidate function
+export const revalidate = (collection, tag) => queryAPI.revalidate(collection, tag);
 
 // Export the main class instance
 export default queryAPI;

@@ -1,5 +1,6 @@
 // app/api/query/[slug]/route.js
 import { NextResponse } from 'next/server';
+import { unstable_cache, revalidateTag } from 'next/cache';
 import DBService from '@/data/rest.db.js';
 import { withAdminAuth, withAuth } from '@/lib/server/auth.js';
 
@@ -59,9 +60,19 @@ async function handleGet(request, { params }) {
                 return NextResponse.json({ error: 'No records found' }, { status: 404 });
             }
         }
-        // Get all items
+        // Get all items with caching
         else {
-            result = await DBService.readAll(slug);
+            // Create cached function for better performance
+            const getCachedData = unstable_cache(
+                async (collection) => await DBService.readAll(collection),
+                [`collection-${slug}`],
+                { 
+                    tags: [slug, `collection-${slug}`],
+                    revalidate: 60 // Cache for 60 seconds
+                }
+            );
+            
+            result = await getCachedData(slug);
             if (!result) {
                 return NextResponse.json({
                     success: true,
@@ -181,6 +192,10 @@ async function handlePost(request, { params }) {
             return NextResponse.json({ error: 'Failed to create record.' }, { status: 500 });
         }
 
+        // Revalidate cache for this collection
+        revalidateTag(slug);
+        revalidateTag(`collection-${slug}`);
+
         return NextResponse.json(
             {
                 success: true,
@@ -243,6 +258,10 @@ async function handlePut(request, { params }) {
             return NextResponse.json({ error: 'Failed to update record.' }, { status: 500 });
         }
 
+        // Revalidate cache for this collection
+        revalidateTag(slug);
+        revalidateTag(`collection-${slug}`);
+
         return NextResponse.json({
             success: true,
             data: { id, ...updateData },
@@ -292,10 +311,13 @@ async function handleDelete(request, { params }) {
             return NextResponse.json({ error: 'Failed to delete record.' }, { status: 500 });
         }
 
+        // Revalidate cache for this collection
+        revalidateTag(slug);
+        revalidateTag(`collection-${slug}`);
+
         return NextResponse.json({
             success: true,
-            message: 'Record deleted successfully!',
-            data: { id }
+            message: 'Record deleted successfully!'
         });
     } catch (error) {
         console.error('Delete record error:', error);

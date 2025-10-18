@@ -49,7 +49,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { TableSkeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { create, getAll, remove, update } from '@/lib/client/query';
+import { create, getAll, remove, update, revalidate } from '@/lib/client/query';
 import { generatePDF } from '@/utils/generatePDF';
 
 const ORDER_STATUS = [
@@ -186,8 +186,7 @@ export default function OrdersPage() {
     };
 
     const fetchOrders = async () => {
-        try {
-            setLoading(true);
+        try { 
             const response = await getAll('orders', { limit: 0 });
             if (response.success) {
                 setOrders(response.data);
@@ -247,6 +246,30 @@ export default function OrdersPage() {
         fetchOrders();
         fetchCustomers();
         fetchCatalog();
+    }, []);
+
+    // Auto-refresh orders using Next.js revalidation every 60 seconds
+    useEffect(() => {
+        const startRevalidation = async () => {
+            const interval = setInterval(async () => {
+                try {
+                    // Revalidate orders cache and refetch
+                    await revalidate('orders');
+                    await fetchOrders();
+                } catch (error) {
+                    console.error('Auto-revalidation failed:', error);
+                }
+            }, 60000); // 60 seconds
+
+            return () => clearInterval(interval);
+        };
+
+        const cleanup = startRevalidation();
+        return () => {
+            if (cleanup && typeof cleanup.then === 'function') {
+                cleanup.then(clearFn => clearFn && clearFn());
+            }
+        };
     }, []);
 
     // Filter and sort orders
