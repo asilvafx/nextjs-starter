@@ -91,20 +91,17 @@ export default function CouponsPage() {
   const fetchCoupons = async () => {
     try {
       setLoading(true);
-      const response = await getAll("coupons");
+      const data = await getAll("coupons");
       
-      if (response.success && Array.isArray(response.data)) { 
-        setCoupons(response.data);
+      if (Array.isArray(data)) { 
+        setCoupons(data);
       } else {
         setCoupons([]);
-        if (response.error) {
-          toast.error(response.error);
-        }
       }
     } catch (error) {
       console.error('Error fetching coupons:', error);
       setCoupons([]);
-      toast.error("Failed to fetch coupons");
+      toast.error(error.message || "Failed to fetch coupons");
     } finally {
       setLoading(false);
     }
@@ -231,17 +228,17 @@ export default function CouponsPage() {
         updatedAt: new Date().toISOString(),
       };
       
-      const response = await create(couponData, "coupons");
+      const newCoupon = await create(couponData, "coupons");
       
-      if (response.success) {
+      if (newCoupon) {
         toast.success("Coupon created successfully");
-        setCoupons(prev => [...prev, response.data]);
+        setCoupons(prev => [...prev, newCoupon]);
         setIsOpen(false);
         setFormData(initialFormData);
       }
     } catch (error) {
       console.error('Error creating coupon:', error);
-      toast.error("Failed to create coupon");
+      toast.error(error.message || "Failed to create coupon");
     } finally {
       setIsSubmitting(false);
     }
@@ -283,19 +280,17 @@ export default function CouponsPage() {
         updatedAt: new Date().toISOString(),
       };
       
-      const response = await update(selectedCoupon.id, updatedData, "coupons");
-      if (response.success) {
+      const updatedCoupon = await update(selectedCoupon.id, updatedData, "coupons");
+      if (updatedCoupon) {
         toast.success('Coupon updated successfully!');
         setFormData(initialFormData);
         setIsEditOpen(false);
         setSelectedCoupon(null);
         await fetchCoupons();
-      } else {
-        toast.error(response.error || 'Failed to update coupon');
       }
     } catch (error) {
       console.error('Error updating coupon:', error);
-      toast.error('Error updating coupon');
+      toast.error(error.message || 'Error updating coupon');
     } finally {
       setIsSubmitting(false);
     }
@@ -309,19 +304,17 @@ export default function CouponsPage() {
 
     setIsDeleting(true);
     try {
-      const response = await remove(selectedCoupon.id, "coupons");
-      if (response.success) {
+      const result = await remove(selectedCoupon.id, "coupons");
+      if (result) {
         toast.success('Coupon deleted successfully!');
         setIsDeleteOpen(false);
         setSelectedCoupon(null);
         setDeleteConfirmText("");
         await fetchCoupons();
-      } else {
-        toast.error(response.error || 'Failed to delete coupon');
       }
     } catch (error) {
       console.error('Error deleting coupon:', error);
-      toast.error('Error deleting coupon');
+      toast.error(error.message || 'Error deleting coupon');
     } finally {
       setIsDeleting(false);
     }

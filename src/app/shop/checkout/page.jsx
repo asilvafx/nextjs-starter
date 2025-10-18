@@ -178,21 +178,123 @@ const Checkout = () => {
     if (loading) {
         return (
             <div className="container mx-auto px-4 py-8">
-                <div className="space-y-6">
-                    <Skeleton className="h-10 w-64" />
+                <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.5 }}
+                >
+                    {/* Header Skeleton */}
+                    <div className="mb-8">
+                        <Skeleton className="h-10 w-80" />
+                    </div>
+
+                    {/* Main Content Skeleton */}
                     <div className="grid lg:grid-cols-2 gap-8">
-                        <div className="space-y-4">
-                            <Skeleton className="h-48 w-full" />
-                            <Skeleton className="h-32 w-full" />
-                            <Skeleton className="h-24 w-full" />
+                        {/* Left: Payment Form Skeleton */}
+                        <div className="order-2 lg:order-1">
+                            <Card>
+                                <CardHeader>
+                                    <Skeleton className="h-6 w-48" />
+                                </CardHeader>
+                                <CardContent className="space-y-6">
+                                    {/* Contact Information */}
+                                    <div className="space-y-4">
+                                        <Skeleton className="h-5 w-32" />
+                                        <Skeleton className="h-10 w-full" />
+                                    </div>
+                                    
+                                    {/* Shipping Information */}
+                                    <div className="space-y-4">
+                                        <Skeleton className="h-5 w-36" />
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <Skeleton className="h-10 w-full" />
+                                            <Skeleton className="h-10 w-full" />
+                                        </div>
+                                        <Skeleton className="h-10 w-full" />
+                                        <Skeleton className="h-10 w-full" />
+                                        <div className="grid grid-cols-3 gap-4">
+                                            <Skeleton className="h-10 w-full" />
+                                            <Skeleton className="h-10 w-full" />
+                                            <Skeleton className="h-10 w-full" />
+                                        </div>
+                                    </div>
+                                    
+                                    {/* Shipping Methods */}
+                                    <div className="space-y-4">
+                                        <Skeleton className="h-5 w-32" />
+                                        <div className="space-y-2">
+                                            {[...Array(3)].map((_, index) => (
+                                                <Skeleton key={index} className="h-16 w-full" />
+                                            ))}
+                                        </div>
+                                    </div>
+                                    
+                                    {/* Payment Method */}
+                                    <div className="space-y-4">
+                                        <Skeleton className="h-5 w-32" />
+                                        <Skeleton className="h-12 w-full" />
+                                        <Skeleton className="h-32 w-full" />
+                                    </div>
+                                    
+                                    {/* Submit Button */}
+                                    <Skeleton className="h-12 w-full" />
+                                </CardContent>
+                            </Card>
                         </div>
-                        <div className="space-y-4">
-                            <Skeleton className="h-8 w-32" />
-                            <Skeleton className="h-32 w-full" />
-                            <Skeleton className="h-16 w-full" />
+
+                        {/* Right: Order Summary Skeleton */}
+                        <div className="order-1 lg:order-2">
+                            <Card className="lg:sticky lg:top-24">
+                                <CardHeader>
+                                    <Skeleton className="h-6 w-32" />
+                                </CardHeader>
+                                <CardContent>
+                                    {/* Items Skeleton */}
+                                    <div className="space-y-4 mb-6">
+                                        {[...Array(3)].map((_, index) => (
+                                            <div key={index} className="flex items-center space-x-4 p-3 border rounded-lg bg-muted/30">
+                                                <Skeleton className="w-16 h-16 rounded-md" />
+                                                <div className="flex-1 space-y-2">
+                                                    <Skeleton className="h-4 w-32" />
+                                                    <Skeleton className="h-3 w-24" />
+                                                </div>
+                                                <Skeleton className="h-4 w-16" />
+                                            </div>
+                                        ))}
+                                    </div>
+
+                                    <Separator className="my-4" />
+                                    
+                                    {/* Price Breakdown Skeleton */}
+                                    <div className="space-y-3">
+                                        {[...Array(5)].map((_, index) => (
+                                            <div key={index} className="flex justify-between">
+                                                <Skeleton className="h-4 w-24" />
+                                                <Skeleton className="h-4 w-16" />
+                                            </div>
+                                        ))}
+                                        <Separator />
+                                        <div className="flex justify-between">
+                                            <Skeleton className="h-5 w-16" />
+                                            <Skeleton className="h-5 w-20" />
+                                        </div>
+                                    </div>
+
+                                    {/* Security Notice Skeleton */}
+                                    <div className="mt-6">
+                                        <Skeleton className="h-12 w-full rounded-lg" />
+                                    </div>
+                                </CardContent>
+                            </Card>
                         </div>
                     </div>
-                </div>
+
+                    {/* Navigation Links Skeleton */}
+                    <div className="mt-8 flex justify-center gap-4">
+                        <Skeleton className="h-10 w-32" />
+                        <Skeleton className="h-10 w-28" />
+                    </div>
+                </motion.div>
             </div>
         );
     }

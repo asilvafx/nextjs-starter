@@ -20,7 +20,9 @@ import {
   Calendar,
   Users,
   TrendingUp,
-  BarChart3
+  BarChart3,
+  CheckCircle,
+  AlertCircle
 } from "lucide-react";
 import { getAll, create, update, remove } from "@/lib/client/query";
 import { toast } from "sonner";
@@ -32,10 +34,20 @@ export default function NewsletterPage() {
   const [templates, setTemplates] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isCreatingCampaign, setIsCreatingCampaign] = useState(false);
+  const [isEditingCampaign, setIsEditingCampaign] = useState(false);
+  const [isSendingCampaign, setIsSendingCampaign] = useState(false);
+  const [isPreviewingCampaign, setIsPreviewingCampaign] = useState(false);
+  const [selectedCampaign, setSelectedCampaign] = useState(null);
   const [newCampaign, setNewCampaign] = useState({
     subject: '',
     content: '',
     previewText: ''
+  });
+  const [sendConfig, setSendConfig] = useState({
+    senderName: '',
+    senderEmail: '',
+    selectedSubscribers: [],
+    selectAll: true
   });
 
   // Fetch data from database
@@ -118,7 +130,7 @@ export default function NewsletterPage() {
 
   const handleCreateCampaign = async () => {
     try {
-      const campaign = {
+      const campaignData = {
         ...newCampaign,
         status: 'draft',
         recipients: 0,
@@ -127,30 +139,119 @@ export default function NewsletterPage() {
         createdAt: new Date().toISOString()
       };
       
-      await create(campaign, 'newsletter_campaigns');
+      const response = await create(campaignData, 'newsletter_campaigns');
+      const newCampaignWithId = { ...campaignData, id: response.id || Date.now() };
+      
+      // Update state locally instead of refetching
+      setCampaigns(prev => [newCampaignWithId, ...prev]);
+      
       toast.success('Campaign created successfully');
       setIsCreatingCampaign(false);
       setNewCampaign({ subject: '', content: '', previewText: '' });
-      fetchData();
     } catch (error) {
       console.error('Error creating campaign:', error);
       toast.error('Failed to create campaign');
     }
   };
 
-  const handleSendCampaign = async (campaignId) => {
+  const handleEditCampaign = async () => {
     try {
-      const campaign = campaigns.find(c => c.id === campaignId);
-      if (!campaign) return;
+      const updatedData = {
+        subject: newCampaign.subject,
+        content: newCampaign.content,
+        previewText: newCampaign.previewText,
+        updatedAt: new Date().toISOString()
+      };
+      
+      await update(selectedCampaign.id, updatedData, 'newsletter_campaigns');
+      
+      // Update state locally
+      setCampaigns(prev => prev.map(campaign => 
+        campaign.id === selectedCampaign.id 
+          ? { ...campaign, ...updatedData }
+          : campaign
+      ));
+      
+      toast.success('Campaign updated successfully');
+      setIsEditingCampaign(false);
+      setSelectedCampaign(null);
+      setNewCampaign({ subject: '', content: '', previewText: '' });
+    } catch (error) {
+      console.error('Error updating campaign:', error);
+      toast.error('Failed to update campaign');
+    }
+  };
+
+  const handlePreviewCampaign = (campaign) => {
+    setSelectedCampaign(campaign);
+    setIsPreviewingCampaign(true);
+  };
+
+  const handleEditCampaignClick = (campaign) => {
+    setSelectedCampaign(campaign);
+    setNewCampaign({
+      subject: campaign.subject || '',
+      content: campaign.content || '',
+      previewText: campaign.previewText || ''
+    });
+    setIsEditingCampaign(true);
+  };
+
+  const handleSendCampaignClick = (campaign) => {
+    setSelectedCampaign(campaign);
+    setSendConfig({
+      senderName: '',
+      senderEmail: '',
+      selectedSubscribers: [],
+      selectAll: true
+    });
+    setIsSendingCampaign(true);
+  };
+
+  const handleTestSend = async () => {
+    try {
+      if (!selectedCampaign || !sendConfig.senderEmail.trim()) {
+        toast.error('Please enter a sender email for testing');
+        return;
+      }
+
+      await fetch('/api/email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'newsletter_test',
+          campaign: selectedCampaign,
+          testEmail: sendConfig.senderEmail,
+          testName: sendConfig.senderName || 'Test User',
+          senderName: sendConfig.senderName,
+          senderEmail: sendConfig.senderEmail
+        })
+      });
+
+      toast.success(`Test email sent to ${sendConfig.senderEmail}`);
+    } catch (error) {
+      console.error('Error sending test email:', error);
+      toast.error('Failed to send test email');
+    }
+  };
+
+  const handleSendCampaign = async () => {
+    try {
+      if (!selectedCampaign) return;
 
       // Update campaign status to sending
-      await update(campaignId, { status: 'sending' }, 'newsletter_campaigns');
+      setCampaigns(prev => prev.map(c => 
+        c.id === selectedCampaign.id ? { ...c, status: 'sending' } : c
+      ));
+      await update(selectedCampaign.id, { status: 'sending' }, 'newsletter_campaigns');
       
-      // Get active subscribers
-      const activeSubscribers = subscribers.filter(s => s.status === 'active');
+      // Get subscribers to send to
+      const recipientList = sendConfig.selectAll 
+        ? subscribers.filter(s => s.status === 'active')
+        : sendConfig.selectedSubscribers;
       
-      if (activeSubscribers.length === 0) {
-        toast.error('No active subscribers found');
+      if (recipientList.length === 0) {
+        toast.error('No subscribers selected');
         return;
       }
 
@@ -160,21 +261,32 @@ export default function NewsletterPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           type: 'newsletter',
-          campaign: campaign,
-          subscribers: activeSubscribers
+          campaign: selectedCampaign,
+          subscribers: recipientList,
+          senderName: sendConfig.senderName,
+          senderEmail: sendConfig.senderEmail
         })
       });
 
       if (response.ok) {
-        // Update campaign status and stats
-        await update(campaignId, {
+        const result = await response.json();
+        
+        // Update campaign status and stats locally
+        const updatedCampaign = {
           status: 'sent',
           sentDate: new Date().toISOString(),
-          recipients: activeSubscribers.length
-        }, 'newsletter_campaigns');
+          recipients: result.data?.sent || recipientList.length
+        };
         
-        toast.success(`Newsletter sent to ${activeSubscribers.length} subscribers`);
-        fetchData();
+        setCampaigns(prev => prev.map(c => 
+          c.id === selectedCampaign.id ? { ...c, ...updatedCampaign } : c
+        ));
+        
+        await update(selectedCampaign.id, updatedCampaign, 'newsletter_campaigns');
+        
+        toast.success(`Newsletter sent to ${result.data?.sent || recipientList.length} subscribers`);
+        setIsSendingCampaign(false);
+        setSelectedCampaign(null);
       } else {
         throw new Error('Failed to send newsletter');
       }
@@ -183,16 +295,23 @@ export default function NewsletterPage() {
       toast.error('Failed to send newsletter');
       
       // Reset status on error
-      await update(campaignId, { status: 'draft' }, 'newsletter_campaigns');
-      fetchData();
+      if (selectedCampaign) {
+        setCampaigns(prev => prev.map(c => 
+          c.id === selectedCampaign.id ? { ...c, status: 'draft' } : c
+        ));
+        await update(selectedCampaign.id, { status: 'draft' }, 'newsletter_campaigns');
+      }
     }
   };
 
   const handleDeleteCampaign = async (campaignId) => {
     try {
       await remove(campaignId, 'newsletter_campaigns');
+      
+      // Update state locally
+      setCampaigns(prev => prev.filter(c => c.id !== campaignId));
+      
       toast.success('Campaign deleted successfully');
-      fetchData();
     } catch (error) {
       console.error('Error deleting campaign:', error);
       toast.error('Failed to delete campaign');
@@ -295,6 +414,240 @@ export default function NewsletterPage() {
               </Button>
               <Button onClick={handleCreateCampaign} disabled={!newCampaign.subject.trim()}>
                 Create Campaign
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Edit Campaign Dialog */}
+        <Dialog open={isEditingCampaign} onOpenChange={setIsEditingCampaign}>
+          <DialogContent className="sm:max-w-[500px]">
+            <DialogHeader>
+              <DialogTitle>Edit Campaign</DialogTitle>
+              <DialogDescription>
+                Update your newsletter campaign details.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="edit-subject">Subject Line</Label>
+                <Input 
+                  id="edit-subject"
+                  value={newCampaign.subject}
+                  onChange={(e) => setNewCampaign(prev => ({ ...prev, subject: e.target.value }))}
+                  placeholder="Enter email subject"
+                />
+              </div>
+              <div>
+                <Label htmlFor="edit-previewText">Preview Text</Label>
+                <Input 
+                  id="edit-previewText"
+                  value={newCampaign.previewText}
+                  onChange={(e) => setNewCampaign(prev => ({ ...prev, previewText: e.target.value }))}
+                  placeholder="Brief description shown in email preview"
+                />
+              </div>
+              <div>
+                <Label htmlFor="edit-content">Content</Label>
+                <Textarea 
+                  id="edit-content"
+                  value={newCampaign.content}
+                  onChange={(e) => setNewCampaign(prev => ({ ...prev, content: e.target.value }))}
+                  placeholder="Newsletter content (HTML supported)"
+                  rows={6}
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => {
+                setIsEditingCampaign(false);
+                setSelectedCampaign(null);
+                setNewCampaign({ subject: '', content: '', previewText: '' });
+              }}>
+                Cancel
+              </Button>
+              <Button onClick={handleEditCampaign} disabled={!newCampaign.subject.trim()}>
+                Update Campaign
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Preview Campaign Dialog */}
+        <Dialog open={isPreviewingCampaign} onOpenChange={setIsPreviewingCampaign}>
+          <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Campaign Preview</DialogTitle>
+              <DialogDescription>
+                {selectedCampaign?.subject || 'Untitled Campaign'}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="border rounded p-4">
+                <div className="text-sm text-muted-foreground mb-2">
+                  <strong>Subject:</strong> {selectedCampaign?.subject || 'No subject'}
+                </div>
+                <div className="text-sm text-muted-foreground mb-4">
+                  <strong>Preview Text:</strong> {selectedCampaign?.previewText || 'No preview text'}
+                </div>
+                <div className="border-t pt-4">
+                  <div 
+                    className="prose prose-sm max-w-none"
+                    dangerouslySetInnerHTML={{ 
+                      __html: selectedCampaign?.content || 'No content available' 
+                    }}
+                  />
+                </div>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsPreviewingCampaign(false)}>
+                Close
+              </Button>
+              <Button onClick={() => {
+                setIsPreviewingCampaign(false);
+                handleSendCampaignClick(selectedCampaign);
+              }}>
+                Send Campaign
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Send Campaign Dialog */}
+        <Dialog open={isSendingCampaign} onOpenChange={setIsSendingCampaign}>
+          <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Send Campaign</DialogTitle>
+              <DialogDescription>
+                Configure and send "{selectedCampaign?.subject}" to your subscribers
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-6">
+              {/* Sender Information */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold">Sender Information</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="senderName">Sender Name</Label>
+                    <Input 
+                      id="senderName"
+                      value={sendConfig.senderName}
+                      onChange={(e) => setSendConfig(prev => ({ ...prev, senderName: e.target.value }))}
+                      placeholder="Your Name"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="senderEmail">Sender Email</Label>
+                    <Input 
+                      id="senderEmail"
+                      type="email"
+                      value={sendConfig.senderEmail}
+                      onChange={(e) => setSendConfig(prev => ({ ...prev, senderEmail: e.target.value }))}
+                      placeholder="sender@yourdomain.com"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Recipients */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold">Recipients</h3>
+                <div className="space-y-3">
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      id="selectAll"
+                      checked={sendConfig.selectAll}
+                      onChange={(e) => {
+                        setSendConfig(prev => ({
+                          ...prev,
+                          selectAll: e.target.checked,
+                          selectedSubscribers: e.target.checked ? [] : prev.selectedSubscribers
+                        }));
+                      }}
+                      className="rounded"
+                    />
+                    <Label htmlFor="selectAll">
+                      Send to all active subscribers ({subscribers.filter(s => s.status === 'active').length})
+                    </Label>
+                  </div>
+                  
+                  {!sendConfig.selectAll && (
+                    <div className="border rounded p-3 max-h-48 overflow-y-auto">
+                      <div className="space-y-2">
+                        {subscribers.filter(s => s.status === 'active').map(subscriber => (
+                          <div key={subscriber.id} className="flex items-center space-x-2">
+                            <input
+                              type="checkbox"
+                              id={`subscriber-${subscriber.id}`}
+                              checked={sendConfig.selectedSubscribers.some(s => s.id === subscriber.id)}
+                              onChange={(e) => {
+                                setSendConfig(prev => ({
+                                  ...prev,
+                                  selectedSubscribers: e.target.checked
+                                    ? [...prev.selectedSubscribers, subscriber]
+                                    : prev.selectedSubscribers.filter(s => s.id !== subscriber.id)
+                                }));
+                              }}
+                              className="rounded"
+                            />
+                            <Label htmlFor={`subscriber-${subscriber.id}`} className="text-sm">
+                              {subscriber.name || 'Anonymous'} ({subscriber.email})
+                            </Label>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Test Send Section */}
+              <div className="border-t pt-4">
+                <div className="flex items-center justify-between mb-3">
+                  <h4 className="font-semibold">Test Send</h4>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={handleTestSend}
+                    disabled={!sendConfig.senderEmail.trim()}
+                  >
+                    Send Test Email
+                  </Button>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Send a test email to {sendConfig.senderEmail || 'your email'} before sending to all subscribers.
+                </p>
+              </div>
+
+              {/* Campaign Summary */}
+              <div className="bg-gray-50 p-4 rounded">
+                <h4 className="font-semibold mb-2">Campaign Summary</h4>
+                <div className="text-sm space-y-1">
+                  <div><strong>Subject:</strong> {selectedCampaign?.subject}</div>
+                  <div><strong>Recipients:</strong> {sendConfig.selectAll 
+                    ? subscribers.filter(s => s.status === 'active').length 
+                    : sendConfig.selectedSubscribers.length} subscribers</div>
+                  <div><strong>Status:</strong> Ready to send</div>
+                </div>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => {
+                setIsSendingCampaign(false);
+                setSelectedCampaign(null);
+              }}>
+                Cancel
+              </Button>
+              <Button 
+                onClick={handleSendCampaign}
+                disabled={
+                  (!sendConfig.selectAll && sendConfig.selectedSubscribers.length === 0) ||
+                  (sendConfig.selectAll && subscribers.filter(s => s.status === 'active').length === 0)
+                }
+              >
+                Send Campaign
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -428,26 +781,38 @@ export default function NewsletterPage() {
                         </div>
                       </div>
                       <div className="flex gap-2">
-                        {campaign.status === 'draft' && (
-                          <Button 
-                            variant="default" 
-                            size="sm"
-                            onClick={() => handleSendCampaign(campaign.id)}
-                            disabled={subscribers.filter(s => s.status === 'active').length === 0}
-                          >
-                            <Send className="h-4 w-4" />
-                          </Button>
-                        )}
-                        <Button variant="outline" size="sm">
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => handlePreviewCampaign(campaign)}
+                          title="Preview"
+                        >
                           <Eye className="h-4 w-4" />
-                        </Button>
-                        <Button variant="outline" size="sm">
-                          <Edit className="h-4 w-4" />
                         </Button>
                         <Button 
                           variant="outline" 
                           size="sm"
+                          onClick={() => handleEditCampaignClick(campaign)}
+                          title="Edit"
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        {(campaign.status === 'draft' || campaign.status === 'sent') && (
+                          <Button 
+                            variant="default" 
+                            size="sm"
+                            onClick={() => handleSendCampaignClick(campaign)}
+                            disabled={subscribers.filter(s => s.status === 'active').length === 0}
+                            title="Send"
+                          >
+                            <Send className="h-4 w-4" />
+                          </Button>
+                        )}
+                        <Button 
+                          variant="outline" 
+                          size="sm"
                           onClick={() => handleDeleteCampaign(campaign.id)}
+                          title="Delete"
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>

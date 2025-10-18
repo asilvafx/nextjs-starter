@@ -437,12 +437,16 @@ const PaymentForm = ({ cartTotal, subTotal, shippingCost, onShippingUpdate, sele
                 id: Math.floor(new Date().getTime() / 1000) + '_' + Math.floor(Math.random() * (9999 - 1000 + 1)) + 1000,
                 customer: customerData,
                 items: orderItems,
-                subtotal: subtotalExclVat,
+                // Fix: Use properly calculated values
+                cartTotal: itemsTotal, // Original cart total before shipping/VAT
+                subtotal: storeSettings?.vatEnabled && storeSettings.vatIncludedInPrice ? subtotalExclVat : itemsTotal,
                 subtotalInclVat: itemsTotal,
                 shippingCost: shippingTotal,
+                shipping: shippingTotal,
                 vatEnabled: storeSettings?.vatEnabled || false,
                 vatPercentage: storeSettings?.vatPercentage || 20,
                 vatAmount: vatAmount,
+                vatIncluded: storeSettings?.vatIncludedInPrice || false,
                 vatIncludedInPrice: storeSettings?.vatIncludedInPrice || false,
                 discountType: appliedCoupon ? appliedCoupon.type : 'fixed',
                 discountValue: appliedCoupon ? appliedCoupon.value : 0,
@@ -455,6 +459,9 @@ const PaymentForm = ({ cartTotal, subTotal, shippingCost, onShippingUpdate, sele
                     value: appliedCoupon.value
                 } : null,
                 total: Math.max(0, finalTotal),
+                amount: Math.max(0, finalTotal), // Alias for total
+                totalItems: items.length,
+                currency: storeSettings?.currency || 'EUR',
                 status: 'pending',
                 paymentStatus: paymentMethod === 'card' ? 'paid' : 'pending',
                 paymentMethod: paymentMethod,
@@ -482,7 +489,7 @@ const PaymentForm = ({ cartTotal, subTotal, shippingCost, onShippingUpdate, sele
                         'Content-Type': 'application/json',
                     },
                     body: JSON.stringify({
-                        amount: Math.round(parseFloat(cartTotal) * 100), // Convert to cents
+                        amount: Math.round(finalTotal * 100), // Use calculated finalTotal, not cartTotal prop
                         currency: (storeSettings?.currency || 'EUR').toLowerCase(),
                         email: emailInput,
                         automatic_payment_methods: true,

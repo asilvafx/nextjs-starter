@@ -77,7 +77,7 @@ export async function POST(request) {
 
             case 'newsletter':
                 // Handle newsletter bulk sending
-                const { campaign, subscribers } = body;
+                const { campaign, subscribers, senderName, senderEmail } = body;
                 
                 if (!campaign || !subscribers || subscribers.length === 0) {
                     throw new Error('Campaign and subscribers are required');
@@ -86,6 +86,10 @@ export async function POST(request) {
                 const baseUrl = process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
                 let successCount = 0;
                 let failureCount = 0;
+
+                // Get sender information
+                const finalSenderName = senderName || (await EmailService.getEmailName ? await EmailService.getEmailName() : 'Your App Name');
+                const finalSenderEmail = senderEmail || process.env.SMTP_USER || 'noreply@yourdomain.com';
 
                 // Send newsletter to each subscriber
                 for (const subscriber of subscribers) {
@@ -102,9 +106,16 @@ export async function POST(request) {
                                 content: campaign.content || campaign.previewText || 'Thank you for subscribing to our newsletter.',
                                 previewText: campaign.previewText || '',
                                 subscriberName: subscriber.name || null,
-                                companyName: await EmailService.getEmailName ? await EmailService.getEmailName() : 'Your App Name',
+                                companyName: finalSenderName,
+                                senderName: finalSenderName,
+                                senderEmail: finalSenderEmail,
                                 unsubscribeUrl,
                                 webVersionUrl
+                            },
+                            {
+                                from: finalSenderEmail,
+                                replyTo: finalSenderEmail,
+                                senderName: finalSenderName
                             }
                         );
                         successCount++;
@@ -130,13 +141,17 @@ export async function POST(request) {
 
             case 'newsletter_test':
                 // Handle newsletter test sending (single recipient)
-                const { campaign: testCampaign, testEmail, testName } = body;
+                const { campaign: testCampaign, testEmail, testName, senderName: testSenderName, senderEmail: testSenderEmail } = body;
                 
                 if (!testCampaign || !testEmail) {
                     throw new Error('Campaign and test email are required');
                 }
 
                 const baseUrl2 = process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+                
+                // Get sender information for test
+                const testFinalSenderName = testSenderName || (await EmailService.getEmailName ? await EmailService.getEmailName() : 'Your App Name');
+                const testFinalSenderEmail = testSenderEmail || process.env.SMTP_USER || 'noreply@yourdomain.com';
                 
                 await EmailService.sendEmail(
                     testEmail,
@@ -147,9 +162,16 @@ export async function POST(request) {
                         content: testCampaign.content || testCampaign.previewText || 'Thank you for subscribing to our newsletter.',
                         previewText: testCampaign.previewText || '',
                         subscriberName: testName || 'Test User',
-                        companyName: await EmailService.getEmailName ? await EmailService.getEmailName() : 'Your App Name',
+                        companyName: testFinalSenderName,
+                        senderName: testFinalSenderName,
+                        senderEmail: testFinalSenderEmail,
                         unsubscribeUrl: `${baseUrl2}/newsletter/unsubscribe`,
                         webVersionUrl: `${baseUrl2}/newsletter/campaign/${testCampaign.id}`
+                    },
+                    {
+                        from: testFinalSenderEmail,
+                        replyTo: testFinalSenderEmail,
+                        senderName: testFinalSenderName
                     }
                 );
                 break;

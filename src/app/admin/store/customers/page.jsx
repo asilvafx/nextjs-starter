@@ -15,8 +15,14 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
 import { TableSkeleton } from "@/components/ui/skeleton";
-import { Eye, Plus, Edit, Trash2 } from "lucide-react";
+import { Eye, Plus, Edit, Trash2, MoreVertical } from "lucide-react";
 import { PhoneInput } from "@/components/ui/phone-input";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { CountryDropdown } from "@/components/ui/country-dropdown";
 import {
   Dialog,
@@ -595,7 +601,8 @@ export default function CustomersPage() {
                         <TableCell>{formatCurrency(totalSpent)}</TableCell>
                         <TableCell>{lastOrderDate ? formatDate(lastOrderDate) : 'No orders'}</TableCell>
                         <TableCell className="text-right">
-                          <div className="flex gap-2 justify-end">
+                          {/* Desktop actions - show on medium screens and up */}
+                          <div className="hidden md:flex gap-2 justify-end">
                             <Button
                               variant="outline"
                               size="icon"
@@ -621,6 +628,34 @@ export default function CustomersPage() {
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>
+                          </div>
+                          
+                          {/* Mobile actions - show on small screens only */}
+                          <div className="md:hidden">
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="outline" size="icon">
+                                  <MoreVertical className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={() => handleView(customer)}>
+                                  <Eye className="h-4 w-4 mr-2" />
+                                  View Details
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleEdit(customer)}>
+                                  <Edit className="h-4 w-4 mr-2" />
+                                  Edit Customer
+                                </DropdownMenuItem>
+                                <DropdownMenuItem 
+                                  onClick={() => handleDelete(customer)}
+                                  className="text-red-600 focus:text-red-600"
+                                >
+                                  <Trash2 className="h-4 w-4 mr-2" />
+                                  Delete Customer
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
                           </div>
                         </TableCell>
                       </TableRow>

@@ -88,10 +88,17 @@ const PaymentSuccess = () => {
                         `${orderData.customer.firstName} ${orderData.customer.lastName}` : 
                         orderData.cst_name,
                     items: typeof orderData.items === 'string' ? JSON.parse(orderData.items) : orderData.items,
+                    // Fix totals calculation - use actual order totals, not recalculated ones
                     total: orderData.total || orderData.amount,
-                    subtotal: orderData.subtotal,
-                    shipping: orderData.shippingCost || orderData.shipping,
+                    subtotal: orderData.subtotal || orderData.cartTotal,
+                    shipping: orderData.shippingCost || orderData.shipping || 0,
+                    vatAmount: orderData.vatAmount || 0,
+                    vatPercentage: orderData.vatPercentage || 0,
+                    vatIncluded: orderData.vatIncluded || false,
+                    vatEnabled: orderData.vatEnabled || false,
+                    discountAmount: orderData.discountAmount || 0,
                     totalItems: orderData.totalItems,
+                    currency: orderData.currency || 'EUR',
                     shippingAddress: orderData.customer?.streetAddress ? {
                         streetAddress: orderData.customer.streetAddress,
                         apartmentUnit: orderData.customer.apartmentUnit,
@@ -152,23 +159,42 @@ const PaymentSuccess = () => {
     const downloadReceipt = () => {
         if (!orderDetails) return;
 
+        // Format payment method correctly
+        const formatPaymentMethod = (method) => {
+            switch(method) {
+                case 'card':
+                    return 'Carte bancaire';
+                case 'bank_transfer':
+                    return 'Virement bancaire';
+                case 'pay_on_delivery':
+                    return 'Paiement à la livraison';
+                default:
+                    return 'Carte bancaire';
+            }
+        };
+
         // Create order object compatible with generatePDF function
         const orderForPDF = {
             uid: orderDetails.orderId,
-            created_at: orderDetails.orderDate,
+            created_at: new Date().toISOString(),
             cst_name: orderDetails.customerName,
             cst_email: orderDetails.email,
-            shipping_address: JSON.stringify(orderDetails.shippingAddress),
-            items: JSON.stringify(orderDetails.items),
-            amount: parseFloat(orderDetails.total).toFixed(2),
-            currency: 'eur',
-            method: 'Carte bancaire',
+            shipping_address: JSON.stringify(orderDetails.shippingAddress || {}),
+            items: JSON.stringify(orderDetails.items || []),
+            amount: parseFloat(orderDetails.total || 0).toFixed(2),
+            subtotal: parseFloat(orderDetails.subtotal || 0).toFixed(2),
+            shipping: parseFloat(orderDetails.shipping || 0).toFixed(2),
+            vatAmount: parseFloat(orderDetails.vatAmount || 0).toFixed(2),
+            vatPercentage: orderDetails.vatPercentage || 0,
+            vatIncluded: orderDetails.vatIncluded || false,
+            discountAmount: parseFloat(orderDetails.discountAmount || 0).toFixed(2),
+            currency: orderDetails.currency?.toLowerCase() || 'eur',
+            method: formatPaymentMethod(orderDetails.paymentMethod),
             status: 'Confirmé'
         };
 
         generatePDF(orderForPDF);
     };
-
 
     if (loading) {
         return (
@@ -239,8 +265,6 @@ const PaymentSuccess = () => {
                     )}
                 </div>
 
-
-
                 {error ? (
                     <Card className="border-destructive/50 bg-destructive/10">
                         <CardContent className="pt-6 text-center">
@@ -309,7 +333,7 @@ const PaymentSuccess = () => {
                                                 </p>
                                             </div>
                                         </div>
-                                        <p className="font-semibold">€{(item.price * item.quantity).toFixed(2)}</p>
+                                        <p className="font-semibold">{orderDetails.currency === 'USD' ? '$' : '€'}{(item.price * item.quantity).toFixed(2)}</p>
                                     </div>
                                 ))}
                             </div>
@@ -320,15 +344,39 @@ const PaymentSuccess = () => {
                             <div className="space-y-3">
                                 <div className="flex justify-between text-muted-foreground">
                                     <span>{t('subtotal')}</span>
-                                    <span>€{orderDetails.subtotal}</span>
+                                    <span>{orderDetails.currency === 'USD' ? '$' : '€'}{parseFloat(orderDetails.subtotal || 0).toFixed(2)}</span>
                                 </div>
                                 <div className="flex justify-between text-muted-foreground">
                                     <span>{t('shipping')}</span>
-                                    <span>€{orderDetails.shipping}</span>
+                                    <span>
+                                        {parseFloat(orderDetails.shipping || 0) === 0 ? (
+                                            <span className="text-green-600 font-semibold">Gratuit</span>
+                                        ) : (
+                                            <span>{orderDetails.currency === 'USD' ? '$' : '€'}{parseFloat(orderDetails.shipping || 0).toFixed(2)}</span>
+                                        )}
+                                    </span>
                                 </div>
+                                {orderDetails.discountAmount && parseFloat(orderDetails.discountAmount) > 0 && (
+                                    <div className="flex justify-between text-green-600">
+                                        <span>Réduction</span>
+                                        <span>-{orderDetails.currency === 'USD' ? '$' : '€'}{parseFloat(orderDetails.discountAmount).toFixed(2)}</span>
+                                    </div>
+                                )}
+                                {orderDetails.vatEnabled && (
+                                    <div className="flex justify-between text-muted-foreground">
+                                        <span>TVA ({orderDetails.vatPercentage || 20}%)</span>
+                                        <span>
+                                            {orderDetails.vatIncluded ? (
+                                                <span className="text-green-600 font-semibold">Inclus</span>
+                                            ) : (
+                                                <span>{orderDetails.currency === 'USD' ? '$' : '€'}{parseFloat(orderDetails.vatAmount || 0).toFixed(2)}</span>
+                                            )}
+                                        </span>
+                                    </div>
+                                )}
                                 <div className="flex justify-between text-xl font-bold border-t border-border pt-3">
                                     <span>{t('total')}</span>
-                                    <span>€{parseFloat(orderDetails.total).toFixed(2)}</span>
+                                    <span>{orderDetails.currency === 'USD' ? '$' : '€'}{parseFloat(orderDetails.total || 0).toFixed(2)}</span>
                                 </div>
                             </div>
                         </div>

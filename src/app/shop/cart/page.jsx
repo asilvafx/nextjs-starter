@@ -12,6 +12,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import { Skeleton } from '@/components/ui/skeleton';
 import { ShoppingCart, Plus, Minus, Trash2, ArrowLeft, ArrowRight, Lock } from 'lucide-react';
 import FreeShippingProgressBar from '../components/FreeShippingProgressBar';
 
@@ -28,11 +29,13 @@ const Cart = () => {
 
     const [storeSettings, setStoreSettings] = useState(null);
     const [vatBreakdown, setVatBreakdown] = useState({ subtotal: 0, vatAmount: 0, total: 0 });
+    const [isLoading, setIsLoading] = useState(true);
 
     // Fetch store settings for consistent pricing and shipping
     useEffect(() => {
         const fetchStoreSettings = async () => {
             try {
+                setIsLoading(true);
                 const response = await fetch('/api/query/public/store_settings');
                 const result = await response.json();
                 if (result.success && result.data?.[0]) {
@@ -40,6 +43,8 @@ const Cart = () => {
                 }
             } catch (error) {
                 console.error('Failed to fetch store settings:', error);
+            } finally {
+                setIsLoading(false);
             }
         };
         fetchStoreSettings();
@@ -151,6 +156,54 @@ const Cart = () => {
                         </Card>
                     ) : (
                         <>
+                        {isLoading ? (
+                            // Loading Skeleton
+                            <div className="grid lg:grid-cols-3 gap-8">
+                                {/* Cart Items Skeleton */}
+                                <div className="lg:col-span-2">
+                                    <Card className="mb-6">
+                                        <CardHeader>
+                                            <Skeleton className="h-6 w-48" />
+                                        </CardHeader>
+                                        <CardContent>
+                                            {[...Array(3)].map((_, index) => (
+                                                <div key={index} className="py-6 border-b last:border-b-0">
+                                                    <div className="flex items-center flex-wrap gap-4">
+                                                        <Skeleton className="w-20 h-20 rounded-lg" />
+                                                        <div className="flex-1 min-w-0 space-y-2">
+                                                            <Skeleton className="h-5 w-48" />
+                                                            <Skeleton className="h-4 w-24" />
+                                                        </div>
+                                                        <Skeleton className="h-10 w-32" />
+                                                        <Skeleton className="h-6 w-16" />
+                                                        <Skeleton className="h-8 w-8 rounded" />
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </CardContent>
+                                    </Card>
+                                    <Skeleton className="h-20 w-full" />
+                                </div>
+                                
+                                {/* Order Summary Skeleton */}
+                                <div className="lg:col-span-1">
+                                    <div className="border border-border rounded-lg p-4 bg-card backdrop-blur-sm h-fit sticky top-4">
+                                        <Skeleton className="h-6 w-32 mb-6" />
+                                        <div className="space-y-3 mb-6">
+                                            {[...Array(4)].map((_, index) => (
+                                                <div key={index} className="flex justify-between">
+                                                    <Skeleton className="h-4 w-24" />
+                                                    <Skeleton className="h-4 w-16" />
+                                                </div>
+                                            ))}
+                                        </div>
+                                        <Skeleton className="h-12 w-full mb-3" />
+                                        <Skeleton className="h-12 w-full mb-6" />
+                                        <Skeleton className="h-16 w-full" />
+                                    </div>
+                                </div>
+                            </div>
+                        ) : (
                         <div className="grid lg:grid-cols-3 gap-8">
                             {/* Cart Items */}
                             <div className="lg:col-span-2">
@@ -266,7 +319,7 @@ const Cart = () => {
                                     {/* Price Breakdown */}
                                     <div className="space-y-3 mb-6">
                                         <div className="flex justify-between text-gray-600">
-                                            <span>{totalItems} {t('articles')}</span>
+                                            <span>{totalItems} {totalItems === 1 ? t('article') : t('articles')}</span>
                                             <span>{storeSettings?.currency === 'USD' ? '$' : '€'}{cartTotal.toFixed(2)}</span>
                                         </div>
                                         <div className="flex justify-between text-gray-600">
@@ -283,12 +336,14 @@ const Cart = () => {
                                                 )}
                                             </span>
                                         </div>
-                                        <div className="flex justify-between text-gray-600">
-                                            <span>TVA ({storeSettings?.vatPercentage || 20}%)</span>
-                                            <span className="text-green-600 font-semibold">
-                                                {storeSettings?.vatIncludedInPrice ? 'Inclus' : 'Exclu'}
-                                            </span>
-                                        </div>
+                                        {storeSettings?.vatEnabled && (
+                                            <div className="flex justify-between text-gray-600">
+                                                <span>TVA ({storeSettings?.vatPercentage || 20}%)</span>
+                                                <span className="text-green-600 font-semibold">
+                                                    {storeSettings?.vatIncludedInPrice ? 'Inclus' : 'Exclu'}
+                                                </span>
+                                            </div>
+                                        )}
                                         <div className="border-t border-gray-200 pt-3">
                                             <div className="flex justify-between text-xl font-bold">
                                                 <span>{t('subtotal')}</span>
@@ -331,6 +386,7 @@ const Cart = () => {
                                 </motion.div>
                             </div>
                         </div>
+                        )}
                         </>
                 )}
                     <div className="w-full flex justify-center mt-8">

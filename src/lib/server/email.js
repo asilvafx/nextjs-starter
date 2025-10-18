@@ -116,9 +116,10 @@ class EmailService {
      * @param {string} subject - Email subject
      * @param {string} html - HTML content
      * @param {string} text - Plain text content
+     * @param {Object} options - Additional email options (from, replyTo, senderName)
      * @returns {Promise} Nodemailer response
      */
-    async sendEmailViaNodemailer(to, subject, html, text) {
+    async sendEmailViaNodemailer(to, subject, html, text, options = {}) {
         try {
             // Initialize if not already done
             if (!this.transport) {
@@ -138,12 +139,21 @@ class EmailService {
                 throw new Error('HTML content cannot be empty');
             }
 
+            // Use custom sender info if provided, otherwise use defaults
+            const fromEmail = options.from || this.fromEmail;
+            const fromName = options.senderName || this.fromName;
+            
             const mailOptions = {
-                from: `${this.fromName} <${this.fromEmail}>`,
+                from: `${fromName} <${fromEmail}>`,
                 to: Array.isArray(to) ? to.join(', ') : to,
                 subject,
                 html,
             };
+
+            // Add reply-to if provided
+            if (options.replyTo) {
+                mailOptions.replyTo = options.replyTo;
+            }
 
             // Only add text if it's a valid string
             if (typeof text === 'string' && text.trim() !== '') {
@@ -152,6 +162,7 @@ class EmailService {
 
             console.log('Sending email with Nodemailer:', {
                 to: mailOptions.to,
+                from: mailOptions.from,
                 subject: mailOptions.subject,
                 htmlLength: html.length,
                 textLength: text?.length || 0
@@ -173,9 +184,10 @@ class EmailService {
      * @param {string} subject - Email subject
      * @param {React.Component} template - React email template
      * @param {Object} templateProps - Props to pass to the template
+     * @param {Object} options - Additional email options (from, replyTo, senderName)
      * @returns {Promise} Email service response
      */
-    async sendEmail(to, subject, template, templateProps = {}) {
+    async sendEmail(to, subject, template, templateProps = {}, options = {}) {
         try {
             // Create the React element first
             const reactElement = template(templateProps);
@@ -188,7 +200,7 @@ class EmailService {
             console.log('Rendered HTML type:', typeof html);
             console.log('Rendered HTML length:', html?.length);
 
-            return await this.sendEmailViaNodemailer(to, subject, html, text);
+            return await this.sendEmailViaNodemailer(to, subject, html, text, options);
         } catch (error) {
             console.error('Failed to send email:', error);
             throw error;

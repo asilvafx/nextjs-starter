@@ -41,6 +41,8 @@
         "unitPrice": "Unit price: {price}",
         "removeItem": "Remove this item",
         "orderSummary": "Order Summary",
+        "articles": "Items",
+        "article": "Item",
         "subtotal": "Subtotal ({count} items)",
         "shipping": "Shipping",
         "total": "Total",
