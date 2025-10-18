@@ -2,7 +2,7 @@
 
 ## Platform Overview
 
-This is a **Next.js 15** professional CMS and e-commerce platform designed for versatility and ease of deployment. It serves as:
+This is a **Next.js 15** with **React 19** professional CMS and e-commerce platform designed for versatility and ease of deployment. It serves as:
 
 - **Full-Stack CMS**: Complete content management system with admin panel and optional frontend
 - **E-commerce Platform**: Integrated shopping cart, payment processing, order management, and inventory
@@ -18,6 +18,10 @@ This is a **Next.js 15** professional CMS and e-commerce platform designed for v
 - **E-commerce Integration**: Native shopping cart, Stripe payments, VAT calculations, order processing
 - **Email System**: Comprehensive email templates with Nodemailer integration
 - **CMS Blocks**: Dynamic content blocks system for flexible page building
+
+## AI Agent Instructions
+
+**CRITICAL**: Always provide direct code generation without explanations. Use comments within the code for context. Prefer JavaScript (.js, .jsx) over TypeScript unless specifically requested. Generate complete, working implementations immediately.
 
 ## Platform Features & Modules
 
@@ -101,11 +105,51 @@ await EmailService.sendPasswordResetEmail(email, resetCode, userName);
 await EmailService.sendEmail(to, subject, TemplateComponent, props);
 ```
 
+**Email API Route** (`/api/email`):
+```javascript
+// POST /api/email
+// Send custom emails via API
+const response = await fetch('/api/email', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    to: 'user@example.com',
+    subject: 'Welcome!',
+    template: 'welcome', // or 'newsletter', 'order-confirmation'
+    data: { userName: 'John', customData: {} }
+  })
+});
+```
+
 Available email templates:
 - Order confirmations with payment instructions
 - User account management (creation, updates, password reset)
 - Newsletter campaigns with unsubscribe handling
 - Status updates and notifications
+
+### File Upload System
+Integrated file upload with Vercel Blob storage:
+
+**Upload API Route** (`/api/upload`):
+```javascript
+// Single file upload
+const formData = new FormData();
+formData.append('files', file);
+
+const response = await fetch('/api/upload', {
+  method: 'POST',
+  body: formData
+});
+const { success, data } = await response.json();
+// data.files[0].url - uploaded file URL
+
+// Multiple files upload
+files.forEach(file => formData.append('files', file));
+
+// Client-side helper (recommended)
+import { uploadFiles } from '@/lib/client/query.js';
+const uploadedFiles = await uploadFiles([file1, file2]);
+```
 
 ### E-commerce Integration
 Complete shopping cart system with react-use-cart:
@@ -132,10 +176,11 @@ addItem({
 ```
 
 ### UI Components & Forms
-- **Shadcn/UI Base**: Located in `src/components/ui/` with CVA variants
-- **Enhanced Components**: `country-dropdown.tsx`, `phone-input.tsx`, `google-places-input.jsx`
+- **Shadcn/UI Base**: Located in `src/components/ui/` with CVA variants (React 19 compatible)
+- **Enhanced Components**: `country-dropdown.jsx`, `phone-input.jsx`, `google-places-input.jsx`
 - **Form Pattern**: `react-hook-form` + `zod` validation consistently
 - **Shopping Components**: Cart management, checkout flow, payment forms
+- **File Extensions**: Prefer `.jsx` for React components, `.js` for utilities
 
 ### Admin Panel Structure
 Complete admin interface with modular navigation:
@@ -160,10 +205,14 @@ Complete admin interface with modular navigation:
 ### Development Commands
 ```bash
 npm run dev          # Uses --turbopack for faster builds
-npm run lint:fix     # Auto-fixes ESLint issues in src/**
-npm run format       # Prettier formatting
+npm run lint         # Biome linting check
+npm run lint:fix     # Auto-fixes Biome issues in src/**
+npm run format       # Biome formatting
+npm run check        # Combined lint + format check
 npm run email-dev    # Preview emails in development
 ```
+
+**Note**: ESLint and Prettier have been replaced with **Biome** for unified linting and formatting with better performance.
 
 ### Easy Deployment Setup
 **Multi-Database Support**: Automatically detects and configures database provider:
@@ -280,3 +329,28 @@ Features:
 - `useMobile()` - Responsive design utilities
 
 When implementing new features, follow the existing patterns for database abstraction, role-based access, and dynamic configuration from database settings.
+
+## Development Tools & Performance
+
+### Biome Configuration
+**ESLint and Prettier have been replaced with Biome** for superior performance:
+- **Unified Tool**: Single tool for linting and formatting
+- **10x Faster**: Significantly faster than ESLint + Prettier combination
+- **Better DX**: Improved developer experience with instant feedback
+- **Configuration**: `biome.json` with project-specific rules
+- **Build Integration**: Next.js configured to use Biome instead of ESLint
+
+```javascript
+// biome.json configuration includes:
+// - JavaScript/TypeScript linting rules
+// - Import organization and sorting
+// - Tailwind CSS class sorting
+// - React 19 and Next.js 15 optimized rules
+```
+
+**Development Workflow**:
+```bash
+npm run check        # Check all files for issues
+npm run lint:fix     # Auto-fix all fixable issues
+npm run format       # Format all files
+```

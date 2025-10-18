@@ -1,8 +1,6 @@
 // app/blank/page.jsx
 
-"use client"
-import { useEffect, useState } from 'react';
-import { toast } from 'sonner';
+'use client';
 
 const Page = () => {
     return (

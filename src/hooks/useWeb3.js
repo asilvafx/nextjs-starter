@@ -1,8 +1,8 @@
 // src/hooks/useWeb3.js
-"use client"
+'use client';
 
-import { useState, useEffect, useCallback } from 'react';
-import { toast } from "sonner";
+import { useCallback, useEffect, useState } from 'react';
+import { toast } from 'sonner';
 
 export const useWeb3 = () => {
     const [web3Config, setWeb3Config] = useState(null);
@@ -48,7 +48,7 @@ export const useWeb3 = () => {
             const response = await fetch('/api/web3', {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json',
+                    'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({ action: 'create_wallet' })
             });
@@ -104,79 +104,82 @@ export const useWeb3 = () => {
     }, [userWallet?.address, fetchBalance]);
 
     // Send transaction
-    const sendTransaction = useCallback(async (toAddress, amount, note = '') => {
-        if (!userWallet) {
-            toast.error('No wallet available');
-            return null;
-        }
-
-        try {
-            const response = await fetch('/api/web3', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    action: 'send_transaction',
-                    amount: amount,
-                    toAddress: toAddress,
-                    fromAddress: userWallet.address,
-                    privateKey: userWallet.privateKey,
-                    useNativeCurrency: false
-                })
-            });
-
-            if (response.ok) {
-                const result = await response.json();
-                
-                if (!result.tx_hash) {
-                    toast.error('Transaction failed - no transaction hash received');
-                    return null;
-                }
-                
-                // Save transaction record to database
-                try {
-                    const dbResponse = await fetch('/api/query/transactions', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({
-                            hash: result.tx_hash,
-                            type: 'sent',
-                            amount: amount.toString(),
-                            toAddress: toAddress,
-                            fromAddress: userWallet.address,
-                            status: 'pending',
-                            note: note,
-                            gasUsed: result.gasUsed?.toString() || '21000',
-                            gasPrice: '0' // Will be updated when transaction is confirmed
-                        })
-                    });
-                    
-                    if (!dbResponse.ok) {
-                        const dbError = await dbResponse.json();
-                        console.error('Failed to save transaction record:', dbError.error);
-                    }
-                } catch (dbError) {
-                    console.error('Failed to save transaction record:', dbError);
-                    // Don't fail the transaction if DB save fails
-                }
-
-                // Refresh balance after transaction
-                setTimeout(() => refreshBalance(), 2000);
-                return result;
-            } else {
-                const error = await response.json();
-                toast.error(error.error || 'Transaction failed');
+    const sendTransaction = useCallback(
+        async (toAddress, amount, note = '') => {
+            if (!userWallet) {
+                toast.error('No wallet available');
                 return null;
             }
-        } catch (error) {
-            console.error('Transaction failed:', error);
-            toast.error('Transaction failed');
-            return null;
-        }
-    }, [userWallet, refreshBalance]);
+
+            try {
+                const response = await fetch('/api/web3', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        action: 'send_transaction',
+                        amount: amount,
+                        toAddress: toAddress,
+                        fromAddress: userWallet.address,
+                        privateKey: userWallet.privateKey,
+                        useNativeCurrency: false
+                    })
+                });
+
+                if (response.ok) {
+                    const result = await response.json();
+
+                    if (!result.tx_hash) {
+                        toast.error('Transaction failed - no transaction hash received');
+                        return null;
+                    }
+
+                    // Save transaction record to database
+                    try {
+                        const dbResponse = await fetch('/api/query/transactions', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                hash: result.tx_hash,
+                                type: 'sent',
+                                amount: amount.toString(),
+                                toAddress: toAddress,
+                                fromAddress: userWallet.address,
+                                status: 'pending',
+                                note: note,
+                                gasUsed: result.gasUsed?.toString() || '21000',
+                                gasPrice: '0' // Will be updated when transaction is confirmed
+                            })
+                        });
+
+                        if (!dbResponse.ok) {
+                            const dbError = await dbResponse.json();
+                            console.error('Failed to save transaction record:', dbError.error);
+                        }
+                    } catch (dbError) {
+                        console.error('Failed to save transaction record:', dbError);
+                        // Don't fail the transaction if DB save fails
+                    }
+
+                    // Refresh balance after transaction
+                    setTimeout(() => refreshBalance(), 2000);
+                    return result;
+                } else {
+                    const error = await response.json();
+                    toast.error(error.error || 'Transaction failed');
+                    return null;
+                }
+            } catch (error) {
+                console.error('Transaction failed:', error);
+                toast.error('Transaction failed');
+                return null;
+            }
+        },
+        [userWallet, refreshBalance]
+    );
 
     // Get transaction status
     const getTransactionStatus = useCallback(async (txHash) => {
@@ -215,7 +218,7 @@ export const useWeb3 = () => {
             const response = await fetch('/api/query/transactions', {
                 method: 'PATCH',
                 headers: {
-                    'Content-Type': 'application/json',
+                    'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
                     hash: hash,
@@ -235,7 +238,7 @@ export const useWeb3 = () => {
             try {
                 await navigator.clipboard.writeText(userWallet.address);
                 toast.success('Address copied to clipboard');
-            } catch (error) {
+            } catch (_error) {
                 // Fallback for older browsers
                 const textArea = document.createElement('textarea');
                 textArea.value = userWallet.address;
@@ -244,7 +247,7 @@ export const useWeb3 = () => {
                 try {
                     document.execCommand('copy');
                     toast.success('Address copied to clipboard');
-                } catch (err) {
+                } catch (_err) {
                     toast.error('Failed to copy address');
                 }
                 document.body.removeChild(textArea);
@@ -253,35 +256,41 @@ export const useWeb3 = () => {
     }, [userWallet?.address]);
 
     // Format balance for display
-    const formatBalance = useCallback((balanceValue = balance) => {
-        const num = parseFloat(balanceValue);
-        if (num >= 1000000) {
-            return (num / 1000000).toFixed(2) + 'M';
-        } else if (num >= 1000) {
-            return (num / 1000).toFixed(2) + 'K';
-        } else if (num >= 1) {
-            return num.toFixed(4);
-        } else {
-            return num.toFixed(6);
-        }
-    }, [balance]);
+    const formatBalance = useCallback(
+        (balanceValue = balance) => {
+            const num = parseFloat(balanceValue);
+            if (num >= 1000000) {
+                return `${(num / 1000000).toFixed(2)}M`;
+            } else if (num >= 1000) {
+                return `${(num / 1000).toFixed(2)}K`;
+            } else if (num >= 1) {
+                return num.toFixed(4);
+            } else {
+                return num.toFixed(6);
+            }
+        },
+        [balance]
+    );
 
     // Format address for display
-    const formatAddress = useCallback((address = userWallet?.address) => {
-        if (!address) return '';
-        return `${address.slice(0, 6)}...${address.slice(-4)}`;
-    }, [userWallet?.address]);
+    const formatAddress = useCallback(
+        (address = userWallet?.address) => {
+            if (!address) return '';
+            return `${address.slice(0, 6)}...${address.slice(-4)}`;
+        },
+        [userWallet?.address]
+    );
 
     // Initialize Web3 when component mounts
     useEffect(() => {
         const initialize = async () => {
             setIsLoading(true);
             const config = await fetchWeb3Config();
-            
+
             if (config?.WEB3_ACTIVE) {
                 await initializeWallet();
             }
-            
+
             setIsLoading(false);
         };
 
@@ -295,7 +304,7 @@ export const useWeb3 = () => {
         balance,
         isLoading,
         isWeb3Enabled,
-        
+
         // Methods
         fetchBalance,
         refreshBalance,
@@ -306,10 +315,10 @@ export const useWeb3 = () => {
         copyAddress,
         formatBalance,
         formatAddress,
-        
+
         // Computed values
         formattedBalance: formatBalance(),
-        formattedAddress: formatAddress(),
+        formattedAddress: formatAddress()
     };
 };
 
@@ -321,7 +330,7 @@ export const useWeb3Settings = () => {
     useEffect(() => {
         const fetchSettings = async () => {
             try {
-                const response = await fetch('/api/query/public/site_settings?_t=' + Date.now());
+                const response = await fetch(`/api/query/public/site_settings?_t=${Date.now()}`);
                 if (response.ok) {
                     const data = await response.json();
                     if (data.success && data.data?.length > 0) {

@@ -1,11 +1,9 @@
 // @/auth.js
 import NextAuth from 'next-auth';
-import CredentialsProvider from 'next-auth/providers/credentials'; 
-import { toast } from 'sonner';
+import CredentialsProvider from 'next-auth/providers/credentials';
 
 // Utility function to get base URL from various sources
 export function getBaseUrl(req = null) {
-
     // 1. Try NEXTAUTH_URL (NextAuth's standard env var)
     if (process.env.NEXTAUTH_URL) {
         return process.env.NEXTAUTH_URL;
@@ -15,7 +13,8 @@ export function getBaseUrl(req = null) {
     if (req) {
         const headers = req.headers;
         const host = headers.get?.('host') || headers.host;
-        const protocol = headers.get?.('x-forwarded-proto') ||
+        const protocol =
+            headers.get?.('x-forwarded-proto') ||
             headers['x-forwarded-proto'] ||
             (host?.includes('localhost') ? 'http' : 'https');
         return `${protocol}://${host}`;
@@ -68,7 +67,7 @@ const authConfig = {
                     const passwordHash = atob(password);
 
                     // Get base URL automatically
-                    const baseUrl = getBaseUrl(req); 
+                    const baseUrl = getBaseUrl(req);
 
                     const authResponse = await fetch(`${baseUrl}/auth/api/handler`, {
                         method: 'POST',
@@ -84,7 +83,7 @@ const authConfig = {
                         })
                     });
 
-                    if(authResponse.ok){ 
+                    if (authResponse.ok) {
                         const res = await authResponse.json();
 
                         if (res?.error) {
@@ -146,4 +145,4 @@ const authConfig = {
     debug: process.env.NODE_ENV === 'development'
 };
 
-export const { handlers, signIn, signOut, auth } = NextAuth(authConfig)
+export const { handlers, signIn, signOut, auth } = NextAuth(authConfig);

@@ -13,57 +13,44 @@ const passwordValid = (pwd) => {
 };
 
 export async function POST(request) {
-
     try {
         const { email, newPassword, confirmPassword, code, token } = await request.json();
 
         // Verify Token
         if (!code || !token) {
-            return NextResponse.json(
-                { error: 'Token invalid. Please, refresh your browser and try again later.' }
-            );
+            return NextResponse.json({ error: 'Token invalid. Please, refresh your browser and try again later.' });
         } else if (code !== decryptHash(token).code) {
-            return NextResponse.json(
-                { error: 'Token mismatch. Please, refresh your browser and try again later.' }
-            );
+            return NextResponse.json({ error: 'Token mismatch. Please, refresh your browser and try again later.' });
         }
 
         // Validation
         if (!email || !newPassword || !confirmPassword) {
-            return NextResponse.json(
-                { error: 'Email and passwords are required.' }
-            );
+            return NextResponse.json({ error: 'Email and passwords are required.' });
         }
 
         if (newPassword !== confirmPassword) {
-            return NextResponse.json(
-                { error: 'Passwords must match.' }
-            );
+            return NextResponse.json({ error: 'Passwords must match.' });
         }
 
         if (!passwordValid(newPassword)) {
-            return NextResponse.json(
-                { error: 'Password must be at least 8 characters with lowercase and one uppercase or number.' }
-            );
+            return NextResponse.json({
+                error: 'Password must be at least 8 characters with lowercase and one uppercase or number.'
+            });
         }
 
         const address = email.toLowerCase();
-        const user = await DBService.readBy("email", address, "users");
+        const user = await DBService.readBy('email', address, 'users');
 
         if (!user) {
-            return NextResponse.json(
-                { error: 'User not found.' }
-            );
+            return NextResponse.json({ error: 'User not found.' });
         }
 
         // TO DO - Check if code has expired (15 minutes from creation)
 
         // Get the user's key to update the record
-        const userKey = await DBService.getItemKey("email", address, "users");
+        const userKey = await DBService.getItemKey('email', address, 'users');
         if (!userKey) {
-            return NextResponse.json(
-                { error: 'Unable to update password.' }
-            );
+            return NextResponse.json({ error: 'Unable to update password.' });
         }
 
         // Generate new salt and encrypt password (consistent with your auth system)
@@ -80,7 +67,7 @@ export async function POST(request) {
             passwordChangedAt: new Date().toISOString()
         };
 
-        await DBService.update(userKey, updatedUser, "users");
+        await DBService.update(userKey, updatedUser, 'users');
 
         console.log(`Password reset successful for user: ${address}`);
 
@@ -88,12 +75,8 @@ export async function POST(request) {
             success: true,
             message: 'Password updated successfully. You can now log in with your new password.'
         });
-
     } catch (error) {
         console.error('Reset password error:', error);
-        return NextResponse.json(
-            { error: 'Failed to update password.' },
-            { status: 500 }
-        );
+        return NextResponse.json({ error: 'Failed to update password.' }, { status: 500 });
     }
 }

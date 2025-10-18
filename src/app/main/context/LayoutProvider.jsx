@@ -1,15 +1,14 @@
 // app/main/context/LayoutProvider.jsx
-"use client"
+'use client';
 
-import {useSession} from 'next-auth/react';
-import { createContext, useContext, useEffect } from 'react'; 
+import { useSession } from 'next-auth/react';
+import { createContext, useContext, useEffect } from 'react';
 import { initializeVisitorTracking } from '@/lib/client/visitor-tracking';
 import '../styles.css';
 
 const LayoutContext = createContext();
 
 export const LayoutProvider = ({ children }) => {
-
     const { data: session, status } = useSession();
 
     const layoutValue = {
@@ -19,7 +18,7 @@ export const LayoutProvider = ({ children }) => {
         user: session?.user || null
     };
 
-    useEffect(() => { 
+    useEffect(() => {
         // Initialize visitor tracking once, regardless of auth status
         const initTracking = async () => {
             try {
@@ -28,17 +27,15 @@ export const LayoutProvider = ({ children }) => {
                 console.error('Failed to initialize main visitor tracking:', error);
             }
         };
-        
+
         initTracking();
     }, []);
 
     return (
-        <LayoutContext.Provider value={layoutValue}> 
+        <LayoutContext.Provider value={layoutValue}>
             <div className="container w-full sm:max-w-3xl md:max-w-4xl lg:max-w-5xl xl:max-w-6xl">
-                <div className="screen">
-                    {children}
-                </div>
-            </div> 
+                <div className="screen">{children}</div>
+            </div>
         </LayoutContext.Provider>
     );
 };

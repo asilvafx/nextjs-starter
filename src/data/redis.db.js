@@ -1,6 +1,7 @@
 // data/redis.db.js
+
+import { put } from '@vercel/blob';
 import { createClient } from 'redis';
-import { put } from '@vercel/blob'; 
 
 class RedisDBService {
     constructor() {
@@ -11,10 +12,10 @@ class RedisDBService {
 
     async initializeClient() {
         const redisUrl = process.env.REDIS_URL;
-        if(!redisUrl || redisUrl.trim() === '') return null;
+        if (!redisUrl || redisUrl.trim() === '') return null;
         try {
             this.client = createClient({
-                url:redisUrl,
+                url: redisUrl,
                 socket: {
                     reconnectStrategy: (retries) => {
                         console.log(`Redis reconnection attempt ${retries}`);
@@ -28,7 +29,7 @@ class RedisDBService {
                 this.isConnected = false;
             });
 
-            this.client.on('connect', () => { 
+            this.client.on('connect', () => {
                 this.isConnected = true;
             });
 
@@ -287,7 +288,9 @@ class RedisDBService {
             const blobToken = process.env.BLOB_READ_WRITE_TOKEN;
 
             if (!blobToken || blobToken.trim() === '') {
-                throw new Error('File upload is not supported by Redis. Consider using a file storage service like AWS S3, Cloudinary, or Vercel Blob storage.');
+                throw new Error(
+                    'File upload is not supported by Redis. Consider using a file storage service like AWS S3, Cloudinary, or Vercel Blob storage.'
+                );
             }
 
             await this.ensureConnection();
@@ -339,12 +342,11 @@ class RedisDBService {
                 size: blob.size,
                 metadata: fileMetadata
             };
-
         } catch (error) {
             console.error('Error in upload:', error);
             throw error;
         }
-    } 
+    }
 
     // Close connection
     async disconnect() {

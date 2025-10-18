@@ -1,8 +1,8 @@
 // context/SafeCartProvider.jsx
-"use client";
+'use client';
 
-import { useEffect, useState } from "react";
-import { CartProvider } from "react-use-cart";
+import { useEffect, useState } from 'react';
+import { CartProvider } from 'react-use-cart';
 
 export default function SafeCartProvider({ children }) {
     const [mounted, setMounted] = useState(false);

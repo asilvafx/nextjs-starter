@@ -1,11 +1,7 @@
-"use client";
+'use client';
 
-import StoreLayout from "../layoutWrapper";
-
+import StoreLayout from '../layoutWrapper';
 
 export default function PageLayout({ children }) {
-
-  return (
-    StoreLayout({ children })
-  );
+    return StoreLayout({ children });
 }

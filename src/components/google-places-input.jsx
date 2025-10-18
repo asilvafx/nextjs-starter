@@ -1,39 +1,42 @@
 // @/components/google-places-input.jsx
-import { useEffect, useRef, useState } from 'react';
+
 import { Loader } from '@googlemaps/js-api-loader';
+import { useEffect, useRef, useState } from 'react';
 import { isIntegrationEnabled } from '@/lib/client/integrations';
-import { px } from 'framer-motion';
 
 // Global variables to track script loading state
 let isGoogleMapsLoading = false;
 let googleMapsLoadPromise = null;
 
 const GooglePlacesInput = ({
-                                      legacy = false,
-                                      value,
-                                      onChange,
-                                      onPlaceSelected, // NEW: Callback for when a place is selected with full details
-                                      onError,
-                                      hasError,
-                                      placeholder = "Start typing your address...",
-                                      styles = {},
-                                      apiKey
-                                  }) => {
+    legacy = false,
+    value,
+    onChange,
+    onPlaceSelected, // NEW: Callback for when a place is selected with full details
+    onError,
+    hasError,
+    placeholder = 'Start typing your address...',
+    styles = {},
+    apiKey
+}) => {
     const containerRef = useRef(null);
     const placeAutocompleteRef = useRef(null);
     const isLoadedRef = useRef(false);
     const addressInputRef = useRef(null);
-    const [isGoogleMapsEnabled, setIsGoogleMapsEnabled] = useState(false);
+    const [_isGoogleMapsEnabled, setIsGoogleMapsEnabled] = useState(false);
 
     // Detect if device is mobile
     const isMobile = () => {
         if (typeof window === 'undefined') return false;
-        return window.innerWidth <= 768 && /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        return (
+            window.innerWidth <= 768 &&
+            /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
+        );
     };
 
     // Determine if legacy mode should be used
     const shouldUseLegacy = () => {
-        if (legacy === "mobile") {
+        if (legacy === 'mobile') {
             return isMobile();
         }
         return Boolean(legacy);
@@ -43,11 +46,11 @@ const GooglePlacesInput = ({
     const defaultStyles = {
         width: '100%',
         height: '2.5rem', // h-10 equivalent
-        padding: '0.5rem 0.75rem', // px-3 py-2 equivalent 
+        padding: '0.5rem 0.75rem', // px-3 py-2 equivalent
         fontSize: '0.875rem', // text-sm equivalent, but use 16px on mobile to prevent zoom
         lineHeight: '1.25rem',
         backgroundColor: 'hsl(var(--background))',
-        color: 'hsl(var(--foreground))', 
+        color: 'hsl(var(--foreground))',
         outline: 'none',
         fontFamily: 'inherit',
         ...styles // Override defaults with provided styles
@@ -57,7 +60,10 @@ const GooglePlacesInput = ({
     const preventMobileZoom = () => {
         const viewport = document.querySelector('meta[name="viewport"]');
         if (viewport) {
-            viewport.setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no');
+            viewport.setAttribute(
+                'content',
+                'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no'
+            );
         }
     };
 
@@ -119,22 +125,16 @@ const GooglePlacesInput = ({
         // Initialize autocomplete with more detailed fields
         const autocomplete = new window.google.maps.places.Autocomplete(input, {
             componentRestrictions: { country: 'fr' },
-            fields: [
-                'formatted_address',
-                'geometry',
-                'address_components',
-                'place_id',
-                'name'
-            ]
+            fields: ['formatted_address', 'geometry', 'address_components', 'place_id', 'name']
         });
 
         placeAutocompleteRef.current = autocomplete;
 
         // Handle place selection
         autocomplete.addListener('place_changed', () => {
-            const place = autocomplete.getPlace(); 
+            const place = autocomplete.getPlace();
 
-            if (place && place.formatted_address) {
+            if (place?.formatted_address) {
                 input.value = place.formatted_address;
 
                 // Call the regular onChange callback
@@ -174,11 +174,11 @@ const GooglePlacesInput = ({
 
     const initNewAutocomplete = async () => {
         // Request the places library
-        await window.google.maps.importLibrary("places");
+        await window.google.maps.importLibrary('places');
 
         // Create the new PlaceAutocompleteElement
         const placeAutocomplete = new window.google.maps.places.PlaceAutocompleteElement({
-            includedRegionCodes: ['fr'],
+            includedRegionCodes: ['fr']
         });
 
         // Store reference for cleanup
@@ -214,12 +214,7 @@ const GooglePlacesInput = ({
 
                 // Fetch detailed fields including address components
                 await place.fetchFields({
-                    fields: [
-                        'formattedAddress',
-                        'addressComponents',
-                        'id',
-                        'displayName'
-                    ]
+                    fields: ['formattedAddress', 'addressComponents', 'id', 'displayName']
                 });
 
                 const placeData = place.toJSON();
@@ -306,7 +301,7 @@ const GooglePlacesInput = ({
             }
         });
 
-        fallbackInput.addEventListener('focus', () => { 
+        fallbackInput.addEventListener('focus', () => {
             fallbackInput.style.boxShadow = '0 0 0 2px hsl(var(--ring) / 0.2)';
             fallbackInput.style.outline = 'none';
             preventMobileZoom();
@@ -327,7 +322,7 @@ const GooglePlacesInput = ({
     // Legacy Google Maps Script
     const loadGoogleMapsScript = () => {
         // If already loaded, return resolved promise
-        if (window.google && window.google.maps && window.google.maps.places) {
+        if (window.google?.maps?.places) {
             return Promise.resolve();
         }
 
@@ -340,7 +335,7 @@ const GooglePlacesInput = ({
         const existingScript = document.querySelector('script[src*="maps.googleapis.com"]');
         if (existingScript) {
             return new Promise((resolve) => {
-                if (window.google && window.google.maps && window.google.maps.places) {
+                if (window.google?.maps?.places) {
                     resolve();
                 } else {
                     existingScript.onload = () => resolve();
@@ -376,7 +371,7 @@ const GooglePlacesInput = ({
         // Check if Google Maps integration is enabled
         const googleMapsEnabled = await isIntegrationEnabled('google-maps');
         setIsGoogleMapsEnabled(googleMapsEnabled);
-        
+
         // If not enabled or no API key, use fallback
         if (!googleMapsEnabled || !apiKey) {
             createFallbackInput();
@@ -399,7 +394,7 @@ const GooglePlacesInput = ({
                     isLoadedRef.current = true;
                     initGooglePlaces();
                 })
-                .catch(err => {
+                .catch((err) => {
                     console.warn('Failed to load Google Maps:', err);
                     createFallbackInput();
                     if (onError) {
@@ -411,15 +406,16 @@ const GooglePlacesInput = ({
             const loader = new Loader({
                 apiKey: apiKey,
                 version: 'weekly',
-                libraries: ['places'],
+                libraries: ['places']
             });
 
-            loader.load()
+            loader
+                .load()
                 .then(() => {
                     isLoadedRef.current = true;
                     initGooglePlaces();
                 })
-                .catch(err => {
+                .catch((err) => {
                     console.warn('Failed to load Google Maps:', err);
                     createFallbackInput();
                     if (onError) {
@@ -430,7 +426,7 @@ const GooglePlacesInput = ({
     };
 
     // Handle input change for legacy mode
-    const handleInputChange = (e) => {
+    const _handleInputChange = (e) => {
         if (onChange) {
             onChange(e.target.value);
         }

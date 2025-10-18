@@ -14,30 +14,30 @@ export const loadWeb3Config = async () => {
         }
 
         const settingsData = await DBService.readAll('site_settings');
-        
+
         if (!settingsData || Object.keys(settingsData).length === 0) {
             console.log('No site settings found, using default Web3 config');
             cachedConfig = {
                 WEB3_ACTIVE: false,
-                WEB3_CONTRACT_ADDRESS: "",
-                WEB3_CONTRACT_SYMBOL: "",
-                WEB3_CHAIN_SYMBOL: "",
-                WEB3_INFURA_RPC: "",
+                WEB3_CONTRACT_ADDRESS: '',
+                WEB3_CONTRACT_SYMBOL: '',
+                WEB3_CHAIN_SYMBOL: '',
+                WEB3_INFURA_RPC: '',
                 WEB3_CHAIN_ID: 1,
-                WEB3_NETWORK_NAME: "Ethereum Mainnet"
+                WEB3_NETWORK_NAME: 'Ethereum Mainnet'
             };
         } else {
             // Get the first settings record
             const settings = Object.values(settingsData)[0];
-            
+
             cachedConfig = {
                 WEB3_ACTIVE: settings.web3Active || false,
-                WEB3_CONTRACT_ADDRESS: settings.web3ContractAddress || "",
-                WEB3_CONTRACT_SYMBOL: settings.web3ContractSymbol || "",
-                WEB3_CHAIN_SYMBOL: settings.web3ChainSymbol || "",
-                WEB3_INFURA_RPC: settings.web3InfuraRpc || "",
+                WEB3_CONTRACT_ADDRESS: settings.web3ContractAddress || '',
+                WEB3_CONTRACT_SYMBOL: settings.web3ContractSymbol || '',
+                WEB3_CHAIN_SYMBOL: settings.web3ChainSymbol || '',
+                WEB3_INFURA_RPC: settings.web3InfuraRpc || '',
                 WEB3_CHAIN_ID: settings.web3ChainId || 1,
-                WEB3_NETWORK_NAME: settings.web3NetworkName || "Ethereum Mainnet"
+                WEB3_NETWORK_NAME: settings.web3NetworkName || 'Ethereum Mainnet'
             };
         }
 
@@ -48,12 +48,12 @@ export const loadWeb3Config = async () => {
         // Return default config on error
         return {
             WEB3_ACTIVE: false,
-            WEB3_CONTRACT_ADDRESS: "",
-            WEB3_CONTRACT_SYMBOL: "",
-            WEB3_CHAIN_SYMBOL: "",
-            WEB3_INFURA_RPC: "",
+            WEB3_CONTRACT_ADDRESS: '',
+            WEB3_CONTRACT_SYMBOL: '',
+            WEB3_CHAIN_SYMBOL: '',
+            WEB3_INFURA_RPC: '',
             WEB3_CHAIN_ID: 1,
-            WEB3_NETWORK_NAME: "Ethereum Mainnet"
+            WEB3_NETWORK_NAME: 'Ethereum Mainnet'
         };
     }
 };
@@ -68,7 +68,7 @@ export const clearWeb3ConfigCache = () => {
 let web3Instance = null;
 const getWeb3Instance = async () => {
     const config = await loadWeb3Config();
-    
+
     if (!config.WEB3_ACTIVE || !config.WEB3_INFURA_RPC) {
         return null;
     }
@@ -82,51 +82,49 @@ const getWeb3Instance = async () => {
 
 const balanceOfABI = [
     {
-        "constant": true,
-        "inputs": [
+        constant: true,
+        inputs: [
             {
-                "name": "_owner",
-                "type": "address"
+                name: '_owner',
+                type: 'address'
             }
         ],
-        "name": "balanceOf",
-        "outputs": [
+        name: 'balanceOf',
+        outputs: [
             {
-                "name": "balance",
-                "type": "uint256"
+                name: 'balance',
+                type: 'uint256'
             }
         ],
-        "payable": false,
-        "stateMutability": "view",
-        "type": "function"
-    },
+        payable: false,
+        stateMutability: 'view',
+        type: 'function'
+    }
 ];
 
 const transferABI = [
     {
-        "constant": false,
-        "inputs": [
+        constant: false,
+        inputs: [
             {
-                "name": "_to",
-                "type": "address"
+                name: '_to',
+                type: 'address'
             },
             {
-                "name": "_value",
-                "type": "uint256"
+                name: '_value',
+                type: 'uint256'
             }
         ],
-        "name": "transfer",
-        "outputs": [
+        name: 'transfer',
+        outputs: [
             {
-                "name": "",
-                "type": "bool"
+                name: '',
+                type: 'bool'
             }
         ],
-        "type": "function"
+        type: 'function'
     }
 ];
-
-
 
 export const validateWallet = async (address) => {
     try {
@@ -139,7 +137,7 @@ export const validateWallet = async (address) => {
     } catch (error) {
         return { success: false, error: error.message };
     }
-}
+};
 export const getGasPrice = async () => {
     try {
         const web3 = await getWeb3Instance();
@@ -148,16 +146,16 @@ export const getGasPrice = async () => {
         }
 
         const gasPrice = await web3.eth.getGasPrice();
-        const gweiPrice = web3.utils.fromWei(gasPrice, "gwei");
-        return { 
-            success: true, 
+        const gweiPrice = web3.utils.fromWei(gasPrice, 'gwei');
+        return {
+            success: true,
             gasPrice: parseFloat(gweiPrice).toFixed(2),
-            gasPriceWei: gasPrice 
+            gasPriceWei: gasPrice
         };
     } catch (error) {
         return { success: false, error: error.message };
     }
-}
+};
 export const createWallet = async () => {
     try {
         const web3 = await getWeb3Instance();
@@ -166,15 +164,15 @@ export const createWallet = async () => {
         }
 
         const wallet = web3.eth.accounts.create();
-        return { 
-            success: true, 
+        return {
+            success: true,
             address: wallet.address,
             privateKey: wallet.privateKey
         };
     } catch (error) {
         return { success: false, error: error.message };
     }
-}
+};
 export const getTxStatus = async (hash) => {
     try {
         const web3 = await getWeb3Instance();
@@ -210,12 +208,19 @@ export const getTxStatus = async (hash) => {
     } catch (error) {
         return { success: false, error: error.message };
     }
-}
-export const sendTransaction = async (amountToSend, destinationAddress, tokenHolder, holderSecretKey, inChain = false, txType = 'transfer') => {
+};
+export const sendTransaction = async (
+    amountToSend,
+    destinationAddress,
+    tokenHolder,
+    holderSecretKey,
+    inChain = false,
+    _txType = 'transfer'
+) => {
     try {
         const web3 = await getWeb3Instance();
         const config = await loadWeb3Config();
-        
+
         if (!web3) {
             return { success: false, error: 'Web3 not available - please check RPC configuration' };
         }
@@ -225,7 +230,7 @@ export const sendTransaction = async (amountToSend, destinationAddress, tokenHol
             return { success: false, error: 'Missing required parameters' };
         }
 
-        const amountInWei = web3.utils.toWei(amountToSend.toString(), "ether");
+        const amountInWei = web3.utils.toWei(amountToSend.toString(), 'ether');
         const nonce = await web3.eth.getTransactionCount(tokenHolder);
         const gasPrice = await web3.eth.getGasPrice();
         const gasLimit = 200000;
@@ -239,7 +244,7 @@ export const sendTransaction = async (amountToSend, destinationAddress, tokenHol
                 value: amountInWei,
                 nonce: web3.utils.toHex(nonce),
                 gasPrice: web3.utils.toHex(gasPrice),
-                gas: web3.utils.toHex(gasLimit),
+                gas: web3.utils.toHex(gasLimit)
             };
         } else {
             // ERC-20 token transaction
@@ -257,19 +262,20 @@ export const sendTransaction = async (amountToSend, destinationAddress, tokenHol
                 value: '0x00',
                 data: web3contract.methods.transfer(destinationAddress, amountInWei).encodeABI(),
                 gasPrice: web3.utils.toHex(gasPrice),
-                gasLimit: web3.utils.toHex(gasLimit),
+                gasLimit: web3.utils.toHex(gasLimit)
             };
         }
 
         const signedTx = await web3.eth.accounts.signTransaction(params, holderSecretKey);
 
-        let transactionHash = "";
-        const receipt = await web3.eth.sendSignedTransaction(signedTx.rawTransaction)
-            .once("transactionHash", async (txHash) => {
+        let transactionHash = '';
+        const receipt = await web3.eth
+            .sendSignedTransaction(signedTx.rawTransaction)
+            .once('transactionHash', async (txHash) => {
                 transactionHash = txHash;
             })
-            .on('error', function(error) { 
-                console.log("Transaction error:", error); 
+            .on('error', (error) => {
+                console.log('Transaction error:', error);
             });
 
         // Update balance after transaction
@@ -284,9 +290,8 @@ export const sendTransaction = async (amountToSend, destinationAddress, tokenHol
             gasUsed: receipt.gasUsed,
             status: receipt.status ? 'confirmed' : 'failed'
         };
-
     } catch (error) {
-        console.error("Transaction failed:", error);
+        console.error('Transaction failed:', error);
         return { success: false, error: error.message };
     }
 };
@@ -295,7 +300,7 @@ export const getTokenBalance = async (tokenHolder, chain = false) => {
     try {
         const web3 = await getWeb3Instance();
         const config = await loadWeb3Config();
-        
+
         if (!web3) {
             return { success: false, error: 'Web3 not available - please check RPC configuration' };
         }
@@ -317,13 +322,13 @@ export const getTokenBalance = async (tokenHolder, chain = false) => {
             if (!tokenContract) {
                 return { success: false, error: 'Token contract address not configured' };
             }
-            
+
             const contract = new web3.eth.Contract(balanceOfABI, tokenContract);
             balance = await contract.methods.balanceOf(tokenHolder).call();
             symbol = config.WEB3_CONTRACT_SYMBOL || 'TOKEN';
         }
 
-        const formattedBalance = parseFloat(web3.utils.fromWei(balance, "ether"));
+        const formattedBalance = parseFloat(web3.utils.fromWei(balance, 'ether'));
 
         return {
             success: true,
@@ -333,7 +338,7 @@ export const getTokenBalance = async (tokenHolder, chain = false) => {
             address: tokenHolder
         };
     } catch (error) {
-        console.error("Failed to fetch balance:", error);
+        console.error('Failed to fetch balance:', error);
         return { success: false, error: error.message };
     }
 };

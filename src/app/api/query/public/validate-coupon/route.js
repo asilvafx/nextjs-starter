@@ -1,6 +1,6 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { withPublicAccess } from '@/lib/server/auth.js';
+import { NextResponse } from 'next/server';
 import DBService from '@/data/rest.db.js';
+import { withPublicAccess } from '@/lib/server/auth.js';
 
 /**
  * @swagger
@@ -60,149 +60,157 @@ import DBService from '@/data/rest.db.js';
  *         description: Bad request - invalid input
  */
 async function POST(request) {
-  try {
-    const { code, orderAmount, customerEmail } = await request.json();
+    try {
+        const { code, orderAmount, customerEmail } = await request.json();
 
-    // Validate input
-    if (!code || typeof code !== 'string') {
-      return NextResponse.json({
-        success: false,
-        valid: false,
-        message: 'Coupon code is required'
-      }, { status: 400 });
-    }
+        // Validate input
+        if (!code || typeof code !== 'string') {
+            return NextResponse.json(
+                {
+                    success: false,
+                    valid: false,
+                    message: 'Coupon code is required'
+                },
+                { status: 400 }
+            );
+        }
 
-    if (!orderAmount || typeof orderAmount !== 'number' || orderAmount < 0) {
-      return NextResponse.json({
-        success: false,
-        valid: false,
-        message: 'Valid order amount is required'
-      }, { status: 400 });
-    }
+        if (!orderAmount || typeof orderAmount !== 'number' || orderAmount < 0) {
+            return NextResponse.json(
+                {
+                    success: false,
+                    valid: false,
+                    message: 'Valid order amount is required'
+                },
+                { status: 400 }
+            );
+        }
 
-    // Find coupon
-    const coupons = await DBService.readAll('coupons') || [];
-    const normalizedCode = code.toUpperCase().trim();
-    const coupon = coupons.find(c => c.code?.toUpperCase() === normalizedCode);
+        // Find coupon
+        const coupons = (await DBService.readAll('coupons')) || [];
+        const normalizedCode = code.toUpperCase().trim();
+        const coupon = coupons.find((c) => c.code?.toUpperCase() === normalizedCode);
 
-    if (!coupon) {
-      return NextResponse.json({
-        success: true,
-        valid: false,
-        message: 'Invalid coupon code'
-      });
-    }
+        if (!coupon) {
+            return NextResponse.json({
+                success: true,
+                valid: false,
+                message: 'Invalid coupon code'
+            });
+        }
 
-    // Check if coupon is active
-    if (!coupon.isActive) {
-      return NextResponse.json({
-        success: true,
-        valid: false,
-        message: 'This coupon is no longer active'
-      });
-    }
+        // Check if coupon is active
+        if (!coupon.isActive) {
+            return NextResponse.json({
+                success: true,
+                valid: false,
+                message: 'This coupon is no longer active'
+            });
+        }
 
-    // Check expiration
-    if (coupon.expiresAt && new Date(coupon.expiresAt) <= new Date()) {
-      return NextResponse.json({
-        success: true,
-        valid: false,
-        message: 'This coupon has expired'
-      });
-    }
+        // Check expiration
+        if (coupon.expiresAt && new Date(coupon.expiresAt) <= new Date()) {
+            return NextResponse.json({
+                success: true,
+                valid: false,
+                message: 'This coupon has expired'
+            });
+        }
 
-    // Check usage limits
-    if (coupon.usageType === 'limited' && coupon.usedCount >= coupon.usageLimit) {
-      return NextResponse.json({
-        success: true,
-        valid: false,
-        message: 'This coupon has reached its usage limit'
-      });
-    }
+        // Check usage limits
+        if (coupon.usageType === 'limited' && coupon.usedCount >= coupon.usageLimit) {
+            return NextResponse.json({
+                success: true,
+                valid: false,
+                message: 'This coupon has reached its usage limit'
+            });
+        }
 
-    if (coupon.usageType === 'single' && coupon.usedCount >= 1) {
-      return NextResponse.json({
-        success: true,
-        valid: false,
-        message: 'This coupon has already been used'
-      });
-    }
+        if (coupon.usageType === 'single' && coupon.usedCount >= 1) {
+            return NextResponse.json({
+                success: true,
+                valid: false,
+                message: 'This coupon has already been used'
+            });
+        }
 
-    // Check target restrictions
-    if (coupon.targetType === 'specific') {
-      if (!customerEmail) {
+        // Check target restrictions
+        if (coupon.targetType === 'specific') {
+            if (!customerEmail) {
+                return NextResponse.json({
+                    success: true,
+                    valid: false,
+                    message: 'Customer email is required for this coupon'
+                });
+            }
+
+            if (coupon.targetEmail?.toLowerCase() !== customerEmail.toLowerCase()) {
+                return NextResponse.json({
+                    success: true,
+                    valid: false,
+                    message: 'This coupon is not valid for your account'
+                });
+            }
+        }
+
+        // Check minimum order amount
+        if (coupon.minAmount > 0 && orderAmount < coupon.minAmount) {
+            return NextResponse.json({
+                success: true,
+                valid: false,
+                message: `Minimum order amount of €${coupon.minAmount} required for this coupon`
+            });
+        }
+
+        // Check maximum order amount
+        if (coupon.maxAmount > 0 && orderAmount > coupon.maxAmount) {
+            return NextResponse.json({
+                success: true,
+                valid: false,
+                message: `This coupon is only valid for orders up to €${coupon.maxAmount}`
+            });
+        }
+
+        // Calculate discount
+        let discountAmount = 0;
+        if (coupon.type === 'percentage') {
+            discountAmount = (orderAmount * coupon.value) / 100;
+        } else if (coupon.type === 'fixed') {
+            discountAmount = Math.min(coupon.value, orderAmount); // Don't exceed order amount
+        }
+
+        // Round to 2 decimal places
+        discountAmount = Math.round(discountAmount * 100) / 100;
+
         return NextResponse.json({
-          success: true,
-          valid: false,
-          message: 'Customer email is required for this coupon'
+            success: true,
+            valid: true,
+            coupon: {
+                id: coupon.id,
+                code: coupon.code,
+                name: coupon.name,
+                description: coupon.description,
+                type: coupon.type,
+                value: coupon.value
+            },
+            discount: {
+                amount: discountAmount,
+                type: coupon.type,
+                value: coupon.value
+            },
+            message: `Coupon applied! You saved €${discountAmount.toFixed(2)}`
         });
-      }
-
-      if (coupon.targetEmail?.toLowerCase() !== customerEmail.toLowerCase()) {
-        return NextResponse.json({
-          success: true,
-          valid: false,
-          message: 'This coupon is not valid for your account'
-        });
-      }
+    } catch (error) {
+        console.error('Error validating coupon:', error);
+        return NextResponse.json(
+            {
+                success: false,
+                valid: false,
+                message: 'Failed to validate coupon'
+            },
+            { status: 500 }
+        );
     }
-
-    // Check minimum order amount
-    if (coupon.minAmount > 0 && orderAmount < coupon.minAmount) {
-      return NextResponse.json({
-        success: true,
-        valid: false,
-        message: `Minimum order amount of €${coupon.minAmount} required for this coupon`
-      });
-    }
-
-    // Check maximum order amount
-    if (coupon.maxAmount > 0 && orderAmount > coupon.maxAmount) {
-      return NextResponse.json({
-        success: true,
-        valid: false,
-        message: `This coupon is only valid for orders up to €${coupon.maxAmount}`
-      });
-    }
-
-    // Calculate discount
-    let discountAmount = 0;
-    if (coupon.type === 'percentage') {
-      discountAmount = (orderAmount * coupon.value) / 100;
-    } else if (coupon.type === 'fixed') {
-      discountAmount = Math.min(coupon.value, orderAmount); // Don't exceed order amount
-    }
-
-    // Round to 2 decimal places
-    discountAmount = Math.round(discountAmount * 100) / 100;
-
-    return NextResponse.json({
-      success: true,
-      valid: true,
-      coupon: {
-        id: coupon.id,
-        code: coupon.code,
-        name: coupon.name,
-        description: coupon.description,
-        type: coupon.type,
-        value: coupon.value
-      },
-      discount: {
-        amount: discountAmount,
-        type: coupon.type,
-        value: coupon.value
-      },
-      message: `Coupon applied! You saved €${discountAmount.toFixed(2)}`
-    });
-
-  } catch (error) {
-    console.error('Error validating coupon:', error);
-    return NextResponse.json({
-      success: false,
-      valid: false,
-      message: 'Failed to validate coupon'
-    }, { status: 500 });
-  }
 }
 
 // Apply public access middleware and export

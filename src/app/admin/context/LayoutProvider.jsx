@@ -1,14 +1,13 @@
 // app/admin/context/LayoutProvider.jsx
-"use client"
+'use client';
 
-import {useSession} from 'next-auth/react';
+import { useSession } from 'next-auth/react';
 import { createContext, useContext } from 'react';
 import '../styles.css';
 
 const LayoutContext = createContext();
 
 export const LayoutProvider = ({ children }) => {
-
     const { data: session, status } = useSession();
 
     const layoutValue = {
@@ -21,9 +20,7 @@ export const LayoutProvider = ({ children }) => {
     return (
         <LayoutContext.Provider value={layoutValue}>
             <div className="admin--dashboard">
-                <div className="admin--container">
-                    {children}
-                </div>
+                <div className="admin--container">{children}</div>
             </div>
         </LayoutContext.Provider>
     );

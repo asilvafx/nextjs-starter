@@ -1,8 +1,8 @@
 /* Auth section */
 
-input { 
-    font-family: system-ui !important; 
-} 
+input {
+    font-family: system-ui;
+}
 .auth-container {
     max-width: 100%;
     width: 100%;
@@ -18,4 +18,4 @@ input {
     max-width: 450px;
     position: relative;
     margin: auto;
-}  
+}

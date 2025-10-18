@@ -1,6 +1,6 @@
 // lib/server/email.js
 import { render } from '@react-email/render';
-import nodemailer from 'nodemailer'; 
+import nodemailer from 'nodemailer';
 import DBService from '@/data/rest.db.js';
 
 let emailSettings = null;
@@ -18,7 +18,7 @@ const getEmailSettings = async () => {
         } catch (error) {
             console.warn('Could not load email settings from database, falling back to env vars:', error.message);
         }
-        
+
         // Fallback to environment variables if no database settings
         if (!emailSettings) {
             emailSettings = {
@@ -26,7 +26,7 @@ const getEmailSettings = async () => {
                 emailUser: process.env.NODEMAILER_USER,
                 emailPass: process.env.NODEMAILER_PASS,
                 smtpHost: process.env.NODEMAILER_HOST,
-                smtpPort: process.env.NODEMAILER_PORT ? parseInt(process.env.NODEMAILER_PORT) : 587,
+                smtpPort: process.env.NODEMAILER_PORT ? parseInt(process.env.NODEMAILER_PORT, 10) : 587,
                 smtpSecure: process.env.NODEMAILER_SECURE === 'true',
                 siteName: process.env.NEXT_PUBLIC_APP_NAME || 'App',
                 siteEmail: process.env.NODEMAILER_EMAIL || process.env.NODEMAILER_USER
@@ -40,7 +40,7 @@ const getEmailSettings = async () => {
 const getMailTransporter = async () => {
     if (!mailTransport) {
         const settings = await getEmailSettings();
-        
+
         const nodeMailerConfig = {
             auth: {
                 user: settings.emailUser,
@@ -57,9 +57,9 @@ const getMailTransporter = async () => {
         } else {
             // Use predefined service
             const serviceMap = {
-                'gmail': 'gmail',
-                'outlook': 'hotmail',
-                'yahoo': 'yahoo'
+                gmail: 'gmail',
+                outlook: 'hotmail',
+                yahoo: 'yahoo'
             };
             nodeMailerConfig.service = serviceMap[settings.emailProvider] || 'gmail';
         }
@@ -142,12 +142,12 @@ class EmailService {
             // Use custom sender info if provided, otherwise use defaults
             const fromEmail = options.from || this.fromEmail;
             const fromName = options.senderName || this.fromName;
-            
+
             const mailOptions = {
                 from: `${fromName} <${fromEmail}>`,
                 to: Array.isArray(to) ? to.join(', ') : to,
                 subject,
-                html,
+                html
             };
 
             // Add reply-to if provided
@@ -217,16 +217,11 @@ class EmailService {
     async sendPasswordResetEmail(to, resetCode, userDisplayName = null) {
         const { PasswordResetTemplate } = await import('@/emails/PasswordResetTemplate');
 
-        return this.sendEmail(
-            to,
-            'Password Reset Code',
-            PasswordResetTemplate,
-            {
-                resetCode,
-                userDisplayName,
-                companyName: this.fromName,
-            }
-        );
+        return this.sendEmail(to, 'Password Reset Code', PasswordResetTemplate, {
+            resetCode,
+            userDisplayName,
+            companyName: this.fromName
+        });
     }
 
     /**
@@ -238,16 +233,11 @@ class EmailService {
     async sendWelcomeEmail(to, userDisplayName) {
         const { WelcomeTemplate } = await import('@/emails/WelcomeTemplate');
 
-        return this.sendEmail(
-            to,
-            `Welcome to ${this.fromName}!`,
-            WelcomeTemplate,
-            {
-                userDisplayName,
-                companyName: this.fromName,
-                loginUrl: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/auth/login`,
-            }
-        );
+        return this.sendEmail(to, `Welcome to ${this.fromName}!`, WelcomeTemplate, {
+            userDisplayName,
+            companyName: this.fromName,
+            loginUrl: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/auth/login`
+        });
     }
 
     /**
@@ -260,16 +250,11 @@ class EmailService {
     async sendEmailVerification(to, verificationCode, userDisplayName = null) {
         const { EmailVerificationTemplate } = await import('@/emails/EmailVerificationTemplate');
 
-        return this.sendEmail(
-            to,
-            'Verify Your Email Address',
-            EmailVerificationTemplate,
-            {
-                verificationCode,
-                userDisplayName,
-                companyName: this.fromName,
-            }
-        );
+        return this.sendEmail(to, 'Verify Your Email Address', EmailVerificationTemplate, {
+            verificationCode,
+            userDisplayName,
+            companyName: this.fromName
+        });
     }
 
     /**
@@ -286,18 +271,21 @@ class EmailService {
      * @param {Object} orderData.shippingAddress - Shipping address object
      * @returns {Promise} Email service response (customer email response)
      */
-    async sendOrderConfirmationEmail(to, {
-        customerName,
-        orderId,
-        orderDate,
-        items,
-        subtotal,
-        shippingCost,
-        total,
-        shippingAddress,
-        paymentMethod = null,
-        bankTransferDetails = null
-    }) {
+    async sendOrderConfirmationEmail(
+        to,
+        {
+            customerName,
+            orderId,
+            orderDate,
+            items,
+            subtotal,
+            shippingCost,
+            total,
+            shippingAddress,
+            paymentMethod = null,
+            bankTransferDetails = null
+        }
+    ) {
         try {
             const { OrderConfirmationTemplate } = await import('@/emails/OrderConfirmationTemplate');
 
@@ -318,7 +306,7 @@ class EmailService {
                     companyName: this.fromName,
                     companyUrl: process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
                     paymentMethod,
-                    bankTransferDetails,
+                    bankTransferDetails
                 }
             );
 
@@ -333,13 +321,12 @@ class EmailService {
                 shippingCost,
                 total,
                 shippingAddress
-            }).catch(error => {
+            }).catch((error) => {
                 // Log admin email error but don't fail the customer email
                 console.error('Failed to send admin notification for order', orderId, ':', error);
             });
 
             return customerEmailResponse;
-
         } catch (error) {
             console.error('Failed to send order confirmation email:', error);
             throw error;
@@ -351,16 +338,16 @@ class EmailService {
      * @param {Object} orderData - Order data object
      */
     async sendAdminNotificationAsync({
-                                         customerEmail,
-                                         customerName,
-                                         orderId,
-                                         orderDate,
-                                         items,
-                                         subtotal,
-                                         shippingCost,
-                                         total,
-                                         shippingAddress
-                                     }) {
+        customerEmail,
+        customerName,
+        orderId,
+        orderDate,
+        items,
+        subtotal,
+        shippingCost,
+        total,
+        shippingAddress
+    }) {
         try {
             // Get admin email from environment variables
             if (!emailPublic) {
@@ -402,17 +389,10 @@ class EmailService {
      * @param {Object} orderData.shippingAddress - Shipping address object
      * @returns {Promise} Email service response
      */
-    async sendOrderAdminConfirmationEmail(to, {
-        customerEmail,
-        customerName,
-        orderId,
-        orderDate,
-        items,
-        subtotal,
-        shippingCost,
-        total,
-        shippingAddress
-    }) {
+    async sendOrderAdminConfirmationEmail(
+        to,
+        { customerEmail, customerName, orderId, orderDate, items, subtotal, shippingCost, total, shippingAddress }
+    ) {
         const { OrderAdminConfirmationTemplate } = await import('@/emails/OrderAdminConfirmationTemplate');
 
         return this.sendEmail(
@@ -430,7 +410,7 @@ class EmailService {
                 total: parseFloat(total).toFixed(2),
                 shippingAddress: shippingAddress || {},
                 companyName: this.fromName,
-                orderSummaryUrl: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/admin/orders/${orderId}`,
+                orderSummaryUrl: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/admin/orders/${orderId}`
             }
         );
     }
@@ -451,18 +431,21 @@ class EmailService {
      * @param {string} [updateData.customMessage] - Custom message from admin (optional)
      * @returns {Promise} Email service response
      */
-    async sendOrderUpdateEmail(to, {
-        customerName,
-        orderId,
-        orderDate,
-        status,
-        items,
-        total,
-        trackingNumber = null,
-        trackingUrl = null,
-        estimatedDelivery = null,
-        customMessage = null
-    }) {
+    async sendOrderUpdateEmail(
+        to,
+        {
+            customerName,
+            orderId,
+            orderDate,
+            status,
+            items,
+            total,
+            trackingNumber = null,
+            trackingUrl = null,
+            estimatedDelivery = null,
+            customMessage = null
+        }
+    ) {
         try {
             const { OrderUpdateTemplate } = await import('@/emails/OrderUpdateTemplate');
 
@@ -485,30 +468,24 @@ class EmailService {
 
             console.log(`Sending order update email to ${to} for order ${orderId} with status: ${status}`);
 
-            const emailResponse = await this.sendEmail(
-                to,
-                subject,
-                OrderUpdateTemplate,
-                {
-                    customerName,
-                    orderId,
-                    orderDate,
-                    status,
-                    items,
-                    total: parseFloat(total).toFixed(2),
-                    trackingNumber,
-                    trackingUrl,
-                    estimatedDelivery,
-                    customMessage,
-                    companyName: this.fromName,
-                    orderUrl: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/orders/${orderId}`,
-                    supportEmail: process.env.SUPPORT_EMAIL || process.env.NODEMAILER_USER,
-                }
-            );
+            const emailResponse = await this.sendEmail(to, subject, OrderUpdateTemplate, {
+                customerName,
+                orderId,
+                orderDate,
+                status,
+                items,
+                total: parseFloat(total).toFixed(2),
+                trackingNumber,
+                trackingUrl,
+                estimatedDelivery,
+                customMessage,
+                companyName: this.fromName,
+                orderUrl: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/orders/${orderId}`,
+                supportEmail: process.env.SUPPORT_EMAIL || process.env.NODEMAILER_USER
+            });
 
             console.log(`Order update email sent successfully for order ${orderId} with status: ${status}`);
             return emailResponse;
-
         } catch (error) {
             console.error(`Failed to send order update email for order ${orderId}:`, error);
             throw error;

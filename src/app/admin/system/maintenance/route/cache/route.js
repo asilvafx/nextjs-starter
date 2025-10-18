@@ -1,7 +1,8 @@
 // app/admin/system/maintenance/route/cache/route.js
+
+import { revalidatePath, revalidateTag } from 'next/cache';
 import { NextResponse } from 'next/server';
 import { withAdminAuth } from '@/lib/server/auth.js';
-import { revalidatePath, revalidateTag } from 'next/cache'; 
 
 async function handlePost(request) {
     try {
@@ -59,11 +60,13 @@ async function handlePost(request) {
                         }
                     }
                 }
-                break; 
-             
+                break;
+
             default:
                 return NextResponse.json(
-                    { error: 'Invalid action. Supported actions: revalidate-path, revalidate-tag, clear-temp, clear-logs, clear-all' },
+                    {
+                        error: 'Invalid action. Supported actions: revalidate-path, revalidate-tag, clear-temp, clear-logs, clear-all'
+                    },
                     { status: 400 }
                 );
         }
@@ -73,7 +76,6 @@ async function handlePost(request) {
             data: results,
             message: `Cache clearing completed. ${results.cleared.length} operations successful, ${results.errors.length} errors.`
         });
-
     } catch (error) {
         console.error('Cache clear error:', error);
         return NextResponse.json(

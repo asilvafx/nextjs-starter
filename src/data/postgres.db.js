@@ -1,21 +1,22 @@
 // data/postgres.db.js
-import { createPool, createClient } from "@vercel/postgres";
-import { put } from '@vercel/blob';
 
-const dbUrl = process.env.POSTGRES_URL; 
+import { put } from '@vercel/blob';
+import { createClient, createPool } from '@vercel/postgres';
+
+const dbUrl = process.env.POSTGRES_URL;
 
 let client;
 try {
     client = createPool({
-        connectionString: dbUrl,
+        connectionString: dbUrl
     });
-} catch (e) {
+} catch (_e) {
     try {
-    client = createClient({
-            connectionString: dbUrl,
-    });
-    } catch (e) {
-    client = null;
+        client = createClient({
+            connectionString: dbUrl
+        });
+    } catch (_e) {
+        client = null;
     }
 }
 
@@ -31,7 +32,7 @@ class PostgresDBService {
         }
 
         try {
-            const start = Date.now();
+            const _start = Date.now();
 
             await client.sql`
                 CREATE TABLE IF NOT EXISTS kv_store (
@@ -42,16 +43,15 @@ class PostgresDBService {
             `;
 
             // Verify table exists
-            const tableCheck = await client.sql`
+            const _tableCheck = await client.sql`
                 SELECT table_name
                 FROM information_schema.tables
                 WHERE table_name = 'kv_store'
             `;
 
             this.initialized = true;
-
         } catch (err) {
-            console.error("❌ Failed to create kv_store table:", err.message);
+            console.error('❌ Failed to create kv_store table:', err.message);
             throw err;
         }
     }
@@ -89,7 +89,7 @@ class PostgresDBService {
             }
 
             const results = {};
-            result.rows.forEach(row => {
+            result.rows.forEach((row) => {
                 const id = this.extractIdFromKey(row.key, table);
                 results[id] = row.data;
             });
@@ -187,7 +187,7 @@ class PostgresDBService {
             }
 
             const results = {};
-            result.rows.forEach(row => {
+            result.rows.forEach((row) => {
                 const id = this.extractIdFromKey(row.key, table);
                 results[id] = row.data;
             });
@@ -213,7 +213,7 @@ class PostgresDBService {
                 updatedAt: new Date().toISOString()
             };
 
-            const result = await client.sql`
+            const _result = await client.sql`
                 INSERT INTO kv_store (key, data)
                 VALUES (${key}, ${JSON.stringify(dataWithMetadata)})
                 RETURNING *
@@ -339,7 +339,7 @@ class PostgresDBService {
             };
 
             // Store metadata in database with a special table for files
-            const metadataKey = cleanPath.replace(/[^a-zA-Z0-9]/g, '_');
+            const _metadataKey = cleanPath.replace(/[^a-zA-Z0-9]/g, '_');
             await this.create(fileMetadata, 'file_metadata');
 
             return {
@@ -349,7 +349,6 @@ class PostgresDBService {
                 size: blob.size,
                 metadata: fileMetadata
             };
-
         } catch (error) {
             console.error('Error in upload:', error);
             throw error;

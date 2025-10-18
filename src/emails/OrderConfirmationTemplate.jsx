@@ -1,6 +1,7 @@
 // emails/OrderConfirmationTemplate.jsx
 import {
     Body,
+    Button,
     Container,
     Head,
     Heading,
@@ -9,39 +10,34 @@ import {
     Link,
     Preview,
     Section,
-    Text,
-    Button,
+    Text
 } from '@react-email/components';
-import * as React from 'react';
 import { emailStyles } from './styles';
 
 export const OrderConfirmationTemplate = ({
-                                              userDisplayName = '[Prénom]',
-                                              companyName = '[Nom de ta marque]',
-                                              orderId = '#12345',
-                                              orderDate = '[date]',
-                                              deliveryAddress = {
-                                                  name: '[Nom]',
-                                                  address: '[Adresse complète]'
-                                              },
-                                              products = [
-                                                  { name: 'T-shirt « Soleil »', size: 'M', quantity: 1 }
-                                              ],
-                                              subtotal = 0,
-                                              shippingCost = 0,
-                                              discountAmount = 0,
-                                              taxEnabled = false,
-                                              taxRate = 0,
-                                              taxAmount = 0,
-                                              taxIncluded = false,
-                                              total = 0,
-                                              orderSummaryUrl = 'https://yourapp.com/orders/12345',
-                                              supportEmail = 'ton.email@domaine.com',
-                                              paymentMethod = null,
-                                              bankTransferDetails = null,
-                                          }) => {
-
-    const logo_img = "https://bplw5mbobnwdstj8.public.blob.vercel-storage.com/logo.png";
+    userDisplayName = '[Prénom]',
+    companyName = '[Nom de ta marque]',
+    orderId = '#12345',
+    orderDate = '[date]',
+    deliveryAddress = {
+        name: '[Nom]',
+        address: '[Adresse complète]'
+    },
+    products = [{ name: 'T-shirt « Soleil »', size: 'M', quantity: 1 }],
+    subtotal = 0,
+    shippingCost = 0,
+    discountAmount = 0,
+    taxEnabled = false,
+    taxRate = 0,
+    taxAmount = 0,
+    taxIncluded = false,
+    total = 0,
+    orderSummaryUrl = 'https://yourapp.com/orders/12345',
+    supportEmail = 'ton.email@domaine.com',
+    paymentMethod = null,
+    bankTransferDetails = null
+}) => {
+    const logo_img = 'https://bplw5mbobnwdstj8.public.blob.vercel-storage.com/logo.png';
 
     return (
         <Html>
@@ -51,13 +47,7 @@ export const OrderConfirmationTemplate = ({
                 <Container style={emailStyles.container}>
                     {/* Logo */}
                     <Section style={emailStyles.logoSection}>
-                        <Img
-                            src={logo_img}
-                            width="150"
-                            height="50"
-                            alt={companyName}
-                            style={emailStyles.logo}
-                        />
+                        <Img src={logo_img} width="150" height="50" alt={companyName} style={emailStyles.logo} />
                     </Section>
 
                     {/* Heading */}
@@ -65,7 +55,8 @@ export const OrderConfirmationTemplate = ({
 
                     {/* Main Message */}
                     <Text style={emailStyles.paragraph}>
-                        Merci pour ta commande chez nous, ça nous fait super plaisir ! 🙏 On a bien reçu ton paiement, et ton colis va être préparé avec amour dans les prochaines 24 à 48h.
+                        Merci pour ta commande chez nous, ça nous fait super plaisir ! 🙏 On a bien reçu ton paiement,
+                        et ton colis va être préparé avec amour dans les prochaines 24 à 48h.
                     </Text>
 
                     {/* Divider */}
@@ -84,8 +75,10 @@ export const OrderConfirmationTemplate = ({
                             • <strong>Commandé le :</strong> {orderDate}
                         </div>
                         <div style={emailStyles.orderDetailItem}>
-                            • <strong>Adresse de livraison :</strong><br />
-                            &nbsp;&nbsp;{deliveryAddress.name}<br />
+                            • <strong>Adresse de livraison :</strong>
+                            <br />
+                            &nbsp;&nbsp;{deliveryAddress.name}
+                            <br />
                             &nbsp;&nbsp;{deliveryAddress.address}
                         </div>
 
@@ -95,7 +88,8 @@ export const OrderConfirmationTemplate = ({
                             </div>
                             {products.map((product, index) => (
                                 <div key={index} style={emailStyles.orderDetailItem}>
-                                    • {product.name} {product.size ? `– ${product.size}` : ''} – {product.quantity}x {product.price ? `(${product.price}€ chacun)` : ''}
+                                    • {product.name} {product.size ? `– ${product.size}` : ''} – {product.quantity}x{' '}
+                                    {product.price ? `(${product.price}€ chacun)` : ''}
                                 </div>
                             ))}
                         </div>
@@ -106,32 +100,44 @@ export const OrderConfirmationTemplate = ({
                                 <div style={emailStyles.productsSectionTitle}>
                                     <strong>Récapitulatif des prix :</strong>
                                 </div>
-                                
+
                                 {subtotal > 0 && (
                                     <div style={emailStyles.orderDetailItem}>
-                                        • {taxEnabled && taxIncluded ? 'Sous-total (HT)' : 'Sous-total'} : {(taxEnabled && taxIncluded && taxAmount > 0 ? Number(subtotal) - Number(taxAmount) : Number(subtotal)).toFixed(2)}€
+                                        • {taxEnabled && taxIncluded ? 'Sous-total (HT)' : 'Sous-total'} :{' '}
+                                        {(taxEnabled && taxIncluded && taxAmount > 0
+                                            ? Number(subtotal) - Number(taxAmount)
+                                            : Number(subtotal)
+                                        ).toFixed(2)}
+                                        €
                                     </div>
                                 )}
-                                
+
                                 {taxEnabled && taxAmount > 0 && (
                                     <div style={emailStyles.orderDetailItem}>
                                         • TVA ({taxRate}%) : {Number(taxAmount).toFixed(2)}€
                                     </div>
                                 )}
-                                
+
                                 {shippingCost > 0 && (
                                     <div style={emailStyles.orderDetailItem}>
                                         • Frais de port : {Number(shippingCost).toFixed(2)}€
                                     </div>
                                 )}
-                                
+
                                 {discountAmount > 0 && (
                                     <div style={emailStyles.orderDetailItem}>
                                         • Remise : -{Number(discountAmount).toFixed(2)}€
                                     </div>
                                 )}
-                                
-                                <div style={{...emailStyles.orderDetailItem, fontWeight: 'bold', borderTop: '1px solid #e0e0e0', paddingTop: '8px', marginTop: '8px'}}>
+
+                                <div
+                                    style={{
+                                        ...emailStyles.orderDetailItem,
+                                        fontWeight: 'bold',
+                                        borderTop: '1px solid #e0e0e0',
+                                        paddingTop: '8px',
+                                        marginTop: '8px'
+                                    }}>
                                     • <strong>Total : {Number(total).toFixed(2)}€</strong>
                                 </div>
                             </div>
@@ -140,14 +146,14 @@ export const OrderConfirmationTemplate = ({
 
                     {/* Bank Transfer Details */}
                     {paymentMethod === 'bank_transfer' && bankTransferDetails && (
-                        <>\n                            {/* Divider */}
+                        <>
+                            \n {/* Divider */}
                             <Section style={emailStyles.dividerSection}>
                                 <div style={emailStyles.divider}>⸻</div>
                             </Section>
-
                             <Section style={emailStyles.featuresSection}>
                                 <Text style={emailStyles.featuresTitle}>🏦 Détails pour le virement bancaire :</Text>
-                                
+
                                 <div style={emailStyles.productsSection}>
                                     {bankTransferDetails.bankName && (
                                         <div style={emailStyles.orderDetailItem}>
@@ -176,14 +182,22 @@ export const OrderConfirmationTemplate = ({
                                         • <strong>Montant à virer :</strong> {Number(total).toFixed(2)}€
                                     </div>
                                     {bankTransferDetails.additionalInstructions && (
-                                        <div style={{...emailStyles.orderDetailItem, fontStyle: 'italic', marginTop: '12px'}}>
-                                            ℹ️ <strong>Instructions :</strong> {bankTransferDetails.additionalInstructions}
+                                        <div
+                                            style={{
+                                                ...emailStyles.orderDetailItem,
+                                                fontStyle: 'italic',
+                                                marginTop: '12px'
+                                            }}>
+                                            ℹ️ <strong>Instructions :</strong>{' '}
+                                            {bankTransferDetails.additionalInstructions}
                                         </div>
                                     )}
                                 </div>
 
                                 <Text style={emailStyles.paragraph}>
-                                    <strong>Important :</strong> N'oublie pas d'indiquer le numéro de commande <strong>{orderId}</strong> en référence de ton virement. Ta commande sera traitée dès réception du paiement.
+                                    <strong>Important :</strong> N'oublie pas d'indiquer le numéro de commande{' '}
+                                    <strong>{orderId}</strong> en référence de ton virement. Ta commande sera traitée
+                                    dès réception du paiement.
                                 </Text>
                             </Section>
                         </>
@@ -221,16 +235,20 @@ export const OrderConfirmationTemplate = ({
                         <Text style={emailStyles.featuresTitle}>Une question, un doute ?</Text>
 
                         <Text style={emailStyles.paragraph}>
-                            Tu peux nous écrire à <Link href={`mailto:${supportEmail}`} style={emailStyles.link}>{supportEmail}</Link>, ou répondre directement à ce mail.
-                            On répond toujours avec le sourire (et souvent très vite !).
+                            Tu peux nous écrire à{' '}
+                            <Link href={`mailto:${supportEmail}`} style={emailStyles.link}>
+                                {supportEmail}
+                            </Link>
+                            , ou répondre directement à ce mail. On répond toujours avec le sourire (et souvent très
+                            vite !).
                         </Text>
                     </Section>
 
                     {/* Footer */}
                     <Section style={emailStyles.footer}>
                         <Text style={emailStyles.footerText}>
-                            Encore merci pour ta confiance,<br />
-                            À très bientôt 💛<br />
+                            Encore merci pour ta confiance,
+                            <br />À très bientôt 💛<br />
                             {companyName}
                         </Text>
                     </Section>

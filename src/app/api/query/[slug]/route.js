@@ -1,7 +1,7 @@
 // app/api/query/[slug]/route.js
 import { NextResponse } from 'next/server';
 import DBService from '@/data/rest.db.js';
-import { withAuth, withAdminAuth } from '@/lib/server/auth.js';
+import { withAdminAuth, withAuth } from '@/lib/server/auth.js';
 
 // Helper function to get request body safely
 async function getRequestBody(request) {
@@ -25,15 +25,12 @@ async function handleGet(request, { params }) {
         const id = url.searchParams.get('id');
         const key = url.searchParams.get('key');
         const value = url.searchParams.get('value');
-        const page = parseInt(url.searchParams.get('page')) || 1;
-        const limit = Math.min(parseInt(url.searchParams.get('limit')) || 10, 100); // Max 100 items
+        const page = parseInt(url.searchParams.get('page'), 10) || 1;
+        const limit = Math.min(parseInt(url.searchParams.get('limit'), 10) || 10, 100); // Max 100 items
         const search = url.searchParams.get('search');
 
         if (!slug) {
-            return NextResponse.json(
-                { error: 'Collection name is required' },
-                { status: 400 }
-            );
+            return NextResponse.json({ error: 'Collection name is required' }, { status: 400 });
         }
 
         let result;
@@ -45,11 +42,11 @@ async function handleGet(request, { params }) {
                 result = await DBService.getItemsByKeyValue('id', id, slug);
                 if (!result) {
                     return NextResponse.json({
-                    success: false,
-                    error: 'Record not found'
-                });
+                        success: false,
+                        error: 'Record not found'
+                    });
+                }
             }
-            }   
             return NextResponse.json({
                 success: true,
                 data: result
@@ -59,10 +56,7 @@ async function handleGet(request, { params }) {
         else if (key && value) {
             result = await DBService.getItemsByKeyValue(key, value, slug);
             if (!result || Object.keys(result).length === 0) {
-                return NextResponse.json(
-                    { error: 'No records found' },
-                    { status: 404 }
-                );
+                return NextResponse.json({ error: 'No records found' }, { status: 404 });
             }
         }
         // Get all items
@@ -98,17 +92,20 @@ async function handleGet(request, { params }) {
         // Search functionality
         if (search && items.length > 0) {
             const searchTerm = search.toLowerCase();
-            items = items.filter(item => {
+            items = items.filter((item) => {
                 if (!item) return false;
 
                 const searchableFields = [
-                    item.name, item.title, item.description,
-                    item.category, item.email, item.displayName
+                    item.name,
+                    item.title,
+                    item.description,
+                    item.category,
+                    item.email,
+                    item.displayName
                 ];
 
-                return searchableFields.some(field =>
-                    field && typeof field === 'string' &&
-                    field.toLowerCase().includes(searchTerm)
+                return searchableFields.some(
+                    (field) => field && typeof field === 'string' && field.toLowerCase().includes(searchTerm)
                 );
             });
         }
@@ -126,11 +123,11 @@ async function handleGet(request, { params }) {
         let paginatedItems = items;
         let startIndex = 1;
         let endIndex = startIndex;
-        if(limit > 0){
+        if (limit > 0) {
             startIndex = (page - 1) * limit;
             endIndex = startIndex + limit;
             paginatedItems = items.slice(startIndex, endIndex);
-        } 
+        }
 
         return NextResponse.json({
             success: true,
@@ -143,7 +140,6 @@ async function handleGet(request, { params }) {
                 hasPrev: page > 1
             }
         });
-
     } catch (error) {
         console.error('Get data error:', error);
         return NextResponse.json(
@@ -163,17 +159,11 @@ async function handlePost(request, { params }) {
         const data = await getRequestBody(request);
 
         if (!slug) {
-            return NextResponse.json(
-                { error: 'Collection name is required' },
-                { status: 400 }
-            );
+            return NextResponse.json({ error: 'Collection name is required' }, { status: 400 });
         }
 
         if (!data) {
-            return NextResponse.json(
-                { error: 'Request body is required' },
-                { status: 400 }
-            );
+            return NextResponse.json({ error: 'Request body is required' }, { status: 400 });
         }
 
         // Add metadata
@@ -188,21 +178,20 @@ async function handlePost(request, { params }) {
         const newItem = await DBService.create(createData, slug);
 
         if (!newItem) {
-            return NextResponse.json(
-                { error: 'Failed to create record.' },
-                { status: 500 }
-            );
+            return NextResponse.json({ error: 'Failed to create record.' }, { status: 500 });
         }
 
-        return NextResponse.json({
-            success: true,
-            data: {
-                id: newItem.id || newItem.key || Date.now().toString(),
-                ...createData
+        return NextResponse.json(
+            {
+                success: true,
+                data: {
+                    id: newItem.id || newItem.key || Date.now().toString(),
+                    ...createData
+                },
+                message: 'Record created successfully!'
             },
-            message: 'Record created successfully!'
-        }, { status: 201 });
-
+            { status: 201 }
+        );
     } catch (error) {
         console.error('Create data error:', error);
         return NextResponse.json(
@@ -222,30 +211,21 @@ async function handlePut(request, { params }) {
         const data = await getRequestBody(request);
 
         if (!slug) {
-            return NextResponse.json(
-                { error: 'Collection name is required' },
-                { status: 400 }
-            );
+            return NextResponse.json({ error: 'Collection name is required' }, { status: 400 });
         }
 
         if (!data || !data.id) {
-            return NextResponse.json(
-                { error: 'Request body with id is required' },
-                { status: 400 }
-            );
+            return NextResponse.json({ error: 'Request body with id is required' }, { status: 400 });
         }
 
-        // Check if item exists 
+        // Check if item exists
         let tryId = data.id;
-        const existingItem = await DBService.read(tryId, slug); 
+        const existingItem = await DBService.read(tryId, slug);
         if (!existingItem) {
-            tryId = await DBService.getItemKey('id', tryId, slug);  
-            if(!tryId){
-              return NextResponse.json(
-                { error: 'Record not found' },
-                { status: 404 }
-            );
-            } 
+            tryId = await DBService.getItemKey('id', tryId, slug);
+            if (!tryId) {
+                return NextResponse.json({ error: 'Record not found' }, { status: 404 });
+            }
         }
 
         // Prepare update data (exclude id from update data)
@@ -260,10 +240,7 @@ async function handlePut(request, { params }) {
         const updatedItem = await DBService.update(tryId, updateData, slug);
 
         if (!updatedItem) {
-            return NextResponse.json(
-                { error: 'Failed to update record.' },
-                { status: 500 }
-            );
+            return NextResponse.json({ error: 'Failed to update record.' }, { status: 500 });
         }
 
         return NextResponse.json({
@@ -271,7 +248,6 @@ async function handlePut(request, { params }) {
             data: { id, ...updateData },
             message: 'Record updated successfully!'
         });
-
     } catch (error) {
         console.error('Update data error:', error);
         return NextResponse.json(
@@ -292,40 +268,28 @@ async function handleDelete(request, { params }) {
         const id = url.searchParams.get('id');
 
         if (!slug) {
-            return NextResponse.json(
-                { error: 'Collection name is required' },
-                { status: 400 }
-            );
+            return NextResponse.json({ error: 'Collection name is required' }, { status: 400 });
         }
 
         if (!id) {
-            return NextResponse.json(
-                { error: 'Record ID is required' },
-                { status: 400 }
-            );
+            return NextResponse.json({ error: 'Record ID is required' }, { status: 400 });
         }
 
         // Check if item exists
-        
-        let tryId = id; 
-        const existingItem = await DBService.read(tryId, slug); 
+
+        let tryId = id;
+        const existingItem = await DBService.read(tryId, slug);
         if (!existingItem) {
-            tryId = await DBService.getItemKey('id', tryId, slug);  
-            if(!tryId){
-              return NextResponse.json(
-                { error: 'Record not found' },
-                { status: 404 }
-            );
-            } 
+            tryId = await DBService.getItemKey('id', tryId, slug);
+            if (!tryId) {
+                return NextResponse.json({ error: 'Record not found' }, { status: 404 });
+            }
         }
 
         const deleted = await DBService.delete(tryId, slug);
 
         if (!deleted) {
-            return NextResponse.json(
-                { error: 'Failed to delete record.' },
-                { status: 500 }
-            );
+            return NextResponse.json({ error: 'Failed to delete record.' }, { status: 500 });
         }
 
         return NextResponse.json({
@@ -333,7 +297,6 @@ async function handleDelete(request, { params }) {
             message: 'Record deleted successfully!',
             data: { id }
         });
-
     } catch (error) {
         console.error('Delete record error:', error);
         return NextResponse.json(

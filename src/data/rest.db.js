@@ -1,6 +1,8 @@
 // data/rest.db.js
-import RedisService from './redis.db.js';
+
 import PostgresService from './postgres.db.js';
+import RedisService from './redis.db.js';
+
 // Import future providers here
 // import FirebaseService from './firebase.db.js';
 // import MongoService from './mongo.db.js';
@@ -11,7 +13,7 @@ class DBService {
         // Database providers registry
         this.providers = {
             redis: RedisService,
-            postgres: PostgresService,
+            postgres: PostgresService
             // Add future providers here
             // firebase: FirebaseService,
             // mongodb: MongoService,
@@ -20,11 +22,11 @@ class DBService {
 
         // Initialize the database service based on available environment variables
         try {
-            if (process.env.POSTGRES_URL ) { 
+            if (process.env.POSTGRES_URL) {
                 this.provider = 'postgres';
                 // Check if PostgresService is a constructor or already an instance
                 this.service = typeof PostgresService === 'function' ? new PostgresService() : PostgresService;
-            } else if (process.env.REDIS_URL) { 
+            } else if (process.env.REDIS_URL) {
                 this.provider = 'redis';
                 // Check if RedisService is a constructor or already an instance
                 this.service = typeof RedisService === 'function' ? new RedisService() : RedisService;
@@ -44,7 +46,9 @@ class DBService {
     getProviderService(providerName) {
         const service = this.providers[providerName.toLowerCase()];
         if (!service) {
-            throw new Error(`Unknown database provider: ${providerName}. Available: ${Object.keys(this.providers).join(', ')}`);
+            throw new Error(
+                `Unknown database provider: ${providerName}. Available: ${Object.keys(this.providers).join(', ')}`
+            );
         }
         return service;
     }
@@ -258,7 +262,7 @@ class DBService {
     async healthCheck() {
         try {
             // Simple test to verify connection
-            const testResult = await this.readAll('test_table');
+            const _testResult = await this.readAll('test_table');
             return {
                 provider: this.provider,
                 status: 'connected',
@@ -399,16 +403,27 @@ class DBService {
 
                 // Process records in batches
                 for (let batchStart = 0; batchStart < recordEntries.length; batchStart += batchSize) {
-                    const batch = recordEntries.slice(batchStart, Math.min(batchStart + batchSize, recordEntries.length));
+                    const batch = recordEntries.slice(
+                        batchStart,
+                        Math.min(batchStart + batchSize, recordEntries.length)
+                    );
 
-                    console.log(`Processing batch ${Math.floor(batchStart / batchSize) + 1}/${Math.ceil(recordEntries.length / batchSize)} (${batch.length} records)`);
+                    console.log(
+                        `Processing batch ${Math.floor(batchStart / batchSize) + 1}/${Math.ceil(recordEntries.length / batchSize)} (${batch.length} records)`
+                    );
 
                     for (const [originalKey, recordData] of batch) {
                         try {
                             // Apply data transformation if provided
                             let transformedData = recordData;
                             if (transformData && typeof transformData === 'function') {
-                                transformedData = await transformData(recordData, originalKey, table, fromProvider, toProvider);
+                                transformedData = await transformData(
+                                    recordData,
+                                    originalKey,
+                                    table,
+                                    fromProvider,
+                                    toProvider
+                                );
                             }
 
                             // Create record in destination
@@ -423,7 +438,6 @@ class DBService {
 
                             tableResult.migratedRecords++;
                             migrationResults.summary.migratedRecords++;
-
                         } catch (error) {
                             const errorInfo = {
                                 originalKey,
@@ -451,7 +465,7 @@ class DBService {
                         onProgress({
                             phase: 'migration',
                             currentTable: table,
-                            tableProgress: ((batchStart + batch.length) / recordEntries.length * 100).toFixed(2),
+                            tableProgress: (((batchStart + batch.length) / recordEntries.length) * 100).toFixed(2),
                             recordsProcessed: batchStart + batch.length,
                             totalRecordsInTable: recordEntries.length
                         });
@@ -467,8 +481,9 @@ class DBService {
                     migrationResults.summary.failedTables++;
                 }
 
-                console.log(`Table ${table} migration completed: ${tableResult.migratedRecords}/${tableResult.totalRecords} records migrated`);
-
+                console.log(
+                    `Table ${table} migration completed: ${tableResult.migratedRecords}/${tableResult.totalRecords} records migrated`
+                );
             } catch (error) {
                 tableResult.status = 'failed';
                 tableResult.endTime = new Date().toISOString();
@@ -496,12 +511,17 @@ class DBService {
         this.switchProvider(originalProvider);
 
         migrationResults.endTime = new Date().toISOString();
-        migrationResults.duration = new Date(migrationResults.endTime).getTime() - new Date(migrationResults.startTime).getTime();
+        migrationResults.duration =
+            new Date(migrationResults.endTime).getTime() - new Date(migrationResults.startTime).getTime();
 
         console.log('\n=== MIGRATION SUMMARY ===');
         console.log(`Duration: ${migrationResults.duration}ms`);
-        console.log(`Tables: ${migrationResults.summary.successfulTables}/${migrationResults.summary.totalTables} successful`);
-        console.log(`Records: ${migrationResults.summary.migratedRecords}/${migrationResults.summary.totalRecords} migrated`);
+        console.log(
+            `Tables: ${migrationResults.summary.successfulTables}/${migrationResults.summary.totalTables} successful`
+        );
+        console.log(
+            `Records: ${migrationResults.summary.migratedRecords}/${migrationResults.summary.totalRecords} migrated`
+        );
         if (migrationResults.summary.errors.length > 0) {
             console.log(`Errors: ${migrationResults.summary.errors.length}`);
         }
@@ -568,7 +588,6 @@ class DBService {
                     restoredRecords: restoredCount,
                     status: 'success'
                 };
-
             } catch (error) {
                 results[table] = { error: error.message, status: 'failed' };
             }

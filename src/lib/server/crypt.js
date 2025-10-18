@@ -1,20 +1,20 @@
 // lib/crypt.js
-import { scrypt, randomBytes, timingSafeEqual } from 'crypto';
-import { promisify } from 'util'; 
+import { randomBytes, scrypt, timingSafeEqual } from 'node:crypto';
+import { promisify } from 'node:util';
 import CryptoJS from 'crypto-js';
- 
+
 const CryptoJSAesJson = {
-    stringify: function (cipherParams) {
+    stringify: (cipherParams) => {
         try {
-            const j = {ct: cipherParams.ciphertext.toString(CryptoJS.enc.Base64)};
+            const j = { ct: cipherParams.ciphertext.toString(CryptoJS.enc.Base64) };
             if (cipherParams.iv) j.iv = cipherParams.iv.toString();
             if (cipherParams.salt) j.s = cipherParams.salt.toString();
             return JSON.stringify(j);
-        } catch (error) {
+        } catch (_error) {
             return null;
         }
     },
-    parse: function (jsonStr) {
+    parse: (jsonStr) => {
         try {
             if (!isValidJson(jsonStr)) return null;
             const j = JSON.parse(jsonStr);
@@ -24,14 +24,14 @@ const CryptoJSAesJson = {
             if (j.iv) cipherParams.iv = CryptoJS.enc.Hex.parse(j.iv);
             if (j.s) cipherParams.salt = CryptoJS.enc.Hex.parse(j.s);
             return cipherParams;
-        } catch (error) {
+        } catch (_error) {
             return null;
         }
     }
 };
 
 function isValidJson(str) {
-    if (typeof str !== "string") return false;
+    if (typeof str !== 'string') return false;
     try {
         JSON.parse(str);
         return true;
@@ -48,9 +48,13 @@ export const encryptHash = (password) => {
 
 export const decryptHash = (encryptedPassword) => {
     try {
-        const decrypted = CryptoJS.AES.decrypt(encryptedPassword, process.env.NEXT_SECRET_KEY || 'your-super-secret-key', {
-            format: CryptoJSAesJson
-        }).toString(CryptoJS.enc.Utf8);
+        const decrypted = CryptoJS.AES.decrypt(
+            encryptedPassword,
+            process.env.NEXT_SECRET_KEY || 'your-super-secret-key',
+            {
+                format: CryptoJSAesJson
+            }
+        ).toString(CryptoJS.enc.Utf8);
 
         if (!decrypted) {
             throw new Error('Decryption failed');
@@ -58,14 +62,13 @@ export const decryptHash = (encryptedPassword) => {
 
         return JSON.parse(decrypted);
     } catch (error) {
-        throw new Error('Decryption error: ' + error);
+        throw new Error(`Decryption error: ${error}`);
     }
 };
-const scryptAsync = promisify(scrypt); 
- 
+const scryptAsync = promisify(scrypt);
 
 // Encrypt password with salt
-export async function encryptPassword(password, salt=null) {
+export async function encryptPassword(password, salt = null) {
     if (!salt) {
         salt = process.env.NEXT_SECRET_KEY;
     }
@@ -79,10 +82,7 @@ export async function validatePassword(password, salt, hashedPassword) {
     const inputHashHex = inputHash.toString('hex').normalize();
 
     // Secure compare
-    return timingSafeEqual(
-        Buffer.from(inputHashHex, 'hex'),
-        Buffer.from(hashedPassword, 'hex')
-    );
+    return timingSafeEqual(Buffer.from(inputHashHex, 'hex'), Buffer.from(hashedPassword, 'hex'));
 }
 
 // Generate salt

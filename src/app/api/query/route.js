@@ -2,11 +2,8 @@
 import { NextResponse } from 'next/server';
 
 // POST handler for file uploads
-async function Query(request) {
-    return NextResponse.json(
-        { error: 'Invalid request!' },
-        { status: 500 }
-    );
+async function Query(_request) {
+    return NextResponse.json({ error: 'Invalid request!' }, { status: 500 });
 }
 
 // Export with authentication

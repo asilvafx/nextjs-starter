@@ -15,6 +15,10 @@ const withNextIntl = createNextIntlPlugin(
 // Base config
 const nextConfig: NextConfig = {
     output: 'standalone',
+    eslint: {
+        // Disable ESLint during builds since we're using Biome
+        ignoreDuringBuilds: true,
+    },
     images: {
         remotePatterns: [
             new URL('https://**.blob.vercel-storage.com/**'),

@@ -1,11 +1,10 @@
 // app/auth/api/handler/route.js
 import { NextResponse } from 'next/server';
-
+import { v6 as uuidv6 } from 'uuid';
 import DBService from '@/data/rest.db.js';
 import { encryptPassword, generateSalt, validatePassword } from '@/lib/server/crypt';
 import EmailService from '@/lib/server/email';
-import { createWallet, loadWeb3Config, clearWeb3ConfigCache } from '@/lib/server/web3';
-import { v6 as uuidv6 } from 'uuid';
+import { createWallet, loadWeb3Config } from '@/lib/server/web3';
 
 // Force Node.js runtime
 export const runtime = 'nodejs';
@@ -27,7 +26,7 @@ export async function POST(request) {
 
 async function handleLogin(email, passwordHash, { client }) {
     try {
-        const user = await DBService.readBy("email", email, "users");
+        const user = await DBService.readBy('email', email, 'users');
 
         if (!user) {
             throw new Error('Invalid credentials.');
@@ -67,7 +66,7 @@ async function handleLogin(email, passwordHash, { client }) {
                         };
                         userLoginData = { ...userLoginData, web3: web3data };
                         const userId = await DBService.getItemKey('email', user.email, 'users');
-                        await DBService.update(userId, {web3: web3data}, 'users');
+                        await DBService.update(userId, { web3: web3data }, 'users');
                     }
                 }
             }
@@ -118,13 +117,10 @@ async function handleRegistration(email, passwordHash, { name, client }) {
             throw new Error('Password must be at least 8 characters with lowercase and one uppercase or number.');
         }
 
-        const existingUser = await DBService.readBy("email", email, "users");
+        const existingUser = await DBService.readBy('email', email, 'users');
 
         if (existingUser) {
-            return NextResponse.json(
-                { error: 'Email already registered.' },
-                { status: 400 }
-            );
+            return NextResponse.json({ error: 'Email already registered.' }, { status: 400 });
             //throw new Error('Email already registered.');
         }
 
@@ -138,7 +134,7 @@ async function handleRegistration(email, passwordHash, { name, client }) {
 
         const uid = uuidv6();
 
-        let userRegisterData = { 
+        let userRegisterData = {
             uid: uid,
             displayName: name,
             email: email,
@@ -171,12 +167,11 @@ async function handleRegistration(email, passwordHash, { name, client }) {
             console.error('Web3 setup error:', web3Error);
         }
 
-        await DBService.create(userRegisterData, "users");
+        await DBService.create(userRegisterData, 'users');
 
         // Send welcome email
         try {
             await EmailService.sendWelcomeEmail(email, name);
-
         } catch (emailError) {
             console.error('Failed to send welcome email:', emailError);
         }

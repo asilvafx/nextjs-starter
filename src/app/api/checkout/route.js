@@ -1,11 +1,10 @@
 // @/app/api/checkout/route.js
 
 import { NextResponse } from 'next/server';
-import EmailService from '@/lib/server/email';
 import DBService from '@/data/rest.db.js';
+import EmailService from '@/lib/server/email';
 
 export async function POST(request) {
-
     try {
         const body = await request.json();
 
@@ -33,7 +32,7 @@ export async function POST(request) {
 
         // Calculate VAT if applicable
         let vatAmount = 0;
-        let vatPercentage = storeSettings?.vatPercentage || 20;
+        const vatPercentage = storeSettings?.vatPercentage || 20;
         let finalTotal = orderData.amount;
 
         if (storeSettings?.applyVatAtCheckout && !storeSettings?.vatIncludedInPrice) {
@@ -56,16 +55,19 @@ export async function POST(request) {
 
         // 1. First, save the complete orderData to the database
         try {
-            await DBService.create(updatedOrderData, "orders");
+            await DBService.create(updatedOrderData, 'orders');
 
             const existingCustomer = await DBService.getItemByKey('email', orderData.cst_email, 'customers');
             if (!existingCustomer) {
-                await DBService.create({
-                    name: orderData.cst_name,
-                    email: orderData.cst_email,
-                    address: orderData.shipping_address || {}, 
-                    createdAt: new Date().toISOString()
-                }, 'customers');    
+                await DBService.create(
+                    {
+                        name: orderData.cst_name,
+                        email: orderData.cst_email,
+                        address: orderData.shipping_address || {},
+                        createdAt: new Date().toISOString()
+                    },
+                    'customers'
+                );
             }
         } catch (dbError) {
             console.error('Failed to save order to database:', dbError);
@@ -75,7 +77,7 @@ export async function POST(request) {
 
         // 2. Validate required fields for email sending
         const requiredEmailFields = ['email', 'customerName', 'orderId', 'items', 'total'];
-        const missingEmailFields = requiredEmailFields.filter(field => !emailPayload[field]);
+        const missingEmailFields = requiredEmailFields.filter((field) => !emailPayload[field]);
 
         if (missingEmailFields.length > 0) {
             return NextResponse.json(
@@ -87,17 +89,8 @@ export async function POST(request) {
             );
         }
 
-        const {
-            email,
-            customerName,
-            orderId,
-            orderDate,
-            items,
-            subtotal,
-            shippingCost,
-            total,
-            shippingAddress,
-        } = emailPayload;
+        const { email, customerName, orderId, orderDate, items, subtotal, shippingCost, total, shippingAddress } =
+            emailPayload;
 
         // Validate items array
         if (!Array.isArray(items) || items.length === 0) {
@@ -123,14 +116,16 @@ export async function POST(request) {
         }
 
         // Format order date if not provided
-        const formattedOrderDate = orderDate || new Date().toLocaleDateString('fr-FR', {
-            weekday: 'long',
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit'
-        });
+        const formattedOrderDate =
+            orderDate ||
+            new Date().toLocaleDateString('fr-FR', {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
 
         // Parse shipping address if it's a string
         let parsedShippingAddress = shippingAddress;
@@ -148,7 +143,7 @@ export async function POST(request) {
         if (typeof items === 'string') {
             try {
                 parsedItems = JSON.parse(items);
-            } catch (e) {
+            } catch (_e) {
                 return NextResponse.json(
                     {
                         success: false,
@@ -171,10 +166,8 @@ export async function POST(request) {
         }
 
         // Ensure each item has required fields
-        const itemValidation = parsedItems.every(item =>
-            item.name &&
-            typeof item.price === 'number' &&
-            typeof item.quantity === 'number'
+        const itemValidation = parsedItems.every(
+            (item) => item.name && typeof item.price === 'number' && typeof item.quantity === 'number'
         );
 
         if (!itemValidation) {
@@ -189,23 +182,20 @@ export async function POST(request) {
 
         console.log('Sending order confirmation email to:', email, 'for order:', orderId);
 
-        const emailResponse = await EmailService.sendOrderConfirmationEmail(
-            email,
-            {
-                customerName,
-                orderId,
-                orderDate: formattedOrderDate,
-                items: parsedItems,
-                subtotal: subtotal || '0.00',
-                shippingCost: shippingCost || '0.00',
-                total: finalTotal.toFixed(2),
-                vatAmount: vatAmount.toFixed(2),
-                vatPercentage: vatPercentage,
-                vatIncluded: storeSettings?.vatIncludedInPrice || false,
-                currency: storeSettings?.currency || 'EUR',
-                shippingAddress: parsedShippingAddress || {}, 
-            }
-        );
+        const emailResponse = await EmailService.sendOrderConfirmationEmail(email, {
+            customerName,
+            orderId,
+            orderDate: formattedOrderDate,
+            items: parsedItems,
+            subtotal: subtotal || '0.00',
+            shippingCost: shippingCost || '0.00',
+            total: finalTotal.toFixed(2),
+            vatAmount: vatAmount.toFixed(2),
+            vatPercentage: vatPercentage,
+            vatIncluded: storeSettings?.vatIncludedInPrice || false,
+            currency: storeSettings?.currency || 'EUR',
+            shippingAddress: parsedShippingAddress || {}
+        });
 
         console.log('Order confirmation email sent successfully:', emailResponse);
 
@@ -213,9 +203,8 @@ export async function POST(request) {
             success: true,
             message: 'Order saved to database and confirmation email sent successfully',
             emailId: emailResponse?.id || emailResponse?.messageId,
-            orderId: orderData.uid || orderData.orderId,
+            orderId: orderData.uid || orderData.orderId
         });
-
     } catch (error) {
         console.error('Failed to process order:', error);
 

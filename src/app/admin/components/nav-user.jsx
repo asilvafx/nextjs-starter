@@ -1,197 +1,176 @@
 // @/app/admin/components/nav-user.jsx
 
-"use client"
+'use client';
 
-import Link from 'next/link'
+import { ArrowUpDown, BadgeCheck, Bell, ChevronsUpDown, Coins, Copy, Globe, LogOut, Wallet } from 'lucide-react';
+import Link from 'next/link';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
-  BadgeCheck,
-  Bell,
-  ChevronsUpDown,
-  CreditCard,
-  LogOut,
-  Globe,
-  Wallet,
-  Copy,
-  ArrowUpDown,
-  Coins,
-} from "lucide-react"
-
-import { useWeb3Settings } from '@/hooks/useWeb3'
-import { useWeb3 } from '@/hooks/useWeb3'
-
-import {
-  Avatar,
-  AvatarFallback,
-  AvatarImage,
-} from "@/components/ui/avatar"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuGroup,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import {
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-  useSidebar,
-} from "@/components/ui/sidebar"
- 
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuGroup,
+    DropdownMenuItem,
+    DropdownMenuLabel,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger
+} from '@/components/ui/dropdown-menu';
+import { SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar } from '@/components/ui/sidebar';
+import { useWeb3, useWeb3Settings } from '@/hooks/useWeb3';
 
 export function NavUser({ user }) {
-  const { isMobile } = useSidebar()
-  const { isWeb3Enabled } = useWeb3Settings()
-  const { 
-    userWallet, 
-    formattedBalance, 
-    formattedAddress, 
-    copyAddress, 
-    isLoading: web3Loading,
-    web3Config 
-  } = useWeb3()
+    const { isMobile } = useSidebar();
+    const { isWeb3Enabled } = useWeb3Settings();
+    const {
+        userWallet,
+        formattedBalance,
+        formattedAddress,
+        copyAddress,
+        isLoading: web3Loading,
+        web3Config
+    } = useWeb3();
 
-  return (
-    <SidebarMenu>
-      <SidebarMenuItem>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <SidebarMenuButton
-              size="lg"
-              className="border data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
-            >
-              <Avatar className="h-8 w-8 rounded-lg">
-                <AvatarImage src={user?.avatar || '/images/avatar.webp'} alt={user?.displayName} />
-                <AvatarFallback className="rounded-lg">{user?.displayName.charAt(0,2)}</AvatarFallback>
-              </Avatar>
-              <div className="grid flex-1 text-left text-sm leading-tight">
-                <span className="truncate font-medium">{user?.displayName}</span>
-                <span className="truncate text-xs">{user?.email}</span>
-                {isWeb3Enabled && !web3Loading && userWallet && (
-                  <div className="flex items-center gap-2 mt-1">
-                    <Wallet className="h-3 w-3 text-muted-foreground" />
-                    <span className="text-xs text-muted-foreground">
-                      {formattedBalance || '0.0000'} {web3Config?.WEB3_CONTRACT_SYMBOL || 'ETH'}
-                    </span>
-                  </div>
-                )}
-                {isWeb3Enabled && web3Loading && (
-                  <div className="flex items-center gap-2 mt-1">
-                    <div className="h-3 w-3 animate-spin rounded-full border border-muted-foreground border-t-transparent" />
-                    <span className="text-xs text-muted-foreground">Loading wallet...</span>
-                  </div>
-                )}
-              </div>
-              <ChevronsUpDown className="ml-auto size-4" />
-            </SidebarMenuButton>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent
-            className="w-(--radix-dropdown-menu-trigger-width) min-w-56 rounded-lg"
-            side={isMobile ? "bottom" : "right"}
-            align="end"
-            sideOffset={4}
-          >
-            <DropdownMenuLabel className="p-0 font-normal">
-              <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm cursor-default">
-                <Avatar className="h-8 w-8 rounded-lg">
-                  <AvatarImage src={user?.avatar || '/images/avatar.webp'} alt={user?.displayName} />
-                  <AvatarFallback className="rounded-lg">CN</AvatarFallback>
-                </Avatar>
-                <div className="grid flex-1 text-left text-sm leading-tight">
-                  <span className="truncate font-medium">{user?.displayName}</span>
-                  <span className="truncate text-xs">{user?.email}</span>
-                  {isWeb3Enabled && !web3Loading && userWallet && (
-                    <div className="flex items-center gap-2 mt-1">
-                      <Wallet className="h-3 w-3 text-muted-foreground" />
-                      <span className="text-xs text-muted-foreground">
-                        {formattedBalance || '0.0000'} {web3Config?.WEB3_CONTRACT_SYMBOL || 'ETH'}
-                      </span>
-                    </div>
-                  )}
-                  {isWeb3Enabled && web3Loading && (
-                    <div className="flex items-center gap-2 mt-1">
-                      <div className="h-3 w-3 animate-spin rounded-full border border-muted-foreground border-t-transparent" />
-                      <span className="text-xs text-muted-foreground">Loading...</span>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            <DropdownMenuGroup>
-              <DropdownMenuItem>
-                <Link href="/" target="_blank" rel="noopener noreferrer" className="w-full flex flex-nowrap items-center gap-2">
-                <Globe />
-                Visit website
-                </Link>
-              </DropdownMenuItem>
-            </DropdownMenuGroup>
-            
-            {isWeb3Enabled && !web3Loading && userWallet && (
-              <>
-                <DropdownMenuSeparator />
-                <DropdownMenuGroup>
-                  <DropdownMenuItem>
-                    <div className="w-full">
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="flex items-center gap-2">
-                          <Wallet className="h-4 w-4" />
-                          <span className="font-medium">Wallet</span>
-                        </div>
-                        <button
-                          onClick={copyAddress}
-                          className="flex items-center gap-1 px-2 py-1 text-xs bg-muted rounded hover:bg-muted/80 transition-colors"
-                        >
-                          <Copy className="h-3 w-3" />
-                          Copy
-                        </button>
-                      </div>
-                      <div className="text-xs text-muted-foreground mb-1">
-                        Address: {formattedAddress}
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium">
-                          {formattedBalance || '0.0000'} {web3Config?.WEB3_CONTRACT_SYMBOL || 'ETH'}
-                        </span>
-                        <Coins className="h-4 w-4 text-muted-foreground" />
-                      </div>
-                    </div>
-                  </DropdownMenuItem>
-                  
-                  <Link href="/admin/transactions">
-                    <DropdownMenuItem>
-                      <ArrowUpDown />
-                      Transactions
-                    </DropdownMenuItem>
-                  </Link>
-                </DropdownMenuGroup>
-              </>
-            )}
-            <DropdownMenuSeparator />
-            <DropdownMenuGroup>
-              <Link href="/admin/account">
-              <DropdownMenuItem>
-                <BadgeCheck />
-                Account
-              </DropdownMenuItem> 
-              </Link>
-              <DropdownMenuItem>
-                <Bell />
-                Notifications
-              </DropdownMenuItem>
-            </DropdownMenuGroup>
-            <DropdownMenuSeparator />
-            <Link href={'/auth/logout'}>
-            <DropdownMenuItem>
-              <LogOut />
-              Log out
-            </DropdownMenuItem>
-            </Link>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </SidebarMenuItem>
-    </SidebarMenu>
-  )
+    return (
+        <SidebarMenu>
+            <SidebarMenuItem>
+                <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <SidebarMenuButton
+                            size="lg"
+                            className="border data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground">
+                            <Avatar className="h-8 w-8 rounded-lg">
+                                <AvatarImage src={user?.avatar || '/images/avatar.webp'} alt={user?.displayName} />
+                                <AvatarFallback className="rounded-lg">{user?.displayName.charAt(0, 2)}</AvatarFallback>
+                            </Avatar>
+                            <div className="grid flex-1 text-left text-sm leading-tight">
+                                <span className="truncate font-medium">{user?.displayName}</span>
+                                <span className="truncate text-xs">{user?.email}</span>
+                                {isWeb3Enabled && !web3Loading && userWallet && (
+                                    <div className="mt-1 flex items-center gap-2">
+                                        <Wallet className="h-3 w-3 text-muted-foreground" />
+                                        <span className="text-muted-foreground text-xs">
+                                            {formattedBalance || '0.0000'} {web3Config?.WEB3_CONTRACT_SYMBOL || 'ETH'}
+                                        </span>
+                                    </div>
+                                )}
+                                {isWeb3Enabled && web3Loading && (
+                                    <div className="mt-1 flex items-center gap-2">
+                                        <div className="h-3 w-3 animate-spin rounded-full border border-muted-foreground border-t-transparent" />
+                                        <span className="text-muted-foreground text-xs">Loading wallet...</span>
+                                    </div>
+                                )}
+                            </div>
+                            <ChevronsUpDown className="ml-auto size-4" />
+                        </SidebarMenuButton>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent
+                        className="w-(--radix-dropdown-menu-trigger-width) min-w-56 rounded-lg"
+                        side={isMobile ? 'bottom' : 'right'}
+                        align="end"
+                        sideOffset={4}>
+                        <DropdownMenuLabel className="p-0 font-normal">
+                            <div className="flex cursor-default items-center gap-2 px-1 py-1.5 text-left text-sm">
+                                <Avatar className="h-8 w-8 rounded-lg">
+                                    <AvatarImage src={user?.avatar || '/images/avatar.webp'} alt={user?.displayName} />
+                                    <AvatarFallback className="rounded-lg">CN</AvatarFallback>
+                                </Avatar>
+                                <div className="grid flex-1 text-left text-sm leading-tight">
+                                    <span className="truncate font-medium">{user?.displayName}</span>
+                                    <span className="truncate text-xs">{user?.email}</span>
+                                    {isWeb3Enabled && !web3Loading && userWallet && (
+                                        <div className="mt-1 flex items-center gap-2">
+                                            <Wallet className="h-3 w-3 text-muted-foreground" />
+                                            <span className="text-muted-foreground text-xs">
+                                                {formattedBalance || '0.0000'}{' '}
+                                                {web3Config?.WEB3_CONTRACT_SYMBOL || 'ETH'}
+                                            </span>
+                                        </div>
+                                    )}
+                                    {isWeb3Enabled && web3Loading && (
+                                        <div className="mt-1 flex items-center gap-2">
+                                            <div className="h-3 w-3 animate-spin rounded-full border border-muted-foreground border-t-transparent" />
+                                            <span className="text-muted-foreground text-xs">Loading...</span>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </DropdownMenuLabel>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuGroup>
+                            <DropdownMenuItem>
+                                <Link
+                                    href="/"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="flex w-full flex-nowrap items-center gap-2">
+                                    <Globe />
+                                    Visit website
+                                </Link>
+                            </DropdownMenuItem>
+                        </DropdownMenuGroup>
+
+                        {isWeb3Enabled && !web3Loading && userWallet && (
+                            <>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuGroup>
+                                    <DropdownMenuItem>
+                                        <div className="w-full">
+                                            <div className="mb-2 flex items-center justify-between">
+                                                <div className="flex items-center gap-2">
+                                                    <Wallet className="h-4 w-4" />
+                                                    <span className="font-medium">Wallet</span>
+                                                </div>
+                                                <button
+                                                    onClick={copyAddress}
+                                                    className="flex items-center gap-1 rounded bg-muted px-2 py-1 text-xs transition-colors hover:bg-muted/80">
+                                                    <Copy className="h-3 w-3" />
+                                                    Copy
+                                                </button>
+                                            </div>
+                                            <div className="mb-1 text-muted-foreground text-xs">
+                                                Address: {formattedAddress}
+                                            </div>
+                                            <div className="flex items-center justify-between">
+                                                <span className="font-medium text-sm">
+                                                    {formattedBalance || '0.0000'}{' '}
+                                                    {web3Config?.WEB3_CONTRACT_SYMBOL || 'ETH'}
+                                                </span>
+                                                <Coins className="h-4 w-4 text-muted-foreground" />
+                                            </div>
+                                        </div>
+                                    </DropdownMenuItem>
+
+                                    <Link href="/admin/transactions">
+                                        <DropdownMenuItem>
+                                            <ArrowUpDown />
+                                            Transactions
+                                        </DropdownMenuItem>
+                                    </Link>
+                                </DropdownMenuGroup>
+                            </>
+                        )}
+                        <DropdownMenuSeparator />
+                        <DropdownMenuGroup>
+                            <Link href="/admin/account">
+                                <DropdownMenuItem>
+                                    <BadgeCheck />
+                                    Account
+                                </DropdownMenuItem>
+                            </Link>
+                            <DropdownMenuItem>
+                                <Bell />
+                                Notifications
+                            </DropdownMenuItem>
+                        </DropdownMenuGroup>
+                        <DropdownMenuSeparator />
+                        <Link href={'/auth/logout'}>
+                            <DropdownMenuItem>
+                                <LogOut />
+                                Log out
+                            </DropdownMenuItem>
+                        </Link>
+                    </DropdownMenuContent>
+                </DropdownMenu>
+            </SidebarMenuItem>
+        </SidebarMenu>
+    );
 }

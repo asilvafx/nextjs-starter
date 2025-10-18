@@ -1,5 +1,6 @@
 import {
     Body,
+    Button,
     Container,
     Head,
     Heading,
@@ -8,10 +9,8 @@ import {
     Link,
     Preview,
     Section,
-    Text,
-    Button,
+    Text
 } from '@react-email/components';
-import * as React from 'react';
 import { emailStyles } from './styles';
 
 export const UserUpdatedTemplate = ({
@@ -20,8 +19,8 @@ export const UserUpdatedTemplate = ({
     loginUrl,
     companyName = process.env.NEXT_PUBLIC_APP_NAME || 'Our Platform'
 }) => {
-    const logo_img = "https://bplw5mbobnwdstj8.public.blob.vercel-storage.com/logo.png";
-    
+    const logo_img = 'https://bplw5mbobnwdstj8.public.blob.vercel-storage.com/logo.png';
+
     return (
         <Html>
             <Head />
@@ -29,20 +28,12 @@ export const UserUpdatedTemplate = ({
             <Body style={emailStyles.main}>
                 <Container style={emailStyles.container}>
                     <Section style={emailStyles.logoSection}>
-                        <Img
-                            src={logo_img}
-                            width="150"
-                            height="50"
-                            alt={companyName}
-                            style={emailStyles.logo}
-                        />
+                        <Img src={logo_img} width="150" height="50" alt={companyName} style={emailStyles.logo} />
                     </Section>
 
                     <Heading style={emailStyles.heading}>Account Update Notification</Heading>
 
-                    <Text style={emailStyles.paragraph}>
-                        Hello {userDisplayName},
-                    </Text>
+                    <Text style={emailStyles.paragraph}>Hello {userDisplayName},</Text>
 
                     <Text style={emailStyles.paragraph}>
                         Your account information has been updated. Here are the changes:
@@ -68,7 +59,8 @@ export const UserUpdatedTemplate = ({
 
                     <Section style={emailStyles.footer}>
                         <Text style={emailStyles.footerText}>
-                            Best regards,<br />
+                            Best regards,
+                            <br />
                             The {companyName} Team
                         </Text>
                     </Section>

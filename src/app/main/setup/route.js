@@ -5,10 +5,10 @@ export async function GET() {
     try {
         // Define required environment variables
         const requiredEnvVars = {
-            'POSTGRES_URL': process.env.POSTGRES_URL || '',
-            'REDIS_URL': process.env.REDIS_URL || '',
-            'BLOB_READ_WRITE_TOKEN': process.env.BLOB_READ_WRITE_TOKEN || '',
-            'NEXT_SECRET_KEY': process.env.NEXT_SECRET_KEY || ''
+            POSTGRES_URL: process.env.POSTGRES_URL || '',
+            REDIS_URL: process.env.REDIS_URL || '',
+            BLOB_READ_WRITE_TOKEN: process.env.BLOB_READ_WRITE_TOKEN || '',
+            NEXT_SECRET_KEY: process.env.NEXT_SECRET_KEY || ''
         };
 
         const missingVars = [];
@@ -17,11 +17,13 @@ export async function GET() {
 
         // Check each environment variable
         const dbConfigured = requiredEnvVars.POSTGRES_URL || requiredEnvVars.REDIS_URL;
-        
+
         Object.entries(requiredEnvVars).forEach(([key, value]) => {
             // Skip REDIS_URL check if POSTGRES_URL is present and vice versa
-            if ((key === 'REDIS_URL' && requiredEnvVars.POSTGRES_URL) || 
-                (key === 'POSTGRES_URL' && requiredEnvVars.REDIS_URL)) {
+            if (
+                (key === 'REDIS_URL' && requiredEnvVars.POSTGRES_URL) ||
+                (key === 'POSTGRES_URL' && requiredEnvVars.REDIS_URL)
+            ) {
                 return;
             }
 
@@ -44,7 +46,7 @@ export async function GET() {
         // Adjust total vars count to exclude the optional DB connection
         const totalVars = Object.keys(requiredEnvVars).length - 1; // Subtract 1 as only one DB is required
         const configuredVars = presentVars.length;
-        const isSetupComplete = (missingVars.length === 0 && emptyVars.length === 0 && dbConfigured);
+        const isSetupComplete = missingVars.length === 0 && emptyVars.length === 0 && dbConfigured;
         const setupPercentage = Math.round((configuredVars / totalVars) * 100);
 
         // Test connections if setup is partially or fully complete

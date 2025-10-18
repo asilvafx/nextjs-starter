@@ -1,17 +1,17 @@
 // @/app/shop/checkout/success/page.jsx
 
-"use client"
+'use client';
 
-import { useEffect, useState, useRef } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { useCart } from 'react-use-cart';
+import { ArrowLeft, CheckCircle, Download, Home, ShoppingBag, XCircle } from 'lucide-react';
 import Link from 'next/link';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
-import { generatePDF } from '@/utils/generatePDF.js';
-import { Card, CardContent } from '@/components/ui/card';
+import { useEffect, useRef, useState } from 'react';
+import { useCart } from 'react-use-cart';
 import { Button } from '@/components/ui/button';
-import { CheckCircle, XCircle, Home, ShoppingBag, Download, ArrowLeft } from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/card';
+import { generatePDF } from '@/utils/generatePDF.js';
 
 const PaymentSuccess = () => {
     const t = useTranslations('Checkout');
@@ -51,12 +51,12 @@ const PaymentSuccess = () => {
                 if (storedOrderData) {
                     try {
                         orderData = JSON.parse(storedOrderData);
-                        
+
                         // For Stripe payments, decode base64 order ID
                         if (paymentMethod === 'card') {
                             try {
                                 actualOrderId = atob(orderId);
-                            } catch (e) {
+                            } catch (_e) {
                                 actualOrderId = orderId;
                             }
                         }
@@ -84,9 +84,9 @@ const PaymentSuccess = () => {
                     paymentIntentId: orderData.tx,
                     paymentMethod: paymentMethod || orderData.paymentMethod || orderData.method,
                     email: orderData.customer?.email || orderData.cst_email,
-                    customerName: orderData.customer?.firstName ? 
-                        `${orderData.customer.firstName} ${orderData.customer.lastName}` : 
-                        orderData.cst_name,
+                    customerName: orderData.customer?.firstName
+                        ? `${orderData.customer.firstName} ${orderData.customer.lastName}`
+                        : orderData.cst_name,
                     items: typeof orderData.items === 'string' ? JSON.parse(orderData.items) : orderData.items,
                     // Fix totals calculation - use actual order totals, not recalculated ones
                     total: orderData.total || orderData.amount,
@@ -99,34 +99,36 @@ const PaymentSuccess = () => {
                     discountAmount: orderData.discountAmount || 0,
                     totalItems: orderData.totalItems,
                     currency: orderData.currency || 'EUR',
-                    shippingAddress: orderData.customer?.streetAddress ? {
-                        streetAddress: orderData.customer.streetAddress,
-                        apartmentUnit: orderData.customer.apartmentUnit,
-                        city: orderData.customer.city,
-                        state: orderData.customer.state,
-                        zipCode: orderData.customer.zipCode,
-                        country: orderData.customer.country,
-                        countryIso: orderData.customer.countryIso
-                    } : (typeof orderData.shipping_address === 'string'
-                        ? JSON.parse(orderData.shipping_address)
-                        : orderData.shipping_address),
-                    orderDate: orderData.createdAt ? 
-                        new Date(orderData.createdAt).toLocaleDateString('fr-FR', {
-                            weekday: 'long',
-                            year: 'numeric',
-                            month: 'long',
-                            day: 'numeric',
-                            hour: '2-digit',
-                            minute: '2-digit'
-                        }) :
-                        new Date().toLocaleDateString('fr-FR', {
-                            weekday: 'long',
-                            year: 'numeric',
-                            month: 'long',
-                            day: 'numeric',
-                            hour: '2-digit',
-                            minute: '2-digit'
-                        })
+                    shippingAddress: orderData.customer?.streetAddress
+                        ? {
+                              streetAddress: orderData.customer.streetAddress,
+                              apartmentUnit: orderData.customer.apartmentUnit,
+                              city: orderData.customer.city,
+                              state: orderData.customer.state,
+                              zipCode: orderData.customer.zipCode,
+                              country: orderData.customer.country,
+                              countryIso: orderData.customer.countryIso
+                          }
+                        : typeof orderData.shipping_address === 'string'
+                          ? JSON.parse(orderData.shipping_address)
+                          : orderData.shipping_address,
+                    orderDate: orderData.createdAt
+                        ? new Date(orderData.createdAt).toLocaleDateString('fr-FR', {
+                              weekday: 'long',
+                              year: 'numeric',
+                              month: 'long',
+                              day: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit'
+                          })
+                        : new Date().toLocaleDateString('fr-FR', {
+                              weekday: 'long',
+                              year: 'numeric',
+                              month: 'long',
+                              day: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit'
+                          })
                 };
 
                 // Mark as processed BEFORE setting state to prevent race conditions
@@ -152,7 +154,7 @@ const PaymentSuccess = () => {
         router.push('/');
     };
 
-    const handleViewOrders = () => {
+    const _handleViewOrders = () => {
         router.push('/account/orders'); // Adjust path as needed
     };
 
@@ -161,7 +163,7 @@ const PaymentSuccess = () => {
 
         // Format payment method correctly
         const formatPaymentMethod = (method) => {
-            switch(method) {
+            switch (method) {
                 case 'card':
                     return 'Carte bancaire';
                 case 'bank_transfer':
@@ -198,8 +200,8 @@ const PaymentSuccess = () => {
 
     if (loading) {
         return (
-            <div className="w-full max-w-3xl mx-auto mt-36 p-8 flex justify-center">
-                <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
+            <div className="mx-auto mt-36 flex w-full max-w-3xl justify-center p-8">
+                <div className="h-32 w-32 animate-spin rounded-full border-primary border-b-2"></div>
             </div>
         );
     }
@@ -210,52 +212,43 @@ const PaymentSuccess = () => {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5 }}
-                className="max-w-4xl mx-auto"
-            >
+                className="mx-auto max-w-4xl">
                 {/* Success Icon */}
-                <div className="text-center mb-8">
+                <div className="mb-8 text-center">
                     {error ? (
                         <motion.div
                             initial={{ scale: 0 }}
                             animate={{ scale: 1 }}
-                            transition={{ type: "spring", stiffness: 260, damping: 20 }}
-                            className="mx-auto w-20 h-20 rounded-full bg-red-500 flex items-center justify-center text-white mb-6"
-                        >
-                            <XCircle className="w-10 h-10" />
+                            transition={{ type: 'spring', stiffness: 260, damping: 20 }}
+                            className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-red-500 text-white">
+                            <XCircle className="h-10 w-10" />
                         </motion.div>
                     ) : (
                         <motion.div
                             initial={{ scale: 0 }}
                             animate={{ scale: 1 }}
                             transition={{ type: 'spring', stiffness: 260, damping: 20 }}
-                            className="mx-auto w-20 h-20 rounded-full bg-green-500 flex items-center justify-center text-white mb-6"
-                        >
-                            <CheckCircle className="w-10 h-10" />
+                            className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-green-500 text-white">
+                            <CheckCircle className="h-10 w-10" />
                         </motion.div>
                     )}
-                    
-                    <h1 className="text-4xl font-bold mb-4">
-                        {error ? (
-                            <span>{error}</span>
-                        ) : (
-                            <span>{t('paymentSuccessTitle')}</span>
-                        )}
+
+                    <h1 className="mb-4 font-bold text-4xl">
+                        {error ? <span>{error}</span> : <span>{t('paymentSuccessTitle')}</span>}
                     </h1>
-                    
+
                     {!error && (
                         <>
-                            <p className="text-xl text-muted-foreground mb-4">
-                                {t('paymentSuccessMessage')}
-                            </p>
+                            <p className="mb-4 text-muted-foreground text-xl">{t('paymentSuccessMessage')}</p>
                             {paymentMethod === 'bank_transfer' && (
-                                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+                                <div className="mb-4 rounded-lg border border-blue-200 bg-blue-50 p-4">
                                     <p className="text-blue-800 text-sm">
                                         <strong>{t('bankTransfer')}:</strong> {t('bankTransferPayment')}
                                     </p>
                                 </div>
                             )}
                             {paymentMethod === 'pay_on_delivery' && (
-                                <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
+                                <div className="mb-4 rounded-lg border border-green-200 bg-green-50 p-4">
                                     <p className="text-green-800 text-sm">
                                         <strong>{t('payOnDelivery')}:</strong> {t('payOnDeliveryPayment')}
                                     </p>
@@ -268,11 +261,7 @@ const PaymentSuccess = () => {
                 {error ? (
                     <Card className="border-destructive/50 bg-destructive/10">
                         <CardContent className="pt-6 text-center">
-                            <motion.div
-                                initial={{ opacity: 0 }}
-                                animate={{ opacity: 1 }}
-                                className="space-y-4"
-                            >
+                            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
                                 <Button onClick={handleContinue} size="lg">
                                     <Home className="mr-2 h-5 w-5" />
                                     {t('backToHome')}
@@ -280,107 +269,137 @@ const PaymentSuccess = () => {
                             </motion.div>
                         </CardContent>
                     </Card>
-                ) : orderDetails && (
-                    <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.2 }}
-                        className="bg-card/95 backdrop-blur-sm rounded-lg shadow-sm border border-border p-8 text-left mb-8"
-                    >
-                        <div className="text-center mb-8">
-                            <h2 className="text-2xl font-semibold mb-2">{t('orderDetailsTitle')}</h2>
-                            <p className="text-gray-600">
-                                {t('orderNumber')}: <span className="font-mono font-medium">{orderDetails.orderId}</span>
-                            </p>
-                            <p className="text-gray-600">
-                                {t('orderDate')}: {orderDetails.orderDate}
-                            </p>
-                        </div>
-
-                        {/* Customer Information */}
-                        <div className="mb-8 p-4 bg-muted/50 rounded-lg">
-                            <h3 className="font-semibold mb-3">{t('customerInformation')}</h3>
-                            <p><strong>{t('name')}:</strong> {orderDetails.customerName}</p>
-                            <p><strong>{t('email')}:</strong> {orderDetails.email}</p>
-                            {orderDetails.paymentMethod && (
-                                <p><strong>{t('paymentMethod')}:</strong> {
-                                    orderDetails.paymentMethod === 'card' ? `💳 ${t('cardPayment')}` :
-                                    orderDetails.paymentMethod === 'bank_transfer' ? `🏦 ${t('bankTransfer')}` :
-                                    orderDetails.paymentMethod === 'pay_on_delivery' ? `📦 ${t('payOnDelivery')}` :
-                                    orderDetails.paymentMethod
-                                }</p>
-                            )}
-                        </div>
-
-                        {/* Order Items */}
-                        <div className="mb-8">
-                            <h3 className="font-semibold mb-4">{t('orderedItems')}</h3>
-                            <div className="space-y-4">
-                                {orderDetails.items.map((item, i) => (
-                                    <div key={i} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
-                                        <div className="flex items-center space-x-4">
-                                            {item.image && (
-                                                <img
-                                                    src={item.image}
-                                                    alt={item.name}
-                                                    className="w-12 h-12 object-cover rounded-md"
-                                                />
-                                            )}
-                                            <div>
-                                                <p className="font-medium">{item.name}</p>
-                                                <p className="text-sm text-gray-500">
-                                                    {t('quantity')}: {item.quantity}
-                                                </p>
-                                            </div>
-                                        </div>
-                                        <p className="font-semibold">{orderDetails.currency === 'USD' ? '$' : '€'}{(item.price * item.quantity).toFixed(2)}</p>
-                                    </div>
-                                ))}
+                ) : (
+                    orderDetails && (
+                        <motion.div
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: 0.2 }}
+                            className="mb-8 rounded-lg border border-border bg-card/95 p-8 text-left shadow-sm backdrop-blur-sm">
+                            <div className="mb-8 text-center">
+                                <h2 className="mb-2 font-semibold text-2xl">{t('orderDetailsTitle')}</h2>
+                                <p className="text-gray-600">
+                                    {t('orderNumber')}:{' '}
+                                    <span className="font-medium font-mono">{orderDetails.orderId}</span>
+                                </p>
+                                <p className="text-gray-600">
+                                    {t('orderDate')}: {orderDetails.orderDate}
+                                </p>
                             </div>
-                        </div>
 
-                        {/* Order Summary */}
-                        <div className="border-t border-border pt-6">
-                            <div className="space-y-3">
-                                <div className="flex justify-between text-muted-foreground">
-                                    <span>{t('subtotal')}</span>
-                                    <span>{orderDetails.currency === 'USD' ? '$' : '€'}{parseFloat(orderDetails.subtotal || 0).toFixed(2)}</span>
-                                </div>
-                                <div className="flex justify-between text-muted-foreground">
-                                    <span>{t('shipping')}</span>
-                                    <span>
-                                        {parseFloat(orderDetails.shipping || 0) === 0 ? (
-                                            <span className="text-green-600 font-semibold">Gratuit</span>
-                                        ) : (
-                                            <span>{orderDetails.currency === 'USD' ? '$' : '€'}{parseFloat(orderDetails.shipping || 0).toFixed(2)}</span>
-                                        )}
-                                    </span>
-                                </div>
-                                {orderDetails.discountAmount && parseFloat(orderDetails.discountAmount) > 0 && (
-                                    <div className="flex justify-between text-green-600">
-                                        <span>Réduction</span>
-                                        <span>-{orderDetails.currency === 'USD' ? '$' : '€'}{parseFloat(orderDetails.discountAmount).toFixed(2)}</span>
-                                    </div>
+                            {/* Customer Information */}
+                            <div className="mb-8 rounded-lg bg-muted/50 p-4">
+                                <h3 className="mb-3 font-semibold">{t('customerInformation')}</h3>
+                                <p>
+                                    <strong>{t('name')}:</strong> {orderDetails.customerName}
+                                </p>
+                                <p>
+                                    <strong>{t('email')}:</strong> {orderDetails.email}
+                                </p>
+                                {orderDetails.paymentMethod && (
+                                    <p>
+                                        <strong>{t('paymentMethod')}:</strong>{' '}
+                                        {orderDetails.paymentMethod === 'card'
+                                            ? `💳 ${t('cardPayment')}`
+                                            : orderDetails.paymentMethod === 'bank_transfer'
+                                              ? `🏦 ${t('bankTransfer')}`
+                                              : orderDetails.paymentMethod === 'pay_on_delivery'
+                                                ? `📦 ${t('payOnDelivery')}`
+                                                : orderDetails.paymentMethod}
+                                    </p>
                                 )}
-                                {orderDetails.vatEnabled && (
+                            </div>
+
+                            {/* Order Items */}
+                            <div className="mb-8">
+                                <h3 className="mb-4 font-semibold">{t('orderedItems')}</h3>
+                                <div className="space-y-4">
+                                    {orderDetails.items.map((item, i) => (
+                                        <div
+                                            key={i}
+                                            className="flex items-center justify-between rounded-lg bg-muted/30 p-3">
+                                            <div className="flex items-center space-x-4">
+                                                {item.image && (
+                                                    <img
+                                                        src={item.image}
+                                                        alt={item.name}
+                                                        className="h-12 w-12 rounded-md object-cover"
+                                                    />
+                                                )}
+                                                <div>
+                                                    <p className="font-medium">{item.name}</p>
+                                                    <p className="text-gray-500 text-sm">
+                                                        {t('quantity')}: {item.quantity}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <p className="font-semibold">
+                                                {orderDetails.currency === 'USD' ? '$' : '€'}
+                                                {(item.price * item.quantity).toFixed(2)}
+                                            </p>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Order Summary */}
+                            <div className="border-border border-t pt-6">
+                                <div className="space-y-3">
                                     <div className="flex justify-between text-muted-foreground">
-                                        <span>TVA ({orderDetails.vatPercentage || 20}%)</span>
+                                        <span>{t('subtotal')}</span>
                                         <span>
-                                            {orderDetails.vatIncluded ? (
-                                                <span className="text-green-600 font-semibold">Inclus</span>
+                                            {orderDetails.currency === 'USD' ? '$' : '€'}
+                                            {parseFloat(orderDetails.subtotal || 0).toFixed(2)}
+                                        </span>
+                                    </div>
+                                    <div className="flex justify-between text-muted-foreground">
+                                        <span>{t('shipping')}</span>
+                                        <span>
+                                            {parseFloat(orderDetails.shipping || 0) === 0 ? (
+                                                <span className="font-semibold text-green-600">Gratuit</span>
                                             ) : (
-                                                <span>{orderDetails.currency === 'USD' ? '$' : '€'}{parseFloat(orderDetails.vatAmount || 0).toFixed(2)}</span>
+                                                <span>
+                                                    {orderDetails.currency === 'USD' ? '$' : '€'}
+                                                    {parseFloat(orderDetails.shipping || 0).toFixed(2)}
+                                                </span>
                                             )}
                                         </span>
                                     </div>
-                                )}
-                                <div className="flex justify-between text-xl font-bold border-t border-border pt-3">
-                                    <span>{t('total')}</span>
-                                    <span>{orderDetails.currency === 'USD' ? '$' : '€'}{parseFloat(orderDetails.total || 0).toFixed(2)}</span>
+                                    {orderDetails.discountAmount && parseFloat(orderDetails.discountAmount) > 0 && (
+                                        <div className="flex justify-between text-green-600">
+                                            <span>Réduction</span>
+                                            <span>
+                                                -{orderDetails.currency === 'USD' ? '$' : '€'}
+                                                {parseFloat(orderDetails.discountAmount).toFixed(2)}
+                                            </span>
+                                        </div>
+                                    )}
+                                    {orderDetails.vatEnabled && (
+                                        <div className="flex justify-between text-muted-foreground">
+                                            <span>TVA ({orderDetails.vatPercentage || 20}%)</span>
+                                            <span>
+                                                {orderDetails.vatIncluded ? (
+                                                    <span className="font-semibold text-green-600">Inclus</span>
+                                                ) : (
+                                                    <span>
+                                                        {orderDetails.currency === 'USD' ? '$' : '€'}
+                                                        {parseFloat(orderDetails.vatAmount || 0).toFixed(2)}
+                                                    </span>
+                                                )}
+                                            </span>
+                                        </div>
+                                    )}
+                                    <div className="flex justify-between border-border border-t pt-3 font-bold text-xl">
+                                        <span>{t('total')}</span>
+                                        <span>
+                                            {orderDetails.currency === 'USD' ? '$' : '€'}
+                                            {parseFloat(orderDetails.total || 0).toFixed(2)}
+                                        </span>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                    </motion.div>
+                        </motion.div>
+                    )
                 )}
 
                 {/* Action Buttons */}
@@ -389,8 +408,7 @@ const PaymentSuccess = () => {
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         transition={{ delay: 0.4 }}
-                        className="flex flex-col sm:flex-row gap-4 justify-center items-center"
-                    >
+                        className="flex flex-col items-center justify-center gap-4 sm:flex-row">
                         <Button variant="outline" size="lg" onClick={handleContinue}>
                             <ShoppingBag className="mr-2 h-5 w-5" />
                             {t('continueShopping')}
@@ -408,9 +426,7 @@ const PaymentSuccess = () => {
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         transition={{ delay: 0.6 }}
-                        className="mt-6 text-center"
-                    >
-                    </motion.div>
+                        className="mt-6 text-center"></motion.div>
                 )}
 
                 {/* Back to Shop Link */}
@@ -418,8 +434,7 @@ const PaymentSuccess = () => {
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     transition={{ delay: 0.8 }}
-                    className="mt-8 text-center"
-                >
+                    className="mt-8 text-center">
                     <Button variant="ghost" asChild>
                         <Link href="/shop">
                             <ArrowLeft className="mr-2 h-4 w-4" />

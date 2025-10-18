@@ -1,25 +1,30 @@
 // @/app/shop/checkout/PaymentForm.jsx
-"use client"
+'use client';
 
-import { useState, useEffect } from 'react';
-import {
-    PaymentElement,
-    useStripe,
-    useElements,
-} from '@stripe/react-stripe-js';
-import { Button } from '@/components/ui/button';
-import { PhoneInput } from '@/components/ui/phone-input';
-import { CountryDropdown } from '@/components/ui/country-dropdown';
-import { useCart } from 'react-use-cart';
+import { PaymentElement, useElements, useStripe } from '@stripe/react-stripe-js';
+import { AnimatePresence, motion } from 'framer-motion';
+import { useSession } from 'next-auth/react';
 import { useTranslations } from 'next-intl';
-import { useSession } from "next-auth/react"; 
-import ShippingMethodSelector from './ShippingMethodSelector.jsx';
-import GooglePlacesInput from '@/components/google-places-input';
-import { motion, AnimatePresence } from 'framer-motion';
+import { useEffect, useState } from 'react';
 import Turnstile from 'react-turnstile';
-import { getTurnstileSiteKey, getGoogleMapsApiKey } from '@/lib/client/integrations';
+import { useCart } from 'react-use-cart';
+import GooglePlacesInput from '@/components/google-places-input';
+import { Button } from '@/components/ui/button';
+import { CountryDropdown } from '@/components/ui/country-dropdown';
+import { PhoneInput } from '@/components/ui/phone-input';
+import { getGoogleMapsApiKey, getTurnstileSiteKey } from '@/lib/client/integrations';
+import ShippingMethodSelector from './ShippingMethodSelector.jsx';
 
-const PaymentForm = ({ cartTotal, subTotal, shippingCost, onShippingUpdate, selectedShippingMethod, isEligibleForFreeShipping, storeSettings, hasStripe = false }) => {
+const PaymentForm = ({
+    cartTotal,
+    subTotal,
+    shippingCost,
+    onShippingUpdate,
+    selectedShippingMethod,
+    isEligibleForFreeShipping,
+    storeSettings,
+    hasStripe = false
+}) => {
     const t = useTranslations('Checkout');
     const { data: session } = useSession();
     const stripe = hasStripe ? useStripe() : null;
@@ -27,7 +32,7 @@ const PaymentForm = ({ cartTotal, subTotal, shippingCost, onShippingUpdate, sele
     const { items } = useCart();
 
     // UI State
-    const [isOpen, setIsOpen] = useState(false);
+    const [_isOpen, _setIsOpen] = useState(false);
     const [currentStep, setCurrentStep] = useState('information'); // 'information', 'payment'
     const [isProcessing, setIsProcessing] = useState(false);
     const [errorMessage, setErrorMessage] = useState('');
@@ -49,7 +54,7 @@ const PaymentForm = ({ cartTotal, subTotal, shippingCost, onShippingUpdate, sele
     // Shipping State
     const [localSelectedShippingMethod, setLocalSelectedShippingMethod] = useState(null);
     const [hasAutoSelectedFreeShipping, setHasAutoSelectedFreeShipping] = useState(false);
-    
+
     // Integration State
     const [turnstileKey, setTurnstileKey] = useState(null);
     const [googleMapsApiKey, setGoogleMapsApiKey] = useState(null);
@@ -83,18 +88,18 @@ const PaymentForm = ({ cartTotal, subTotal, shippingCost, onShippingUpdate, sele
         // Notify parent that shipping method was reset
         onShippingUpdate(0, null, discountAmount);
     };
-    
+
     const handleGooglePlacesSelect = (placeDetails) => {
-        if (placeDetails && placeDetails.address_components) {
+        if (placeDetails?.address_components) {
             // Parse address components from Google Places
             let extractedCity = '';
             let extractedState = '';
             let extractedZipCode = '';
             let extractedCountry = 'FR';
-            
+
             placeDetails.address_components.forEach((component) => {
                 const types = component.types;
-                
+
                 if (types.includes('locality') || types.includes('administrative_area_level_2')) {
                     extractedCity = component.long_name;
                 } else if (types.includes('administrative_area_level_1')) {
@@ -105,7 +110,7 @@ const PaymentForm = ({ cartTotal, subTotal, shippingCost, onShippingUpdate, sele
                     extractedCountry = component.short_name;
                 }
             });
-            
+
             // Update form fields
             setStreetAddress(placeDetails.formatted_address || '');
             setCity(extractedCity);
@@ -113,7 +118,7 @@ const PaymentForm = ({ cartTotal, subTotal, shippingCost, onShippingUpdate, sele
             setZipCode(extractedZipCode);
             setCountryIso(extractedCountry);
             setCountry(extractedCountry);
-            
+
             onShippingUpdate({
                 country: extractedCountry,
                 state: extractedState,
@@ -121,11 +126,11 @@ const PaymentForm = ({ cartTotal, subTotal, shippingCost, onShippingUpdate, sele
                 zipCode: extractedZipCode
             });
         }
-    };    // Auto-select free shipping when eligible
-    const handleShippingMethodsLoaded = (shippingMethods) => { 
+    }; // Auto-select free shipping when eligible
+    const handleShippingMethodsLoaded = (shippingMethods) => {
         if (isEligibleForFreeShipping && !hasAutoSelectedFreeShipping && shippingMethods.length > 0) {
             // Find free shipping method (id: 'free_shipping')
-            const freeShippingMethod = shippingMethods.find(method => method.id === 'free_shipping');
+            const freeShippingMethod = shippingMethods.find((method) => method.id === 'free_shipping');
 
             if (freeShippingMethod) {
                 setLocalSelectedShippingMethod(freeShippingMethod);
@@ -135,7 +140,7 @@ const PaymentForm = ({ cartTotal, subTotal, shippingCost, onShippingUpdate, sele
                 // If no free shipping available but user is eligible, select first method
                 const firstMethod = shippingMethods[0];
                 const shippingCost = firstMethod.fixed_rate || firstMethod.base_price || firstMethod.basePrice || 0;
-                
+
                 setLocalSelectedShippingMethod(firstMethod);
                 onShippingUpdate(shippingCost, firstMethod, discountAmount || 0);
             }
@@ -143,7 +148,7 @@ const PaymentForm = ({ cartTotal, subTotal, shippingCost, onShippingUpdate, sele
             // If not eligible for free shipping, auto-select first available method
             const firstMethod = shippingMethods[0];
             const shippingCost = firstMethod.fixed_rate || firstMethod.base_price || firstMethod.basePrice || 0;
-            
+
             setLocalSelectedShippingMethod(firstMethod);
             onShippingUpdate(shippingCost, firstMethod, discountAmount || 0);
         } else if (shippingMethods.length === 1 && !localSelectedShippingMethod) {
@@ -173,12 +178,12 @@ const PaymentForm = ({ cartTotal, subTotal, shippingCost, onShippingUpdate, sele
     };
 
     // Google Places Autocomplete handlers
-    const handleAddressChange = (placeDetails = null) => {
-        if(!placeDetails) return null;
+    const _handleAddressChange = (placeDetails = null) => {
+        if (!placeDetails) return null;
 
         setStreetAddress(placeDetails.formatted_address);
         // If we have place details from Google Places, auto-fill other fields
-        if (placeDetails && placeDetails.address_components) {
+        if (placeDetails?.address_components) {
             const components = placeDetails.address_components;
 
             // Extract address components
@@ -188,7 +193,7 @@ const PaymentForm = ({ cartTotal, subTotal, shippingCost, onShippingUpdate, sele
             let extractedCountry = '';
             let extractedCountryCode = '';
 
-            components.forEach(component => {
+            components.forEach((component) => {
                 const types = component.types;
 
                 if (types.includes('locality') || types.includes('administrative_area_level_2')) {
@@ -210,7 +215,6 @@ const PaymentForm = ({ cartTotal, subTotal, shippingCost, onShippingUpdate, sele
 
             // Update country if found in COUNTRIES list
             if (extractedCountry && extractedCountryCode) {
-
                 setCountry(extractedCountryCode);
                 setCountryIso(extractedCountry);
 
@@ -222,12 +226,12 @@ const PaymentForm = ({ cartTotal, subTotal, shippingCost, onShippingUpdate, sele
         }
 
         // Clear error when user inputs address
-        if (errorMessage && errorMessage.includes('address')) {
+        if (errorMessage?.includes('address')) {
             setErrorMessage('');
         }
     };
 
-    const handleAddressError = (error) => {
+    const handleAddressError = (_error) => {
         // You can set a specific error state here if needed
     };
 
@@ -244,13 +248,13 @@ const PaymentForm = ({ cartTotal, subTotal, shippingCost, onShippingUpdate, sele
             const response = await fetch('/api/query/public/validate-coupon', {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json',
+                    'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
                     code: promoCode.trim(),
                     orderAmount: parseFloat(subTotal),
                     customerEmail: emailInput
-                }),
+                })
             });
 
             const result = await response.json();
@@ -295,24 +299,24 @@ const PaymentForm = ({ cartTotal, subTotal, shippingCost, onShippingUpdate, sele
             state: state,
             zipCode: zipCode,
             phone: phone
-        }; 
+        };
 
         // Check for empty required fields
         const emptyFields = Object.entries(requiredFields)
-            .filter(([key, value]) => !value || value.toString().trim() === '')
+            .filter(([_key, value]) => !value || value.toString().trim() === '')
             .map(([key]) => key);
 
-        if (emptyFields.length > 0) { 
+        if (emptyFields.length > 0) {
             setErrorMessage(`Please complete the following required fields: ${emptyFields.join(', ')}`);
             return false;
         }
 
         // Check for shipping method
-        if (!localSelectedShippingMethod) { 
+        if (!localSelectedShippingMethod) {
             setErrorMessage('Please select a shipping method');
             return false;
         }
- 
+
         setErrorMessage('');
         return true;
     };
@@ -347,7 +351,7 @@ const PaymentForm = ({ cartTotal, subTotal, shippingCost, onShippingUpdate, sele
             };
 
             const emptyFields = Object.entries(requiredFields)
-                .filter(([key, value]) => !value || value.toString().trim() === '')
+                .filter(([_key, value]) => !value || value.toString().trim() === '')
                 .map(([key]) => key);
 
             if (emptyFields.length > 0) {
@@ -382,11 +386,11 @@ const PaymentForm = ({ cartTotal, subTotal, shippingCost, onShippingUpdate, sele
                 state,
                 zipCode,
                 country,
-                countryIso,
+                countryIso
             };
 
             // Order items data to match orders structure
-            const orderItems = items.map(item => ({
+            const orderItems = items.map((item) => ({
                 id: item.id,
                 name: item.name,
                 price: item.price,
@@ -398,15 +402,15 @@ const PaymentForm = ({ cartTotal, subTotal, shippingCost, onShippingUpdate, sele
             const itemsTotal = parseFloat(subTotal);
             const shippingTotal = localSelectedShippingMethod?.fixed_rate || 0;
             const couponDiscount = discountAmount || 0;
-            
+
             // Calculate VAT correctly based on store settings
             let vatAmount = 0;
             let finalTotal = 0;
             let subtotalExclVat = itemsTotal;
-            
+
             if (storeSettings?.vatEnabled) {
                 const vatRate = (storeSettings.vatPercentage || 20) / 100;
-                
+
                 if (storeSettings.vatIncludedInPrice) {
                     // VAT is already included in item prices
                     subtotalExclVat = itemsTotal / (1 + vatRate);
@@ -427,14 +431,14 @@ const PaymentForm = ({ cartTotal, subTotal, shippingCost, onShippingUpdate, sele
 
             // Use selected payment method
             const paymentMethod = selectedPaymentMethod || 'pending';
-            
+
             if (!selectedPaymentMethod) {
                 throw new Error(t('selectPaymentMethodFirst'));
             }
 
             // Create order data matching the orders page structure
             const orderData = {
-                id: Math.floor(new Date().getTime() / 1000) + '_' + Math.floor(Math.random() * (9999 - 1000 + 1)) + 1000,
+                id: Math.floor(Date.now() / 1000) + '_' + Math.floor(Math.random() * (9999 - 1000 + 1)) + 1000,
                 customer: customerData,
                 items: orderItems,
                 // Fix: Use properly calculated values
@@ -451,13 +455,15 @@ const PaymentForm = ({ cartTotal, subTotal, shippingCost, onShippingUpdate, sele
                 discountType: appliedCoupon ? appliedCoupon.type : 'fixed',
                 discountValue: appliedCoupon ? appliedCoupon.value : 0,
                 discountAmount: couponDiscount,
-                coupon: appliedCoupon ? {
-                    id: appliedCoupon.id,
-                    code: appliedCoupon.code,
-                    name: appliedCoupon.name,
-                    type: appliedCoupon.type,
-                    value: appliedCoupon.value
-                } : null,
+                coupon: appliedCoupon
+                    ? {
+                          id: appliedCoupon.id,
+                          code: appliedCoupon.code,
+                          name: appliedCoupon.name,
+                          type: appliedCoupon.type,
+                          value: appliedCoupon.value
+                      }
+                    : null,
                 total: Math.max(0, finalTotal),
                 amount: Math.max(0, finalTotal), // Alias for total
                 totalItems: items.length,
@@ -471,7 +477,7 @@ const PaymentForm = ({ cartTotal, subTotal, shippingCost, onShippingUpdate, sele
                 deliveryNotes,
                 sendEmail: true,
                 createdAt: new Date().toISOString(),
-                updatedAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString()
             };
 
             // Handle different payment methods
@@ -486,14 +492,14 @@ const PaymentForm = ({ cartTotal, subTotal, shippingCost, onShippingUpdate, sele
                 const response = await fetch('/api/stripe', {
                     method: 'POST',
                     headers: {
-                        'Content-Type': 'application/json',
+                        'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({
                         amount: Math.round(finalTotal * 100), // Use calculated finalTotal, not cartTotal prop
                         currency: (storeSettings?.currency || 'EUR').toLowerCase(),
                         email: emailInput,
-                        automatic_payment_methods: true,
-                    }),
+                        automatic_payment_methods: true
+                    })
                 });
 
                 const { client_secret: clientSecret, error } = await response.json();
@@ -508,7 +514,7 @@ const PaymentForm = ({ cartTotal, subTotal, shippingCost, onShippingUpdate, sele
                         await fetch('/api/query/public/apply-coupon', {
                             method: 'POST',
                             headers: {
-                                'Content-Type': 'application/json',
+                                'Content-Type': 'application/json'
                             },
                             body: JSON.stringify({
                                 couponId: appliedCoupon.id,
@@ -516,7 +522,7 @@ const PaymentForm = ({ cartTotal, subTotal, shippingCost, onShippingUpdate, sele
                                 customerEmail: emailInput,
                                 orderAmount: itemsTotal,
                                 discountAmount: couponDiscount
-                            }),
+                            })
                         });
                     } catch (couponError) {
                         console.error('Failed to apply coupon usage:', couponError);
@@ -532,8 +538,8 @@ const PaymentForm = ({ cartTotal, subTotal, shippingCost, onShippingUpdate, sele
                     elements,
                     clientSecret,
                     confirmParams: {
-                        return_url: `${window.location.origin}/shop/checkout/success?tx=${btoa(orderData.id)}&payment_method=card`,
-                    },
+                        return_url: `${window.location.origin}/shop/checkout/success?tx=${btoa(orderData.id)}&payment_method=card`
+                    }
                 });
 
                 if (confirmError) {
@@ -546,9 +552,9 @@ const PaymentForm = ({ cartTotal, subTotal, shippingCost, onShippingUpdate, sele
                 const response = await fetch('/api/orders', {
                     method: 'POST',
                     headers: {
-                        'Content-Type': 'application/json',
+                        'Content-Type': 'application/json'
                     },
-                    body: JSON.stringify(orderData),
+                    body: JSON.stringify(orderData)
                 });
 
                 const result = await response.json();
@@ -560,7 +566,7 @@ const PaymentForm = ({ cartTotal, subTotal, shippingCost, onShippingUpdate, sele
                             await fetch('/api/query/public/apply-coupon', {
                                 method: 'POST',
                                 headers: {
-                                    'Content-Type': 'application/json',
+                                    'Content-Type': 'application/json'
                                 },
                                 body: JSON.stringify({
                                     couponId: appliedCoupon.id,
@@ -568,7 +574,7 @@ const PaymentForm = ({ cartTotal, subTotal, shippingCost, onShippingUpdate, sele
                                     customerEmail: emailInput,
                                     orderAmount: itemsTotal,
                                     discountAmount: couponDiscount
-                                }),
+                                })
                             });
                         } catch (couponError) {
                             console.error('Failed to apply coupon usage:', couponError);
@@ -582,13 +588,12 @@ const PaymentForm = ({ cartTotal, subTotal, shippingCost, onShippingUpdate, sele
                     if (typeof window !== 'undefined' && window.emptyCart) {
                         window.emptyCart();
                     }
-                    
+
                     window.location.href = `/shop/checkout/success?order_id=${orderData.id}&payment_method=${paymentMethod}`;
                 } else {
                     throw new Error(result.error || 'Failed to create order');
                 }
             }
-
         } catch (error) {
             console.error('Payment error:', error);
             setErrorMessage(error.message || t('paymentError'));
@@ -597,7 +602,7 @@ const PaymentForm = ({ cartTotal, subTotal, shippingCost, onShippingUpdate, sele
     };
 
     const getDefaultCountry = (countryCode = null) => {
-        let lang = navigator.language || 'fr-FR';
+        const lang = navigator.language || 'fr-FR';
         if (countryCode) {
             return countryCode;
         }
@@ -616,34 +621,40 @@ const PaymentForm = ({ cartTotal, subTotal, shippingCost, onShippingUpdate, sele
     // Get available payment methods based on store settings
     const getAvailablePaymentMethods = () => {
         const methods = [];
-        
+
         if (hasStripe && storeSettings?.paymentMethods?.cardPayments) {
             methods.push({ value: 'card', label: `💳 ${t('cardPayment')}`, description: t('cardPaymentDescription') });
         }
-        
+
         if (storeSettings?.paymentMethods?.bankTransfer) {
-            methods.push({ value: 'bank_transfer', label: `🏦 ${t('bankTransfer')}`, description: t('bankTransferDescription') });
+            methods.push({
+                value: 'bank_transfer',
+                label: `🏦 ${t('bankTransfer')}`,
+                description: t('bankTransferDescription')
+            });
         }
-        
+
         if (storeSettings?.paymentMethods?.payOnDelivery) {
-            methods.push({ value: 'pay_on_delivery', label: `📦 ${t('payOnDelivery')}`, description: t('payOnDeliveryDescription') });
+            methods.push({
+                value: 'pay_on_delivery',
+                label: `📦 ${t('payOnDelivery')}`,
+                description: t('payOnDeliveryDescription')
+            });
         }
-        
+
         return methods;
-    };    useEffect(() => {
+    };
+    useEffect(() => {
         const defaultC = getDefaultCountry();
         setCountry(defaultC);
-        
+
         // Fetch integration keys
         const fetchIntegrationKeys = async () => {
-            const [turnstileKey, googleMapsKey] = await Promise.all([
-                getTurnstileSiteKey(),
-                getGoogleMapsApiKey()
-            ]);
+            const [turnstileKey, googleMapsKey] = await Promise.all([getTurnstileSiteKey(), getGoogleMapsApiKey()]);
             setTurnstileKey(turnstileKey);
             setGoogleMapsApiKey(googleMapsKey);
         };
-        
+
         fetchIntegrationKeys();
     }, []);
 
@@ -667,11 +678,10 @@ const PaymentForm = ({ cartTotal, subTotal, shippingCost, onShippingUpdate, sele
                         animate={{ opacity: 1, x: 0 }}
                         exit={{ opacity: 0, x: -20 }}
                         transition={{ duration: 0.3 }}
-                        className="space-y-6"
-                    >
+                        className="space-y-6">
                         {/* Contact Information */}
                         <div>
-                            <h2 className="text-lg font-semibold mb-4">{t('contactInformation')}</h2>
+                            <h2 className="mb-4 font-semibold text-lg">{t('contactInformation')}</h2>
                             <div className="space-y-4">
                                 <input
                                     required
@@ -679,7 +689,7 @@ const PaymentForm = ({ cartTotal, subTotal, shippingCost, onShippingUpdate, sele
                                     value={emailInput || ''}
                                     onChange={(e) => setEmailInput(e.target.value)}
                                     placeholder={t('emailAddress')}
-                                    className="w-full border rounded-xl px-3 py-2 focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                                    className="w-full rounded-xl border px-3 py-2 focus:border-primary focus:ring-2 focus:ring-primary/20"
                                 />
                                 <PhoneInput
                                     value={phone || ''}
@@ -693,7 +703,7 @@ const PaymentForm = ({ cartTotal, subTotal, shippingCost, onShippingUpdate, sele
 
                         {/* Shipping Information */}
                         <div>
-                            <h2 className="text-lg font-semibold mb-4">{t('shippingInformation')}</h2>
+                            <h2 className="mb-4 font-semibold text-lg">{t('shippingInformation')}</h2>
                             <div className="grid grid-cols-2 gap-4">
                                 <input
                                     required
@@ -701,7 +711,7 @@ const PaymentForm = ({ cartTotal, subTotal, shippingCost, onShippingUpdate, sele
                                     placeholder={t('firstName')}
                                     value={firstName || ''}
                                     onChange={(e) => setFirstName(e.target.value)}
-                                    className="border rounded-xl px-3 py-2 w-full focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                                    className="w-full rounded-xl border px-3 py-2 focus:border-primary focus:ring-2 focus:ring-primary/20"
                                 />
                                 <input
                                     required
@@ -709,12 +719,12 @@ const PaymentForm = ({ cartTotal, subTotal, shippingCost, onShippingUpdate, sele
                                     placeholder={t('lastName')}
                                     value={lastName || ''}
                                     onChange={(e) => setLastName(e.target.value)}
-                                    className="border rounded-xl px-3 py-2 w-full focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                                    className="w-full rounded-xl border px-3 py-2 focus:border-primary focus:ring-2 focus:ring-primary/20"
                                 />
 
                                 {/* Google Places Autocomplete for Street Address */}
                                 <div className="col-span-2">
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                    <label className="mb-1 block font-medium text-gray-700 text-sm">
                                         {t('streetAddress')}
                                     </label>
                                     <div className="google-places-container">
@@ -726,7 +736,7 @@ const PaymentForm = ({ cartTotal, subTotal, shippingCost, onShippingUpdate, sele
                                             onError={handleAddressError}
                                             placeholder={t('streetAddress')}
                                             styles={{
-                                                width: '100%',
+                                                width: '100%'
                                             }}
                                             apiKey={googleMapsApiKey}
                                         />
@@ -736,7 +746,7 @@ const PaymentForm = ({ cartTotal, subTotal, shippingCost, onShippingUpdate, sele
                                             placeholder={t('streetAddress')}
                                             value={streetAddress || ''}
                                             onChange={(e) => setStreetAddress(e.target.value)}
-                                            className="hidden border rounded-xl px-3 py-2 w-full focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                                            className="hidden w-full rounded-xl border px-3 py-2 focus:border-primary focus:ring-2 focus:ring-primary/20"
                                             style={{ display: 'none' }}
                                         />
                                     </div>
@@ -747,7 +757,7 @@ const PaymentForm = ({ cartTotal, subTotal, shippingCost, onShippingUpdate, sele
                                     placeholder={t('apartmentUnit')}
                                     value={apartmentUnit || ''}
                                     onChange={(e) => setApartmentUnit(e.target.value)}
-                                    className="col-span-2 border rounded-xl px-3 py-2 w-full focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                                    className="col-span-2 w-full rounded-xl border px-3 py-2 focus:border-primary focus:ring-2 focus:ring-primary/20"
                                 />
                                 <input
                                     required
@@ -755,7 +765,7 @@ const PaymentForm = ({ cartTotal, subTotal, shippingCost, onShippingUpdate, sele
                                     placeholder={t('city')}
                                     value={city || ''}
                                     onChange={(e) => setCity(e.target.value)}
-                                    className="border rounded-xl px-3 py-2 w-full focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                                    className="w-full rounded-xl border px-3 py-2 focus:border-primary focus:ring-2 focus:ring-primary/20"
                                 />
                                 <input
                                     required
@@ -763,7 +773,7 @@ const PaymentForm = ({ cartTotal, subTotal, shippingCost, onShippingUpdate, sele
                                     placeholder={t('stateProvince')}
                                     value={state || ''}
                                     onChange={(e) => setState(e.target.value)}
-                                    className="border rounded-xl px-3 py-2 w-full focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                                    className="w-full rounded-xl border px-3 py-2 focus:border-primary focus:ring-2 focus:ring-primary/20"
                                 />
                                 <input
                                     required
@@ -771,9 +781,9 @@ const PaymentForm = ({ cartTotal, subTotal, shippingCost, onShippingUpdate, sele
                                     placeholder={t('zipPostalCode')}
                                     value={zipCode || ''}
                                     onChange={(e) => setZipCode(e.target.value)}
-                                    className="border rounded-xl px-3 py-2 w-full focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                                    className="w-full rounded-xl border px-3 py-2 focus:border-primary focus:ring-2 focus:ring-primary/20"
                                 />
-                                <div className="w-full"> 
+                                <div className="w-full">
                                     <CountryDropdown
                                         defaultValue={countryIso}
                                         onChange={handleCountryChange}
@@ -797,7 +807,7 @@ const PaymentForm = ({ cartTotal, subTotal, shippingCost, onShippingUpdate, sele
 
                         {/* Promo Code */}
                         <div>
-                            <h2 className="text-lg font-semibold mb-4">{t('promoCode')}</h2>
+                            <h2 className="mb-4 font-semibold text-lg">{t('promoCode')}</h2>
                             {!appliedCoupon ? (
                                 <div className="space-y-3">
                                     <div className="flex gap-2">
@@ -806,39 +816,37 @@ const PaymentForm = ({ cartTotal, subTotal, shippingCost, onShippingUpdate, sele
                                             value={promoCode || ''}
                                             onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
                                             placeholder={t('enterPromoCode')}
-                                            className="flex-1 border rounded-xl px-3 py-2 focus:ring-2 focus:ring-primary/20 focus:border-primary uppercase"
+                                            className="flex-1 rounded-xl border px-3 py-2 uppercase focus:border-primary focus:ring-2 focus:ring-primary/20"
                                             disabled={promoLoading}
                                         />
                                         <Button
                                             variant="ghost"
                                             onClick={validatePromoCode}
                                             disabled={promoLoading || !promoCode.trim()}
-                                            className="disabled:opacity-50 disabled:cursor-not-allowed"
-                                        >
+                                            className="disabled:cursor-not-allowed disabled:opacity-50">
                                             {promoLoading ? t('validating') : t('apply')}
                                         </Button>
                                     </div>
-                                    {promoError && (
-                                        <div className="text-red-600 text-sm">{promoError}</div>
-                                    )}
+                                    {promoError && <div className="text-red-600 text-sm">{promoError}</div>}
                                 </div>
                             ) : (
-                                <div className="bg-green-50 border border-green-200 rounded-xl p-4">
+                                <div className="rounded-xl border border-green-200 bg-green-50 p-4">
                                     <div className="flex items-center justify-between">
                                         <div>
                                             <div className="flex items-center gap-2">
-                                                <span className="text-green-600 font-semibold">✓ {appliedCoupon.code}</span>
-                                                <span className="text-sm text-gray-600">- {appliedCoupon.name}</span>
+                                                <span className="font-semibold text-green-600">
+                                                    ✓ {appliedCoupon.code}
+                                                </span>
+                                                <span className="text-gray-600 text-sm">- {appliedCoupon.name}</span>
                                             </div>
-                                            <div className="text-sm text-green-700 mt-1">
+                                            <div className="mt-1 text-green-700 text-sm">
                                                 {t('youSaved', { amount: discountAmount.toFixed(2) })}
                                             </div>
                                         </div>
                                         <button
                                             type="button"
                                             onClick={removePromoCode}
-                                            className="text-red-600 hover:text-red-700 text-sm"
-                                        >
+                                            className="text-red-600 text-sm hover:text-red-700">
                                             {t('remove')}
                                         </button>
                                     </div>
@@ -848,29 +856,25 @@ const PaymentForm = ({ cartTotal, subTotal, shippingCost, onShippingUpdate, sele
 
                         {/* Delivery Notes */}
                         <div>
-                            <h2 className="text-lg font-semibold mb-4">{t('deliveryNotes')}</h2>
+                            <h2 className="mb-4 font-semibold text-lg">{t('deliveryNotes')}</h2>
                             <textarea
                                 value={deliveryNotes || ''}
                                 onChange={(e) => setDeliveryNotes(e.target.value)}
                                 placeholder={t('deliveryInstructions')}
-                                className="w-full border rounded-xl px-3 py-2 focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                                className="w-full rounded-xl border px-3 py-2 focus:border-primary focus:ring-2 focus:ring-primary/20"
                                 rows="3"
                             />
                         </div>
 
                         {/* Continue to Payment Button */}
                         <div className="pt-4">
-                            <button
-                                type="button"
-                                onClick={handleContinueToPayment}
-                                className="w-full primary"
-                            >
+                            <button type="button" onClick={handleContinueToPayment} className="primary w-full">
                                 {t('continueToPayment')}
                             </button>
 
                             {/* Error Message */}
                             {errorMessage && (
-                                <div className="text-red-600 mt-2 text-sm text-center">{errorMessage}</div>
+                                <div className="mt-2 text-center text-red-600 text-sm">{errorMessage}</div>
                             )}
                         </div>
                     </motion.div>
@@ -882,20 +886,23 @@ const PaymentForm = ({ cartTotal, subTotal, shippingCost, onShippingUpdate, sele
                         initial={{ opacity: 0, x: 20 }}
                         animate={{ opacity: 1, x: 0 }}
                         exit={{ opacity: 0, x: 20 }}
-                        transition={{ duration: 0.3 }}
-                    >
+                        transition={{ duration: 0.3 }}>
                         <form onSubmit={handleSubmit} className="space-y-6">
                             {/* Order Summary */}
-                            <div className="bg-card rounded-xl">
-                                <h3 className="font-semibold mb-3">{t('orderConfirmation')}</h3>
+                            <div className="rounded-xl bg-card">
+                                <h3 className="mb-3 font-semibold">{t('orderConfirmation')}</h3>
                                 <div className="space-y-2 text-sm">
                                     <div className="flex justify-between">
                                         <span>{t('deliverTo')}:</span>
-                                        <span>{firstName} {lastName}</span>
+                                        <span>
+                                            {firstName} {lastName}
+                                        </span>
                                     </div>
                                     <div className="flex justify-between">
                                         <span>{t('address')}:</span>
-                                        <span className="text-right">{streetAddress}, {city}, {country}</span>
+                                        <span className="text-right">
+                                            {streetAddress}, {city}, {country}
+                                        </span>
                                     </div>
                                     <div className="flex justify-between">
                                         <span>{t('shippingMethod')}:</span>
@@ -915,8 +922,7 @@ const PaymentForm = ({ cartTotal, subTotal, shippingCost, onShippingUpdate, sele
                                 <button
                                     type="button"
                                     onClick={handleBackToInformation}
-                                    className="text-primary text-sm mt-3 hover:underline"
-                                >
+                                    className="mt-3 text-primary text-sm hover:underline">
                                     ← {t('editInformation')}
                                 </button>
                             </div>
@@ -924,7 +930,7 @@ const PaymentForm = ({ cartTotal, subTotal, shippingCost, onShippingUpdate, sele
                             {/* Turnstile Verification */}
                             {turnstileKey && (
                                 <div className="space-y-4">
-                                    <h2 className="text-lg font-semibold mb-4">{t('securityVerification')}</h2>
+                                    <h2 className="mb-4 font-semibold text-lg">{t('securityVerification')}</h2>
                                     <div className="flex justify-center">
                                         <Turnstile
                                             sitekey={turnstileKey}
@@ -938,56 +944,52 @@ const PaymentForm = ({ cartTotal, subTotal, shippingCost, onShippingUpdate, sele
 
                             {/* Payment Methods Section */}
                             <div>
-                                <h2 className="text-lg font-semibold mb-4">{t('paymentMethod')}</h2>
-                                
+                                <h2 className="mb-4 font-semibold text-lg">{t('paymentMethod')}</h2>
+
                                 {/* Payment Method Selection */}
                                 <div className="mb-6">
-                                    <label className="block text-sm font-medium mb-4">{t('selectPaymentMethod')}</label>
+                                    <label className="mb-4 block font-medium text-sm">{t('selectPaymentMethod')}</label>
                                     <div className="grid gap-3">
                                         {getAvailablePaymentMethods().map((method) => (
                                             <div
                                                 key={method.value}
                                                 onClick={() => setSelectedPaymentMethod(method.value)}
-                                                className={`
-                                                    relative cursor-pointer rounded-lg border-2 p-4 transition-all duration-200 hover:shadow-md
-                                                    ${
-                                                        selectedPaymentMethod === method.value
-                                                            ? 'border-primary bg-primary/5 shadow-sm'
-                                                            : 'border-border bg-card hover:border-primary/50'
-                                                    }
-                                                `}
-                                            >
+                                                className={`relative cursor-pointer rounded-lg border-2 p-4 transition-all duration-200 hover:shadow-md ${
+                                                    selectedPaymentMethod === method.value
+                                                        ? 'border-primary bg-primary/5 shadow-sm'
+                                                        : 'border-border bg-card hover:border-primary/50'
+                                                }
+                                                `}>
                                                 {/* Radio indicator */}
                                                 <div className="absolute top-4 right-4">
                                                     <div
-                                                        className={`
-                                                            w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors
-                                                            ${
-                                                                selectedPaymentMethod === method.value
-                                                                    ? 'border-primary bg-primary'
-                                                                    : 'border-gray-300'
-                                                            }
-                                                        `}
-                                                    >
+                                                        className={`flex h-5 w-5 items-center justify-center rounded-full border-2 transition-colors ${
+                                                            selectedPaymentMethod === method.value
+                                                                ? 'border-primary bg-primary'
+                                                                : 'border-gray-300'
+                                                        }
+                                                        `}>
                                                         {selectedPaymentMethod === method.value && (
-                                                            <div className="w-2 h-2 bg-white rounded-full" />
+                                                            <div className="h-2 w-2 rounded-full bg-white" />
                                                         )}
                                                     </div>
                                                 </div>
-                                                
+
                                                 {/* Payment method content */}
                                                 <div className="pr-8">
-                                                    <div className="font-medium text-base mb-1">{method.label}</div>
-                                                    <div className="text-sm text-muted-foreground">{method.description}</div>
+                                                    <div className="mb-1 font-medium text-base">{method.label}</div>
+                                                    <div className="text-muted-foreground text-sm">
+                                                        {method.description}
+                                                    </div>
                                                 </div>
                                             </div>
                                         ))}
                                     </div>
-                                    
+
                                     {getAvailablePaymentMethods().length === 0 && (
-                                        <div className="text-center py-8 px-4 border-2 border-dashed border-border rounded-lg">
+                                        <div className="rounded-lg border-2 border-border border-dashed px-4 py-8 text-center">
                                             <p className="text-muted-foreground">{t('noPaymentMethods')}</p>
-                                            <p className="text-sm text-muted-foreground mt-1">{t('contactSupport')}</p>
+                                            <p className="mt-1 text-muted-foreground text-sm">{t('contactSupport')}</p>
                                         </div>
                                     )}
                                 </div>
@@ -996,65 +998,93 @@ const PaymentForm = ({ cartTotal, subTotal, shippingCost, onShippingUpdate, sele
                                 {selectedPaymentMethod && (
                                     <div className="space-y-4">
                                         {selectedPaymentMethod === 'card' && hasStripe && (
-                                            <div className="bg-card border rounded-lg p-4">
-                                                <h3 className="text-md font-medium mb-2">💳 {t('cardPayment')}</h3>
-                                                <p className="text-muted-foreground text-sm mb-4">{t('cardPaymentDescription')}</p>
+                                            <div className="rounded-lg border bg-card p-4">
+                                                <h3 className="mb-2 font-medium text-md">💳 {t('cardPayment')}</h3>
+                                                <p className="mb-4 text-muted-foreground text-sm">
+                                                    {t('cardPaymentDescription')}
+                                                </p>
                                                 <PaymentElement theme="light" />
                                             </div>
                                         )}
-                                        
                                         {selectedPaymentMethod === 'card' && !hasStripe && (
-                                            <div className="bg-accent border rounded-lg p-4">
-                                                <h3 className="text-md font-medium mb-2">💳 {t('cardPayment')}</h3>
+                                            <div className="rounded-lg border bg-accent p-4">
+                                                <h3 className="mb-2 font-medium text-md">💳 {t('cardPayment')}</h3>
                                                 <p className="text-muted-foreground text-sm">{t('cardPaymentSetup')}</p>
                                             </div>
                                         )}
-                                        
-                        {selectedPaymentMethod === 'bank_transfer' && (
-                            <div className="bg-accent border rounded-lg p-4">
-                                <h3 className="text-md font-medium mb-2">🏦 {t('bankTransfer')}</h3>
-                                {storeSettings?.paymentMethods?.bankTransferDetails && (
-                                    <div className="space-y-2 mb-3">
-                                        {storeSettings.paymentMethods.bankTransferDetails.bankName && (
-                                            <div className="flex justify-between">
-                                                <span className="font-medium">{t('bankName')}:</span>
-                                                <span>{storeSettings.paymentMethods.bankTransferDetails.bankName}</span>
-                                            </div>
-                                        )}
-                                        {storeSettings.paymentMethods.bankTransferDetails.accountHolder && (
-                                            <div className="flex justify-between">
-                                                <span className="font-medium">{t('accountHolder')}:</span>
-                                                <span>{storeSettings.paymentMethods.bankTransferDetails.accountHolder}</span>
-                                            </div>
-                                        )}
-                                        {storeSettings.paymentMethods.bankTransferDetails.iban && (
-                                            <div className="flex justify-between">
-                                                <span className="font-medium">IBAN:</span>
-                                                <span className="font-mono text-sm">{storeSettings.paymentMethods.bankTransferDetails.iban}</span>
-                                            </div>
-                                        )}
-                                        {storeSettings.paymentMethods.bankTransferDetails.bic && (
-                                            <div className="flex justify-between">
-                                                <span className="font-medium">BIC:</span>
-                                                <span className="font-mono text-sm">{storeSettings.paymentMethods.bankTransferDetails.bic}</span>
-                                            </div>
-                                        )}
-                                        {storeSettings.paymentMethods.bankTransferDetails.additionalInstructions && (
-                                            <div className="mt-3 pt-2 border-t">
-                                                <p className="text-xs text-muted-foreground">
-                                                    {storeSettings.paymentMethods.bankTransferDetails.additionalInstructions}
+                                        {selectedPaymentMethod === 'bank_transfer' && (
+                                            <div className="rounded-lg border bg-accent p-4">
+                                                <h3 className="mb-2 font-medium text-md">🏦 {t('bankTransfer')}</h3>
+                                                {storeSettings?.paymentMethods?.bankTransferDetails && (
+                                                    <div className="mb-3 space-y-2">
+                                                        {storeSettings.paymentMethods.bankTransferDetails.bankName && (
+                                                            <div className="flex justify-between">
+                                                                <span className="font-medium">{t('bankName')}:</span>
+                                                                <span>
+                                                                    {
+                                                                        storeSettings.paymentMethods.bankTransferDetails
+                                                                            .bankName
+                                                                    }
+                                                                </span>
+                                                            </div>
+                                                        )}
+                                                        {storeSettings.paymentMethods.bankTransferDetails
+                                                            .accountHolder && (
+                                                            <div className="flex justify-between">
+                                                                <span className="font-medium">
+                                                                    {t('accountHolder')}:
+                                                                </span>
+                                                                <span>
+                                                                    {
+                                                                        storeSettings.paymentMethods.bankTransferDetails
+                                                                            .accountHolder
+                                                                    }
+                                                                </span>
+                                                            </div>
+                                                        )}
+                                                        {storeSettings.paymentMethods.bankTransferDetails.iban && (
+                                                            <div className="flex justify-between">
+                                                                <span className="font-medium">IBAN:</span>
+                                                                <span className="font-mono text-sm">
+                                                                    {
+                                                                        storeSettings.paymentMethods.bankTransferDetails
+                                                                            .iban
+                                                                    }
+                                                                </span>
+                                                            </div>
+                                                        )}
+                                                        {storeSettings.paymentMethods.bankTransferDetails.bic && (
+                                                            <div className="flex justify-between">
+                                                                <span className="font-medium">BIC:</span>
+                                                                <span className="font-mono text-sm">
+                                                                    {
+                                                                        storeSettings.paymentMethods.bankTransferDetails
+                                                                            .bic
+                                                                    }
+                                                                </span>
+                                                            </div>
+                                                        )}
+                                                        {storeSettings.paymentMethods.bankTransferDetails
+                                                            .additionalInstructions && (
+                                                            <div className="mt-3 border-t pt-2">
+                                                                <p className="text-muted-foreground text-xs">
+                                                                    {
+                                                                        storeSettings.paymentMethods.bankTransferDetails
+                                                                            .additionalInstructions
+                                                                    }
+                                                                </p>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                )}
+                                                <p className="text-muted-foreground text-sm">
+                                                    {t('bankTransferInstructions')}
                                                 </p>
                                             </div>
-                                        )}
-                                    </div>
-                                )}
-                                <p className="text-muted-foreground text-sm">
-                                    {t('bankTransferInstructions')}
-                                </p>
-                            </div>
-                        )}                                        {selectedPaymentMethod === 'pay_on_delivery' && (
-                                            <div className="bg-accent border rounded-lg p-4">
-                                                <h3 className="text-md font-medium mb-2">📦 {t('payOnDelivery')}</h3>
+                                        )}{' '}
+                                        {selectedPaymentMethod === 'pay_on_delivery' && (
+                                            <div className="rounded-lg border bg-accent p-4">
+                                                <h3 className="mb-2 font-medium text-md">📦 {t('payOnDelivery')}</h3>
                                                 <p className="text-muted-foreground text-sm">
                                                     {t('payOnDeliveryInstructions')}
                                                 </p>
@@ -1062,36 +1092,33 @@ const PaymentForm = ({ cartTotal, subTotal, shippingCost, onShippingUpdate, sele
                                         )}
                                     </div>
                                 )}
-
-
                             </div>
 
                             {/* Submit Button */}
                             <button
-                                className="w-full button primary"
+                                className="button primary w-full"
                                 type="submit"
                                 disabled={
-                                    isProcessing || 
+                                    isProcessing ||
                                     !selectedPaymentMethod ||
-                                    (turnstileKey && !isTurnstileVerified) || 
+                                    (turnstileKey && !isTurnstileVerified) ||
                                     (selectedPaymentMethod === 'card' && (!stripe || !elements))
-                                }
-                            >
+                                }>
                                 {isProcessing ? (
                                     <div className="flex items-center justify-center space-x-2">
-                                        <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                                        <div className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white"></div>
                                         <span>{t('processing')}</span>
                                     </div>
+                                ) : selectedPaymentMethod === 'card' ? (
+                                    t('payAmount', { amount: cartTotal })
                                 ) : (
-                                    selectedPaymentMethod === 'card' ? 
-                                        t('payAmount', { amount: cartTotal }) :
-                                        t('placeOrder')
+                                    t('placeOrder')
                                 )}
                             </button>
 
                             {/* Error Message */}
                             {errorMessage && (
-                                <div className="text-red-600 mt-2 text-sm text-center">{errorMessage}</div>
+                                <div className="mt-2 text-center text-red-600 text-sm">{errorMessage}</div>
                             )}
                         </form>
                     </motion.div>

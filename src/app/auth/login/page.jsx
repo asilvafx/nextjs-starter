@@ -1,12 +1,12 @@
 // @/app/auth/login/page.jsx
 'use client';
 
-import { useEffect } from 'react';
+import { motion } from 'framer-motion';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { LoginForm } from "@/components/login-form";
 import { useSession } from 'next-auth/react';
-import { motion } from 'framer-motion';
+import { useEffect } from 'react';
+import { LoginForm } from '@/components/login-form';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 
 const LoginPage = () => {
@@ -21,7 +21,7 @@ const LoginPage = () => {
 
     if (status === 'loading') {
         return (
-            <div className='flex min-h-screen items-center justify-center'>
+            <div className="flex min-h-screen items-center justify-center">
                 <LoadingSpinner size="lg" />
             </div>
         );
@@ -37,15 +37,14 @@ const LoginPage = () => {
     const initialEmail = emailParam ? decodeURIComponent(emailParam) : '';
 
     return (
-        <motion.div 
-            className='auth-section'
+        <motion.div
+            className="auth-section"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4 }}
-        >
+            transition={{ duration: 0.4 }}>
             <LoginForm initialEmail={initialEmail} />
-            <div className='mt-6 text-center'>
-                <Link href='/' className='text-blue-500 hover:underline'>
+            <div className="mt-6 text-center">
+                <Link href="/" className="text-blue-500 hover:underline">
                     ← Back to Home
                 </Link>
             </div>

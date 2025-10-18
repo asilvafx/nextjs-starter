@@ -10,7 +10,7 @@ export const colors = {
     gray700: '#374151',
     gray500: '#6B7280',
     grayLight: '#F9FAFB',
-    orange50: '#FFF7ED',
+    orange50: '#FFF7ED'
 };
 
 // Typography
@@ -20,18 +20,18 @@ export const typography = {
         heading: '28px',
         subheading: '18px',
         body: '16px',
-        small: '14px',
+        small: '14px'
     },
     weights: {
         normal: '400',
         medium: '600',
-        bold: 'bold',
+        bold: 'bold'
     },
     lineHeights: {
         tight: '20px',
         normal: '24px',
-        relaxed: '26px',
-    },
+        relaxed: '26px'
+    }
 };
 
 // Spacing
@@ -41,7 +41,7 @@ export const spacing = {
     md: '20px',
     lg: '32px',
     xl: '48px',
-    xxl: '64px',
+    xxl: '64px'
 };
 
 // Email styles object
@@ -49,7 +49,7 @@ export const emailStyles = {
     // Layout
     main: {
         backgroundColor: colors.background,
-        fontFamily: typography.fontFamily,
+        fontFamily: typography.fontFamily
     },
 
     container: {
@@ -57,17 +57,17 @@ export const emailStyles = {
         margin: '0 auto',
         padding: `${spacing.md} 0 ${spacing.xl}`,
         marginBottom: spacing.xxl,
-        maxWidth: '580px',
+        maxWidth: '580px'
     },
 
     // Logo section
     logoSection: {
         padding: `${spacing.lg} ${spacing.md}`,
-        textAlign: 'center',
+        textAlign: 'center'
     },
 
     logo: {
-        margin: '0 auto',
+        margin: '0 auto'
     },
 
     // Typography
@@ -77,7 +77,7 @@ export const emailStyles = {
         color: colors.gray900,
         textAlign: 'center',
         margin: `0 0 30px`,
-        padding: `0 ${spacing.md}`,
+        padding: `0 ${spacing.md}`
     },
 
     paragraph: {
@@ -85,7 +85,7 @@ export const emailStyles = {
         lineHeight: typography.lineHeights.relaxed,
         color: colors.gray700,
         padding: `0 ${spacing.md}`,
-        margin: `0 0 ${spacing.md}`,
+        margin: `0 0 ${spacing.md}`
     },
 
     // Features section
@@ -95,28 +95,28 @@ export const emailStyles = {
         borderRadius: '8px',
         margin: `24px 0`,
         padding: spacing.md,
-        border: `1px solid ${colors.primaryLight}`,
+        border: `1px solid ${colors.primaryLight}`
     },
 
     featuresTitle: {
         fontSize: typography.sizes.subheading,
         fontWeight: typography.weights.medium,
         color: colors.gray900,
-        margin: `0 0 ${spacing.sm}`,
+        margin: `0 0 ${spacing.sm}`
     },
 
     featureText: {
         fontSize: typography.sizes.body,
         lineHeight: typography.lineHeights.normal,
         color: colors.gray700,
-        margin: '0',
+        margin: '0'
     },
 
     // Button
     buttonSection: {
         textAlign: 'center',
         margin: `${spacing.lg} 0`,
-        padding: `0 ${spacing.md}`,
+        padding: `0 ${spacing.md}`
     },
 
     button: {
@@ -130,20 +130,20 @@ export const emailStyles = {
         display: 'inline-block',
         padding: `14px ${spacing.lg}`,
         border: 'none',
-        cursor: 'pointer',
+        cursor: 'pointer'
     },
 
     // Footer
     footer: {
         padding: `0 ${spacing.md}`,
-        margin: `${spacing.lg} 0 0`,
+        margin: `${spacing.lg} 0 0`
     },
 
     footerText: {
         fontSize: typography.sizes.body,
         lineHeight: typography.lineHeights.normal,
         color: colors.gray700,
-        margin: '0',
+        margin: '0'
     },
 
     // Support section
@@ -152,86 +152,86 @@ export const emailStyles = {
         padding: spacing.md,
         margin: `${spacing.lg} ${spacing.md} 0`,
         borderRadius: '8px',
-        textAlign: 'center',
+        textAlign: 'center'
     },
 
     supportText: {
         fontSize: typography.sizes.small,
         lineHeight: typography.lineHeights.tight,
         color: colors.gray500,
-        margin: '0',
+        margin: '0'
     },
 
     link: {
         color: colors.primary,
-        textDecoration: 'underline',
+        textDecoration: 'underline'
     },
 
     // Order confirmation specific styles
     dividerSection: {
         textAlign: 'center',
         margin: '20px 0',
-        padding: `0 ${spacing.md}`,
+        padding: `0 ${spacing.md}`
     },
 
     divider: {
         fontSize: typography.sizes.subheading,
         color: colors.gray500,
         letterSpacing: '2px',
-        fontWeight: typography.weights.normal,
+        fontWeight: typography.weights.normal
     },
 
     orderDetailItem: {
         fontSize: typography.sizes.body,
         lineHeight: typography.lineHeights.normal,
         color: colors.gray700,
-        margin: `0 0 12px`,
+        margin: `0 0 12px`
     },
 
     productsSection: {
-        marginTop: spacing.sm,
+        marginTop: spacing.sm
     },
 
     productsSectionTitle: {
         fontSize: typography.sizes.body,
         color: colors.gray700,
-        marginBottom: spacing.xs,
+        marginBottom: spacing.xs
     },
 
     shippingSection: {
         padding: `0 ${spacing.md}`,
-        margin: `${spacing.md} 0`,
+        margin: `${spacing.md} 0`
     },
 
     questionSection: {
         padding: `0 ${spacing.md}`,
-        margin: `${spacing.md} 0`,
+        margin: `${spacing.md} 0`
     },
 
     // Pricing section styles
     pricingSection: {
         marginTop: spacing.sm,
         paddingTop: spacing.xs,
-        borderTop: '1px solid #e0e0e0',
-    },
+        borderTop: '1px solid #e0e0e0'
+    }
 };
 
 // Styles for OrderStatusUpdateTemplate compatibility
 export const styles = {
     main: {
         backgroundColor: colors.background,
-        fontFamily: typography.fontFamily,
+        fontFamily: typography.fontFamily
     },
     container: {
         backgroundColor: colors.white,
         margin: '0 auto',
         padding: `${spacing.md} 0 ${spacing.xl}`,
         marginBottom: spacing.xxl,
-        maxWidth: '580px',
+        maxWidth: '580px'
     },
     logo: {
         padding: `${spacing.lg} ${spacing.md}`,
-        textAlign: 'center',
+        textAlign: 'center'
     },
     heading: {
         fontSize: typography.sizes.heading,
@@ -239,20 +239,20 @@ export const styles = {
         color: colors.gray900,
         textAlign: 'center',
         margin: `0 0 30px`,
-        padding: `0 ${spacing.md}`,
+        padding: `0 ${spacing.md}`
     },
     subheading: {
         fontSize: typography.sizes.subheading,
         fontWeight: typography.weights.medium,
         color: colors.gray900,
-        margin: `0 0 ${spacing.sm}`,
+        margin: `0 0 ${spacing.sm}`
     },
     text: {
         fontSize: typography.sizes.body,
         lineHeight: typography.lineHeights.relaxed,
         color: colors.gray700,
         padding: `0 ${spacing.md}`,
-        margin: `0 0 ${spacing.md}`,
+        margin: `0 0 ${spacing.md}`
     },
     orderSection: {
         maxWidth: '100%',
@@ -260,19 +260,19 @@ export const styles = {
         borderRadius: '8px',
         margin: `24px ${spacing.md}`,
         padding: spacing.md,
-        border: `1px solid ${colors.primaryLight}`,
+        border: `1px solid ${colors.primaryLight}`
     },
     item: {
         fontSize: typography.sizes.body,
         lineHeight: typography.lineHeights.normal,
         color: colors.gray700,
-        margin: `0 0 8px`,
+        margin: `0 0 8px`
     },
     priceItem: {
         fontSize: typography.sizes.body,
         lineHeight: typography.lineHeights.normal,
         color: colors.gray700,
-        margin: `0 0 6px`,
+        margin: `0 0 6px`
     },
     total: {
         fontSize: typography.sizes.body,
@@ -280,12 +280,12 @@ export const styles = {
         color: colors.gray900,
         margin: `8px 0 0`,
         paddingTop: '8px',
-        borderTop: '1px solid #e0e0e0',
+        borderTop: '1px solid #e0e0e0'
     },
     buttonContainer: {
         textAlign: 'center',
         margin: `${spacing.lg} 0`,
-        padding: `0 ${spacing.md}`,
+        padding: `0 ${spacing.md}`
     },
     button: {
         backgroundColor: colors.primary,
@@ -298,29 +298,29 @@ export const styles = {
         display: 'inline-block',
         padding: `14px ${spacing.lg}`,
         border: 'none',
-        cursor: 'pointer',
+        cursor: 'pointer'
     },
     footer: {
         padding: `0 ${spacing.md}`,
         margin: `${spacing.lg} 0 0`,
         fontSize: typography.sizes.body,
         lineHeight: typography.lineHeights.normal,
-        color: colors.gray700,
-    },
+        color: colors.gray700
+    }
 };
 
 // Utility functions for creating custom styles
 export const createButtonStyle = (backgroundColor = colors.primary, textColor = colors.white) => ({
     ...emailStyles.button,
     backgroundColor,
-    color: textColor,
+    color: textColor
 });
 
 export const createSectionStyle = (backgroundColor = colors.white, padding = spacing.md) => ({
     backgroundColor,
     padding,
     borderRadius: '8px',
-    margin: `24px ${spacing.md}`,
+    margin: `24px ${spacing.md}`
 });
 
 // Theme variations
@@ -328,23 +328,23 @@ export const themes = {
     orange: {
         primary: '#FF6B35',
         primaryLight: '#FDBA74',
-        accent: '#FFF7ED',
+        accent: '#FFF7ED'
     },
     blue: {
         primary: '#4F46E5',
         primaryLight: '#A5B4FC',
-        accent: '#EEF2FF',
+        accent: '#EEF2FF'
     },
     green: {
         primary: '#059669',
         primaryLight: '#86EFAC',
-        accent: '#ECFDF5',
+        accent: '#ECFDF5'
     },
     purple: {
         primary: '#7C3AED',
         primaryLight: '#C4B5FD',
-        accent: '#F3F4F6',
-    },
+        accent: '#F3F4F6'
+    }
 };
 
 // Function to generate theme-based styles
@@ -354,16 +354,16 @@ export const createThemedStyles = (theme = 'orange') => {
         ...emailStyles,
         button: {
             ...emailStyles.button,
-            backgroundColor: selectedTheme.primary,
+            backgroundColor: selectedTheme.primary
         },
         link: {
             ...emailStyles.link,
-            color: selectedTheme.primary,
+            color: selectedTheme.primary
         },
         featuresSection: {
             ...emailStyles.featuresSection,
             backgroundColor: selectedTheme.accent,
-            border: `1px solid ${selectedTheme.primaryLight}`,
-        },
+            border: `1px solid ${selectedTheme.primaryLight}`
+        }
     };
 };

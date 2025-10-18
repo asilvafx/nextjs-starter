@@ -1,12 +1,12 @@
 // @/app/auth/register/page.jsx
 'use client';
 
-import { useEffect, useState } from 'react';
+import { motion } from 'framer-motion';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { RegisterForm } from "@/components/register-form";
 import { useSession } from 'next-auth/react';
-import { motion } from 'framer-motion';
+import { useEffect, useState } from 'react';
+import { RegisterForm } from '@/components/register-form';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 
 const RegisterPage = () => {
@@ -18,7 +18,7 @@ const RegisterPage = () => {
     useEffect(() => {
         const checkSettings = async () => {
             try {
-                const response = await fetch('/api/query/public/site_settings?_t=' + Date.now());
+                const response = await fetch(`/api/query/public/site_settings?_t=${Date.now()}`);
                 if (response.ok) {
                     const data = await response.json();
                     if (data.success && data.data && data.data.length > 0) {
@@ -45,22 +45,22 @@ const RegisterPage = () => {
             }
         };
 
-        if (status === "authenticated") {
-            router.push("/");
-        } else if (status === "unauthenticated") {
+        if (status === 'authenticated') {
+            router.push('/');
+        } else if (status === 'unauthenticated') {
             checkSettings();
         }
     }, [status, router]);
 
-    if (status === "loading" || isLoading) {
+    if (status === 'loading' || isLoading) {
         return (
-            <div className="min-h-screen flex justify-center items-center">
+            <div className="flex min-h-screen items-center justify-center">
                 <LoadingSpinner size="lg" />
             </div>
         );
     }
 
-    if (status === "authenticated") {
+    if (status === 'authenticated') {
         return null;
     }
 
@@ -69,15 +69,14 @@ const RegisterPage = () => {
     }
 
     return (
-        <motion.div 
-            className='auth-section'
+        <motion.div
+            className="auth-section"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4 }}
-        >
+            transition={{ duration: 0.4 }}>
             <RegisterForm />
-            <div className='mt-6 text-center'>
-                <Link href='/' className='text-blue-500 hover:underline'>
+            <div className="mt-6 text-center">
+                <Link href="/" className="text-blue-500 hover:underline">
                     ← Back to Home
                 </Link>
             </div>

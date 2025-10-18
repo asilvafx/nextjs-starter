@@ -1,6 +1,6 @@
-import {equalTo, get, getDatabase, orderByChild, push, query, ref, remove, update} from "firebase/database";
-import {initializeApp} from "firebase/app";
-import {getDownloadURL, getStorage, ref as storageRef, uploadBytes} from "firebase/storage";
+import { initializeApp } from 'firebase/app';
+import { equalTo, get, getDatabase, orderByChild, push, query, ref, remove, update } from 'firebase/database';
+import { getDownloadURL, getStorage, ref as storageRef, uploadBytes } from 'firebase/storage';
 
 const firebaseConfig = {
     apiKey: process.env.FIREBASE_API_KEY,
@@ -17,14 +17,13 @@ let db;
 let storage;
 
 const firebaseUrl = firebaseConfig.databaseURL;
-if(firebaseUrl && firebaseUrl.trim() !== ''){
+if (firebaseUrl && firebaseUrl.trim() !== '') {
     app = initializeApp(firebaseConfig);
     db = getDatabase(app);
     storage = getStorage(app);
 }
 
 class FirebaseDBService {
-
     // Get multiple items by a specific key-value pair
     async getItemsByKeyValue(key, value, table) {
         try {

@@ -45,7 +45,7 @@ export const generatePDF = async (order, storeSettings = null) => {
     const formatCurrency = (amount, currency = null) => {
         const currencyCode = currency || settings.currency || 'EUR';
         const locale = currencyCode === 'EUR' ? 'fr-FR' : currencyCode === 'USD' ? 'en-US' : 'en-GB';
-        
+
         return new Intl.NumberFormat(locale, {
             style: 'currency',
             currency: currencyCode.toUpperCase()
@@ -56,9 +56,10 @@ export const generatePDF = async (order, storeSettings = null) => {
     const formatDate = (timestamp) => {
         if (!timestamp) return new Date().toLocaleDateString('fr-FR');
 
-        const date = typeof timestamp === 'number'
-            ? new Date(timestamp > 1000000000000 ? timestamp : timestamp * 1000)
-            : new Date(timestamp);
+        const date =
+            typeof timestamp === 'number'
+                ? new Date(timestamp > 1000000000000 ? timestamp : timestamp * 1000)
+                : new Date(timestamp);
 
         return date.toLocaleDateString('fr-FR');
     };
@@ -66,13 +67,13 @@ export const generatePDF = async (order, storeSettings = null) => {
     // Company Header
     doc.setFontSize(24);
     doc.setFont(undefined, 'bold');
-    doc.text(settings.businessName || "LOST-FOREVER", 20, 25);
+    doc.text(settings.businessName || 'LOST-FOREVER', 20, 25);
 
     doc.setFontSize(10);
     doc.setFont(undefined, 'normal');
-    doc.text("www.lost-forever.com", 20, 32);
-    doc.text(settings.address || "Boutique de vêtements", 20, 37);
-    
+    doc.text('www.lost-forever.com', 20, 32);
+    doc.text(settings.address || 'Boutique de vêtements', 20, 37);
+
     if (settings.tvaNumber) {
         doc.text(`TVA: ${settings.tvaNumber}`, 20, 42);
     }
@@ -84,7 +85,7 @@ export const generatePDF = async (order, storeSettings = null) => {
     // Invoice title and details
     doc.setFontSize(20);
     doc.setFont(undefined, 'bold');
-    doc.text("FACTURE", 20, 60);
+    doc.text('FACTURE', 20, 60);
 
     doc.setFontSize(11);
     doc.setFont(undefined, 'normal');
@@ -104,7 +105,7 @@ export const generatePDF = async (order, storeSettings = null) => {
     // Customer Information
     doc.setFontSize(14);
     doc.setFont(undefined, 'bold');
-    doc.text("INFORMATIONS CLIENT", 20, 115);
+    doc.text('INFORMATIONS CLIENT', 20, 115);
 
     doc.setFontSize(10);
     doc.setFont(undefined, 'normal');
@@ -122,7 +123,7 @@ export const generatePDF = async (order, storeSettings = null) => {
     // Shipping Information
     doc.setFontSize(14);
     doc.setFont(undefined, 'bold');
-    doc.text("ADRESSE DE LIVRAISON", 120, 115);
+    doc.text('ADRESSE DE LIVRAISON', 120, 115);
 
     doc.setFontSize(10);
     doc.setFont(undefined, 'normal');
@@ -165,16 +166,16 @@ export const generatePDF = async (order, storeSettings = null) => {
 
     doc.setFontSize(14);
     doc.setFont(undefined, 'bold');
-    doc.text("DÉTAIL DE LA COMMANDE", 20, itemsStartY);
+    doc.text('DÉTAIL DE LA COMMANDE', 20, itemsStartY);
     itemsStartY += 15;
 
     // Table headers
     doc.setFontSize(9);
     doc.setFont(undefined, 'bold');
-    doc.text("ARTICLE", 20, itemsStartY);
-    doc.text("QTÉ", 110, itemsStartY);
-    doc.text("PRIX U.", 130, itemsStartY);
-    doc.text("TOTAL", 165, itemsStartY);
+    doc.text('ARTICLE', 20, itemsStartY);
+    doc.text('QTÉ', 110, itemsStartY);
+    doc.text('PRIX U.', 130, itemsStartY);
+    doc.text('TOTAL', 165, itemsStartY);
     itemsStartY += 5;
 
     // Header line
@@ -187,18 +188,17 @@ export const generatePDF = async (order, storeSettings = null) => {
     let calculatedSubtotal = 0;
 
     if (items && items.length > 0) {
-        items.forEach(item => {
+        items.forEach((item) => {
             const itemPrice = parseFloat(item.price) || 0;
-            const itemQuantity = parseInt(item.quantity) || 1;
+            const itemQuantity = parseInt(item.quantity, 10) || 1;
             const itemTotal = itemPrice * itemQuantity;
             calculatedSubtotal += itemTotal;
 
             // Handle long product names
             const productName = item.name || 'Produit';
             const maxNameLength = 35;
-            const displayName = productName.length > maxNameLength
-                ? productName.substring(0, maxNameLength - 3) + '...'
-                : productName;
+            const displayName =
+                productName.length > maxNameLength ? `${productName.substring(0, maxNameLength - 3)}...` : productName;
 
             doc.text(displayName, 20, itemsStartY);
             doc.text(`${itemQuantity}`, 110, itemsStartY);
@@ -221,7 +221,7 @@ export const generatePDF = async (order, storeSettings = null) => {
             itemsStartY += 12;
         });
     } else {
-        doc.text("Aucun article trouvé", 20, itemsStartY);
+        doc.text('Aucun article trouvé', 20, itemsStartY);
         itemsStartY += 12;
     }
 
@@ -236,43 +236,39 @@ export const generatePDF = async (order, storeSettings = null) => {
     const shippingCost = parseFloat(order.shippingCost || order.shipping || 0);
     const discountAmount = parseFloat(order.discountAmount || 0);
     const taxAmount = parseFloat(order.taxAmount || 0);
-    const totalAmount = parseFloat(order.total || order.amount || (subtotal + shippingCost + taxAmount - discountAmount));
+    const totalAmount = parseFloat(order.total || order.amount || subtotal + shippingCost + taxAmount - discountAmount);
 
     doc.setFontSize(10);
     doc.setFont(undefined, 'normal');
 
     // Show subtotal (excluding tax if tax is included in prices)
-    const displaySubtotal = order.taxEnabled && order.taxIncluded && taxAmount > 0 
-      ? subtotal - taxAmount 
-      : subtotal;
-    const subtotalLabel = order.taxEnabled && order.taxIncluded 
-      ? 'Sous-total (HT):' 
-      : 'Sous-total:';
-    
+    const displaySubtotal = order.taxEnabled && order.taxIncluded && taxAmount > 0 ? subtotal - taxAmount : subtotal;
+    const subtotalLabel = order.taxEnabled && order.taxIncluded ? 'Sous-total (HT):' : 'Sous-total:';
+
     doc.text(subtotalLabel, 130, itemsStartY);
     doc.text(formatCurrency(displaySubtotal), 165, itemsStartY);
     itemsStartY += 8;
 
     // Show tax if enabled
     if (order.taxEnabled && taxAmount > 0) {
-      const taxRate = order.taxRate || settings.vatPercentage || 20;
-      doc.text(`TVA (${taxRate}%):`, 130, itemsStartY);
-      doc.text(formatCurrency(taxAmount), 165, itemsStartY);
-      itemsStartY += 8;
+        const taxRate = order.taxRate || settings.vatPercentage || 20;
+        doc.text(`TVA (${taxRate}%):`, 130, itemsStartY);
+        doc.text(formatCurrency(taxAmount), 165, itemsStartY);
+        itemsStartY += 8;
     }
 
     // Shipping
     if (shippingCost > 0) {
-      doc.text(`Frais de port:`, 130, itemsStartY);
-      doc.text(formatCurrency(shippingCost), 165, itemsStartY);
-      itemsStartY += 8;
+        doc.text(`Frais de port:`, 130, itemsStartY);
+        doc.text(formatCurrency(shippingCost), 165, itemsStartY);
+        itemsStartY += 8;
     }
 
     // Discount
     if (discountAmount > 0) {
-      doc.text(`Remise:`, 130, itemsStartY);
-      doc.text(`-${formatCurrency(discountAmount)}`, 165, itemsStartY);
-      itemsStartY += 8;
+        doc.text(`Remise:`, 130, itemsStartY);
+        doc.text(`-${formatCurrency(discountAmount)}`, 165, itemsStartY);
+        itemsStartY += 8;
     }
 
     itemsStartY += 4;
@@ -316,13 +312,21 @@ export const generatePDF = async (order, storeSettings = null) => {
 
     doc.setFontSize(8);
     doc.setFont(undefined, 'normal');
-    doc.text(`${settings.businessName || 'Lost-Forever'} - ${settings.address || 'Boutique en ligne de vêtements'}`, 20, itemsStartY);
+    doc.text(
+        `${settings.businessName || 'Lost-Forever'} - ${settings.address || 'Boutique en ligne de vêtements'}`,
+        20,
+        itemsStartY
+    );
     itemsStartY += 5;
     doc.text(`Pour toute question, contactez-nous à: contact@lost-forever.com`, 20, itemsStartY);
 
     // Add creation date
     itemsStartY += 5;
-    doc.text(`Document généré le: ${new Date().toLocaleDateString('fr-FR')} à ${new Date().toLocaleTimeString('fr-FR')}`, 20, itemsStartY);
+    doc.text(
+        `Document généré le: ${new Date().toLocaleDateString('fr-FR')} à ${new Date().toLocaleTimeString('fr-FR')}`,
+        20,
+        itemsStartY
+    );
 
     // Save the PDF with a more descriptive filename
     const fileName = `facture-${order.uid}-${formatDate(order.created_at).replace(/\//g, '-')}.pdf`;

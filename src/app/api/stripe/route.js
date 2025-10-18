@@ -1,6 +1,6 @@
 // @/app/api/stripe/route.js
 
-import Stripe from "stripe";
+import Stripe from 'stripe';
 import DBService from '@/data/rest.db.js';
 
 // Function to get Stripe instance with settings-based key
@@ -8,11 +8,11 @@ async function getStripeInstance() {
     try {
         const storeSettingsResponse = await DBService.readAll('store_settings');
         const storeSettings = storeSettingsResponse?.[0];
-        
+
         if (!storeSettings?.paymentMethods?.stripeSecretKey) {
             throw new Error('Stripe secret key not configured in store settings');
         }
-        
+
         return new Stripe(storeSettings.paymentMethods.stripeSecretKey);
     } catch (error) {
         console.error('Failed to initialize Stripe:', error);
@@ -24,29 +24,28 @@ export async function OPTIONS() {
     return new Response(null, {
         status: 200,
         headers: {
-            "Access-Control-Allow-Origin": "*",
-            "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-            "Access-Control-Allow-Headers": "Content-Type, Authorization",
-        },
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+            'Access-Control-Allow-Headers': 'Content-Type, Authorization'
+        }
     });
 }
 
 export async function POST(req) {
     try {
-        const { amount, currency = "eur", email = "", automatic_payment_methods } =
-            await req.json();
+        const { amount, currency = 'eur', email = '', automatic_payment_methods } = await req.json();
 
         if (!amount || amount <= 0) {
-            return new Response(JSON.stringify({ error: "Invalid amount" }), {
+            return new Response(JSON.stringify({ error: 'Invalid amount' }), {
                 status: 400,
-                headers: { "Access-Control-Allow-Origin": "*" },
+                headers: { 'Access-Control-Allow-Origin': '*' }
             });
         }
 
         if (!email) {
-            return new Response(JSON.stringify({ error: "Email is required" }), {
+            return new Response(JSON.stringify({ error: 'Email is required' }), {
                 status: 400,
-                headers: { "Access-Control-Allow-Origin": "*" },
+                headers: { 'Access-Control-Allow-Origin': '*' }
             });
         }
 
@@ -55,20 +54,20 @@ export async function POST(req) {
 
         const customer = await stripe.customers.create({
             email,
-            description: `Customer for ${email}`,
+            description: `Customer for ${email}`
         });
 
         const paymentIntentParams = {
-            amount: parseInt(amount),
+            amount: parseInt(amount, 10),
             currency,
             customer: customer.id,
-            metadata: { customer_email: email },
+            metadata: { customer_email: email }
         };
 
         if (automatic_payment_methods) {
             paymentIntentParams.automatic_payment_methods = { enabled: true };
         } else {
-            paymentIntentParams.payment_method_types = ["card"];
+            paymentIntentParams.payment_method_types = ['card'];
         }
 
         const paymentIntent = await stripe.paymentIntents.create(paymentIntentParams);
@@ -77,18 +76,18 @@ export async function POST(req) {
             JSON.stringify({
                 client_secret: paymentIntent.client_secret,
                 customer_id: customer.id,
-                payment_intent_id: paymentIntent.id,
+                payment_intent_id: paymentIntent.id
             }),
             {
                 status: 200,
-                headers: { "Access-Control-Allow-Origin": "*" },
+                headers: { 'Access-Control-Allow-Origin': '*' }
             }
         );
     } catch (err) {
-        console.error("Stripe Error:", err.message);
+        console.error('Stripe Error:', err.message);
         return new Response(JSON.stringify({ error: err.message }), {
             status: err.statusCode || 500,
-            headers: { "Access-Control-Allow-Origin": "*" },
+            headers: { 'Access-Control-Allow-Origin': '*' }
         });
     }
 }

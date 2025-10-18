@@ -19,14 +19,11 @@ export async function POST(request) {
         const { password, salt } = await request.json();
 
         if (!password || !salt) {
-            return NextResponse.json(
-                { error: 'Password and salt are required' },
-                { status: 400 }
-            );
+            return NextResponse.json({ error: 'Password and salt are required' }, { status: 400 });
         }
 
         const encryptedPassword = await encryptPassword(password, salt);
-        
+
         return NextResponse.json({ encryptedPassword });
     } catch (error) {
         console.error('Password encryption error:', error);

@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect } from 'react';
 import { useTranslations } from 'next-intl';
+import { useEffect } from 'react';
 import * as CookieConsent from 'vanilla-cookieconsent';
 import 'vanilla-cookieconsent/dist/cookieconsent.css';
 import getConfig from './CookieConsentConfig';
@@ -9,7 +9,7 @@ import getConfig from './CookieConsentConfig';
 const CookieConsentComponent = () => {
     const t = useTranslations('GDPR');
 
-    const ResetCookieConsent = () => {
+    const _ResetCookieConsent = () => {
         CookieConsent.reset(true);
         CookieConsent.run(getConfig(t));
     };
@@ -26,7 +26,7 @@ const CookieConsentComponent = () => {
         };
     }, [t]);
 
-  /*
+    /*
   return ( <div>
             <button type="button" onClick={CookieConsent.showPreferences}>
                 Manage cookie preferences

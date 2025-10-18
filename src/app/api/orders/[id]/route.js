@@ -3,10 +3,10 @@
 import { NextResponse } from 'next/server';
 import DBService from '@/data/rest.db.js';
 
-export async function GET(request, { params }) {
+export async function GET(_request, { params }) {
     try {
         const { id } = params;
-        
+
         if (!id) {
             return NextResponse.json(
                 {
@@ -19,9 +19,9 @@ export async function GET(request, { params }) {
 
         // Try to find order by ID or uid
         let order = null;
-        
+
         console.log('Looking for order with ID:', id);
-        
+
         try {
             // First try to get by exact id field
             order = await DBService.getItemByKey('id', id, 'orders');
@@ -38,11 +38,12 @@ export async function GET(request, { params }) {
                 try {
                     const allOrders = await DBService.readAll('orders');
                     console.log('Total orders found:', allOrders.length);
-                    order = allOrders.find(o => 
-                        (o.id && o.id === id) || 
-                        (o.uid && o.uid === id) ||
-                        (o.id && o.id.toString() === id) ||
-                        (o.uid && o.uid.toString() === id)
+                    order = allOrders.find(
+                        (o) =>
+                            (o.id && o.id === id) ||
+                            (o.uid && o.uid === id) ||
+                            (o.id && o.id.toString() === id) ||
+                            (o.uid && o.uid.toString() === id)
                     );
                     console.log('Found order by search:', !!order);
                     if (order) {

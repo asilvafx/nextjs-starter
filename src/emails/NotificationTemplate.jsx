@@ -1,25 +1,12 @@
 // emails/NotificationTemplate.jsx
-import {
-    Body,
-    Container,
-    Head,
-    Heading,
-    Html,
-    Img,
-    Preview,
-    Section,
-    Text,
-    Button,
-} from '@react-email/components';
-import * as React from 'react';
+import { Body, Container, Head, Heading, Html, Img, Preview, Section, Text } from '@react-email/components';
 
 export const NotificationTemplate = ({
-                                         message = 'You have a new notification.',
-                                         userDisplayName = null,
-                                         companyName = 'Your App Name',
-                                     }) => {
-
-    const logo_img = "https://bplw5mbobnwdstj8.public.blob.vercel-storage.com/logo.png";
+    message = 'You have a new notification.',
+    userDisplayName = null,
+    companyName = 'Your App Name'
+}) => {
+    const logo_img = 'https://bplw5mbobnwdstj8.public.blob.vercel-storage.com/logo.png';
 
     return (
         <Html>
@@ -28,20 +15,12 @@ export const NotificationTemplate = ({
             <Body style={main}>
                 <Container style={container}>
                     <Section style={logoSection}>
-                        <Img
-                            src={logo_img}
-                            width="150"
-                            height="50"
-                            alt={companyName}
-                            style={logo}
-                        />
+                        <Img src={logo_img} width="150" height="50" alt={companyName} style={logo} />
                     </Section>
 
                     <Heading style={heading}>Notification</Heading>
 
-                    <Text style={paragraph}>
-                        {userDisplayName ? `Hi ${userDisplayName},` : 'Hi there,'}
-                    </Text>
+                    <Text style={paragraph}>{userDisplayName ? `Hi ${userDisplayName},` : 'Hi there,'}</Text>
 
                     <Section style={messageSection}>
                         <Text style={messageText}>{message}</Text>
@@ -53,7 +32,8 @@ export const NotificationTemplate = ({
 
                     <Section style={footer}>
                         <Text style={footerText}>
-                            Best regards,<br />
+                            Best regards,
+                            <br />
                             The {companyName} Team
                         </Text>
                     </Section>
@@ -66,7 +46,7 @@ export const NotificationTemplate = ({
 // Shared styles for all templates
 const main = {
     backgroundColor: '#f6f9fc',
-    fontFamily: '-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Ubuntu,sans-serif',
+    fontFamily: '-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Ubuntu,sans-serif'
 };
 
 const container = {
@@ -74,16 +54,16 @@ const container = {
     margin: '0 auto',
     padding: '20px 0 48px',
     marginBottom: '64px',
-    maxWidth: '580px',
+    maxWidth: '580px'
 };
 
 const logoSection = {
     padding: '32px 20px',
-    textAlign: 'center',
+    textAlign: 'center'
 };
 
 const logo = {
-    margin: '0 auto',
+    margin: '0 auto'
 };
 
 const heading = {
@@ -92,7 +72,7 @@ const heading = {
     color: '#1f2937',
     textAlign: 'center',
     margin: '0 0 30px',
-    padding: '0 20px',
+    padding: '0 20px'
 };
 
 const paragraph = {
@@ -100,16 +80,16 @@ const paragraph = {
     lineHeight: '26px',
     color: '#374151',
     padding: '0 20px',
-    margin: '0 0 20px',
+    margin: '0 0 20px'
 };
 
-const codeSection = {
+const _codeSection = {
     textAlign: 'center',
     margin: '32px 0',
-    padding: '0 20px',
+    padding: '0 20px'
 };
 
-const codeText = {
+const _codeText = {
     fontSize: '36px',
     fontWeight: 'bold',
     color: '#10B981',
@@ -119,7 +99,7 @@ const codeText = {
     letterSpacing: '6px',
     fontFamily: 'Monaco, "Lucida Console", monospace',
     display: 'inline-block',
-    border: '2px solid #E5E7EB',
+    border: '2px solid #E5E7EB'
 };
 
 const messageSection = {
@@ -127,7 +107,7 @@ const messageSection = {
     borderLeft: '4px solid #3B82F6',
     padding: '16px 20px',
     margin: '24px 20px',
-    borderRadius: '0 6px 6px 0',
+    borderRadius: '0 6px 6px 0'
 };
 
 const messageText = {
@@ -135,19 +115,19 @@ const messageText = {
     lineHeight: '24px',
     color: '#1E40AF',
     margin: '0',
-    fontWeight: '500',
+    fontWeight: '500'
 };
 
 const footer = {
     padding: '0 20px',
-    margin: '32px 0 0',
+    margin: '32px 0 0'
 };
 
 const footerText = {
     fontSize: '16px',
     lineHeight: '24px',
     color: '#374151',
-    margin: '0',
+    margin: '0'
 };
 
 export default NotificationTemplate;

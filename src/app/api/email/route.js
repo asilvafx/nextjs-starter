@@ -1,11 +1,11 @@
 // app/api/email/route.js
 
 import { NextResponse } from 'next/server';
-import EmailService from '@/lib/server/email';
-import UserCreatedTemplate from '@/emails/UserCreatedTemplate';
-import UserUpdatedTemplate from '@/emails/UserUpdatedTemplate';
 import NewsletterTemplate from '@/emails/NewsletterTemplate';
 import OrderConfirmationTemplate from '@/emails/OrderConfirmationTemplate';
+import UserCreatedTemplate from '@/emails/UserCreatedTemplate';
+import UserUpdatedTemplate from '@/emails/UserUpdatedTemplate';
+import EmailService from '@/lib/server/email';
 
 export async function POST(request) {
     try {
@@ -14,71 +14,59 @@ export async function POST(request) {
 
         switch (type) {
             case 'user_created':
-                await EmailService.sendEmail(
+                await EmailService.sendEmail(email, 'Welcome to Your Account', UserCreatedTemplate, {
+                    userDisplayName: name,
                     email,
-                    'Welcome to Your Account',
-                    UserCreatedTemplate,
-                    {
-                        userDisplayName: name,
-                        email,
-                        password,
-                        loginUrl: `${process.env.NEXTAUTH_URL}/auth/login`
-                    }
-                );
+                    password,
+                    loginUrl: `${process.env.NEXTAUTH_URL}/auth/login`
+                });
                 break;
 
             case 'user_updated':
-                await EmailService.sendEmail(
-                    email,
-                    'Your Account Has Been Updated',
-                    UserUpdatedTemplate,
-                    {
-                        userDisplayName: name,
-                        changes,
-                        loginUrl: `${process.env.NEXTAUTH_URL}/auth/login`
-                    }
-                );
+                await EmailService.sendEmail(email, 'Your Account Has Been Updated', UserUpdatedTemplate, {
+                    userDisplayName: name,
+                    changes,
+                    loginUrl: `${process.env.NEXTAUTH_URL}/auth/login`
+                });
                 break;
 
-            case 'order_status_update':
+            case 'order_status_update': {
                 // Handle order status update email
-                const { 
-                    email: customerEmail, 
-                    customerName, 
-                    orderId, 
-                    orderDate, 
-                    status, 
-                    items, 
-                    subtotal, 
-                    shippingCost, 
-                    total, 
+                const {
+                    email: customerEmail,
+                    customerName,
+                    orderId,
+                    orderDate,
+                    status,
+                    items,
+                    subtotal,
+                    shippingCost,
+                    total,
                     shippingAddress,
                     trackingNumber,
-                    trackingUrl 
+                    trackingUrl
                 } = body;
-                
-                await EmailService.sendOrderUpdateEmail(
-                    customerEmail,
-                    {
-                        customerName,
-                        orderId,
-                        orderDate,
-                        status,
-                        items,
-                        total,
-                        subtotal,
-                        shippingCost,
-                        shippingAddress,
-                        trackingNumber: trackingNumber || null,
-                        trackingUrl: trackingUrl || null
-                    }
-                );
-                break;
 
-            case 'newsletter':
+                await EmailService.sendOrderUpdateEmail(customerEmail, {
+                    customerName,
+                    orderId,
+                    orderDate,
+                    status,
+                    items,
+                    total,
+                    subtotal,
+                    shippingCost,
+                    shippingAddress,
+                    trackingNumber: trackingNumber || null,
+                    trackingUrl: trackingUrl || null
+                });
+                break;
+            }
+
+            case 'newsletter': {
                 // Handle newsletter bulk sending
                 const { campaign, subscribers, manualRecipients, senderName, senderEmail } = body;
-                
+
                 if (!campaign) {
                     throw new Error('Campaign is required');
                 }
@@ -86,7 +74,7 @@ export async function POST(request) {
                 // Combine subscribers and manual recipients
                 const allRecipients = [
                     ...(subscribers || []),
-                    ...(manualRecipients || []).map(r => ({
+                    ...(manualRecipients || []).map((r) => ({
                         id: `manual_${Date.now()}_${Math.random()}`,
                         email: r.email,
                         name: r.name || null,
@@ -103,7 +91,9 @@ export async function POST(request) {
                 let failureCount = 0;
 
                 // Get sender information
-                const finalSenderName = senderName || (await EmailService.getEmailName ? await EmailService.getEmailName() : 'Your App Name');
+                const finalSenderName =
+                    senderName ||
+                    ((await EmailService.getEmailName) ? await EmailService.getEmailName() : 'Your App Name');
                 const finalSenderEmail = senderEmail || process.env.SMTP_USER || 'noreply@yourdomain.com';
 
                 // Send newsletter to each recipient
@@ -118,7 +108,10 @@ export async function POST(request) {
                             NewsletterTemplate,
                             {
                                 subject: campaign.subject,
-                                content: campaign.content || campaign.previewText || 'Thank you for subscribing to our newsletter.',
+                                content:
+                                    campaign.content ||
+                                    campaign.previewText ||
+                                    'Thank you for subscribing to our newsletter.',
                                 previewText: campaign.previewText || campaign.subject || '',
                                 subscriberName: recipient.name || null,
                                 companyName: finalSenderName,
@@ -134,9 +127,9 @@ export async function POST(request) {
                             }
                         );
                         successCount++;
-                        
+
                         // Small delay to avoid overwhelming the email service
-                        await new Promise(resolve => setTimeout(resolve, 100));
+                        await new Promise((resolve) => setTimeout(resolve, 100));
                     } catch (error) {
                         console.error(`Failed to send newsletter to ${recipient.email}:`, error);
                         failureCount++;
@@ -144,37 +137,49 @@ export async function POST(request) {
                 }
 
                 console.log(`Newsletter campaign sent: ${successCount} successful, ${failureCount} failed`);
-                
-                return NextResponse.json({ 
-                    success: true, 
+
+                return NextResponse.json({
+                    success: true,
                     data: {
                         sent: successCount,
                         failed: failureCount,
                         total: allRecipients.length
                     }
                 });
+            }
 
-            case 'newsletter_test':
+            case 'newsletter_test': {
                 // Handle newsletter test sending (single recipient)
-                const { campaign: testCampaign, testEmail, testName, senderName: testSenderName, senderEmail: testSenderEmail } = body;
-                
+                const {
+                    campaign: testCampaign,
+                    testEmail,
+                    testName,
+                    senderName: testSenderName,
+                    senderEmail: testSenderEmail
+                } = body;
+
                 if (!testCampaign || !testEmail) {
                     throw new Error('Campaign and test email are required');
                 }
 
                 const baseUrl2 = process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
-                
+
                 // Get sender information for test
-                const testFinalSenderName = testSenderName || (await EmailService.getEmailName ? await EmailService.getEmailName() : 'Your App Name');
+                const testFinalSenderName =
+                    testSenderName ||
+                    ((await EmailService.getEmailName) ? await EmailService.getEmailName() : 'Your App Name');
                 const testFinalSenderEmail = testSenderEmail || process.env.SMTP_USER || 'noreply@yourdomain.com';
-                
+
                 await EmailService.sendEmail(
                     testEmail,
                     `[TEST] ${testCampaign.subject}`,
                     NewsletterTemplate,
                     {
                         subject: testCampaign.subject,
-                        content: testCampaign.content || testCampaign.previewText || 'Thank you for subscribing to our newsletter.',
+                        content:
+                            testCampaign.content ||
+                            testCampaign.previewText ||
+                            'Thank you for subscribing to our newsletter.',
                         previewText: testCampaign.previewText || testCampaign.subject || '',
                         subscriberName: testName || 'Test User',
                         companyName: testFinalSenderName,
@@ -190,19 +195,20 @@ export async function POST(request) {
                     }
                 );
                 break;
+            }
 
-            case 'order_confirmation':
+            case 'order_confirmation': {
                 // Handle order confirmation email
-                const { 
-                    email: orderEmail, 
-                    customerName: orderCustomerName, 
-                    orderId: orderOrderId, 
-                    orderDate: orderOrderDate, 
-                    items: orderItems, 
-                    subtotal: orderSubtotal, 
-                    shippingCost: orderShippingCost, 
-                    total: orderTotal, 
-                    shippingAddress: orderShippingAddress 
+                const {
+                    email: orderEmail,
+                    customerName: orderCustomerName,
+                    orderId: orderOrderId,
+                    orderDate: orderOrderDate,
+                    items: orderItems,
+                    subtotal: orderSubtotal,
+                    shippingCost: orderShippingCost,
+                    total: orderTotal,
+                    shippingAddress: orderShippingAddress
                 } = body;
 
                 // Format the order date
@@ -213,7 +219,7 @@ export async function POST(request) {
                 });
 
                 // Transform products to the template format
-                const formattedProducts = orderItems.map(item => ({
+                const formattedProducts = orderItems.map((item) => ({
                     name: item.name,
                     size: item.size || 'Standard',
                     quantity: item.quantity
@@ -222,25 +228,21 @@ export async function POST(request) {
                 // Create formatted delivery address
                 const deliveryAddress = {
                     name: orderCustomerName,
-                    address: `${orderShippingAddress.street}${orderShippingAddress.unit ? ', ' + orderShippingAddress.unit : ''}, ${orderShippingAddress.city}, ${orderShippingAddress.state} ${orderShippingAddress.zip}, ${orderShippingAddress.country}`
+                    address: `${orderShippingAddress.street}${orderShippingAddress.unit ? `, ${orderShippingAddress.unit}` : ''}, ${orderShippingAddress.city}, ${orderShippingAddress.state} ${orderShippingAddress.zip}, ${orderShippingAddress.country}`
                 };
-                
-                await EmailService.sendEmail(
-                    orderEmail,
-                    'Confirmation de votre commande',
-                    OrderConfirmationTemplate,
-                    {
-                        userDisplayName: orderCustomerName,
-                        orderId: `#${orderOrderId}`,
-                        orderDate: formattedOrderDate,
-                        products: formattedProducts,
-                        deliveryAddress: deliveryAddress,
-                        orderSummaryUrl: `${process.env.NEXTAUTH_URL}/orders/${orderOrderId}`,
-                        companyName: await EmailService.getEmailName ? await EmailService.getEmailName() : 'Your Store',
-                        supportEmail: process.env.SUPPORT_EMAIL || 'support@yourstore.com'
-                    }
-                );
+
+                await EmailService.sendEmail(orderEmail, 'Confirmation de votre commande', OrderConfirmationTemplate, {
+                    userDisplayName: orderCustomerName,
+                    orderId: `#${orderOrderId}`,
+                    orderDate: formattedOrderDate,
+                    products: formattedProducts,
+                    deliveryAddress: deliveryAddress,
+                    orderSummaryUrl: `${process.env.NEXTAUTH_URL}/orders/${orderOrderId}`,
+                    companyName: (await EmailService.getEmailName) ? await EmailService.getEmailName() : 'Your Store',
+                    supportEmail: process.env.SUPPORT_EMAIL || 'support@yourstore.com'
+                });
                 break;
+            }
 
             default:
                 throw new Error('Invalid email type');
@@ -249,8 +251,6 @@ export async function POST(request) {
         return NextResponse.json({ success: true });
     } catch (error) {
         console.error('Email sending error:', error);
-        return NextResponse.json(
-            { error: 'Failed to send email' }
-        );
+        return NextResponse.json({ error: 'Failed to send email' });
     }
 }

@@ -4,12 +4,12 @@ import { NextResponse } from 'next/server';
 import DBService from '@/data/rest.db.js';
 import EmailService from '@/lib/server/email';
 
-export async function GET(request) {
+export async function GET(_request) {
     try {
         // Get order ID from URL path - this will be handled by [id]/route.js
         // This endpoint can be used to get all orders if needed
         const orders = await DBService.readAll('orders');
-        
+
         return NextResponse.json({
             success: true,
             data: orders
@@ -69,19 +69,22 @@ export async function POST(request) {
         };
 
         // Save order to database
-        await DBService.create(finalOrderData, "orders");
+        await DBService.create(finalOrderData, 'orders');
 
         // Check if customer exists, create if not
         try {
             const existingCustomer = await DBService.getItemByKey('email', orderData.customer.email, 'customers');
             if (!existingCustomer) {
-                await DBService.create({
-                    name: `${orderData.customer.firstName} ${orderData.customer.lastName}`,
-                    email: orderData.customer.email,
-                    phone: orderData.customer.phone,
-                    address: finalOrderData.shipping_address,
-                    createdAt: new Date().toISOString()
-                }, 'customers');
+                await DBService.create(
+                    {
+                        name: `${orderData.customer.firstName} ${orderData.customer.lastName}`,
+                        email: orderData.customer.email,
+                        phone: orderData.customer.phone,
+                        address: finalOrderData.shipping_address,
+                        createdAt: new Date().toISOString()
+                    },
+                    'customers'
+                );
             }
         } catch (customerError) {
             console.warn('Failed to create customer record:', customerError);
@@ -117,7 +120,11 @@ export async function POST(request) {
                         minute: '2-digit'
                     }),
                     items: orderData.items,
-                    subtotal: (orderData.vatIncludedInPrice ? orderData.subtotal : orderData.subtotalInclVat || orderData.subtotal)?.toFixed(2) || '0.00',
+                    subtotal:
+                        (orderData.vatIncludedInPrice
+                            ? orderData.subtotal
+                            : orderData.subtotalInclVat || orderData.subtotal
+                        )?.toFixed(2) || '0.00',
                     shippingCost: orderData.shippingCost?.toFixed(2) || '0.00',
                     total: finalTotal.toFixed(2),
                     vatEnabled: orderData.vatEnabled || false,
@@ -127,15 +134,14 @@ export async function POST(request) {
                     currency: storeSettings?.currency || 'EUR',
                     shippingAddress: finalOrderData.shipping_address,
                     paymentMethod: orderData.paymentMethod,
-                    bankTransferDetails: orderData.paymentMethod === 'bank_transfer' && storeSettings?.paymentMethods?.bankTransferDetails 
-                        ? storeSettings.paymentMethods.bankTransferDetails 
-                        : null,
+                    bankTransferDetails:
+                        orderData.paymentMethod === 'bank_transfer' &&
+                        storeSettings?.paymentMethods?.bankTransferDetails
+                            ? storeSettings.paymentMethods.bankTransferDetails
+                            : null
                 };
 
-                await EmailService.sendOrderConfirmationEmail(
-                    orderData.customer.email,
-                    emailPayload
-                );
+                await EmailService.sendOrderConfirmationEmail(orderData.customer.email, emailPayload);
 
                 console.log('Order confirmation email sent to:', orderData.customer.email);
             } catch (emailError) {
@@ -150,7 +156,6 @@ export async function POST(request) {
             orderId: orderData.id,
             data: finalOrderData
         });
-
     } catch (error) {
         console.error('Failed to create order:', error);
 

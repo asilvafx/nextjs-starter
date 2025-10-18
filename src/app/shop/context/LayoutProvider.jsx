@@ -9,38 +9,36 @@ import '@/app/main/styles.css';
 const LayoutContext = createContext();
 
 export const LayoutProvider = ({ children }) => {
-
     const isFirstRender = useRef(true);
 
-     useEffect(() => { 
-        
+    useEffect(() => {
         // Initialize visitor tracking once, regardless of auth status
         const initTracking = async () => {
             try {
-                await initializeVisitorTracking(); 
+                await initializeVisitorTracking();
             } catch (error) {
                 console.error('Failed to initialize main visitor tracking:', error);
             }
         };
-        
+
         initTracking();
     }, []);
 
-   useEffect(() => {
+    useEffect(() => {
         // Track page views on subsequent renders
-        if (isFirstRender.current) { 
+        if (isFirstRender.current) {
             return;
-        } 
-        if (window.VisitorTracker) {   
+        }
+        if (window.VisitorTracker) {
             isFirstRender.current = true;
             window.VisitorTracker.trackPageView();
-        }  
+        }
     }, []);
 
     return (
         <LayoutContext.Provider value={{}}>
-            <div className='container'>
-                <div className='screen'>{children}</div>
+            <div className="container">
+                <div className="screen">{children}</div>
             </div>
         </LayoutContext.Provider>
     );

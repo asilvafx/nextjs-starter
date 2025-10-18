@@ -23,35 +23,34 @@ async function checkApiAccess(request) {
         // Get API settings from database
         const apiSettingsResponse = await DBService.readAll('api_settings');
         const apiSettings = Object.values(apiSettingsResponse || {})[0];
-        
+
         // If no settings exist, allow access (fail open)
         if (!apiSettings) {
             return { allowed: true };
         }
-        
+
         // Check if API is disabled
         if (!apiSettings.apiEnabled) {
-            return { 
-                allowed: false, 
+            return {
+                allowed: false,
                 error: 'API access is currently disabled',
-                status: 503 
+                status: 503
             };
         }
-        
+
         // Check allowed origins if configured
         const origin = request.headers.get('origin');
         const allowedOrigins = apiSettings.allowedOrigins || ['*'];
-        
+
         if (!allowedOrigins.includes('*') && origin && !allowedOrigins.includes(origin)) {
-            return { 
-                allowed: false, 
+            return {
+                allowed: false,
                 error: 'Origin not allowed',
-                status: 403 
+                status: 403
             };
         }
-        
+
         return { allowed: true, settings: apiSettings };
-        
     } catch (error) {
         console.error('Error checking API access:', error);
         // Fail open - allow access if we can't check settings
@@ -67,20 +66,23 @@ async function trackApiUsage(request) {
         const apiKeyFromHeader = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
         const apiKeyFromQuery = url.searchParams.get('api_key');
         const apiKey = apiKeyFromHeader || apiKeyFromQuery;
-        
+
         if (apiKey) {
             // Log API usage for analytics (could be stored in a separate analytics collection)
             console.log(`API Key used: ${apiKey.substring(0, 8)}... for ${request.method} ${url.pathname}`);
-            
+
             // Optional: Store usage statistics in a separate analytics collection
             try {
-                await DBService.create({
-                    apiKey: apiKey.substring(0, 8) + '...',
-                    method: request.method,
-                    endpoint: url.pathname,
-                    timestamp: new Date().toISOString(),
-                    userAgent: request.headers.get('user-agent') || 'unknown'
-                }, 'api_usage_logs');
+                await DBService.create(
+                    {
+                        apiKey: `${apiKey.substring(0, 8)}...`,
+                        method: request.method,
+                        endpoint: url.pathname,
+                        timestamp: new Date().toISOString(),
+                        userAgent: request.headers.get('user-agent') || 'unknown'
+                    },
+                    'api_usage_logs'
+                );
             } catch (logError) {
                 // Ignore logging errors to not affect the main request
                 console.error('Failed to log API usage:', logError);
@@ -103,24 +105,21 @@ async function handlePublicGet(request, { params }) {
                 { status: accessCheck.status || 403 }
             );
         }
-        
+
         // Track API usage if API key provided
         await trackApiUsage(request);
-        
+
         const { slug } = await params;
         const url = new URL(request.url);
         const id = url.searchParams.get('id');
         const key = url.searchParams.get('key');
         const value = url.searchParams.get('value');
-        const page = parseInt(url.searchParams.get('page')) || 1;
-        const limit = Math.min(parseInt(url.searchParams.get('limit')) || 10, 100); // Max 100 items
+        const page = parseInt(url.searchParams.get('page'), 10) || 1;
+        const limit = Math.min(parseInt(url.searchParams.get('limit'), 10) || 10, 100); // Max 100 items
         const search = url.searchParams.get('search');
 
         if (!slug) {
-            return NextResponse.json(
-                { error: 'Collection name is required' },
-                { status: 400 }
-            );
+            return NextResponse.json({ error: 'Collection name is required' }, { status: 400 });
         }
 
         let result;
@@ -129,10 +128,7 @@ async function handlePublicGet(request, { params }) {
         if (id) {
             result = await DBService.read(id, slug);
             if (!result) {
-                return NextResponse.json(
-                    { error: 'Record not found' },
-                    { status: 404 }
-                );
+                return NextResponse.json({ error: 'Record not found' }, { status: 404 });
             }
             return NextResponse.json({
                 success: true,
@@ -143,10 +139,7 @@ async function handlePublicGet(request, { params }) {
         else if (key && value) {
             result = await DBService.getItemsByKeyValue(key, value, slug);
             if (!result || Object.keys(result).length === 0) {
-                return NextResponse.json(
-                    { error: 'No records found' },
-                    { status: 404 }
-                );
+                return NextResponse.json({ error: 'No records found' }, { status: 404 });
             }
         }
         // Get all items
@@ -182,17 +175,20 @@ async function handlePublicGet(request, { params }) {
         // Search functionality
         if (search && items.length > 0) {
             const searchTerm = search.toLowerCase();
-            items = items.filter(item => {
+            items = items.filter((item) => {
                 if (!item) return false;
 
                 const searchableFields = [
-                    item.name, item.title, item.description,
-                    item.category, item.email, item.displayName
+                    item.name,
+                    item.title,
+                    item.description,
+                    item.category,
+                    item.email,
+                    item.displayName
                 ];
 
-                return searchableFields.some(field =>
-                    field && typeof field === 'string' &&
-                    field.toLowerCase().includes(searchTerm)
+                return searchableFields.some(
+                    (field) => field && typeof field === 'string' && field.toLowerCase().includes(searchTerm)
                 );
             });
         }
@@ -222,7 +218,6 @@ async function handlePublicGet(request, { params }) {
                 hasPrev: page > 1
             }
         });
-
     } catch (error) {
         console.error('Public get data error:', error);
         return NextResponse.json(
@@ -246,25 +241,19 @@ async function handlePublicPost(request, { params }) {
                 { status: accessCheck.status || 403 }
             );
         }
-        
+
         // Track API usage if API key provided
         await trackApiUsage(request);
-        
+
         const { slug } = await params;
         const data = await getRequestBody(request);
 
         if (!slug) {
-            return NextResponse.json(
-                { error: 'Collection name is required' },
-                { status: 400 }
-            );
+            return NextResponse.json({ error: 'Collection name is required' }, { status: 400 });
         }
 
         if (!data) {
-            return NextResponse.json(
-                { error: 'Request body is required' },
-                { status: 400 }
-            );
+            return NextResponse.json({ error: 'Request body is required' }, { status: 400 });
         }
 
         // Add metadata - use user info if available (from optional auth)
@@ -279,21 +268,20 @@ async function handlePublicPost(request, { params }) {
         const newItem = await DBService.create(createData, slug);
 
         if (!newItem) {
-            return NextResponse.json(
-                { error: 'Failed to create record.' },
-                { status: 500 }
-            );
+            return NextResponse.json({ error: 'Failed to create record.' }, { status: 500 });
         }
 
-        return NextResponse.json({
-            success: true,
-            data: {
-                id: newItem.id || newItem.key || Date.now().toString(),
-                ...createData
+        return NextResponse.json(
+            {
+                success: true,
+                data: {
+                    id: newItem.id || newItem.key || Date.now().toString(),
+                    ...createData
+                },
+                message: 'Record created successfully!'
             },
-            message: 'Record created successfully!'
-        }, { status: 201 });
-
+            { status: 201 }
+        );
     } catch (error) {
         console.error('Public create data error:', error);
         return NextResponse.json(
@@ -317,34 +305,25 @@ async function handlePublicPut(request, { params }) {
                 { status: accessCheck.status || 403 }
             );
         }
-        
+
         // Track API usage if API key provided
         await trackApiUsage(request);
-        
+
         const { slug } = await params;
         const data = await getRequestBody(request);
 
         if (!slug) {
-            return NextResponse.json(
-                { error: 'Collection name is required' },
-                { status: 400 }
-            );
+            return NextResponse.json({ error: 'Collection name is required' }, { status: 400 });
         }
 
         if (!data || !data.id) {
-            return NextResponse.json(
-                { error: 'Request body with id is required' },
-                { status: 400 }
-            );
+            return NextResponse.json({ error: 'Request body with id is required' }, { status: 400 });
         }
 
         // Check if item exists
         const existingItem = await DBService.read(data.id, slug);
         if (!existingItem) {
-            return NextResponse.json(
-                { error: 'Record not found' },
-                { status: 404 }
-            );
+            return NextResponse.json({ error: 'Record not found' }, { status: 404 });
         }
 
         // Prepare update data
@@ -359,10 +338,7 @@ async function handlePublicPut(request, { params }) {
         const updatedItem = await DBService.update(id, updateData, slug);
 
         if (!updatedItem) {
-            return NextResponse.json(
-                { error: 'Failed to update record.' },
-                { status: 500 }
-            );
+            return NextResponse.json({ error: 'Failed to update record.' }, { status: 500 });
         }
 
         return NextResponse.json({
@@ -370,7 +346,6 @@ async function handlePublicPut(request, { params }) {
             data: { id, ...updateData },
             message: 'Record updated successfully!'
         });
-
     } catch (error) {
         console.error('Public update data error:', error);
         return NextResponse.json(
@@ -394,44 +369,32 @@ async function handlePublicDelete(request, { params }) {
                 { status: accessCheck.status || 403 }
             );
         }
-        
+
         // Track API usage if API key provided
         await trackApiUsage(request);
-        
+
         const { slug } = await params;
         const url = new URL(request.url);
         const id = url.searchParams.get('id');
 
         if (!slug) {
-            return NextResponse.json(
-                { error: 'Collection name is required' },
-                { status: 400 }
-            );
+            return NextResponse.json({ error: 'Collection name is required' }, { status: 400 });
         }
 
         if (!id) {
-            return NextResponse.json(
-                { error: 'Record ID is required' },
-                { status: 400 }
-            );
+            return NextResponse.json({ error: 'Record ID is required' }, { status: 400 });
         }
 
         // Check if item exists
         const existingItem = await DBService.read(id, slug);
         if (!existingItem) {
-            return NextResponse.json(
-                { error: 'Record not found' },
-                { status: 404 }
-            );
+            return NextResponse.json({ error: 'Record not found' }, { status: 404 });
         }
 
         const deleted = await DBService.delete(id, slug);
 
         if (!deleted) {
-            return NextResponse.json(
-                { error: 'Failed to delete record.' },
-                { status: 500 }
-            );
+            return NextResponse.json({ error: 'Failed to delete record.' }, { status: 500 });
         }
 
         return NextResponse.json({
@@ -439,7 +402,6 @@ async function handlePublicDelete(request, { params }) {
             message: 'Record deleted successfully!',
             data: { id }
         });
-
     } catch (error) {
         console.error('Public delete record error:', error);
         return NextResponse.json(

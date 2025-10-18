@@ -1,14 +1,13 @@
 // app/shop/components/FreeShippingProgressBar.jsx
-"use client"
+'use client';
 
-import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { useTranslations } from 'next-intl';
-import Link from 'next/link';
-import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
 import { CheckCircle, Truck } from 'lucide-react';
+import { useTranslations } from 'next-intl';
+import { useEffect, useState } from 'react';
+import { Badge } from '@/components/ui/badge';
+import { Card, CardContent } from '@/components/ui/card';
+import { Progress } from '@/components/ui/progress';
 
 const FreeShippingProgressBar = ({ cartTotal, storeSettings = null }) => {
     const t = useTranslations('Cart');
@@ -39,42 +38,39 @@ const FreeShippingProgressBar = ({ cartTotal, storeSettings = null }) => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
-            className="mb-4 lg:mb-6"
-        >
+            className="mb-4 lg:mb-6">
             <Card className="bg-gradient-to-r from-gray-50 to-neutral-50 dark:from-gray-900 dark:to-neutral-900">
                 <CardContent className="p-4 lg:p-6">
-                    <div className="flex items-center justify-between mb-4">
+                    <div className="mb-4 flex items-center justify-between">
                         <div className="flex items-center space-x-3">
-                            <div className={`p-2 rounded-full ${isEligible ? 'text-green-700 bg-green-100 dark:bg-green-900' : 'text-neutral-800 bg-neutral-100 dark:bg-neutral-800'}`}>
-                                {isEligible ? (
-                                    <CheckCircle className="w-5 h-5" />
-                                ) : (
-                                    <Truck className="w-5 h-5" />
-                                )}
+                            <div
+                                className={`rounded-full p-2 ${isEligible ? 'bg-green-100 text-green-700 dark:bg-green-900' : 'bg-neutral-100 text-neutral-800 dark:bg-neutral-800'}`}>
+                                {isEligible ? <CheckCircle className="h-5 w-5" /> : <Truck className="h-5 w-5" />}
                             </div>
                             <div>
-                                <h3 className={`font-semibold ${isEligible ? 'text-green-800 dark:text-green-300' : 'text-gray-700 dark:text-gray-300'}`}>
-                                    {isEligible ? (
-                                        t('freeShippingEligible')
-                                    ) : (
-                                        t('almostFreeShipping', { amount: `${currencySymbol}${threshold}` })
-                                    )}
+                                <h3
+                                    className={`font-semibold ${isEligible ? 'text-green-800 dark:text-green-300' : 'text-gray-700 dark:text-gray-300'}`}>
+                                    {isEligible
+                                        ? t('freeShippingEligible')
+                                        : t('almostFreeShipping', { amount: `${currencySymbol}${threshold}` })}
                                 </h3>
-                                <p className={`text-sm ${isEligible ? 'text-green-800 dark:text-green-400' : 'text-muted-foreground'}`}>
-                                    {isEligible ? (
-                                        t('freeShipping')
-                                    ) : (
-                                        t('almostFreeShipping', { amount: `${currencySymbol}${remaining.toFixed(2)}` })
-                                    )}
+                                <p
+                                    className={`text-sm ${isEligible ? 'text-green-800 dark:text-green-400' : 'text-muted-foreground'}`}>
+                                    {isEligible
+                                        ? t('freeShipping')
+                                        : t('almostFreeShipping', {
+                                              amount: `${currencySymbol}${remaining.toFixed(2)}`
+                                          })}
                                 </p>
                             </div>
                         </div>
                         {!isEligible && (
                             <div className="text-right">
-                                <Badge variant="secondary" className="text-lg px-3 py-1 mb-1">
-                                    {currencySymbol}{remaining.toFixed(2)}
+                                <Badge variant="secondary" className="mb-1 px-3 py-1 text-lg">
+                                    {currencySymbol}
+                                    {remaining.toFixed(2)}
                                 </Badge>
-                                <div className="text-xs text-muted-foreground">
+                                <div className="text-muted-foreground text-xs">
                                     {t('remaining', { defaultValue: 'restants' })}
                                 </div>
                             </div>
@@ -83,16 +79,19 @@ const FreeShippingProgressBar = ({ cartTotal, storeSettings = null }) => {
 
                     {/* Progress Bar */}
                     <div className="mb-3">
-                        <Progress 
-                            value={progress} 
+                        <Progress
+                            value={progress}
                             className={`h-3 ${isEligible ? '[&>div]:bg-gradient-to-r [&>div]:from-green-400 [&>div]:to-green-600' : '[&>div]:bg-gradient-to-r [&>div]:from-neutral-400 [&>div]:to-neutral-600'}`}
                         />
                     </div>
 
                     {/* Progress indicators */}
-                    <div className="flex justify-between text-xs text-muted-foreground">
+                    <div className="flex justify-between text-muted-foreground text-xs">
                         <span>{currencySymbol}0</span>
-                        <span className="font-medium">{currencySymbol}{threshold} - {t('freeShipping')}</span>
+                        <span className="font-medium">
+                            {currencySymbol}
+                            {threshold} - {t('freeShipping')}
+                        </span>
                     </div>
                 </CardContent>
             </Card>

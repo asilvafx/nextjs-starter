@@ -9,7 +9,7 @@ class QueryAPI {
 
     // Helper method for making authenticated API calls
     async makeRequest(url, options = {}) {
-        try { 
+        try {
             const defaultOptions = {
                 credentials: 'include',
                 headers: {
@@ -189,7 +189,7 @@ class QueryAPI {
     }
 
     // UPLOAD file (authenticated)
-    async upload(files, path = 'uploads') {
+    async upload(files, _path = 'uploads') {
         try {
             const formData = new FormData();
 

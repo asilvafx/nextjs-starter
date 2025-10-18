@@ -1,18 +1,15 @@
 // app/auth/api/forgot/route.js
+
 import { NextResponse } from 'next/server';
 import DBService from '@/data/rest.db';
 import { encryptHash } from '@/lib/server/crypt';
 import EmailService from '@/lib/server/email';
-import { time } from 'console';
 
 // Use API route for sending emails instead of direct import to avoid issues
 async function sendPasswordResetEmailAsync(email, code, name) {
     try {
         if (!email || !code || !name) {
-            return NextResponse.json(
-                { error: 'Email, code, and name are required.' },
-                { status: 400 }
-            );
+            return NextResponse.json({ error: 'Email, code, and name are required.' }, { status: 400 });
         }
 
         // Send password reset email
@@ -24,10 +21,7 @@ async function sendPasswordResetEmailAsync(email, code, name) {
         });
     } catch (error) {
         console.error('Reset email API call failed:', error);
-        return NextResponse.json(
-            { error: 'Failed to send reset email' },
-            { status: 500 }
-        );
+        return NextResponse.json({ error: 'Failed to send reset email' }, { status: 500 });
     }
 }
 
@@ -37,14 +31,11 @@ export async function POST(request) {
 
         // Validation
         if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-            return NextResponse.json(
-                { error: 'Enter a valid email.' },
-                { status: 400 }
-            );
+            return NextResponse.json({ error: 'Enter a valid email.' }, { status: 400 });
         }
 
         const address = email.toLowerCase();
-        const user = await DBService.readBy("email", address, "users");
+        const user = await DBService.readBy('email', address, 'users');
 
         if (!user) {
             // Don't reveal that email doesn't exist for security
@@ -57,33 +48,25 @@ export async function POST(request) {
             });
         }
 
-        
         // Generate 6-digit code
-        const randomCode = Math.floor(100000 + Math.random() * 900000).toString(); 
+        const randomCode = Math.floor(100000 + Math.random() * 900000).toString();
 
-        const codeData = { 
+        const codeData = {
             email: address,
             code: randomCode,
-            expiresAt: new Date(Date.now() + 15 * 60 * 1000).toISOString() 
+            expiresAt: new Date(Date.now() + 15 * 60 * 1000).toISOString()
         };
 
-        const codeDataEncrypted = encryptHash(codeData); 
+        const codeDataEncrypted = encryptHash(codeData);
 
         // Send password reset email
         try {
-            await sendPasswordResetEmailAsync(
-                address,
-                randomCode,
-                user.displayName
-            );
+            await sendPasswordResetEmailAsync(address, randomCode, user.displayName);
 
             console.log(`Reset code sent to ${address}: ${randomCode}`);
         } catch (emailError) {
             console.error('Email service error:', emailError);
-            return NextResponse.json(
-                { error: 'Failed to send reset email. Please try again.' },
-                { status: 500 }
-            );
+            return NextResponse.json({ error: 'Failed to send reset email. Please try again.' }, { status: 500 });
         }
 
         return NextResponse.json({
@@ -93,12 +76,8 @@ export async function POST(request) {
             demoCode: process.env.NODE_ENV === 'development' ? randomCode : undefined,
             encryptedCode: codeDataEncrypted
         });
-
     } catch (error) {
         console.error('Forgot password error:', error);
-        return NextResponse.json(
-            { error: 'Error sending code.' },
-            { status: 500 }
-        );
+        return NextResponse.json({ error: 'Error sending code.' }, { status: 500 });
     }
 }

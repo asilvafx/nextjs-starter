@@ -10,35 +10,34 @@ async function checkApiAccess(request) {
         // Get API settings from database
         const apiSettingsResponse = await DBService.readAll('api_settings');
         const apiSettings = Object.values(apiSettingsResponse || {})[0];
-        
+
         // If no settings exist, allow access (fail open)
         if (!apiSettings) {
             return { allowed: true };
         }
-        
+
         // Check if API is disabled
         if (!apiSettings.apiEnabled) {
-            return { 
-                allowed: false, 
+            return {
+                allowed: false,
                 error: 'API access is currently disabled',
-                status: 503 
+                status: 503
             };
         }
-        
+
         // Check allowed origins if configured
         const origin = request.headers.get('origin');
         const allowedOrigins = apiSettings.allowedOrigins || ['*'];
-        
+
         if (!allowedOrigins.includes('*') && origin && !allowedOrigins.includes(origin)) {
-            return { 
-                allowed: false, 
+            return {
+                allowed: false,
                 error: 'Origin not allowed',
-                status: 403 
+                status: 403
             };
         }
-        
+
         return { allowed: true, settings: apiSettings };
-        
     } catch (error) {
         console.error('Error checking API access:', error);
         // Fail open - allow access if we can't check settings
@@ -62,26 +61,24 @@ export async function POST(request) {
         const session = await auth();
 
         if (!session?.user) {
-            return NextResponse.json(
-                { error: 'Authentication required' },
-                { status: 401 }
-            );
+            return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
         }
 
         const formData = await request.formData();
         const files = formData.getAll('files');
 
         if (!files || files.length === 0) {
-            return NextResponse.json(
-                { error: 'No files provided' },
-                { status: 400 }
-            );
+            return NextResponse.json({ error: 'No files provided' }, { status: 400 });
         }
 
         const uploadedFiles = [];
         const maxFileSize = 10 * 1024 * 1024; // 10MB limit
         const blockedExtensions = ['.exe', '.bat', '.cmd', '.com', '.pif', '.scr', '.vbs', '.js', '.jar', '.sh'];
-        const suspiciousMimeTypes = ['application/x-executable', 'application/x-msdownload', 'application/x-msdos-program'];
+        const suspiciousMimeTypes = [
+            'application/x-executable',
+            'application/x-msdownload',
+            'application/x-msdos-program'
+        ];
 
         for (const file of files) {
             // Validation
@@ -97,7 +94,7 @@ export async function POST(request) {
             }
 
             // Security checks
-            const fileExtension = '.' + file.name.split('.').pop().toLowerCase();
+            const fileExtension = `.${file.name.split('.').pop().toLowerCase()}`;
             if (blockedExtensions.includes(fileExtension)) {
                 return NextResponse.json(
                     { error: `File type ${fileExtension} is not allowed for security reasons.` },
@@ -151,7 +148,6 @@ export async function POST(request) {
                     uploadedBy: session.user.id,
                     ...uploadResult // Include any additional data from dbService
                 });
-
             } catch (fileError) {
                 console.error(`Error uploading file ${file.name}:`, fileError);
                 return NextResponse.json(
@@ -162,14 +158,16 @@ export async function POST(request) {
         }
 
         // Log successful upload
-        console.log(`Successfully uploaded ${uploadedFiles.length} file(s) for user:`, session.user?.email || 'Unknown');
+        console.log(
+            `Successfully uploaded ${uploadedFiles.length} file(s) for user:`,
+            session.user?.email || 'Unknown'
+        );
 
         return NextResponse.json({
             success: true,
             data: uploadedFiles,
             message: `${uploadedFiles.length} file(s) uploaded successfully`
         });
-
     } catch (error) {
         console.error('Upload handler error:', error);
         return NextResponse.json(

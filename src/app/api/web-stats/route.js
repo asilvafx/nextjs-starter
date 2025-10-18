@@ -6,12 +6,13 @@ import DBService from '@/data/rest.db.js';
 function getClientIP(request) {
     const forwarded = request.headers.get('x-forwarded-for');
     const realIP = request.headers.get('x-real-ip');
-    const remoteAddr = request.headers.get('x-vercel-forwarded-for') || 
-                     request.headers.get('cf-connecting-ip') ||
-                     forwarded?.split(',')[0] ||
-                     realIP ||
-                     '127.0.0.1';
-    
+    const remoteAddr =
+        request.headers.get('x-vercel-forwarded-for') ||
+        request.headers.get('cf-connecting-ip') ||
+        forwarded?.split(',')[0] ||
+        realIP ||
+        '127.0.0.1';
+
     return remoteAddr.trim();
 }
 
@@ -20,7 +21,7 @@ async function getCountryFromIP(ip) {
     if (ip === '127.0.0.1' || ip === 'localhost') {
         return 'Local';
     }
-    
+
     try {
         // Using a free IP geolocation service
         const response = await fetch(`http://ip-api.com/json/${ip}?fields=country,countryCode`);
@@ -34,19 +35,30 @@ async function getCountryFromIP(ip) {
 
 // Helper function to parse user agent
 function parseUserAgent(userAgent) {
-    const browser = userAgent.includes('Chrome') ? 'Chrome' :
-                   userAgent.includes('Firefox') ? 'Firefox' :
-                   userAgent.includes('Safari') ? 'Safari' :
-                   userAgent.includes('Edge') ? 'Edge' : 'Other';
-    
-    const os = userAgent.includes('Windows') ? 'Windows' :
-               userAgent.includes('Mac OS X') ? 'macOS' :
-               userAgent.includes('Linux') ? 'Linux' :
-               userAgent.includes('Android') ? 'Android' :
-               userAgent.includes('iOS') ? 'iOS' : 'Other';
-    
+    const browser = userAgent.includes('Chrome')
+        ? 'Chrome'
+        : userAgent.includes('Firefox')
+          ? 'Firefox'
+          : userAgent.includes('Safari')
+            ? 'Safari'
+            : userAgent.includes('Edge')
+              ? 'Edge'
+              : 'Other';
+
+    const os = userAgent.includes('Windows')
+        ? 'Windows'
+        : userAgent.includes('Mac OS X')
+          ? 'macOS'
+          : userAgent.includes('Linux')
+            ? 'Linux'
+            : userAgent.includes('Android')
+              ? 'Android'
+              : userAgent.includes('iOS')
+                ? 'iOS'
+                : 'Other';
+
     const isMobile = /Mobile|Android|iPhone|iPad/.test(userAgent);
-    
+
     return { browser, os, isMobile };
 }
 
@@ -55,19 +67,21 @@ async function isDuplicateEntry(sessionId, pathname, timeWindow = 30000) {
     try {
         const recentStats = await DBService.readAll('web_stats');
         if (!recentStats) return false;
-        
+
         const statsArray = Array.isArray(recentStats) ? recentStats : Object.values(recentStats);
         const now = Date.now();
-        
+
         // Check for recent entries from the same session and page
-        const duplicates = statsArray.filter(stat => {
+        const duplicates = statsArray.filter((stat) => {
             const statTime = new Date(stat.timestamp).getTime();
-            return stat.sessionId === sessionId && 
-                   stat.pathname === pathname && 
-                   (now - statTime) < timeWindow &&
-                   stat.eventType === 'pageview';
+            return (
+                stat.sessionId === sessionId &&
+                stat.pathname === pathname &&
+                now - statTime < timeWindow &&
+                stat.eventType === 'pageview'
+            );
         });
-        
+
         return duplicates.length > 0;
     } catch (error) {
         console.error('Error checking for duplicates:', error);
@@ -83,38 +97,38 @@ async function handlePost(request) {
             console.log('Empty request body, skipping...');
             return NextResponse.json({ success: true, message: 'Empty request body' });
         }
-        
+
         const data = JSON.parse(body);
-        
+
         // Skip unload events for now as they're not needed for analytics
         if (data.type === 'unload') {
             return NextResponse.json({ success: true, message: 'Unload event acknowledged' });
         }
-        
+
         // Check for duplicate page views
         if (data.type === 'pageview' && data.sessionId && data.pathname) {
             const isDuplicate = await isDuplicateEntry(data.sessionId, data.pathname);
             if (isDuplicate) {
                 console.log('Duplicate page view detected, skipping...');
-                return NextResponse.json({ 
-                    success: true, 
+                return NextResponse.json({
+                    success: true,
                     message: 'Duplicate page view detected, entry skipped',
-                    duplicate: true 
+                    duplicate: true
                 });
             }
         }
-        
+
         // Get client information
         const ip = getClientIP(request);
         const userAgent = request.headers.get('user-agent') || '';
         const referer = request.headers.get('referer') || data.referer || '';
-        
+
         // Parse user agent
         const { browser, os, isMobile } = parseUserAgent(userAgent);
-        
+
         // Get country from IP
         const country = await getCountryFromIP(ip);
-        
+
         // Create visitor record
         const visitorData = {
             // Basic identifiers
@@ -122,18 +136,18 @@ async function handlePost(request) {
             sessionId: data.sessionId || null,
             ip: ip,
             userAgent: userAgent,
-            
+
             // Page info
             url: data.url || '',
             pathname: data.pathname || '',
             title: data.title || '',
             referrer: data.referrer || referer,
-            
+
             // Device info from parsed user agent
             browser: browser,
             os: os,
             isMobile: isMobile,
-            
+
             // Device info from tracking script
             screenWidth: data.device?.screen?.width || null,
             screenHeight: data.device?.screen?.height || null,
@@ -141,56 +155,54 @@ async function handlePost(request) {
             viewportHeight: data.device?.viewport?.height || null,
             pixelRatio: data.device?.pixelRatio || null,
             orientation: data.device?.orientation || null,
-            
+
             // Location
             country: country,
-            
+
             // Language and timezone
             language: data.language || null,
             timezone: data.timezone || null,
             timezoneOffset: data.timezoneOffset || null,
-            
+
             // Performance metrics
             loadTime: data.performance?.loadTime || null,
             domReadyTime: data.performance?.domReadyTime || null,
             renderTime: data.performance?.renderTime || null,
-            
+
             // Timing
             timeOnPage: data.timeOnPage || null,
             pageLoadTime: data.pageLoadTime || null,
-            
+
             // Event info
             eventType: data.type || 'pageview',
             eventName: data.eventName || null,
             eventData: data.eventData ? JSON.stringify(data.eventData) : null,
-            
+
             // Custom data
             customData: data.customData ? JSON.stringify(data.customData) : null,
-            
+
             // Metadata
             timestamp: new Date().toISOString(),
             date: new Date().toISOString().split('T')[0], // YYYY-MM-DD
             hour: new Date().getHours(),
-            
+
             // UTM parameters from URL params
             utmSource: data.params?.utm_source || null,
             utmMedium: data.params?.utm_medium || null,
             utmCampaign: data.params?.utm_campaign || null,
             utmTerm: data.params?.utm_term || null,
             utmContent: data.params?.utm_content || null,
-            
+
             // Additional metadata
             cookieEnabled: data.cookieEnabled || null,
-            doNotTrack: data.doNotTrack || false,
+            doNotTrack: data.doNotTrack || false
         };
 
         // Save to database
         const result = await DBService.create(visitorData, 'web_stats');
 
         if (!result) {
-            return NextResponse.json(
-                { error: 'Failed to save visitor data' }
-            );
+            return NextResponse.json({ error: 'Failed to save visitor data' });
         }
 
         return NextResponse.json({
@@ -204,15 +216,12 @@ async function handlePost(request) {
                 isMobile: isMobile
             }
         });
-
     } catch (error) {
         console.error('Web stats error:', error);
-        return NextResponse.json(
-            {
-                error: 'Failed to record visitor data',
-                message: error.message
-            }
-        );
+        return NextResponse.json({
+            error: 'Failed to record visitor data',
+            message: error.message
+        });
     }
 }
 
@@ -222,11 +231,11 @@ async function handleGet(request) {
         const url = new URL(request.url);
         const startDate = url.searchParams.get('startDate');
         const endDate = url.searchParams.get('endDate');
-        const type = url.searchParams.get('type') || 'overview';
+        const _type = url.searchParams.get('type') || 'overview';
 
         // Get all web stats
         const stats = await DBService.readAll('web_stats');
-        
+
         if (!stats) {
             return NextResponse.json({
                 success: true,
@@ -246,7 +255,7 @@ async function handleGet(request) {
 
         // Filter by date range if provided
         if (startDate && endDate) {
-            statsArray = statsArray.filter(stat => {
+            statsArray = statsArray.filter((stat) => {
                 const statDate = new Date(stat.timestamp);
                 return statDate >= new Date(startDate) && statDate <= new Date(endDate);
             });
@@ -254,7 +263,7 @@ async function handleGet(request) {
 
         // Calculate analytics
         const totalVisitors = statsArray.length;
-        const uniqueVisitors = new Set(statsArray.map(stat => stat.ip)).size;
+        const uniqueVisitors = new Set(statsArray.map((stat) => stat.ip)).size;
         const pageViews = statsArray.length;
 
         // Group by country
@@ -304,9 +313,9 @@ async function handleGet(request) {
         }, {});
 
         // Average load time
-        const loadTimes = statsArray.filter(stat => stat.loadTime).map(stat => stat.loadTime);
-        const avgLoadTime = loadTimes.length > 0 ? 
-            loadTimes.reduce((sum, time) => sum + time, 0) / loadTimes.length : 0;
+        const loadTimes = statsArray.filter((stat) => stat.loadTime).map((stat) => stat.loadTime);
+        const avgLoadTime =
+            loadTimes.length > 0 ? loadTimes.reduce((sum, time) => sum + time, 0) / loadTimes.length : 0;
 
         const analyticsData = {
             overview: {
@@ -323,8 +332,7 @@ async function handleGet(request) {
             browsers: Object.entries(browserStats)
                 .map(([browser, count]) => ({ browser, count }))
                 .sort((a, b) => b.count - a.count),
-            devices: Object.entries(deviceStats)
-                .map(([device, count]) => ({ device, count })),
+            devices: Object.entries(deviceStats).map(([device, count]) => ({ device, count })),
             os: Object.entries(osStats)
                 .map(([os, count]) => ({ os, count }))
                 .sort((a, b) => b.count - a.count),
@@ -345,27 +353,24 @@ async function handleGet(request) {
             success: true,
             data: analyticsData
         });
-
     } catch (error) {
         console.error('Analytics retrieval error:', error);
-        return NextResponse.json(
-            {
-                error: 'Failed to retrieve analytics data',
-                message: error.message
-            }
-        );
+        return NextResponse.json({
+            error: 'Failed to retrieve analytics data',
+            message: error.message
+        });
     }
 }
 
 // Export handlers with CORS for cross-origin requests
 export async function POST(request) {
     const response = await handlePost(request);
-    
+
     // Add CORS headers for cross-origin requests
     response.headers.set('Access-Control-Allow-Origin', '*');
     response.headers.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
     response.headers.set('Access-Control-Allow-Headers', 'Content-Type');
-    
+
     return response;
 }
 
@@ -373,13 +378,13 @@ export async function GET(request) {
     return await handleGet(request);
 }
 
-export async function OPTIONS(request) {
+export async function OPTIONS(_request) {
     return new NextResponse(null, {
         status: 200,
         headers: {
             'Access-Control-Allow-Origin': '*',
             'Access-Control-Allow-Methods': 'POST, OPTIONS',
-            'Access-Control-Allow-Headers': 'Content-Type',
-        },
+            'Access-Control-Allow-Headers': 'Content-Type'
+        }
     });
 }

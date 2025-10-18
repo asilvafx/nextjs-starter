@@ -1,8 +1,8 @@
 // @/lib/server/auth.js
 
+import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
 import { auth } from '@/auth.js';
-import { cookies } from 'next/headers';
 
 // Mock API Keys Data
 const mockApiKeys = [
@@ -60,8 +60,7 @@ const mockWhitelist = [
     }
 ];
 
-
-export async function verifyToken(request) {
+export async function verifyToken(_request) {
     try {
         // Get session from NextAuth v5
         const session = await auth();
@@ -92,8 +91,7 @@ export async function verifyToken(request) {
 export async function verifyCsrfToken(request) {
     try {
         // Get CSRF token from request headers
-        const headerCsrfToken = request.headers.get('x-csrf-token') ||
-            request.headers.get('csrf-token');
+        const headerCsrfToken = request.headers.get('x-csrf-token') || request.headers.get('csrf-token');
 
         if (!headerCsrfToken) {
             return { error: 'CSRF token not provided in request headers.', status: 403 };
@@ -103,16 +101,14 @@ export async function verifyCsrfToken(request) {
 
         // Get all cookies and find the one that contains "authjs.csrf-token"
         const allCookies = cookieStore.getAll();
-        const csrfCookie = allCookies.find(cookie =>
-            cookie.name.includes('authjs.csrf-token')
-        )?.value;
+        const csrfCookie = allCookies.find((cookie) => cookie.name.includes('authjs.csrf-token'))?.value;
 
         if (!csrfCookie) {
             return { error: 'CSRF token not provided in cookies.', status: 403 };
         }
 
         // cookie format: "<token>|<hash>"
-        const [token, hash] = csrfCookie.split("|");
+        const [token, hash] = csrfCookie.split('|');
 
         if (!token || !hash) {
             return { error: 'CSRF token hash failed.', status: 403 };
@@ -150,28 +146,20 @@ export function withPublicAccess(handler, options = {}) {
 
             // Check for API key first
             if (requireApiKey) {
-                const apiKey = request.headers.get('x-api-key') ||
-                    request.headers.get('authorization')?.replace('Bearer ', '');
+                const apiKey =
+                    request.headers.get('x-api-key') || request.headers.get('authorization')?.replace('Bearer ', '');
 
                 if (!apiKey) {
-                    return NextResponse.json(
-                        { error: 'API key is required for external access.' },
-                        { status: 401 }
-                    );
+                    return NextResponse.json({ error: 'API key is required for external access.' }, { status: 401 });
                 }
 
                 // Validate API key against mock data
-                const validKey = mockApiKeys.find(key =>
-                    key.key === apiKey &&
-                    key.active &&
-                    new Date(key.expires_at) > new Date()
+                const validKey = mockApiKeys.find(
+                    (key) => key.key === apiKey && key.active && new Date(key.expires_at) > new Date()
                 );
 
                 if (!validKey) {
-                    return NextResponse.json(
-                        { error: 'Invalid or expired API key.' },
-                        { status: 401 }
-                    );
+                    return NextResponse.json({ error: 'Invalid or expired API key.' }, { status: 401 });
                 }
 
                 // Check permissions if required
@@ -191,13 +179,10 @@ export function withPublicAccess(handler, options = {}) {
                 const validate = await validateIpAndDomain(request);
                 if (validate.isInternal) {
                     return await handler(request, context);
-                } 
+                }
                 const csrfResult = await verifyCsrfToken(request);
                 if (csrfResult.error) {
-                    return NextResponse.json(
-                        { error: csrfResult.error },
-                        { status: csrfResult.status }
-                    );
+                    return NextResponse.json({ error: csrfResult.error }, { status: csrfResult.status });
                 }
             }
 
@@ -205,20 +190,14 @@ export function withPublicAccess(handler, options = {}) {
             if (requireIpWhitelist) {
                 const ipResult = await validateIpAndDomain(request);
                 if (ipResult.error) {
-                    return NextResponse.json(
-                        { error: ipResult.error },
-                        { status: ipResult.status }
-                    );
+                    return NextResponse.json({ error: ipResult.error }, { status: ipResult.status });
                 }
             }
 
             return await handler(request, context);
         } catch (error) {
             console.error('Public access middleware error:', error);
-            return NextResponse.json(
-                { error: 'Access validation failed.' },
-                { status: 500 }
-            );
+            return NextResponse.json({ error: 'Access validation failed.' }, { status: 500 });
         }
     };
 }
@@ -231,10 +210,7 @@ export function withAuth(handler) {
             const authResult = await verifyToken(request);
 
             if (authResult.error) {
-                return NextResponse.json(
-                    { message: authResult.error },
-                    { status: authResult.status }
-                );
+                return NextResponse.json({ message: authResult.error }, { status: authResult.status });
             }
 
             // Add user data to request context
@@ -243,55 +219,44 @@ export function withAuth(handler) {
             return await handler(request, context);
         } catch (error) {
             console.error('Auth middleware error:', error);
-            return NextResponse.json(
-                { message: 'Authentication failed' },
-                { status: 500 }
-            );
+            return NextResponse.json({ message: 'Authentication failed' }, { status: 500 });
         }
     };
 }
 
 // Higher-order function for protecting API routes with role requirement
 export function withAuthAndRole(requiredRoles = []) {
-    return function(handler) {
-        return async (request, context) => {
-            try {
-                const authResult = await verifyToken(request);
+    return (handler) => async (request, context) => {
+        try {
+            const authResult = await verifyToken(request);
 
-                if (authResult.error) {
-                    return NextResponse.json(
-                        { message: authResult.error },
-                        { status: authResult.status }
-                    );
-                }
+            if (authResult.error) {
+                return NextResponse.json({ message: authResult.error }, { status: authResult.status });
+            }
 
-                // Create a copy of requiredRoles to avoid mutating the original array
-                const roles = [...requiredRoles, 'admin'];
+            // Create a copy of requiredRoles to avoid mutating the original array
+            const roles = [...requiredRoles, 'admin'];
 
-                // Add user data to request context
-                request.user = authResult.user;
+            // Add user data to request context
+            request.user = authResult.user;
 
-                // Check if user has required role
-                const userRole = authResult.user.role;
+            // Check if user has required role
+            const userRole = authResult.user.role;
 
-                if (roles.length > 0 && !roles.includes(userRole)) {
-                    return NextResponse.json(
-                        {
-                            message: `Access denied. Required role(s): ${roles.join(', ')}. Your role: ${userRole}`
-                        },
-                        { status: 403 }
-                    );
-                }
-
-                return await handler(request, context);
-            } catch (error) {
-                console.error('Auth and role middleware error:', error);
+            if (roles.length > 0 && !roles.includes(userRole)) {
                 return NextResponse.json(
-                    { message: 'Authentication failed' },
-                    { status: 500 }
+                    {
+                        message: `Access denied. Required role(s): ${roles.join(', ')}. Your role: ${userRole}`
+                    },
+                    { status: 403 }
                 );
             }
-        };
+
+            return await handler(request, context);
+        } catch (error) {
+            console.error('Auth and role middleware error:', error);
+            return NextResponse.json({ message: 'Authentication failed' }, { status: 500 });
+        }
     };
 }
 
@@ -314,23 +279,32 @@ export async function validateIpAndDomain(request) {
 
         // Check if it's an internal request (same host)
         const host = request.headers.get('host');
-        const isInternal = origin?.includes(host) || referer?.includes(host) ||
-            clientIp === '127.0.0.1' || clientIp === '::1' || clientIp === 'localhost';
+        const isInternal =
+            origin?.includes(host) ||
+            referer?.includes(host) ||
+            clientIp === '127.0.0.1' ||
+            clientIp === '::1' ||
+            clientIp === 'localhost';
 
         if (isInternal) {
             return { success: true, isInternal: true };
         }
 
         // Get whitelisted IPs and domains
-        const whitelistedEntries = mockWhitelist.filter(entry => entry.active);
+        const whitelistedEntries = mockWhitelist.filter((entry) => entry.active);
 
         // Check IP whitelist
-        const isIpWhitelisted = whitelistedEntries.some(entry => {
+        const isIpWhitelisted = whitelistedEntries.some((entry) => {
             if (entry.type === 'ip') {
                 if (entry.value.includes('/')) {
                     // CIDR notation support (basic)
                     const [network, mask] = entry.value.split('/');
-                    return clientIp.startsWith(network.split('.').slice(0, parseInt(mask) / 8).join('.'));
+                    return clientIp.startsWith(
+                        network
+                            .split('.')
+                            .slice(0, parseInt(mask, 10) / 8)
+                            .join('.')
+                    );
                 }
                 return clientIp === entry.value || entry.value === 'localhost';
             }
@@ -338,7 +312,7 @@ export async function validateIpAndDomain(request) {
         });
 
         // Check domain whitelist
-        const isDomainWhitelisted = whitelistedEntries.some(entry => {
+        const isDomainWhitelisted = whitelistedEntries.some((entry) => {
             if (entry.type === 'domain') {
                 return origin?.includes(entry.value) || referer?.includes(entry.value);
             }

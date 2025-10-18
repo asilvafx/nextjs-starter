@@ -25,10 +25,7 @@ export function getEnvWithFallback(key, fallback = '') {
 /**
  * Required environment variables for production
  */
-export const REQUIRED_ENV_VARS = [
-    'NEXTAUTH_URL',
-    'NEXT_SECRET_KEY'
-];
+export const REQUIRED_ENV_VARS = ['NEXTAUTH_URL', 'NEXT_SECRET_KEY'];
 
 /**
  * Optional environment variables with defaults
