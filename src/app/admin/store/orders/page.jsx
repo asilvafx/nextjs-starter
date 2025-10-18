@@ -3,6 +3,7 @@
 'use client';
 
 import {
+    AlertTriangle,
     ArrowUpDown,
     CreditCard,
     Download,
@@ -14,6 +15,7 @@ import {
     Pencil,
     Plus,
     Printer,
+    RefreshCw,
     Search,
     Send,
     Trash2,
@@ -162,6 +164,8 @@ export default function OrdersPage() {
     const [orderToDelete, setOrderToDelete] = useState(null);
     const [deleteConfirmText, setDeleteConfirmText] = useState('');
     const [isDeleting, setIsDeleting] = useState(false);
+    const [fetchError, setFetchError] = useState(null);
+    const [isRetrying, setIsRetrying] = useState(false);
 
     const fetchStoreSettings = async () => {
         try {
@@ -185,17 +189,40 @@ export default function OrdersPage() {
         }
     };
 
-    const fetchOrders = async () => {
-        try { 
+    const fetchOrders = async (isRetry = false) => {
+        try {
+            if (isRetry) {
+                setIsRetrying(true);
+                setFetchError(null);
+            } else {
+                setLoading(true);
+            }
+            
             const response = await getAll('orders', { limit: 0 });
             if (response.success) {
                 setOrders(response.data);
                 setAllOrders(response.data);
+                setFetchError(null); // Clear any previous errors
+            } else {
+                throw new Error(response.error || 'Failed to fetch orders');
             }
-        } catch (_error) {
-            toast.error('Failed to fetch orders');
+        } catch (error) {
+            console.error('Fetch orders error:', error);
+            const errorMessage = error.message || 'Failed to fetch orders';
+            
+            // Check if it's a connection error
+            if (errorMessage.includes('fetch failed') || errorMessage.includes('Error connecting to database')) {
+                setFetchError('Connection failed. Please check your internet connection and try again.');
+            } else {
+                setFetchError(errorMessage);
+            }
+            
+            if (!isRetry) {
+                toast.error(errorMessage);
+            }
         } finally {
             setLoading(false);
+            setIsRetrying(false);
         }
     };
 
@@ -204,9 +231,12 @@ export default function OrdersPage() {
             const response = await getAll('customers', { limit: 0 });
             if (response.success) {
                 setCustomers(response.data);
+            } else {
+                throw new Error(response.error || 'Failed to fetch customers');
             }
-        } catch (_error) {
-            toast.error('Failed to fetch customers');
+        } catch (error) {
+            console.error('Fetch customers error:', error);
+            // Don't show toast for customers as it's secondary data
         }
     };
 
@@ -215,9 +245,12 @@ export default function OrdersPage() {
             const response = await getAll('catalog', { limit: 0 });
             if (response.success) {
                 setCatalog(response.data);
+            } else {
+                throw new Error(response.error || 'Failed to fetch catalog');
             }
-        } catch (_error) {
-            toast.error('Failed to fetch catalog items');
+        } catch (error) {
+            console.error('Fetch catalog error:', error);
+            // Don't show toast for catalog as it's secondary data
         }
     };
 
@@ -241,6 +274,17 @@ export default function OrdersPage() {
         setOrders((prev) => [newOrder, ...prev]);
     };
 
+    // Retry function to refetch all data
+    const handleRetryFetch = async () => {
+        setFetchError(null);
+        await Promise.all([
+            fetchOrders(true),
+            fetchCustomers(),
+            fetchCatalog(),
+            fetchStoreSettings()
+        ]);
+    };
+
     useEffect(() => {
         fetchStoreSettings();
         fetchOrders();
@@ -253,11 +297,14 @@ export default function OrdersPage() {
         const startRevalidation = async () => {
             const interval = setInterval(async () => {
                 try {
-                    // Revalidate orders cache and refetch
-                    await revalidate('orders');
-                    await fetchOrders();
+                    // Only auto-refresh if there's no current error
+                    if (!fetchError) {
+                        await revalidate('orders');
+                        await fetchOrders();
+                    }
                 } catch (error) {
                     console.error('Auto-revalidation failed:', error);
+                    // Don't show toast for auto-refresh failures
                 }
             }, 60000); // 60 seconds
 
@@ -734,6 +781,49 @@ export default function OrdersPage() {
         window.URL.revokeObjectURL(url);
     };
 
+    // Show error state with retry option
+    if (fetchError && !loading) {
+        return (
+            <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                    <div>
+                        <h2 className="font-semibold text-2xl">Orders</h2>
+                        <p className="text-muted-foreground">Manage and track your orders</p>
+                    </div>
+                </div>
+                
+                <Card className="border-destructive/50">
+                    <CardContent className="flex flex-col items-center justify-center py-12 text-center">
+                        <div className="rounded-full bg-destructive/10 p-3 mb-4">
+                            <AlertTriangle className="h-8 w-8 text-destructive" />
+                        </div>
+                        <h3 className="font-semibold text-lg mb-2">Connection Error</h3>
+                        <p className="text-muted-foreground mb-6 max-w-md">
+                            {fetchError}
+                        </p>
+                        <Button 
+                            onClick={handleRetryFetch}
+                            disabled={isRetrying}
+                            className="gap-2"
+                        >
+                            {isRetrying ? (
+                                <>
+                                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                                    Retrying...
+                                </>
+                            ) : (
+                                <>
+                                    <RefreshCw className="h-4 w-4" />
+                                    Retry Connection
+                                </>
+                            )}
+                        </Button>
+                    </CardContent>
+                </Card>
+            </div>
+        );
+    }
+
     return (
         <div className="space-y-4">
             <div className="flex items-center justify-between">
@@ -742,6 +832,27 @@ export default function OrdersPage() {
                     <p className="text-muted-foreground">Manage and track your orders</p>
                 </div>
             </div>
+
+            {/* Connection error alert for when data is partially loaded */}
+            {fetchError && allOrders.length > 0 && (
+                <div className="rounded-md border border-yellow-200 bg-yellow-50 p-4">
+                    <div className="flex items-center gap-2">
+                        <AlertTriangle className="h-4 w-4 text-yellow-600" />
+                        <p className="text-sm text-yellow-800">
+                            Connection issues detected. Data may not be up to date. 
+                            <Button 
+                                variant="link" 
+                                size="sm" 
+                                onClick={handleRetryFetch}
+                                disabled={isRetrying}
+                                className="h-auto p-0 ml-1 text-yellow-800 underline"
+                            >
+                                {isRetrying ? 'Retrying...' : 'Retry now'}
+                            </Button>
+                        </p>
+                    </div>
+                </div>
+            )}
 
             <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
                 <div className="flex w-full flex-1 gap-4 sm:w-auto">
