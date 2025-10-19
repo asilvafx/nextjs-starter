@@ -46,14 +46,43 @@ export async function POST(request) {
             orderData.id = `ORD-${Date.now()}`;
         }
 
+        // Fetch store settings for VAT calculation
+        let storeSettings = null;
+        try {
+            const settingsData = await DBService.readAll('store_settings');
+            storeSettings = settingsData?.[0];
+        } catch (error) {
+            console.warn('Failed to fetch store settings, using defaults:', error);
+        }
+
+        // Calculate VAT if applicable and not already calculated
+        let vatAmount = orderData.vatAmount || 0;
+        let finalTotal = orderData.total;
+        const vatPercentage = orderData.vatPercentage || storeSettings?.vatPercentage || 20;
+
+        if (!orderData.vatAmount && storeSettings) {
+            if (storeSettings.applyVatAtCheckout && !storeSettings.vatIncludedInPrice) {
+                // VAT not included in price, so calculate and add it
+                vatAmount = (orderData.subtotal * vatPercentage) / 100;
+                finalTotal = orderData.total + vatAmount;
+            } else if (storeSettings.vatIncludedInPrice) {
+                // VAT included in price, calculate the VAT portion
+                vatAmount = (orderData.total * vatPercentage) / (100 + vatPercentage);
+            }
+        }
+
         // Add database-specific fields
         const finalOrderData = {
             ...orderData,
             uid: orderData.id,
             cst_email: orderData.customer.email,
             cst_name: `${orderData.customer.firstName} ${orderData.customer.lastName}`,
-            amount: orderData.total,
+            amount: finalTotal,
             subtotal: orderData.subtotal,
+            vatAmount: vatAmount.toFixed(2),
+            vatPercentage: vatPercentage,
+            vatIncluded: storeSettings?.vatIncludedInPrice || false,
+            finalTotal: finalTotal.toFixed(2),
             shipping_address: {
                 streetAddress: orderData.customer.streetAddress,
                 apartmentUnit: orderData.customer.apartmentUnit || '',
@@ -94,20 +123,6 @@ export async function POST(request) {
         // Send order confirmation email if enabled
         if (orderData.sendEmail !== false) {
             try {
-                // Fetch store settings for email formatting
-                let storeSettings = null;
-                try {
-                    const settingsData = await DBService.readAll('store_settings');
-                    storeSettings = settingsData?.[0];
-                } catch (error) {
-                    console.warn('Failed to fetch store settings for email:', error);
-                }
-
-                // Use VAT data from order (already calculated correctly in PaymentForm)
-                const vatAmount = orderData.vatAmount || 0;
-                const vatPercentage = orderData.vatPercentage || storeSettings?.vatPercentage || 20;
-                const finalTotal = orderData.total;
-
                 const emailPayload = {
                     customerName: `${orderData.customer.firstName} ${orderData.customer.lastName}`,
                     orderId: orderData.id,
@@ -130,7 +145,7 @@ export async function POST(request) {
                     vatEnabled: orderData.vatEnabled || false,
                     vatAmount: vatAmount.toFixed(2),
                     vatPercentage: vatPercentage,
-                    vatIncluded: orderData.vatIncludedInPrice || false,
+                    vatIncluded: storeSettings?.vatIncludedInPrice || false,
                     currency: storeSettings?.currency || 'EUR',
                     shippingAddress: finalOrderData.shipping_address,
                     paymentMethod: orderData.paymentMethod,

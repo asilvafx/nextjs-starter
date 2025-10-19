@@ -88,7 +88,7 @@ const publicData = await getAllPublic('site_settings');
 - **Private Routes**: `/api/query/[slug]` - requires authentication via `withAuth()` HOC
 - **Public Routes**: `/api/query/public/[slug]` - uses `withPublicAccess()` with CSRF/IP validation
 - **Role-Protected**: Use `withAuthAndRole(['admin'])` for role-specific endpoints
-- **Specialized APIs**: `/api/stripe`, `/api/checkout`, `/api/email` for specific functionality
+- **Specialized APIs**: `/api/stripe`, `/api/orders`, `/api/email` for specific functionality
 
 ### Email System
 Professional email system with Nodemailer integration:
