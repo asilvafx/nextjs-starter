@@ -9,6 +9,7 @@ import { useCart } from 'react-use-cart';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { LanguageSelector } from '@/components/ui/language-selector';
 import { LoadingPage } from '@/components/ui/loading-spinner';
 import { ThemeSwitchGroup } from '@/components/ui/theme-mode';
 import { useAuth } from '@/hooks/useAuth';
@@ -17,8 +18,22 @@ const Homepage = () => {
     console.log('Homepage component rendered');
     const [setupData, setSetupData] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [frontendLanguages, setFrontendLanguages] = useState([]);
     const { isAuthenticated, user, logout } = useAuth();
     const { totalItems } = useCart();
+
+    // Language name mappings
+    const languageNames = {
+        en: { name: 'English', flag: '🇺🇸' },
+        es: { name: 'Spanish', flag: '🇪🇸' },
+        fr: { name: 'Français', flag: '🇫🇷' },
+        de: { name: 'German', flag: '🇩🇪' },
+        it: { name: 'Italian', flag: '🇮🇹' },
+        pt: { name: 'Portuguese', flag: '🇵🇹' },
+        ja: { name: 'Japanese', flag: '🇯🇵' },
+        ko: { name: 'Korean', flag: '🇰🇷' },
+        zh: { name: 'Chinese', flag: '🇨🇳' }
+    };
 
     const testVisitorTracking = () => {
         if (window.VisitorTracker) {
@@ -30,14 +45,58 @@ const Homepage = () => {
         await logout();
     };
 
-    // Function to check setup
+    // Fetch frontend languages from site settings
+    const fetchFrontendLanguages = async () => {
+        try {
+            const response = await fetch('/api/query/public/site_settings');
+            const result = await response.json();
+            
+            if (result.success && result.data && result.data.length > 0) {
+                const siteSettings = result.data[0];
+                const availableLangs = siteSettings.availableLanguages || ['en'];
+                
+                const formattedLanguages = availableLangs.map(code => ({
+                    id: code,
+                    code: code,
+                    name: languageNames[code]?.name || code.toUpperCase(),
+                    flag: languageNames[code]?.flag || '🌐'
+                }));
+                
+                setFrontendLanguages(formattedLanguages);
+            } else {
+                // Fallback to English only
+                setFrontendLanguages([{
+                    id: 'en',
+                    code: 'en',
+                    name: 'English',
+                    flag: '🇺🇸'
+                }]);
+            }
+        } catch (error) {
+            console.error('Failed to fetch frontend languages:', error);
+            // Fallback to English only
+            setFrontendLanguages([{
+                id: 'en',
+                code: 'en',
+                name: 'English',
+                flag: '🇺🇸'
+            }]);
+        }
+    };
+
+    // Function to check setup and load languages
     useEffect(() => {
         const setupDbEnv = async () => {
             try {
                 setLoading(true);
+                
+                // Fetch setup data
                 const response = await fetch('/main/setup');
                 const data = await response.json();
                 setSetupData(data);
+                
+                // Fetch languages
+                await fetchFrontendLanguages();
             } catch (err) {
                 console.error('❌ Error loading setup:', err);
                 toast.error(`Error loading setup: ${err.message}`);
@@ -67,8 +126,12 @@ const Homepage = () => {
                         />
                     </Link>
 
-                    <div className="mb-4">
+                    <div className="mb-4 flex items-center gap-4">
                         <ThemeSwitchGroup />
+                        <LanguageSelector 
+                            languages={frontendLanguages}
+                            slim={false}
+                        />
                     </div>
 
                     <div className="flex gap-2">

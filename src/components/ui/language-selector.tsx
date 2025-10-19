@@ -1,7 +1,6 @@
 // @/components/ui/language-selector.tsx
 
-'use client';
-
+'use client'; 
 import { CheckIcon, ChevronDown, Languages, Loader2 } from 'lucide-react';
 import { usePathname, useRouter } from 'next/navigation';
 import { useLocale } from 'next-intl';
@@ -41,7 +40,7 @@ export function LanguageSelector({
         availableLanguages, 
         setCurrentLanguage, 
         isLoading 
-    } = useLanguage();
+    } = useLanguage(); 
 
     // Use provided languages or context languages
     const languageList = languages || availableLanguages;
@@ -71,7 +70,7 @@ export function LanguageSelector({
     );
 
     // Show loading state
-    if (isLoading && !languages) {
+    if (isLoading && !languages) { 
         return (
             <div className={triggerClasses}>
                 <Loader2 size={16} className="animate-spin" />
@@ -79,7 +78,7 @@ export function LanguageSelector({
                 <ChevronDown size={16} className="opacity-50" />
             </div>
         );
-    }
+    } 
 
     return (
         <Popover open={open} onOpenChange={setOpen}>
@@ -101,7 +100,7 @@ export function LanguageSelector({
                         {/* <CommandInput placeholder="Search language..." /> */}
                         <CommandEmpty>No language found.</CommandEmpty>
                         <CommandGroup>
-                            {languageList.map((language) => {
+                            {languageList && languageList.length > 0 ? languageList.map((language) => {
                                 const languageId = language.id || language.code;
                                 if (!languageId) return null; // Skip languages without id or code
                                 return (
@@ -121,7 +120,11 @@ export function LanguageSelector({
                                         />
                                     </CommandItem>
                                 );
-                            })}
+                            }) : (
+                                <CommandItem disabled>
+                                    <span className="text-muted-foreground">No languages available</span>
+                                </CommandItem>
+                            )}
                         </CommandGroup>
                     </CommandList>
                 </Command>

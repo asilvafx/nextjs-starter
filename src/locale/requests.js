@@ -10,16 +10,44 @@ const DEFAULT_LOCALE = 'en'; // Fallback language
  * Get the current locale from various sources
  * Priority: localStorage -> database settings -> default
  */
-function getCurrentLocale() {
-    // In server-side context, we'll use default and let client-side handle dynamic switching
+async function getCurrentLocale() {
+    // In server-side context, try to get from database first, then fallback
     if (typeof window === 'undefined') {
+        try {
+            // Try to fetch default language from site settings
+            const response = await fetch(`${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/api/query/public/site_settings`);
+            const result = await response.json();
+            
+            if (result.success && result.data && result.data.length > 0) {
+                const siteSettings = result.data[0];
+                return siteSettings.language || DEFAULT_LOCALE;
+            }
+        } catch (error) {
+            console.warn('Could not fetch default language from site settings:', error.message);
+        }
         return DEFAULT_LOCALE;
     }
     
-    // Client-side: check localStorage first
+    // Client-side: check localStorage first, then try to get from database
     const savedLanguage = localStorage.getItem('selectedLanguage');
     if (savedLanguage) {
         return savedLanguage;
+    }
+    
+    // Try to fetch from site settings on client side
+    try {
+        const response = await fetch('/api/query/public/site_settings');
+        const result = await response.json();
+        
+        if (result.success && result.data && result.data.length > 0) {
+            const siteSettings = result.data[0];
+            const defaultLang = siteSettings.language || DEFAULT_LOCALE;
+            // Save to localStorage for future use
+            localStorage.setItem('selectedLanguage', defaultLang);
+            return defaultLang;
+        }
+    } catch (error) {
+        console.warn('Could not fetch default language from site settings:', error.message);
     }
     
     return DEFAULT_LOCALE;
@@ -99,7 +127,7 @@ function mergeWithFallback(current, fallback) {
 
 export default getRequestConfig(async () => {
     // Get current locale dynamically
-    const locale = getCurrentLocale();
+    const locale = await getCurrentLocale();
 
     // Load translations for current locale
     const currentMessages = await loadTranslations(locale);
