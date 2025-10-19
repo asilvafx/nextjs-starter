@@ -1,0 +1,30 @@
+{
+    "Shop": {
+        "shopTitle": "Boutique",
+        "cart": "Panier",
+        "addToCart": "Ajouter au panier",
+        "addedToCart": "{productName} a été balancé dans ton panier 😉",
+        "backToHome": "Retour à l'accueil",
+        "loading": "Chargement...",
+        "noProductsFound": "Aucun produit trouvé",
+        "all": "Tous",
+        "inStock": "En stock",
+        "outOfStock": "Rupture de stock",
+        "categories": "Catégories",
+        "collections": "Collections",
+        "filterBy": "Filtrer par",
+        "sortBy": "Trier par",
+        "newest": "Nouveautés",
+        "oldest": "Anciens",
+        "priceAsc": "Prix croissant",
+        "priceDesc": "Prix décroissant",
+        "nameAsc": "Nom A-Z",
+        "nameDesc": "Nom Z-A",
+        "products": "produits",
+        "product": "produit",
+        "price": "Prix",
+        "vatIncluded": "TTC",
+        "vatExcluded": "HT",
+        "vat": "TVA"
+    }
+}

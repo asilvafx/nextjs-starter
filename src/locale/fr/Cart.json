@@ -1,0 +1,31 @@
+{
+    "Cart": {
+        "title": "Mon Panier",
+        "emptyCart": "Vider le panier ?",
+        "emptyCartTitle": "Ton panier est vide",
+        "emptyCartMessage": "Check nos produits stylés et lance ton shopping !",
+        "goToShop": "Aller à la boutique",
+        "items": "Articles ({count})",
+        "unitPrice": "Prix unitaire : {price}",
+        "removeItem": "Retirer cet article",
+        "orderSummary": "Récap de la commande",
+        "articles": "Articles",
+        "article": "Article",
+        "subtotal": "Sous-total",
+        "shipping": "Livraison",
+        "total": "Total",
+        "proceedToCheckout": "Passer à la caisse",
+        "continueShopping": "Continuer à shopper",
+        "securePayment": "Paiement 100% sécurisé",
+        "confirmEmptyCart": "T'es sûr de vouloir vider ton panier ?",
+        "backToHome": "Retour à l'accueil",
+        "vatBreakdown": "Détail TVA",
+        "totalVat": "Total TVA",
+        "finalTotal": "Total final",
+        "freeShipping": "Livraison gratuite",
+        "freeShippingEligible": "Tu as débloqué la livraison gratuite !",
+        "almostFreeShipping": "Plus que {amount} pour la livraison gratuite",
+        "itemCount": "{count} article|{count} articles",
+        "remaining": "restants"
+    }
+}

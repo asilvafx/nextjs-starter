@@ -1,0 +1,30 @@
+{
+    "Shop": {
+        "shopTitle": "Shop",
+        "cart": "Cart",
+        "addToCart": "Add to Cart",
+        "addedToCart": "{productName} added to your cart.",
+        "backToHome": "Back to Home",
+        "loading": "Loading...",
+        "noProductsFound": "No products found",
+        "all": "All",
+        "inStock": "In Stock",
+        "outOfStock": "Out of Stock",
+        "categories": "Categories",
+        "collections": "Collections",
+        "filterBy": "Filter by",
+        "sortBy": "Sort by",
+        "newest": "Newest",
+        "oldest": "Oldest",
+        "priceAsc": "Price: Low to High",
+        "priceDesc": "Price: High to Low",
+        "nameAsc": "Name: A-Z",
+        "nameDesc": "Name: Z-A",
+        "products": "products",
+        "product": "product",
+        "price": "Price",
+        "vatIncluded": "VAT included",
+        "vatExcluded": "VAT excluded",
+        "vat": "VAT"
+    }
+}
