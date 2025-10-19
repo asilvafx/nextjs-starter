@@ -35,7 +35,7 @@ src/locale/
 ## 🎯 How the Dynamic System Works
 
 ### 1. **Language Context Provider**
-- `LanguageContext.jsx` manages global language state
+- `LanguageContext.tsx` manages global language state
 - Loads available languages from system settings via API
 - Persists language selection in localStorage
 - Triggers page reload when language changes
@@ -87,7 +87,7 @@ Configure available languages in Admin > System Settings > Site tab:
 // In requests.js
 const DEFAULT_LOCALE = 'en'; // Fallback language
 
-// In LanguageContext.jsx  
+// In LanguageContext.tsx  
 const languageNames = {
     en: { name: 'English', flag: '🇺🇸' },
     es: { name: 'Spanish', flag: '🇪🇸' },
@@ -107,7 +107,7 @@ const languageNames = {
 ### In Components
 ```jsx
 import { useTranslations } from 'next-intl';
-import { useLanguage } from '@/context/LanguageContext.jsx';
+import { useLanguage } from '@/context/LanguageContext';
 
 function MyComponent() {
     const t = useTranslations('HomePage');
@@ -157,7 +157,7 @@ cp src/locale/en/*.json src/locale/de/
 
 ### 2. Update Language Mappings
 ```javascript
-// In LanguageContext.jsx
+// In LanguageContext.tsx
 const languageNames = {
     // ... existing languages
     de: { name: 'German', flag: '🇩🇪' }
@@ -235,7 +235,7 @@ To add a new language (e.g., German):
 1. Create directory: `src/locale/de/`
 2. Copy all `.json` files from `en/` to `de/`
 3. Translate the content in each file (partial translations are fine!)
-4. Update language mappings in `LanguageContext.jsx`
+4. Update language mappings in `LanguageContext.tsx`
 5. Configure in Admin > System Settings > Available Languages
 
 The system will automatically:

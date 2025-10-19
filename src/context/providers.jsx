@@ -4,7 +4,7 @@
 import { SessionProvider } from 'next-auth/react';
 import { ThemeProvider } from 'next-themes';
 import SafeCartProvider from './SafeCartProvider';
-import { LanguageProvider } from './LanguageContext.jsx';
+import { LanguageProvider } from './LanguageContext';
 
 export default function Providers({ children }) {
     return (

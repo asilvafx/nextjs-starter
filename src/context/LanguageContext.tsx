@@ -1,23 +1,38 @@
-// @/context/LanguageContext.jsx
+// @/context/LanguageContext.tsx
 'use client';
 
-import { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState } from 'react';
 import { getAllPublic } from '@/lib/client/query.js';
 
-const LanguageContext = createContext({
+// Type definitions
+interface Language {
+    id: string;
+    code: string;
+    name: string;
+    flag: string;
+}
+
+interface LanguageContextType {
+    currentLanguage: string;
+    availableLanguages: Language[];
+    setCurrentLanguage: (languageCode: string) => void;
+    isLoading: boolean;
+}
+
+const LanguageContext = createContext<LanguageContextType>({
     currentLanguage: 'en',
     availableLanguages: [],
-    setCurrentLanguage: () => {},
+    setCurrentLanguage: (languageCode: string) => {},
     isLoading: true
 });
 
-export function LanguageProvider({ children }) {
-    const [currentLanguage, setCurrentLanguage] = useState('en');
-    const [availableLanguages, setAvailableLanguages] = useState([]);
-    const [isLoading, setIsLoading] = useState(true);
+export function LanguageProvider({ children }: { children: React.ReactNode }) {
+    const [currentLanguage, setCurrentLanguage] = useState<string>('en');
+    const [availableLanguages, setAvailableLanguages] = useState<Language[]>([]);
+    const [isLoading, setIsLoading] = useState<boolean>(true);
 
     // Language name mappings
-    const languageNames = {
+    const languageNames: Record<string, { name: string; flag: string }> = {
         en: { name: 'English', flag: '🇺🇸' },
         es: { name: 'Spanish', flag: '🇪🇸' },
         fr: { name: 'Français', flag: '🇫🇷' },
@@ -45,8 +60,8 @@ export function LanguageProvider({ children }) {
                     setCurrentLanguage(currentLang);
                     
                     // Set available languages from settings
-                    const availableLangs = siteSettings.availableLanguages || ['en'];
-                    const languagesWithNames = availableLangs.map(code => ({
+                    const availableLangs: string[] = siteSettings.availableLanguages || ['en'];
+                    const languagesWithNames = availableLangs.map((code: string) => ({
                         id: code,
                         code: code,
                         name: languageNames[code]?.name || code.toUpperCase(),
@@ -83,7 +98,7 @@ export function LanguageProvider({ children }) {
     }, []);
 
     // Handle language change
-    const handleLanguageChange = (languageCode) => {
+    const handleLanguageChange = (languageCode: string) => {
         setCurrentLanguage(languageCode);
         localStorage.setItem('selectedLanguage', languageCode);
         

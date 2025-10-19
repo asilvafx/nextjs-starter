@@ -8,7 +8,7 @@ import { useLocale } from 'next-intl';
 import { useCallback, useState } from 'react';
 import { Command, CommandEmpty, CommandGroup, CommandItem, CommandList } from '@/components/ui/command';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { useLanguage } from '@/context/LanguageContext.jsx';
+import { useLanguage } from '@/context/LanguageContext';
 import { cn } from '@/lib/utils';
 
 const defaultLanguages = [
