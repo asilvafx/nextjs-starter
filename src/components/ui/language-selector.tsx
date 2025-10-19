@@ -2,12 +2,13 @@
 
 'use client';
 
-import { CheckIcon, ChevronDown, Languages } from 'lucide-react';
+import { CheckIcon, ChevronDown, Languages, Loader2 } from 'lucide-react';
 import { usePathname, useRouter } from 'next/navigation';
 import { useLocale } from 'next-intl';
 import { useCallback, useState } from 'react';
 import { Command, CommandEmpty, CommandGroup, CommandItem, CommandList } from '@/components/ui/command';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { useLanguage } from '@/context/LanguageContext.jsx';
 import { cn } from '@/lib/utils';
 
 const defaultLanguages = [
@@ -24,7 +25,7 @@ interface LanguageSelectorProps {
 }
 
 export function LanguageSelector({
-    languages = defaultLanguages,
+    languages,
     onChange,
     value,
     slim = false
@@ -34,9 +35,20 @@ export function LanguageSelector({
     const pathname = usePathname();
     const currentLocale = useLocale();
 
-    // Use the form value if provided, otherwise use the current locale
-    const selectedLanguageId = value || currentLocale;
-    const currentLanguage = languages.find((lang) => (lang.id || lang.code) === selectedLanguageId);
+    // Use language context if no languages prop is provided (admin mode)
+    const { 
+        currentLanguage, 
+        availableLanguages, 
+        setCurrentLanguage, 
+        isLoading 
+    } = useLanguage();
+
+    // Use provided languages or context languages
+    const languageList = languages || availableLanguages;
+    
+    // Use the form value if provided, otherwise use context or current locale
+    const selectedLanguageId = value || currentLanguage || currentLocale;
+    const currentLanguageData = languageList.find((lang) => (lang.id || lang.code) === selectedLanguageId);
 
     const handleSelect = useCallback(
         (locale: string) => {
@@ -45,24 +57,39 @@ export function LanguageSelector({
                 // If onChange is provided (form mode), call it
                 onChange(locale);
             } else {
-                // Otherwise, handle route navigation (standalone mode)
-                // Replace the locale segment in the pathname
-                alert(locale); // You can implement actual route navigation here
+                // Use context to change language (admin mode)
+                setCurrentLanguage(locale);
             }
         },
-        [onChange, pathname, router]
+        [onChange, setCurrentLanguage]
     );
 
     const triggerClasses = cn(
         'dark:bg-input/30 hover:bg-input/30 dark:hover:bg-input/50 flex h-9 items-center justify-between whitespace-nowrap rounded-md border border-input px-3 py-2 text-sm shadow-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50 [&>span]:line-clamp-1',
-        slim === true && 'w-16'
+        slim === true && 'w-16',
+        isLoading && 'opacity-50 cursor-wait'
     );
+
+    // Show loading state
+    if (isLoading && !languages) {
+        return (
+            <div className={triggerClasses}>
+                <Loader2 size={16} className="animate-spin" />
+                {!slim && <span className="text-sm">Loading...</span>}
+                <ChevronDown size={16} className="opacity-50" />
+            </div>
+        );
+    }
 
     return (
         <Popover open={open} onOpenChange={setOpen}>
-            <PopoverTrigger className={triggerClasses}>
+            <PopoverTrigger className={triggerClasses} disabled={isLoading}>
                 <Languages size={16} />
-                {!slim && <span className="text-sm">{currentLanguage ? currentLanguage.name : 'Select language'}</span>}
+                {!slim && (
+                    <span className="text-sm">
+                        {currentLanguageData ? currentLanguageData.name : 'Select language'}
+                    </span>
+                )}
                 <ChevronDown size={16} />
             </PopoverTrigger>
             <PopoverContent
@@ -74,7 +101,7 @@ export function LanguageSelector({
                         {/* <CommandInput placeholder="Search language..." /> */}
                         <CommandEmpty>No language found.</CommandEmpty>
                         <CommandGroup>
-                            {languages.map((language) => {
+                            {languageList.map((language) => {
                                 const languageId = language.id || language.code;
                                 if (!languageId) return null; // Skip languages without id or code
                                 return (

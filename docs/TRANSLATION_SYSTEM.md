@@ -51,6 +51,28 @@ src/locale/
 - System settings page configures available languages
 - Real-time switching without manual configuration
 
+### 4. **Fallback Behavior**
+1. **Load Current Language**: Loads all translation files for the current locale (e.g., `fr`)
+2. **Load Default Language**: Loads English (`en`) as the fallback language
+3. **Smart Merging**: Merges translations where fallback only fills missing keys
+4. **Graceful Handling**: For completely missing keys, shows the raw key (e.g., `Cart.missingKey`)
+
+### Example Fallback Behavior:
+
+```javascript
+// French translation missing "orderSummaryFallbackTest"
+const t = useTranslations('Cart');
+
+// ✅ This works (exists in French)
+t('title') // → "Mon Panier"
+
+// ✅ This works (missing in French, falls back to English)  
+t('orderSummaryFallbackTest') // → "This text only exists in English - fallback test"
+
+// ✅ This works (completely missing, shows key)
+t('nonExistentKey') // → "Cart.nonExistentKey"
+```
+
 ## 🔧 Configuration
 
 ### Admin System Settings
@@ -73,6 +95,12 @@ const languageNames = {
     // Add more language mappings...
 };
 ```
+
+### Error Handling Options:
+
+- **onError**: Suppresses console errors for missing translations
+- **getMessageFallback**: Returns the translation key when no translation exists
+- **Development Warnings**: Optional warnings in development mode for debugging
 
 ## 🎮 Usage Examples
 
@@ -148,7 +176,7 @@ The system automatically:
 - Shows in language selector
 - Provides fallback support
 
-## 🔄 Language Switching Flow
+## � Language Switching Flow
 
 1. **User Clicks Language**: In header LanguageSelector
 2. **Context Updates**: `setCurrentLanguage('es')` called
@@ -156,6 +184,18 @@ The system automatically:
 4. **Page Reloads**: `window.location.reload()` triggered
 5. **New Translations Load**: `requests.js` detects new language
 6. **UI Updates**: All components use new translations
+
+## �🔧 Translation Workflow
+
+### For Complete Translations:
+1. Add key to English file first (this ensures fallback exists)
+2. Add key to other language files
+3. Use in components with confidence
+
+### For Partial Translations:
+1. Add key only to English file
+2. Other languages will automatically fall back to English
+3. Gradually add translations to other languages as needed
 
 ## 📊 Console Output
 
@@ -181,6 +221,28 @@ Dynamic language loading shows enhanced logs:
 - **Developer Friendly**: Clear logging and development warnings
 - **Scalable**: Easy to add new languages without code changes
 - **User Experience**: Smooth language switching with proper feedback
+- **No More Errors**: Missing translations don't break your app
+- **Gradual Translation**: Add translations progressively without breaking functionality
+- **Maintainability**: Easy to find and edit specific translations
+- **Team Collaboration**: Multiple team members can work on different translation files
+- **Modularity**: Each feature has its own translation file
+- **Auto-Discovery**: No need to manually register new translation files
+
+## 🌐 Adding New Languages
+
+To add a new language (e.g., German):
+
+1. Create directory: `src/locale/de/`
+2. Copy all `.json` files from `en/` to `de/`
+3. Translate the content in each file (partial translations are fine!)
+4. Update language mappings in `LanguageContext.jsx`
+5. Configure in Admin > System Settings > Available Languages
+
+The system will automatically:
+- Load all German translations
+- Fall back to English for missing German translations
+- Show raw keys for completely missing translations
+- Display in language selector for user selection
 
 ## 🚀 Production Deployment
 
@@ -199,5 +261,13 @@ The system is production-ready with:
 3. **Test Switching**: Use header language selector to test
 4. **Check Console**: Verify translation loading in development
 5. **Handle Missing**: Review fallback behavior for incomplete translations
+
+## 🔍 Development Tips
+
+- **Always add new keys to English first** - this ensures fallback exists
+- **Check development console** - missing translation warnings help identify incomplete translations
+- **Partial translations are OK** - the fallback system handles incomplete language files gracefully
+- **Test missing keys** - the system gracefully shows `Module.key` when no translation exists
+- **Use Admin Settings** - Configure available languages through the admin interface for dynamic control
 
 The system ensures your application is truly multilingual with minimal development overhead and maximum user experience! 🌍✨

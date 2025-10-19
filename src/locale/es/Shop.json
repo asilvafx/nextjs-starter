@@ -1,0 +1,30 @@
+{
+    "Shop": {
+        "shopTitle": "Tienda",
+        "cart": "Carrito",
+        "addToCart": "Agregar al carrito",
+        "addedToCart": "{productName} agregado a tu carrito.",
+        "backToHome": "Volver al inicio",
+        "loading": "Cargando...",
+        "noProductsFound": "No se encontraron productos",
+        "all": "Todos",
+        "inStock": "En stock",
+        "outOfStock": "Agotado",
+        "categories": "Categorías",
+        "collections": "Colecciones",
+        "filterBy": "Filtrar por",
+        "sortBy": "Ordenar por",
+        "newest": "Más nuevos",
+        "oldest": "Más antiguos",
+        "priceAsc": "Precio: Menor a mayor",
+        "priceDesc": "Precio: Mayor a menor",
+        "nameAsc": "Nombre: A-Z",
+        "nameDesc": "Nombre: Z-A",
+        "products": "productos",
+        "product": "producto",
+        "price": "Precio",
+        "vatIncluded": "IVA incluido",
+        "vatExcluded": "IVA excluido",
+        "vat": "IVA"
+    }
+}

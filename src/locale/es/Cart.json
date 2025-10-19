@@ -1,0 +1,30 @@
+{
+    "Cart": {
+        "title": "Mi Carrito",
+        "emptyCart": "¿Vaciar carrito?",
+        "emptyCartTitle": "Tu carrito está vacío",
+        "emptyCartMessage": "Descubre nuestros productos excepcionales y comienza a comprar ahora.",
+        "goToShop": "Ir a la tienda",
+        "items": "Artículos ({count})",
+        "unitPrice": "Precio unitario: {price}",
+        "removeItem": "Eliminar este artículo",
+        "orderSummary": "Resumen del pedido",
+        "articles": "Artículos",
+        "article": "Artículo",
+        "subtotal": "Subtotal ({count} artículos)",
+        "shipping": "Envío",
+        "total": "Total",
+        "proceedToCheckout": "Proceder al pago",
+        "continueShopping": "Continuar comprando",
+        "securePayment": "Pago 100% seguro",
+        "confirmEmptyCart": "¿Estás seguro de que quieres vaciar tu carrito?",
+        "vatBreakdown": "Desglose IVA",
+        "totalVat": "Total IVA",
+        "finalTotal": "Total final",
+        "freeShipping": "Envío gratis",
+        "freeShippingEligible": "¡Has desbloqueado el envío gratis!",
+        "almostFreeShipping": "Solo {amount} para envío gratis",
+        "itemCount": "{count} artículo|{count} artículos",
+        "remaining": "restantes"
+    }
+}

@@ -9,6 +9,7 @@
         "unitPrice": "Unit price: {price}",
         "removeItem": "Remove this item",
         "orderSummary": "Order Summary",
+        "orderSummaryFallbackTest": "This text only exists in English - fallback test",
         "articles": "Items",
         "article": "Item",
         "subtotal": "Subtotal ({count} items)",
