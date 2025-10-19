@@ -321,7 +321,7 @@ const Cart = () => {
                                     )}
                                     <div className="border-gray-200 border-t pt-3">
                                         <div className="flex justify-between font-bold text-xl">
-                                            <span>{t('subtotal')}</span>
+                                            <span>{t('subtotal', { count: totalItems })}</span>
                                             <span>
                                                 {storeSettings?.currency === 'USD' ? '$' : '€'}
                                                 {totalPrice}

@@ -25,6 +25,7 @@
         "freeShippingEligible": "¡Has desbloqueado el envío gratis!",
         "almostFreeShipping": "Solo {amount} para envío gratis",
         "itemCount": "{count} artículo|{count} artículos",
-        "remaining": "restantes"
+        "remaining": "restante",
+        "backToHome": "Volver al inicio"
     }
 }

@@ -17,18 +17,43 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { create, getAll, update } from '@/lib/client/query';
 
-// Languages data
-const languages = [
-    { code: 'en', name: 'English' },
-    { code: 'es', name: 'Spanish' },
-    { code: 'fr', name: 'French' },
-    { code: 'de', name: 'German' },
-    { code: 'it', name: 'Italian' },
-    { code: 'pt', name: 'Portuguese' },
-    { code: 'ja', name: 'Japanese' },
-    { code: 'ko', name: 'Korean' },
-    { code: 'zh', name: 'Chinese' }
-];
+// Function to get available languages from locale folder
+const getAvailableLanguages = async () => {
+    try {
+        const response = await fetch('/api/locale/available-languages');
+        const result = await response.json();
+        if (result.success) {
+            return result.data;
+        }
+        return [];
+    } catch (error) {
+        console.error('Failed to fetch available languages:', error);
+        return [];
+    }
+};
+
+// Language name mappings
+const languageNames = {
+    en: 'English',
+    es: 'Spanish', 
+    fr: 'French',
+    de: 'German',
+    it: 'Italian',
+    pt: 'Portuguese',
+    ja: 'Japanese',
+    ko: 'Korean',
+    zh: 'Chinese',
+    ar: 'Arabic',
+    ru: 'Russian',
+    hi: 'Hindi',
+    nl: 'Dutch',
+    sv: 'Swedish',
+    no: 'Norwegian',
+    da: 'Danish',
+    fi: 'Finnish',
+    pl: 'Polish',
+    tr: 'Turkish'
+};
 
 // Email providers
 const emailProviders = [
@@ -52,6 +77,7 @@ export default function SystemSettingsPage() {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [settingsId, setSettingsId] = useState(null);
     const [activeTab, setActiveTab] = useState('site');
+    const [availableLanguages, setAvailableLanguages] = useState([]); 
 
     const form = useForm({
         defaultValues: {
@@ -156,7 +182,16 @@ export default function SystemSettingsPage() {
     };
 
     useEffect(() => {
-        fetchSettings();
+        const initializeData = async () => {
+            await fetchSettings();
+            const languages = await getAvailableLanguages();
+            const formattedLanguages = languages.map(code => ({
+                code,
+                name: languageNames[code] || code.toUpperCase()
+            }));
+            setAvailableLanguages(formattedLanguages);
+        };
+        initializeData();
     }, []);
 
     const onSubmit = async (data) => {
@@ -314,7 +349,7 @@ export default function SystemSettingsPage() {
                                 <TabsContent value="site" className="space-y-6">
                                     <SiteSettingsTab
                                         form={form}
-                                        languages={languages}
+                                        languages={availableLanguages}
                                         getCurrentLocation={getCurrentLocation}
                                         isSubmitting={isSubmitting}
                                     />

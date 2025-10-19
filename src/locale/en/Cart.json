@@ -26,6 +26,7 @@
         "freeShippingEligible": "You've unlocked free shipping!",
         "almostFreeShipping": "Only {amount} away from free shipping",
         "itemCount": "{count} item|{count} items",
-        "remaining": "remaining"
+        "remaining": "remaining",
+        "backToHome": "Back to Home"
     }
 }

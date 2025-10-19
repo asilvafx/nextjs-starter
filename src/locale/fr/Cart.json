@@ -26,6 +26,6 @@
         "freeShippingEligible": "Tu as débloqué la livraison gratuite !",
         "almostFreeShipping": "Plus que {amount} pour la livraison gratuite",
         "itemCount": "{count} article|{count} articles",
-        "remaining": "restants"
+        "remaining": "restant"
     }
 }
