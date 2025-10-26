@@ -18,7 +18,7 @@ const defaultLanguages = [
 ];
 
 interface LanguageSelectorProps {
-    languages?: Array<{ id: string; name: string; flag?: string; code?: string }>;
+    languages?: Array<{ id: string; name: string; flag?: string; code?: string; countryCode?: string }>;
     onChange?: (languageId: string) => void;
     value?: string;
     slim?: boolean;
