@@ -392,7 +392,6 @@ export default function CategoriesPage() {
                         </form>
                     </DialogContent>
                 </Dialog>
-            </div>
 
             {loading ? (
                 <TableSkeleton columns={5} rows={5} />
