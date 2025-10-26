@@ -18,7 +18,7 @@ const languageNames = {
     zh: { name: 'Chinese', flag: '🇨🇳' }
 };
 
-export default function IntlSelector({ slim = false }) {
+export default function IntlSelector({ slim = false, initialLanguages = null }) {
     const [languages, setLanguages] = useState([]);
     const [loading, setLoading] = useState(true);
     const { availableLanguages: providerLanguages, isLoading: providerLoading } = useLanguage();
@@ -70,7 +70,18 @@ export default function IntlSelector({ slim = false }) {
             }
         };
 
-        // If a provider exists and already loaded languages, use them and skip the fetch.
+        // If caller provided initialLanguages, prefer them (admin layout will pass these).
+        if (initialLanguages && Array.isArray(initialLanguages) && initialLanguages.length > 0) {
+            if (mounted) {
+                setLanguages(initialLanguages);
+                setLoading(false);
+            }
+            return () => {
+                mounted = false;
+            };
+        }
+
+        // Otherwise prefer provider languages when available, else fetch from public site settings.
         if (providerLanguages && Array.isArray(providerLanguages) && providerLanguages.length > 0) {
             setLanguages(providerLanguages);
             setLoading(false);
@@ -81,7 +92,7 @@ export default function IntlSelector({ slim = false }) {
         return () => {
             mounted = false;
         };
-    }, []);
+    }, [initialLanguages, providerLanguages]);
 
     // We always render the LanguageSelector; it will show internal loading if needed.
     // Show a small skeleton while loading so the header doesn't jump

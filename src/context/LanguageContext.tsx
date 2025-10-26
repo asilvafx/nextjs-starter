@@ -72,20 +72,7 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
     // Resolve a human-friendly language name using an optional package (iso-639-1) or Intl.DisplayNames
     const resolveLanguageName = async (code: string) => {
         const primary = code.split(/[-_]/)[0];
-
-        // Try iso-639-1 package first if available
-        try {
-            // dynamic import to avoid hard dependency
-            // @ts-expect-error
-            const iso = await import('iso-639-1');
-            if (iso && typeof iso.getName === 'function') {
-                const n = iso.getName(primary);
-                if (n) return n;
-            }
-        } catch (e) {
-            // package not available or failed — fall back
-        }
-
+        // Prefer Intl.DisplayNames which is widely available in modern browsers and Node
         try {
             if (typeof Intl !== 'undefined' && (Intl as any).DisplayNames) {
                 const dn = new (Intl as any).DisplayNames(['en'], { type: 'language' });
@@ -96,6 +83,7 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
             // ignore
         }
 
+        // Fallback: use short tag or uppercase code
         return primary.toUpperCase();
     };
 
