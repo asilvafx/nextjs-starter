@@ -103,12 +103,12 @@ const Homepage = () => {
                             </>
                         )}
 
-                        <Link href="/shop" className="w-full sm:w-auto relative">
-                            <Button>Shop</Button>
+                        <Link href="/shop" className="relative">
+                            <Button className='w-full sm:w-auto'>Shop</Button>
                         </Link>
 
-                        <Link href="/shop/cart" className="w-full sm:w-auto relative">
-                            <Button>
+                        <Link href="/shop/cart" className="relative">
+                            <Button className='w-full sm:w-auto'>
                                 <FaCartShopping />
                                 Cart
                                 <span className="badge -top-2 -right-2 absolute flex items-center justify-center rounded-full border bg-white px-2 font-bold text-black text-sm dark:bg-black dark:text-white">
@@ -125,7 +125,7 @@ const Homepage = () => {
                     </div>
                 </div>
             </div>
-            <div className="section">
+            <div className="section mb-4">
                 <Card>
                     <CardHeader>
                         <CardTitle>Welcome to Next.js Starter!</CardTitle>
