@@ -447,7 +447,10 @@ export default function CatalogPage() {
                     </DialogContent>
                 </Dialog>
             </AdminHeader>
-                    <div className="flex flex-col space-y-4">
+            {loading ? (
+                <TableSkeleton columns={6} rows={5} />
+            ) : (
+                <div className="flex flex-col space-y-4">
                         <div className="flex items-center justify-between">
                             <Input
                                 placeholder="Search items..."
@@ -693,7 +696,6 @@ export default function CatalogPage() {
                             {search && ` (filtered from ${catalog.length} total)`}
                         </div>
                     </div>
-                </div>
             )}
 
             {/* Delete Confirmation Dialog */}

@@ -5,6 +5,7 @@
 import { Image as ImageIcon, Loader2, MoreHorizontal, Pencil, Plus, Trash2, Upload, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
+import AdminHeader from '@/components/admin/AdminHeader';
 import {
     AlertDialog,
     AlertDialogAction,
@@ -31,7 +32,6 @@ import { TableSkeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Textarea } from '@/components/ui/textarea';
 import { create, getAll, remove, update } from '@/lib/client/query';
-import AdminHeader from '@/components/admin/AdminHeader';
 
 const initialFormData = {
     name: '',
@@ -404,7 +404,6 @@ export default function CollectionsPage() {
                         </form>
                     </DialogContent>
                 </Dialog>
-            </div>
 
             {loading ? (
                 <TableSkeleton columns={5} rows={5} />
@@ -527,8 +526,6 @@ export default function CollectionsPage() {
                     </Table>
                 </ScrollArea>
             )}
-
-            {/* Delete Confirmation Dialog */}
             <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
                 <AlertDialogContent>
                     <AlertDialogHeader>

@@ -1,1107 +1,269 @@
-'use client';
+"use client";
 
-import { Edit, Eye, MoreHorizontal, Plus, Trash2 } from 'lucide-react';
-import { useCallback, useEffect, useState } from 'react';
+import { Edit, Plus, Trash2 } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
-import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
-import { CountryDropdown } from '@/components/ui/country-dropdown';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import AdminHeader from '@/components/admin/AdminHeader';
 import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuTrigger
-} from '@/components/ui/dropdown-menu';
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger
+} from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { PhoneInput } from '@/components/ui/phone-input';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { TableSkeleton } from '@/components/ui/skeleton';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Textarea } from '@/components/ui/textarea';
 import { create, getAll, remove, update } from '@/lib/client/query';
-import AdminHeader from '@/components/admin/AdminHeader';
+import { Label } from '@/components/ui/label';
 
-const initialFormData = {
-    firstName: '',
-    lastName: '',
-    email: '',
-    phone: '',
-    streetAddress: '',
-    apartmentUnit: '',
-    city: '',
-    state: '',
-    zipCode: '',
-    country: 'France',
-    countryIso: 'FR',
-    // Business Information
-    isBusinessCustomer: false,
-    businessName: '',
-    legalBusinessName: '',
-    tvaNumber: '',
-    businessType: '',
-    businessAddress: '',
-    businessPhone: '',
-    businessEmail: '',
-    notes: ''
+const initialForm = {
+  firstName: '',
+  lastName: '',
+  email: '',
+  notes: ''
 };
 
 export default function CustomersPage() {
-    const [customers, setCustomers] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [search, setSearch] = useState('');
-    const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
-    const [currentPage, setCurrentPage] = useState(1);
-    const [isOpen, setIsOpen] = useState(false);
-    const [isEditOpen, setIsEditOpen] = useState(false);
-    const [isViewOpen, setIsViewOpen] = useState(false);
-    const [isDeleteOpen, setIsDeleteOpen] = useState(false);
-    const [formData, setFormData] = useState(initialFormData);
-    const [selectedCustomer, setSelectedCustomer] = useState(null);
-    const [deleteConfirmText, setDeleteConfirmText] = useState('');
-    const [isSubmitting, setIsSubmitting] = useState(false);
-    const [isDeleting, setIsDeleting] = useState(false);
-    const [_editMode, setEditMode] = useState(false);
-    const itemsPerPage = 10;
+  const [customers, setCustomers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
+  const [isOpen, setIsOpen] = useState(false);
+  const [isEditOpen, setIsEditOpen] = useState(false);
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const [formData, setFormData] = useState(initialForm);
+  const [selectedCustomer, setSelectedCustomer] = useState(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
-    const fetchCustomers = async () => {
-        try {
-            setLoading(true);
-            const response = await getAll('customers');
+  const fetchCustomers = async () => {
+    try {
+      setLoading(true);
+      const res = await getAll('customers');
+      if (res?.success) setCustomers(res.data || []);
+      else setCustomers([]);
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to load customers');
+    } finally {
+      setLoading(false);
+    }
+  };
 
-            if (response.success) {
-                setCustomers(response.data);
-            }
-        } catch (error) {
-            console.error('Error fetching customers:', error);
-            toast.error('Failed to fetch customers');
-        } finally {
-            setLoading(false);
-        }
-    };
+  useEffect(() => {
+    fetchCustomers();
+  }, []);
 
-    useEffect(() => {
-        fetchCustomers();
-    }, []);
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
 
-    const handleSort = (key) => {
-        setSortConfig((prev) => ({
-            key,
-            direction: prev.key === key && prev.direction === 'asc' ? 'desc' : 'asc'
-        }));
-    };
-
-    const getFilteredAndSortedCustomers = useCallback(() => {
-        let filtered = [...customers];
-
-        if (search) {
-            const searchLower = search.toLowerCase();
-            filtered = filtered.filter((customer) => {
-                const fullName = `${customer.firstName || ''} ${customer.lastName || ''}`.trim() || customer.name || '';
-                return (
-                    fullName.toLowerCase().includes(searchLower) ||
-                    customer.email?.toLowerCase().includes(searchLower) ||
-                    customer.phone?.includes(search)
-                );
-            });
-        }
-
-        if (sortConfig.key) {
-            filtered.sort((a, b) => {
-                let aValue = a[sortConfig.key];
-                let bValue = b[sortConfig.key];
-
-                if (sortConfig.key === 'lastOrder') {
-                    aValue = new Date(aValue).getTime();
-                    bValue = new Date(bValue).getTime();
-                }
-
-                if (aValue < bValue) {
-                    return sortConfig.direction === 'asc' ? -1 : 1;
-                }
-                if (aValue > bValue) {
-                    return sortConfig.direction === 'asc' ? 1 : -1;
-                }
-                return 0;
-            });
-        }
-
-        return filtered;
-    }, [customers, search, sortConfig]);
-
-    const getPaginatedCustomers = () => {
-        const filtered = getFilteredAndSortedCustomers();
-        const startIndex = (currentPage - 1) * itemsPerPage;
-        return filtered.slice(startIndex, startIndex + itemsPerPage);
-    };
-
-    const totalPages = Math.ceil(getFilteredAndSortedCustomers().length / itemsPerPage);
-
-    const formatCurrency = (amount) => {
-        return new Intl.NumberFormat('en-US', {
-            style: 'currency',
-            currency: 'USD'
-        }).format(amount);
-    };
-
-    const formatDate = (date) => {
-        return new Date(date).toLocaleDateString('en-US', {
-            year: 'numeric',
-            month: 'short',
-            day: 'numeric'
-        });
-    };
-
-    const handleInputChange = (e) => {
-        const { name, value, type, checked } = e.target;
-        setFormData((prev) => ({
-            ...prev,
-            [name]: type === 'checkbox' ? checked : value
-        }));
-    };
-
-    const handlePhoneChange = (value) => {
-        setFormData((prev) => ({ ...prev, phone: value }));
-    };
-
-    const handleCountryChange = (value) => {
-        setFormData((prev) => ({ ...prev, country: value, countryIso: value }));
-    };
-
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-        try {
-            setIsSubmitting(true);
-
-            // Add default values for new customers with no orders
-            const customerData = {
-                ...formData,
-                orders: 0,
-                totalSpent: 0,
-                lastOrder: null,
-                createdAt: new Date().toISOString()
-            };
-
-            const newCustomer = await create(customerData, 'customers');
-
-            if (newCustomer) {
-                toast.success('Customer created successfully');
-                setCustomers((prev) => [...prev, newCustomer]);
-                setIsOpen(false);
-                setFormData(initialFormData);
-            }
-        } catch (error) {
-            console.error('Error creating customer:', error);
-            toast.error('Failed to create customer');
-        } finally {
-            setIsSubmitting(false);
-        }
-    };
-
-    const handleEdit = (customer) => {
-        setSelectedCustomer(customer);
-        setFormData({
-            firstName: customer.firstName || '',
-            lastName: customer.lastName || '',
-            email: customer.email || '',
-            phone: customer.phone || '',
-            streetAddress: customer.streetAddress || '',
-            apartmentUnit: customer.apartmentUnit || '',
-            city: customer.city || '',
-            state: customer.state || '',
-            zipCode: customer.zipCode || '',
-            country: customer.country || 'France',
-            countryIso: customer.countryIso || 'FR',
-            isBusinessCustomer: customer.isBusinessCustomer || false,
-            businessName: customer.businessName || '',
-            legalBusinessName: customer.legalBusinessName || '',
-            tvaNumber: customer.tvaNumber || '',
-            businessType: customer.businessType || '',
-            businessAddress: customer.businessAddress || '',
-            businessPhone: customer.businessPhone || '',
-            businessEmail: customer.businessEmail || '',
-            notes: customer.notes || ''
-        });
-        setEditMode(true);
-        setIsEditOpen(true);
-    };
-
-    const handleView = (customer) => {
-        setSelectedCustomer(customer);
-        setIsViewOpen(true);
-    };
-
-    const handleDelete = (customer) => {
-        setSelectedCustomer(customer);
-        setDeleteConfirmText('');
-        setIsDeleteOpen(true);
-    };
-
-    const handleUpdate = async (e) => {
-        e.preventDefault();
-        setIsSubmitting(true);
-
-        try {
-            const updatedCustomer = await update(selectedCustomer.id, formData, 'customers');
-            if (updatedCustomer) {
-                toast.success('Customer updated successfully!');
-                setFormData(initialFormData);
-                setIsEditOpen(false);
-                setEditMode(false);
-                setSelectedCustomer(null);
-                await fetchCustomers();
-            }
-        } catch (error) {
-            console.error('Error updating customer:', error);
-            toast.error('Error updating customer');
-        } finally {
-            setIsSubmitting(false);
-        }
-    };
-
-    const handleDeleteConfirm = async () => {
-        if (deleteConfirmText !== 'delete') {
-            toast.error('Please type "delete" to confirm');
-            return;
-        }
-
-        setIsDeleting(true);
-        try {
-            const result = await remove(selectedCustomer.id, 'customers');
-            if (result) {
-                toast.success('Customer deleted successfully!');
-                setIsDeleteOpen(false);
-                setSelectedCustomer(null);
-                setDeleteConfirmText('');
-                await fetchCustomers();
-            }
-        } catch (error) {
-            console.error('Error deleting customer:', error);
-            toast.error('Error deleting customer');
-        } finally {
-            setIsDeleting(false);
-        }
-    };
-
-    const handleCloseDialogs = () => {
+  const handleCreate = async (e) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    try {
+      const newCustomer = await create(formData, 'customers');
+      if (newCustomer) {
+        toast.success('Customer created');
+        setCustomers((prev) => [...prev, newCustomer]);
         setIsOpen(false);
-        setIsEditOpen(false);
-        setIsViewOpen(false);
-        setIsDeleteOpen(false);
-        setFormData(initialFormData);
-        setSelectedCustomer(null);
-        setEditMode(false);
-        setDeleteConfirmText('');
-    };
+        setFormData(initialForm);
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to create customer');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
+  const handleEdit = (customer) => {
+    setSelectedCustomer(customer);
+    setFormData({ ...initialForm, ...customer });
+    setIsEditOpen(true);
+  };
+
+  const handleUpdate = async (e) => {
+    e.preventDefault();
+    if (!selectedCustomer) return;
+    setIsSubmitting(true);
+    try {
+      await update(selectedCustomer.id, formData, 'customers');
+      toast.success('Customer updated');
+      fetchCustomers();
+      setIsEditOpen(false);
+      setSelectedCustomer(null);
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to update customer');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleDelete = (customer) => {
+    setSelectedCustomer(customer);
+    setIsDeleteOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!selectedCustomer) return;
+    setIsDeleting(true);
+    try {
+      await remove(selectedCustomer.id, 'customers');
+      toast.success('Customer deleted');
+      fetchCustomers();
+      setIsDeleteOpen(false);
+      setSelectedCustomer(null);
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to delete customer');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const filtered = customers.filter((c) => {
+    if (!search) return true;
+    const s = search.toLowerCase();
     return (
-        <div className="space-y-4">
-            <AdminHeader title="Customers" description="Manage your customers" />
-            <div className="flex flex-col space-y-4">
-                    <div className="flex items-center justify-between">
-                        <Input
-                            placeholder="Search customers..."
-                            value={search}
-                            onChange={(e) => setSearch(e.target.value)}
-                            className="max-w-xs"
-                        />
-                        <Dialog open={isOpen} onOpenChange={setIsOpen}>
-                            <DialogTrigger asChild>
-                                <Button>
-                                    <Plus className="mr-2 h-4 w-4" />
-                                    Add Customer
-                                </Button>
-                            </DialogTrigger>
-                            <DialogContent className="sm:max-w-[425px]">
-                                <DialogHeader>
-                                    <DialogTitle>Create New Customer</DialogTitle>
-                                </DialogHeader>
-                                <form onSubmit={handleSubmit} className="space-y-4">
-                                    <div className="grid gap-4 py-4">
-                                        <div className="grid grid-cols-2 gap-2">
-                                            <div className="grid gap-2">
-                                                <Label htmlFor="firstName">First Name</Label>
-                                                <Input
-                                                    id="firstName"
-                                                    name="firstName"
-                                                    value={formData.firstName}
-                                                    onChange={handleInputChange}
-                                                    required
-                                                />
-                                            </div>
-                                            <div className="grid gap-2">
-                                                <Label htmlFor="lastName">Last Name</Label>
-                                                <Input
-                                                    id="lastName"
-                                                    name="lastName"
-                                                    value={formData.lastName}
-                                                    onChange={handleInputChange}
-                                                    required
-                                                />
-                                            </div>
-                                        </div>
-                                        <div className="grid gap-2">
-                                            <Label htmlFor="email">Email</Label>
-                                            <Input
-                                                id="email"
-                                                name="email"
-                                                type="email"
-                                                value={formData.email}
-                                                onChange={handleInputChange}
-                                                required
-                                            />
-                                        </div>
-                                        <div className="grid gap-2">
-                                            <Label htmlFor="phone">Phone</Label>
-                                            <PhoneInput
-                                                value={formData.phone}
-                                                onChange={handlePhoneChange}
-                                                placeholder="Enter phone number"
-                                            />
-                                        </div>
-                                        <div className="grid gap-2">
-                                            <Label htmlFor="streetAddress">Street Address</Label>
-                                            <Input
-                                                id="streetAddress"
-                                                name="streetAddress"
-                                                value={formData.streetAddress}
-                                                onChange={handleInputChange}
-                                            />
-                                        </div>
-                                        <div className="grid gap-2">
-                                            <Label htmlFor="apartmentUnit">Apartment/Unit</Label>
-                                            <Input
-                                                id="apartmentUnit"
-                                                name="apartmentUnit"
-                                                value={formData.apartmentUnit}
-                                                onChange={handleInputChange}
-                                            />
-                                        </div>
-                                        <div className="grid grid-cols-2 gap-2">
-                                            <div className="grid gap-2">
-                                                <Label htmlFor="city">City</Label>
-                                                <Input
-                                                    id="city"
-                                                    name="city"
-                                                    value={formData.city}
-                                                    onChange={handleInputChange}
-                                                />
-                                            </div>
-                                            <div className="grid gap-2">
-                                                <Label htmlFor="state">State</Label>
-                                                <Input
-                                                    id="state"
-                                                    name="state"
-                                                    value={formData.state}
-                                                    onChange={handleInputChange}
-                                                />
-                                            </div>
-                                        </div>
-                                        <div className="grid grid-cols-2 gap-2">
-                                            <div className="grid gap-2">
-                                                <Label htmlFor="zipCode">ZIP Code</Label>
-                                                <Input
-                                                    id="zipCode"
-                                                    name="zipCode"
-                                                    value={formData.zipCode}
-                                                    onChange={handleInputChange}
-                                                />
-                                            </div>
-                                            <div className="grid gap-2">
-                                                <Label htmlFor="country">Country</Label>
-                                                <CountryDropdown
-                                                    value={formData.country}
-                                                    onChange={handleCountryChange}
-                                                    className="w-full"
-                                                />
-                                            </div>
-                                        </div>
-
-                                        {/* Business Information */}
-                                        <div className="grid gap-2 border-t pt-4">
-                                            <div className="flex items-center space-x-2">
-                                                <Checkbox
-                                                    id="isBusinessCustomer"
-                                                    name="isBusinessCustomer"
-                                                    checked={formData.isBusinessCustomer}
-                                                    onCheckedChange={(checked) =>
-                                                        setFormData((prev) => ({
-                                                            ...prev,
-                                                            isBusinessCustomer: checked
-                                                        }))
-                                                    }
-                                                />
-                                                <Label htmlFor="isBusinessCustomer">Business Customer</Label>
-                                            </div>
-                                        </div>
-
-                                        {formData.isBusinessCustomer && (
-                                            <div className="space-y-4 border-gray-200 border-l-2 pl-6">
-                                                <div className="grid gap-2">
-                                                    <Label htmlFor="businessName">Business Name</Label>
-                                                    <Input
-                                                        id="businessName"
-                                                        name="businessName"
-                                                        value={formData.businessName}
-                                                        onChange={handleInputChange}
-                                                    />
-                                                </div>
-                                                <div className="grid gap-2">
-                                                    <Label htmlFor="legalBusinessName">Legal Business Name</Label>
-                                                    <Input
-                                                        id="legalBusinessName"
-                                                        name="legalBusinessName"
-                                                        value={formData.legalBusinessName}
-                                                        onChange={handleInputChange}
-                                                    />
-                                                </div>
-                                                <div className="grid grid-cols-2 gap-2">
-                                                    <div className="grid gap-2">
-                                                        <Label htmlFor="tvaNumber">TVA Number</Label>
-                                                        <Input
-                                                            id="tvaNumber"
-                                                            name="tvaNumber"
-                                                            value={formData.tvaNumber}
-                                                            onChange={handleInputChange}
-                                                        />
-                                                    </div>
-                                                    <div className="grid gap-2">
-                                                        <Label htmlFor="businessType">Business Type</Label>
-                                                        <Input
-                                                            id="businessType"
-                                                            name="businessType"
-                                                            value={formData.businessType}
-                                                            onChange={handleInputChange}
-                                                            placeholder="e.g., LLC, Corporation, etc."
-                                                        />
-                                                    </div>
-                                                </div>
-                                                <div className="grid gap-2">
-                                                    <Label htmlFor="businessAddress">Business Address</Label>
-                                                    <Textarea
-                                                        id="businessAddress"
-                                                        name="businessAddress"
-                                                        value={formData.businessAddress}
-                                                        onChange={handleInputChange}
-                                                        rows={2}
-                                                    />
-                                                </div>
-                                                <div className="grid grid-cols-2 gap-2">
-                                                    <div className="grid gap-2">
-                                                        <Label htmlFor="businessPhone">Business Phone</Label>
-                                                        <PhoneInput
-                                                            value={formData.businessPhone}
-                                                            onChange={(value) =>
-                                                                setFormData((prev) => ({
-                                                                    ...prev,
-                                                                    businessPhone: value
-                                                                }))
-                                                            }
-                                                            placeholder="Business phone number"
-                                                        />
-                                                    </div>
-                                                    <div className="grid gap-2">
-                                                        <Label htmlFor="businessEmail">Business Email</Label>
-                                                        <Input
-                                                            id="businessEmail"
-                                                            name="businessEmail"
-                                                            type="email"
-                                                            value={formData.businessEmail}
-                                                            onChange={handleInputChange}
-                                                        />
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        )}
-
-                                        <div className="grid gap-2">
-                                            <Label htmlFor="notes">Notes</Label>
-                                            <Textarea
-                                                id="notes"
-                                                name="notes"
-                                                value={formData.notes}
-                                                onChange={handleInputChange}
-                                                rows={3}
-                                                placeholder="Additional notes about the customer..."
-                                            />
-                                        </div>
-                                    </div>
-                                    <div className="flex justify-end space-x-2">
-                                        <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>
-                                            Cancel
-                                        </Button>
-                                        <Button type="submit" disabled={isSubmitting}>
-                                            {isSubmitting ? 'Creating...' : 'Create'}
-                                        </Button>
-                                    </div>
-                                </form>
-                            </DialogContent>
-                        </Dialog>
-                    </div>
-                    <ScrollArea className="h-[calc(100vh-250px)]">
-                        {loading ? (
-                            <TableSkeleton columns={6} rows={5} />
-                        ) : (
-                            <Table>
-                                <TableHeader>
-                                    <TableRow>
-                                        <TableHead onClick={() => handleSort('name')} className="cursor-pointer">
-                                            Name{' '}
-                                            {sortConfig.key === 'name' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
-                                        </TableHead>
-                                        <TableHead onClick={() => handleSort('email')} className="cursor-pointer">
-                                            Email{' '}
-                                            {sortConfig.key === 'email' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
-                                        </TableHead>
-                                        <TableHead onClick={() => handleSort('orders')} className="cursor-pointer">
-                                            Orders{' '}
-                                            {sortConfig.key === 'orders' &&
-                                                (sortConfig.direction === 'asc' ? '↑' : '↓')}
-                                        </TableHead>
-                                        <TableHead onClick={() => handleSort('totalSpent')} className="cursor-pointer">
-                                            Total Spent{' '}
-                                            {sortConfig.key === 'totalSpent' &&
-                                                (sortConfig.direction === 'asc' ? '↑' : '↓')}
-                                        </TableHead>
-                                        <TableHead onClick={() => handleSort('lastOrder')} className="cursor-pointer">
-                                            Last Order{' '}
-                                            {sortConfig.key === 'lastOrder' &&
-                                                (sortConfig.direction === 'asc' ? '↑' : '↓')}
-                                        </TableHead>
-                                        <TableHead className="text-right">Actions</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {getPaginatedCustomers().map((customer) => {
-                                        const fullName =
-                                            `${customer.firstName || ''} ${customer.lastName || ''}`.trim() ||
-                                            customer.name ||
-                                            'N/A';
-                                        const orderCount = customer.orders || 0;
-                                        const totalSpent = customer.totalSpent || 0;
-                                        const lastOrderDate = customer.lastOrder;
-
-                                        return (
-                                            <TableRow key={customer.id || customer.email}>
-                                                <TableCell>{fullName}</TableCell>
-                                                <TableCell>{customer.email}</TableCell>
-                                                <TableCell>{orderCount}</TableCell>
-                                                <TableCell>{formatCurrency(totalSpent)}</TableCell>
-                                                <TableCell>
-                                                    {lastOrderDate ? formatDate(lastOrderDate) : 'No orders'}
-                                                </TableCell>
-                                                <TableCell className="text-right">
-                                                    {/* Mobile view - show individual buttons */}
-                                                    <div className="flex space-x-2 sm:hidden">
-                                                        <Button
-                                                            variant="outline"
-                                                            size="icon"
-                                                            onClick={() => handleView(customer)}
-                                                            title="View Details">
-                                                            <Eye className="h-4 w-4" />
-                                                        </Button>
-                                                        <Button
-                                                            variant="outline"
-                                                            size="icon"
-                                                            onClick={() => handleEdit(customer)}
-                                                            title="Edit Customer">
-                                                            <Edit className="h-4 w-4" />
-                                                        </Button>
-                                                        <Button
-                                                            variant="outline"
-                                                            size="icon"
-                                                            onClick={() => handleDelete(customer)}
-                                                            title="Delete Customer"
-                                                            className="text-red-600 hover:text-red-700">
-                                                            <Trash2 className="h-4 w-4" />
-                                                        </Button>
-                                                    </div>
-
-                                                    {/* Desktop view - show dropdown menu */}
-                                                    <div className="hidden sm:block">
-                                                        <DropdownMenu>
-                                                            <DropdownMenuTrigger asChild>
-                                                                <Button variant="ghost" size="icon" className="h-8 w-8">
-                                                                    <MoreHorizontal className="h-4 w-4" />
-                                                                </Button>
-                                                            </DropdownMenuTrigger>
-                                                            <DropdownMenuContent align="end" className="w-[160px]">
-                                                                <DropdownMenuItem onClick={() => handleView(customer)}>
-                                                                    <Eye className="mr-2 h-4 w-4" />
-                                                                    View Details
-                                                                </DropdownMenuItem>
-                                                                <DropdownMenuItem onClick={() => handleEdit(customer)}>
-                                                                    <Edit className="mr-2 h-4 w-4" />
-                                                                    Edit Customer
-                                                                </DropdownMenuItem>
-                                                                <DropdownMenuItem
-                                                                    onClick={() => handleDelete(customer)}
-                                                                    className="text-destructive focus:text-destructive">
-                                                                    <Trash2 className="mr-2 h-4 w-4" />
-                                                                    Delete Customer
-                                                                </DropdownMenuItem>
-                                                            </DropdownMenuContent>
-                                                        </DropdownMenu>
-                                                    </div>
-                                                </TableCell>
-                                            </TableRow>
-                                        );
-                                    })}
-                                </TableBody>
-                            </Table>
-                        )}
-                    </ScrollArea>
-                    {!loading && totalPages > 1 && (
-                        <div className="mt-4 flex justify-center space-x-2">
-                            <Button
-                                variant="outline"
-                                onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
-                                disabled={currentPage === 1}>
-                                Previous
-                            </Button>
-                            <span className="flex items-center px-4">
-                                Page {currentPage} of {totalPages}
-                            </span>
-                            <Button
-                                variant="outline"
-                                onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
-                                disabled={currentPage === totalPages}>
-                                Next
-                            </Button>
-                        </div>
-                    )}
-                </div>
-            </div>
-
-            {/* Edit Customer Dialog */}
-            <Dialog
-                open={isEditOpen}
-                onOpenChange={(open) => {
-                    setIsEditOpen(open);
-                    if (!open) {
-                        handleCloseDialogs();
-                    }
-                }}>
-                <DialogContent className="max-h-[80vh] overflow-y-auto sm:max-w-[600px]">
-                    <DialogHeader>
-                        <DialogTitle>Edit Customer</DialogTitle>
-                    </DialogHeader>
-                    <form onSubmit={handleUpdate} className="space-y-4">
-                        <div className="grid gap-4 py-4">
-                            <div className="grid grid-cols-2 gap-2">
-                                <div className="grid gap-2">
-                                    <Label htmlFor="firstName">First Name</Label>
-                                    <Input
-                                        id="firstName"
-                                        name="firstName"
-                                        value={formData.firstName}
-                                        onChange={handleInputChange}
-                                        required
-                                    />
-                                </div>
-                                <div className="grid gap-2">
-                                    <Label htmlFor="lastName">Last Name</Label>
-                                    <Input
-                                        id="lastName"
-                                        name="lastName"
-                                        value={formData.lastName}
-                                        onChange={handleInputChange}
-                                        required
-                                    />
-                                </div>
-                            </div>
-                            <div className="grid gap-2">
-                                <Label htmlFor="email">Email</Label>
-                                <Input
-                                    id="email"
-                                    name="email"
-                                    type="email"
-                                    value={formData.email}
-                                    onChange={handleInputChange}
-                                    required
-                                />
-                            </div>
-                            <div className="grid gap-2">
-                                <Label htmlFor="phone">Phone</Label>
-                                <PhoneInput
-                                    value={formData.phone}
-                                    onChange={handlePhoneChange}
-                                    placeholder="Enter phone number"
-                                />
-                            </div>
-                            <div className="grid gap-2">
-                                <Label htmlFor="streetAddress">Street Address</Label>
-                                <Input
-                                    id="streetAddress"
-                                    name="streetAddress"
-                                    value={formData.streetAddress}
-                                    onChange={handleInputChange}
-                                />
-                            </div>
-                            <div className="grid gap-2">
-                                <Label htmlFor="apartmentUnit">Apartment/Unit</Label>
-                                <Input
-                                    id="apartmentUnit"
-                                    name="apartmentUnit"
-                                    value={formData.apartmentUnit}
-                                    onChange={handleInputChange}
-                                />
-                            </div>
-                            <div className="grid grid-cols-2 gap-2">
-                                <div className="grid gap-2">
-                                    <Label htmlFor="city">City</Label>
-                                    <Input id="city" name="city" value={formData.city} onChange={handleInputChange} />
-                                </div>
-                                <div className="grid gap-2">
-                                    <Label htmlFor="state">State</Label>
-                                    <Input
-                                        id="state"
-                                        name="state"
-                                        value={formData.state}
-                                        onChange={handleInputChange}
-                                    />
-                                </div>
-                            </div>
-                            <div className="grid grid-cols-2 gap-2">
-                                <div className="grid gap-2">
-                                    <Label htmlFor="zipCode">ZIP Code</Label>
-                                    <Input
-                                        id="zipCode"
-                                        name="zipCode"
-                                        value={formData.zipCode}
-                                        onChange={handleInputChange}
-                                    />
-                                </div>
-                                <div className="grid gap-2">
-                                    <Label htmlFor="country">Country</Label>
-                                    <CountryDropdown
-                                        value={formData.country}
-                                        onChange={handleCountryChange}
-                                        className="w-full"
-                                    />
-                                </div>
-                            </div>
-
-                            {/* Business Information */}
-                            <div className="grid gap-2 border-t pt-4">
-                                <div className="flex items-center space-x-2">
-                                    <Checkbox
-                                        id="isBusinessCustomer"
-                                        name="isBusinessCustomer"
-                                        checked={formData.isBusinessCustomer}
-                                        onCheckedChange={(checked) =>
-                                            setFormData((prev) => ({ ...prev, isBusinessCustomer: checked }))
-                                        }
-                                    />
-                                    <Label htmlFor="isBusinessCustomer">Business Customer</Label>
-                                </div>
-                            </div>
-
-                            {formData.isBusinessCustomer && (
-                                <div className="space-y-4 border-gray-200 border-l-2 pl-6">
-                                    <div className="grid gap-2">
-                                        <Label htmlFor="businessName">Business Name</Label>
-                                        <Input
-                                            id="businessName"
-                                            name="businessName"
-                                            value={formData.businessName}
-                                            onChange={handleInputChange}
-                                        />
-                                    </div>
-                                    <div className="grid gap-2">
-                                        <Label htmlFor="legalBusinessName">Legal Business Name</Label>
-                                        <Input
-                                            id="legalBusinessName"
-                                            name="legalBusinessName"
-                                            value={formData.legalBusinessName}
-                                            onChange={handleInputChange}
-                                        />
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-2">
-                                        <div className="grid gap-2">
-                                            <Label htmlFor="tvaNumber">TVA Number</Label>
-                                            <Input
-                                                id="tvaNumber"
-                                                name="tvaNumber"
-                                                value={formData.tvaNumber}
-                                                onChange={handleInputChange}
-                                            />
-                                        </div>
-                                        <div className="grid gap-2">
-                                            <Label htmlFor="businessType">Business Type</Label>
-                                            <Input
-                                                id="businessType"
-                                                name="businessType"
-                                                value={formData.businessType}
-                                                onChange={handleInputChange}
-                                                placeholder="e.g., LLC, Corporation, etc."
-                                            />
-                                        </div>
-                                    </div>
-                                    <div className="grid gap-2">
-                                        <Label htmlFor="businessAddress">Business Address</Label>
-                                        <Textarea
-                                            id="businessAddress"
-                                            name="businessAddress"
-                                            value={formData.businessAddress}
-                                            onChange={handleInputChange}
-                                            rows={2}
-                                        />
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-2">
-                                        <div className="grid gap-2">
-                                            <Label htmlFor="businessPhone">Business Phone</Label>
-                                            <PhoneInput
-                                                value={formData.businessPhone}
-                                                onChange={(value) =>
-                                                    setFormData((prev) => ({ ...prev, businessPhone: value }))
-                                                }
-                                                placeholder="Business phone number"
-                                            />
-                                        </div>
-                                        <div className="grid gap-2">
-                                            <Label htmlFor="businessEmail">Business Email</Label>
-                                            <Input
-                                                id="businessEmail"
-                                                name="businessEmail"
-                                                type="email"
-                                                value={formData.businessEmail}
-                                                onChange={handleInputChange}
-                                            />
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
-
-                            <div className="grid gap-2">
-                                <Label htmlFor="notes">Notes</Label>
-                                <Textarea
-                                    id="notes"
-                                    name="notes"
-                                    value={formData.notes}
-                                    onChange={handleInputChange}
-                                    rows={3}
-                                    placeholder="Additional notes about the customer..."
-                                />
-                            </div>
-                        </div>
-                        <div className="flex justify-end space-x-2">
-                            <Button type="button" variant="outline" onClick={handleCloseDialogs}>
-                                Cancel
-                            </Button>
-                            <Button type="submit" disabled={isSubmitting}>
-                                {isSubmitting ? 'Updating...' : 'Update'}
-                            </Button>
-                        </div>
-                    </form>
-                </DialogContent>
-            </Dialog>
-
-            {/* View Customer Dialog */}
-            <Dialog
-                open={isViewOpen}
-                onOpenChange={(open) => {
-                    setIsViewOpen(open);
-                    if (!open) {
-                        handleCloseDialogs();
-                    }
-                }}>
-                <DialogContent className="max-h-[80vh] overflow-y-auto sm:max-w-[600px]">
-                    <DialogHeader>
-                        <DialogTitle>Customer Details</DialogTitle>
-                    </DialogHeader>
-                    {selectedCustomer && (
-                        <div className="grid gap-4 py-4">
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <Label className="font-medium text-sm">First Name</Label>
-                                    <p className="mt-1 text-muted-foreground text-sm">
-                                        {selectedCustomer.firstName || 'N/A'}
-                                    </p>
-                                </div>
-                                <div>
-                                    <Label className="font-medium text-sm">Last Name</Label>
-                                    <p className="mt-1 text-muted-foreground text-sm">
-                                        {selectedCustomer.lastName || 'N/A'}
-                                    </p>
-                                </div>
-                            </div>
-                            <div>
-                                <Label className="font-medium text-sm">Email</Label>
-                                <p className="mt-1 text-muted-foreground text-sm">{selectedCustomer.email}</p>
-                            </div>
-                            <div>
-                                <Label className="font-medium text-sm">Phone</Label>
-                                <p className="mt-1 text-muted-foreground text-sm">{selectedCustomer.phone || 'N/A'}</p>
-                            </div>
-                            <div>
-                                <Label className="font-medium text-sm">Address</Label>
-                                <p className="mt-1 text-muted-foreground text-sm">
-                                    {[
-                                        selectedCustomer.streetAddress,
-                                        selectedCustomer.apartmentUnit,
-                                        selectedCustomer.city,
-                                        selectedCustomer.state,
-                                        selectedCustomer.zipCode,
-                                        selectedCustomer.country
-                                    ]
-                                        .filter(Boolean)
-                                        .join(', ') || 'No address provided'}
-                                </p>
-                            </div>
-                            <div className="grid grid-cols-3 gap-4">
-                                <div>
-                                    <Label className="font-medium text-sm">Orders</Label>
-                                    <p className="mt-1 text-muted-foreground text-sm">{selectedCustomer.orders || 0}</p>
-                                </div>
-                                <div>
-                                    <Label className="font-medium text-sm">Total Spent</Label>
-                                    <p className="mt-1 text-muted-foreground text-sm">
-                                        {formatCurrency(selectedCustomer.totalSpent || 0)}
-                                    </p>
-                                </div>
-                                <div>
-                                    <Label className="font-medium text-sm">Last Order</Label>
-                                    <p className="mt-1 text-muted-foreground text-sm">
-                                        {selectedCustomer.lastOrder
-                                            ? formatDate(selectedCustomer.lastOrder)
-                                            : 'No orders'}
-                                    </p>
-                                </div>
-                            </div>
-
-                            {selectedCustomer.isBusinessCustomer && (
-                                <div className="border-t pt-4">
-                                    <Label className="font-medium text-sm">Business Information</Label>
-                                    <div className="mt-2 grid gap-2">
-                                        {selectedCustomer.businessName && (
-                                            <div>
-                                                <Label className="font-medium text-muted-foreground text-xs">
-                                                    Business Name
-                                                </Label>
-                                                <p className="text-sm">{selectedCustomer.businessName}</p>
-                                            </div>
-                                        )}
-                                        {selectedCustomer.legalBusinessName && (
-                                            <div>
-                                                <Label className="font-medium text-muted-foreground text-xs">
-                                                    Legal Business Name
-                                                </Label>
-                                                <p className="text-sm">{selectedCustomer.legalBusinessName}</p>
-                                            </div>
-                                        )}
-                                        {selectedCustomer.tvaNumber && (
-                                            <div>
-                                                <Label className="font-medium text-muted-foreground text-xs">
-                                                    TVA Number
-                                                </Label>
-                                                <p className="text-sm">{selectedCustomer.tvaNumber}</p>
-                                            </div>
-                                        )}
-                                        {selectedCustomer.businessType && (
-                                            <div>
-                                                <Label className="font-medium text-muted-foreground text-xs">
-                                                    Business Type
-                                                </Label>
-                                                <p className="text-sm">{selectedCustomer.businessType}</p>
-                                            </div>
-                                        )}
-                                        {selectedCustomer.businessAddress && (
-                                            <div>
-                                                <Label className="font-medium text-muted-foreground text-xs">
-                                                    Business Address
-                                                </Label>
-                                                <p className="text-sm">{selectedCustomer.businessAddress}</p>
-                                            </div>
-                                        )}
-                                        {selectedCustomer.businessPhone && (
-                                            <div>
-                                                <Label className="font-medium text-muted-foreground text-xs">
-                                                    Business Phone
-                                                </Label>
-                                                <p className="text-sm">{selectedCustomer.businessPhone}</p>
-                                            </div>
-                                        )}
-                                        {selectedCustomer.businessEmail && (
-                                            <div>
-                                                <Label className="font-medium text-muted-foreground text-xs">
-                                                    Business Email
-                                                </Label>
-                                                <p className="text-sm">{selectedCustomer.businessEmail}</p>
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
-                            )}
-
-                            {selectedCustomer.notes && (
-                                <div>
-                                    <Label className="font-medium text-sm">Notes</Label>
-                                    <p className="mt-1 text-muted-foreground text-sm">{selectedCustomer.notes}</p>
-                                </div>
-                            )}
-                        </div>
-                    )}
-                    <div className="flex justify-end">
-                        <Button onClick={handleCloseDialogs}>Close</Button>
-                    </div>
-                </DialogContent>
-            </Dialog>
-
-            {/* Delete Customer Dialog */}
-            <Dialog
-                open={isDeleteOpen}
-                onOpenChange={(open) => {
-                    setIsDeleteOpen(open);
-                    if (!open) {
-                        handleCloseDialogs();
-                    }
-                }}>
-                <DialogContent className="sm:max-w-[425px]">
-                    <DialogHeader>
-                        <DialogTitle>Delete Customer</DialogTitle>
-                    </DialogHeader>
-                    <div className="py-4">
-                        <p className="mb-4 text-muted-foreground text-sm">
-                            Are you sure you want to delete this customer? This action cannot be undone.
-                        </p>
-                        {selectedCustomer && (
-                            <div className="mb-4 rounded-lg bg-accent p-3">
-                                <p className="font-medium">
-                                    {`${selectedCustomer.firstName || ''} ${selectedCustomer.lastName || ''}`.trim() ||
-                                        'N/A'}
-                                </p>
-                                <p className="text-muted-foreground text-sm">{selectedCustomer.email}</p>
-                                <p className="text-muted-foreground text-sm">
-                                    {selectedCustomer.orders || 0} orders •{' '}
-                                    {formatCurrency(selectedCustomer.totalSpent || 0)} spent
-                                </p>
-                            </div>
-                        )}
-                        <div className="grid gap-2">
-                            <Label htmlFor="deleteConfirm">Type "delete" to confirm</Label>
-                            <Input
-                                id="deleteConfirm"
-                                value={deleteConfirmText}
-                                onChange={(e) => setDeleteConfirmText(e.target.value)}
-                                placeholder="delete"
-                            />
-                        </div>
-                    </div>
-                    <div className="flex justify-end space-x-2">
-                        <Button type="button" variant="outline" onClick={handleCloseDialogs} disabled={isDeleting}>
-                            Cancel
-                        </Button>
-                        <Button
-                            onClick={handleDeleteConfirm}
-                            disabled={deleteConfirmText !== 'delete' || isDeleting}
-                            variant="destructive">
-                            {isDeleting ? 'Deleting...' : 'Delete Customer'}
-                        </Button>
-                    </div>
-                </DialogContent>
-            </Dialog>
-        </div>
+      (c.firstName || '').toLowerCase().includes(s) ||
+      (c.lastName || '').toLowerCase().includes(s) ||
+      (c.email || '').toLowerCase().includes(s)
     );
+  });
+
+  return (
+    <div className="space-y-4">
+      <AdminHeader title="Customers" description="Manage your customers" />
+
+      <div className="flex items-center justify-between">
+        <Input placeholder="Search customers..." value={search} onChange={(e) => setSearch(e.target.value)} className="max-w-xs" />
+
+        <Dialog open={isOpen} onOpenChange={setIsOpen}>
+          <DialogTrigger asChild>
+            <Button>
+              <Plus className="mr-2 h-4 w-4" />
+              Add Customer
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+              <DialogTitle>Create New Customer</DialogTitle>
+            </DialogHeader>
+            <form onSubmit={handleCreate} className="space-y-4">
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <Label htmlFor="firstName">First Name</Label>
+                  <Input id="firstName" name="firstName" value={formData.firstName} onChange={handleInputChange} required />
+                </div>
+                <div>
+                  <Label htmlFor="lastName">Last Name</Label>
+                  <Input id="lastName" name="lastName" value={formData.lastName} onChange={handleInputChange} required />
+                </div>
+              </div>
+              <div>
+                <Label htmlFor="email">Email</Label>
+                <Input id="email" name="email" type="email" value={formData.email} onChange={handleInputChange} required />
+              </div>
+              <div className="flex justify-end space-x-2">
+                <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>Cancel</Button>
+                <Button type="submit" disabled={isSubmitting}>{isSubmitting ? 'Creating...' : 'Create'}</Button>
+              </div>
+            </form>
+          </DialogContent>
+        </Dialog>
+      </div>
+
+      <div>
+        <ScrollArea className="h-[calc(100vh-300px)]">
+          {loading ? (
+            <TableSkeleton columns={6} rows={5} />
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Email</TableHead>
+                  <TableHead>Orders</TableHead>
+                  <TableHead>Total Spent</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filtered.map((customer) => (
+                  <TableRow key={customer.id || customer.email}>
+                    <TableCell>{`${customer.firstName || ''} ${customer.lastName || ''}`.trim() || 'N/A'}</TableCell>
+                    <TableCell>{customer.email}</TableCell>
+                    <TableCell>{customer.orders || 0}</TableCell>
+                    <TableCell>{customer.totalSpent || 0}</TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex items-center justify-end space-x-2">
+                        <Button variant="outline" size="icon" onClick={() => { setSelectedCustomer(customer); setIsEditOpen(true); }}>
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button variant="outline" size="icon" onClick={() => handleDelete(customer)} className="text-red-600">
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </ScrollArea>
+      </div>
+
+      {/* Edit Dialog */}
+      <Dialog open={isEditOpen} onOpenChange={(open) => setIsEditOpen(open)}>
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle>Edit Customer</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleUpdate} className="space-y-4">
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <Label htmlFor="firstName">First Name</Label>
+                <Input id="firstName" name="firstName" value={formData.firstName} onChange={handleInputChange} required />
+              </div>
+              <div>
+                <Label htmlFor="lastName">Last Name</Label>
+                <Input id="lastName" name="lastName" value={formData.lastName} onChange={handleInputChange} required />
+              </div>
+            </div>
+            <div className="flex justify-end space-x-2">
+              <Button type="button" variant="outline" onClick={() => setIsEditOpen(false)}>Cancel</Button>
+              <Button type="submit" disabled={isSubmitting}>{isSubmitting ? 'Updating...' : 'Update'}</Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Dialog */}
+      <Dialog open={isDeleteOpen} onOpenChange={(open) => setIsDeleteOpen(open)}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Delete Customer</DialogTitle>
+          </DialogHeader>
+          <div className="py-4">
+            <p className="mb-4 text-muted-foreground text-sm">Are you sure you want to delete this customer? This action cannot be undone.</p>
+            {selectedCustomer && (
+              <div className="mb-4 rounded-lg bg-accent p-3">
+                <p className="font-medium">{`${selectedCustomer.firstName || ''} ${selectedCustomer.lastName || ''}`.trim() || 'N/A'}</p>
+                <p className="text-muted-foreground text-sm">{selectedCustomer.email}</p>
+              </div>
+            )}
+          </div>
+          <div className="flex justify-end space-x-2">
+            <Button type="button" variant="outline" onClick={() => setIsDeleteOpen(false)} disabled={isDeleting}>Cancel</Button>
+            <Button onClick={confirmDelete} variant="destructive" disabled={isDeleting}>{isDeleting ? 'Deleting...' : 'Delete'}</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
 }

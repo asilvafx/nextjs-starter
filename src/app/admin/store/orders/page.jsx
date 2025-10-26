@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
+import AdminHeader from '@/components/admin/AdminHeader';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
@@ -53,7 +54,6 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { create, getAll, remove, revalidate, update } from '@/lib/client/query';
 import { generatePDF } from '@/utils/generatePDF';
-import AdminHeader from '@/components/admin/AdminHeader';
 
 const ORDER_STATUS = [
     { value: 'pending', label: 'Pending' },

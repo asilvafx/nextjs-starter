@@ -79,35 +79,35 @@ const Homepage = () => {
                         <IntlSelector slim={false} />
                     </div>
 
-                    <div className="flex gap-2">
+                    <div className="flex flex-col sm:flex-row gap-2">
                         {!isAuthenticated ? (
                             <>
                                 <Link href="/auth/login" prefetch={false}>
-                                    <Button variant="outline" className="justify-self-end">
+                                    <Button variant="outline" className="w-full sm:w-auto sm:justify-self-end">
                                         Sign in
                                     </Button>
                                 </Link>
                                 <Link href="/auth/register" prefetch={false}>
-                                    <Button className="justify-self-end">Create account</Button>
+                                    <Button className="w-full sm:w-auto sm:justify-self-end">Create account</Button>
                                 </Link>
                             </>
                         ) : (
                             <>
                                 <Link href="/admin" prefetch={false}>
-                                    <Button className="justify-self-end">Administration</Button>
+                                    <Button className="w-full sm:w-auto sm:justify-self-end">Administration</Button>
                                 </Link>
-                                <Button onClick={handleSignOut} className="justify-self-end">
+                                <Button onClick={handleSignOut} className="w-full sm:w-auto sm:justify-self-end">
                                     {' '}
                                     Sign Out
                                 </Button>
                             </>
                         )}
 
-                        <Link href="/shop" className="relative">
+                        <Link href="/shop" className="w-full sm:w-auto relative">
                             <Button>Shop</Button>
                         </Link>
 
-                        <Link href="/shop/cart" className="relative">
+                        <Link href="/shop/cart" className="w-full sm:w-auto relative">
                             <Button>
                                 <FaCartShopping />
                                 Cart
