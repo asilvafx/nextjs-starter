@@ -1,10 +1,10 @@
 // @/locale/requests.js
 
-import fs from 'fs';
+import fs from 'node:fs';
+import path from 'node:path';
 import { cookies } from 'next/headers';
 import { hasLocale } from 'next-intl';
 import { getRequestConfig } from 'next-intl/server';
-import path from 'path';
 import { COOKIE_NAME, defaultLocale, locales } from './config';
 
 // Load and merge translation JSON files from the locale folder
@@ -24,14 +24,14 @@ async function loadTranslations(locale) {
                 const content = fs.readFileSync(filePath, 'utf8');
                 const parsed = JSON.parse(content);
                 Object.assign(translations, parsed);
-            } catch (e) {
-                console.error(`Error loading translation ${file} for locale ${locale}:`, e?.message || e);
+            } catch (_e) {
+                console.error(`Error loading translation ${file} for locale ${locale}:`, _e?.message || _e);
             }
         }
 
         return translations;
-    } catch (e) {
-        console.error(`Error reading translations for locale ${locale}:`, e?.message || e);
+    } catch (_e) {
+        console.error(`Error reading translations for locale ${locale}:`, _e?.message || _e);
         return {};
     }
 }
@@ -63,7 +63,7 @@ export default getRequestConfig(async () => {
         // cookies() may be async in some Next.js runtimes — await it before using
         const store = await cookies();
         candidate = store.get(COOKIE_NAME)?.value || null;
-    } catch (e) {
+    } catch (_e) {
         candidate = null;
     }
 
@@ -74,14 +74,14 @@ export default getRequestConfig(async () => {
                 `${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/api/query/public/site_settings`
             );
             const result = await res.json();
-            if (result && result.success && Array.isArray(result.data) && result.data.length > 0) {
+            if (result?.success && Array.isArray(result.data) && result.data.length > 0) {
                 const siteSettings = result.data[0];
                 const siteLang = siteSettings.language;
                 if (siteLang && hasLocale(locales, siteLang)) {
                     candidate = siteLang;
                 }
             }
-        } catch (err) {
+        } catch (_err) {
             // ignore
         }
     }

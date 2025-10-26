@@ -3,6 +3,7 @@
 import { Bell, CheckCircle, Eye, EyeOff, Key, Mail, QrCode, Save, Shield, Smartphone, User } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
+import AdminHeader from '@/components/admin/AdminHeader';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -892,12 +893,10 @@ export default function AccountPage() {
     return (
         <ScrollArea className="h-[calc(100vh-80px)]">
             <div className="container mx-auto space-y-6 p-6">
-                <div className="space-y-2">
-                    <h1 className="font-bold text-3xl">Account Settings</h1>
-                    <p className="text-muted-foreground">
-                        Manage your account information, security, and notification preferences
-                    </p>
-                </div>
+                <AdminHeader
+                    title="Account Settings"
+                    description="Manage your account information, security, and notification preferences"
+                />
 
                 <Tabs defaultValue="profile" className="space-y-6">
                     <TabsList className="grid w-full grid-cols-3">

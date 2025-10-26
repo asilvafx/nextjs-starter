@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
+import AdminHeader from '@/components/admin/AdminHeader';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -278,16 +279,12 @@ export default function TransactionsPage() {
     return (
         <ScrollArea className="h-[calc(100vh-80px)]">
             <div className="space-y-6">
-                <div className="flex items-center justify-between">
-                    <div>
-                        <h1 className="font-bold text-3xl">Transactions</h1>
-                        <p className="text-muted-foreground">Manage your cryptocurrency transactions</p>
-                    </div>
+                <AdminHeader title="Transactions" description="Manage your cryptocurrency transactions">
                     <Button onClick={handleRefresh} variant="outline" size="sm">
                         <RefreshCw className="mr-2 h-4 w-4" />
                         Refresh
                     </Button>
-                </div>
+                </AdminHeader>
 
                 {/* Wallet Overview */}
                 <div className="grid grid-cols-1 gap-6 md:grid-cols-3">

@@ -21,6 +21,7 @@ import { TableSkeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Textarea } from '@/components/ui/textarea';
 import { create, getAll, remove, update } from '@/lib/client/query';
+import AdminHeader from '@/components/admin/AdminHeader';
 
 const initialFormData = {
     firstName: '',
@@ -296,14 +297,8 @@ export default function CustomersPage() {
 
     return (
         <div className="space-y-4">
-            <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                    <div>
-                        <h2 className="font-semibold text-2xl">Customers</h2>
-                        <p className="text-muted-foreground">Manage your customers</p>
-                    </div>
-                </div>
-                <div className="flex flex-col space-y-4">
+            <AdminHeader title="Customers" description="Manage your customers" />
+            <div className="flex flex-col space-y-4">
                     <div className="flex items-center justify-between">
                         <Input
                             placeholder="Search customers..."

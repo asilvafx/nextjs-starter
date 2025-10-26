@@ -9,8 +9,8 @@
         "build": "next build",
         "export": "next export",
         "start": "next start",
-        "lint": "biome check src/",
-        "lint:fix": "biome check --write src/",
+        "biome": "biome check src/",
+        "biome:fix": "biome check --write src/",
         "format": "biome format --write src/",
         "check": "biome check src/",
         "email-dev": "email dev --dir src/emails"

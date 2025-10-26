@@ -53,6 +53,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { create, getAll, remove, revalidate, update } from '@/lib/client/query';
 import { generatePDF } from '@/utils/generatePDF';
+import AdminHeader from '@/components/admin/AdminHeader';
 
 const ORDER_STATUS = [
     { value: 'pending', label: 'Pending' },
@@ -813,12 +814,7 @@ export default function OrdersPage() {
 
     return (
         <div className="space-y-4">
-            <div className="flex items-center justify-between">
-                <div>
-                    <h2 className="font-semibold text-2xl">Orders</h2>
-                    <p className="text-muted-foreground">Manage and track your orders</p>
-                </div>
-            </div>
+            <AdminHeader title="Orders" description="Manage and track your orders" />
 
             {/* Connection error alert for when data is partially loaded */}
             {fetchError && allOrders.length > 0 && (

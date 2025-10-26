@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 import { SquareArrowLeft, SquareArrowRight } from 'lucide-react';
 import { redirect, usePathname } from 'next/navigation';

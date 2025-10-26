@@ -2,15 +2,24 @@
 
 'use client';
 
-import { ArrowUpDown, Eye, Pencil, Plus, Search, Trash2, User2 } from 'lucide-react';
+import { ArrowUpDown, Eye, Loader2, MoreHorizontal, Pencil, Plus, Search, Trash2, User2 } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { v6 as uuidv6 } from 'uuid';
+import ActionDropdown from '@/components/admin/ActionDropdown';
+import AdminHeader from '@/components/admin/AdminHeader';
+import AdminTable from '@/components/admin/AdminTable';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ConfirmationDialog } from '@/components/ui/confirmation-dialog';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger
+} from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -47,6 +56,7 @@ export default function UsersPage() {
     const [currentPage, setCurrentPage] = useState(1);
     const [isViewOpen, setIsViewOpen] = useState(false);
     const [viewUser, setViewUser] = useState(null);
+    const [isDeleting, setIsDeleting] = useState(false);
 
     // Use refs to prevent multiple API calls
     const hasFetchedRoles = useRef(false);
@@ -346,7 +356,7 @@ export default function UsersPage() {
 
     const handleDelete = async () => {
         if (!userToDelete) return;
-
+        setIsDeleting(true);
         try {
             await remove(userToDelete.id, 'users');
             toast.success('User deleted successfully');
@@ -356,6 +366,8 @@ export default function UsersPage() {
             setUserToDelete(null);
         } catch (error) {
             toast.error(error.message || 'Failed to delete user');
+        } finally {
+            setIsDeleting(false);
         }
     };
 
@@ -378,135 +390,6 @@ export default function UsersPage() {
     return (
         <ScrollArea className="h-[calc(100vh-80px)]">
             <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                    <div>
-                        <h1 className="font-bold text-3xl">Users Management</h1>
-                        <p className="text-muted-foreground">Manage your users and their roles</p>
-                    </div>
-                    <Dialog
-                        open={isOpen}
-                        onOpenChange={(open) => {
-                            setIsOpen(open);
-                            if (!open) {
-                                setEditUser(false);
-                                setFormData(initialFormData);
-                            }
-                        }}>
-                        <DialogContent>
-                            <DialogHeader>
-                                <DialogTitle>{editUser ? 'Edit User' : 'Add New User'}</DialogTitle>
-                                <DialogDescription>
-                                    {editUser
-                                        ? "Update the user's information using the form below."
-                                        : "Fill in the user's details to create a new account."}
-                                </DialogDescription>
-                            </DialogHeader>
-                            <form onSubmit={handleSubmit} className="space-y-4">
-                                <div>
-                                    <Input
-                                        placeholder="Name"
-                                        value={formData.displayName || ''}
-                                        onChange={(e) => setFormData({ ...formData, displayName: e.target.value })}
-                                        required
-                                    />
-                                </div>
-                                <div>
-                                    <Input
-                                        type="email"
-                                        placeholder="Email"
-                                        value={formData.email || ''}
-                                        onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                                        required
-                                    />
-                                </div>
-                                <div>
-                                    <Select
-                                        value={formData.role}
-                                        onValueChange={(value) => setFormData({ ...formData, role: value })}
-                                        required>
-                                        <SelectTrigger className="w-full">
-                                            <SelectValue placeholder="Select a role" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {roles.map((role) => (
-                                                <SelectItem key={role} value={role}>
-                                                    {role.charAt(0).toUpperCase() + role.slice(1)}
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-
-                                {!editUser || formData.changePassword ? (
-                                    <div className="space-y-4">
-                                        <div className="flex gap-2">
-                                            <Input
-                                                type="text"
-                                                placeholder="Password"
-                                                value={formData.password || ''}
-                                                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                                                required={!editUser || formData.changePassword}
-                                            />
-                                            <Button
-                                                type="button"
-                                                variant="outline"
-                                                onClick={() => {
-                                                    const password =
-                                                        Math.random().toString(36).slice(-3) +
-                                                        Math.random().toString(36).slice(-3).toUpperCase() +
-                                                        Math.random().toString(36).slice(-2) +
-                                                        '!@#$%^&*'[Math.floor(Math.random() * 8)];
-                                                    setFormData((prev) => ({
-                                                        ...prev,
-                                                        password
-                                                    }));
-                                                }}>
-                                                Generate
-                                            </Button>
-                                        </div>
-                                    </div>
-                                ) : (
-                                    <Button
-                                        type="button"
-                                        variant="outline"
-                                        className="w-full"
-                                        onClick={() => setFormData((prev) => ({ ...prev, changePassword: true }))}>
-                                        Change Password
-                                    </Button>
-                                )}
-
-                                <div className="flex items-center space-x-2">
-                                    <Checkbox
-                                        id="sendEmail"
-                                        checked={formData.sendEmail}
-                                        onCheckedChange={(checked) => setFormData({ ...formData, sendEmail: checked })}
-                                    />
-                                    <label
-                                        htmlFor="sendEmail"
-                                        className="text-muted-foreground text-sm leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                                        {editUser
-                                            ? 'Send email notification about account changes'
-                                            : 'Send welcome email with login credentials'}
-                                    </label>
-                                </div>
-
-                                <Button type="submit" className="w-full" disabled={isSubmitting}>
-                                    {isSubmitting ? (
-                                        <div className="flex items-center gap-2">
-                                            <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
-                                            {editUser ? 'Updating...' : 'Creating...'}
-                                        </div>
-                                    ) : editUser ? (
-                                        'Update User'
-                                    ) : (
-                                        'Create User'
-                                    )}
-                                </Button>
-                            </form>
-                        </DialogContent>
-                    </Dialog>
-                </div>
-
                 <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
                     <div className="flex w-full flex-1 gap-4 sm:w-auto">
                         <div className="relative flex-1">
@@ -582,26 +465,70 @@ export default function UsersPage() {
                                             <TableCell data-label="Created at">
                                                 {new Date(user.createdAt).toLocaleDateString()}
                                             </TableCell>
-                                            <TableCell className="flex gap-1 space-x-2 text-right">
-                                                <Button variant="outline" size="icon" onClick={() => handleView(user)}>
-                                                    <Eye className="h-4 w-4" />
-                                                </Button>
-                                                <Button
-                                                    disabled={user.email === currentUser?.email}
-                                                    className="w-1/5 px-2 sm:w-auto"
-                                                    variant="outline"
-                                                    size="icon"
-                                                    onClick={() => handleEdit(user)}>
-                                                    <Pencil className="h-4 w-4" />
-                                                    <span className="sm:hidden">Edit</span>
-                                                </Button>
-                                                <Button
-                                                    disabled={user.email === currentUser?.email}
-                                                    variant="outline"
-                                                    size="icon"
-                                                    onClick={() => handleDeleteClick(user)}>
-                                                    <Trash2 color="red" className="h-4 w-4" />
-                                                </Button>
+                                            <TableCell className="space-x-2 text-right">
+                                                {/* Mobile view - show individual buttons */}
+                                                <div className="flex space-x-2 sm:hidden">
+                                                    <Button
+                                                        variant="outline"
+                                                        size="icon"
+                                                        onClick={() => handleView(user)}>
+                                                        <Eye className="h-4 w-4" />
+                                                    </Button>
+                                                    <Button
+                                                        variant="outline"
+                                                        size="icon"
+                                                        onClick={() => handleEdit(user)}
+                                                        disabled={user.email === currentUser?.email}>
+                                                        <Pencil className="h-4 w-4" />
+                                                    </Button>
+                                                    <Button
+                                                        variant="outline"
+                                                        size="icon"
+                                                        onClick={() => handleDeleteClick(user)}
+                                                        disabled={user.email === currentUser?.email}>
+                                                        <Trash2 color="red" className="h-4 w-4" />
+                                                    </Button>
+                                                </div>
+
+                                                {/* Desktop view - dropdown menu */}
+                                                <div className="hidden sm:block">
+                                                    <DropdownMenu>
+                                                        <DropdownMenuTrigger asChild>
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="icon"
+                                                                className="h-8 w-8"
+                                                                disabled={
+                                                                    user.email === currentUser?.email || isDeleting
+                                                                }>
+                                                                {isDeleting && userToDelete?.id === user.id ? (
+                                                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                                                ) : (
+                                                                    <MoreHorizontal className="h-4 w-4" />
+                                                                )}
+                                                            </Button>
+                                                        </DropdownMenuTrigger>
+                                                        <DropdownMenuContent align="end" className="w-[160px]">
+                                                            <DropdownMenuItem onClick={() => handleView(user)}>
+                                                                <Eye className="mr-2 h-4 w-4" />
+                                                                View
+                                                            </DropdownMenuItem>
+                                                            <DropdownMenuItem
+                                                                onClick={() => handleEdit(user)}
+                                                                disabled={user.email === currentUser?.email}>
+                                                                <Pencil className="mr-2 h-4 w-4" />
+                                                                Edit
+                                                            </DropdownMenuItem>
+                                                            <DropdownMenuItem
+                                                                onClick={() => handleDeleteClick(user)}
+                                                                className="text-destructive focus:text-destructive"
+                                                                disabled={user.email === currentUser?.email}>
+                                                                <Trash2 className="mr-2 h-4 w-4" />
+                                                                Delete
+                                                            </DropdownMenuItem>
+                                                        </DropdownMenuContent>
+                                                    </DropdownMenu>
+                                                </div>
                                             </TableCell>
                                         </TableRow>
                                     ))
@@ -653,6 +580,7 @@ export default function UsersPage() {
                     description={`Are you sure you want to delete ${userToDelete?.displayName || 'this user'}? This action cannot be undone.`}
                     confirmText="Delete"
                     cancelText="Cancel"
+                    requireConfirmText="delete"
                 />
 
                 <Dialog open={isViewOpen} onOpenChange={setIsViewOpen}>

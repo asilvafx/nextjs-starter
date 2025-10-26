@@ -31,6 +31,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { create, getAll, update } from '@/lib/client/query';
+import AdminHeader from '@/components/admin/AdminHeader';
 
 // Default form state
 const defaultFormState = {
@@ -212,12 +213,7 @@ export default function StoreSettingsPage() {
 
     return (
         <div className="space-y-6 p-4">
-            <div className="flex items-center justify-between">
-                <div>
-                    <h1 className="font-bold text-3xl">Store Settings</h1>
-                    <p className="text-muted-foreground">Manage your store's configuration and preferences</p>
-                </div>
-            </div>
+            <AdminHeader title="Store Settings" description="Manage your store's configuration and preferences" />
 
             <form onSubmit={onSubmit} className="space-y-6">
                 <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">

@@ -5,6 +5,7 @@
 import { ArrowUpDown, Image, Loader2, MoreHorizontal, Pencil, Plus, Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
+import AdminHeader from '@/components/admin/AdminHeader';
 import {
     AlertDialog,
     AlertDialogAction,
@@ -405,55 +406,47 @@ export default function CatalogPage() {
 
     return (
         <div className="space-y-4">
-            {loading ? (
-                <TableSkeleton columns={5} rows={5} />
-            ) : (
-                <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <h2 className="font-semibold text-2xl">Items</h2>
-                            <p className="text-muted-foreground">Manage your catalog items</p>
-                        </div>
-                        <Dialog
-                            open={isOpen}
-                            onOpenChange={(open) => {
-                                setIsOpen(open);
-                                if (!open) {
-                                    setEditItem(null);
-                                    setFormData(initialFormData);
-                                }
+            <AdminHeader title="Items" description="Manage your catalog items">
+                <Dialog
+                    open={isOpen}
+                    onOpenChange={(open) => {
+                        setIsOpen(open);
+                        if (!open) {
+                            setEditItem(null);
+                            setFormData(initialFormData);
+                        }
+                    }}>
+                    <DialogTrigger asChild>
+                        <Button
+                            onClick={() => {
+                                setEditItem(null);
+                                setFormData(initialFormData);
                             }}>
-                            <DialogTrigger asChild>
-                                <Button
-                                    onClick={() => {
-                                        setEditItem(null);
-                                        setFormData(initialFormData);
-                                    }}>
-                                    <Plus className="mr-2 h-4 w-4" />
-                                    Add Item
-                                </Button>
-                            </DialogTrigger>
-                            <DialogContent className="w-[90vw] max-w-4xl">
-                                <DialogHeader>
-                                    <DialogTitle>{editItem ? 'Edit Item' : 'Add New Item'}</DialogTitle>
-                                </DialogHeader>
-                                <CatalogItemForm
-                                    formData={formData}
-                                    setFormData={setFormData}
-                                    editItem={editItem}
-                                    categories={categories}
-                                    collections={collections}
-                                    availableLanguages={availableLanguages}
-                                    defaultLanguage={defaultLanguage}
-                                    onSubmit={handleSubmit}
-                                    onImageUpload={handleImageUpload}
-                                    isSubmitting={isSubmitting}
-                                    uploadingImages={uploadingImages}
-                                    uploadProgress={uploadProgress}
-                                />
-                            </DialogContent>
-                        </Dialog>
-                    </div>
+                            <Plus className="mr-2 h-4 w-4" />
+                            Add Item
+                        </Button>
+                    </DialogTrigger>
+                    <DialogContent className="w-[90vw] max-w-4xl">
+                        <DialogHeader>
+                            <DialogTitle>{editItem ? 'Edit Item' : 'Add New Item'}</DialogTitle>
+                        </DialogHeader>
+                        <CatalogItemForm
+                            formData={formData}
+                            setFormData={setFormData}
+                            editItem={editItem}
+                            categories={categories}
+                            collections={collections}
+                            availableLanguages={availableLanguages}
+                            defaultLanguage={defaultLanguage}
+                            onSubmit={handleSubmit}
+                            onImageUpload={handleImageUpload}
+                            isSubmitting={isSubmitting}
+                            uploadingImages={uploadingImages}
+                            uploadProgress={uploadProgress}
+                        />
+                    </DialogContent>
+                </Dialog>
+            </AdminHeader>
                     <div className="flex flex-col space-y-4">
                         <div className="flex items-center justify-between">
                             <Input

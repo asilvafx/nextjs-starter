@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
+import AdminHeader from '@/components/admin/AdminHeader';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -422,16 +423,12 @@ export default function RolesPage() {
     return (
         <ScrollArea className="h-[calc(100vh-80px)]">
             <div className="space-y-4">
-                <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-                    <div className="space-y-2">
-                        <h1 className="font-bold text-3xl">Roles Management</h1>
-                        <p className="text-muted-foreground">Manage user roles and their route permissions</p>
-                    </div>
+                <AdminHeader title="Roles Management" description="Manage user roles and their route permissions">
                     <Button onClick={openCreateDialog} className="flex items-center gap-2">
                         <Plus className="h-4 w-4" />
                         Create Role
                     </Button>
-                </div>
+                </AdminHeader>
 
                 {/* Search and Filters */}
                 <Card>

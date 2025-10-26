@@ -3,6 +3,7 @@
 import { CheckCircle, Copy, Image as ImageIcon, Loader2, Search, Star, Trash2, Upload } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
+import AdminHeader from '@/components/admin/AdminHeader';
 import {
     AlertDialog,
     AlertDialogAction,
@@ -273,11 +274,7 @@ export default function GalleryPage() {
 
     return (
         <div className="space-y-6 p-4">
-            <div className="flex items-center justify-between">
-                <div>
-                    <h1 className="font-bold text-3xl">Media Gallery</h1>
-                    <p className="text-muted-foreground">Manage your image gallery</p>
-                </div>
+            <AdminHeader title="Media Gallery" description="Manage your image gallery">
                 <Button disabled={loading || uploading} onClick={() => setIsUploadDialogOpen(true)}>
                     {uploading ? (
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -286,7 +283,7 @@ export default function GalleryPage() {
                     )}
                     {uploading ? 'Uploading...' : 'Upload Images'}
                 </Button>
-            </div>
+            </AdminHeader>
 
             <div className="relative">
                 <Search className="absolute top-2.5 left-2 h-4 w-4 text-muted-foreground" />

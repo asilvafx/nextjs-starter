@@ -31,6 +31,7 @@ import { TableSkeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Textarea } from '@/components/ui/textarea';
 import { create, getAll, remove, update } from '@/lib/client/query';
+import AdminHeader from '@/components/admin/AdminHeader';
 
 const initialFormData = {
     name: '',
@@ -231,12 +232,8 @@ export default function CategoriesPage() {
 
     return (
         <div className="space-y-4">
-            <div className="flex items-center justify-between">
-                <div>
-                    <h2 className="font-semibold text-2xl">Categories</h2>
-                    <p className="text-muted-foreground">Manage your product categories</p>
-                </div>
-                <Dialog open={isOpen} onOpenChange={setIsOpen}>
+            <AdminHeader title="Categories" description="Manage your product categories" />
+            <Dialog open={isOpen} onOpenChange={setIsOpen}>
                     <DialogTrigger asChild>
                         <Button>
                             <Plus className="mr-2 h-4 w-4" />
