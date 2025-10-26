@@ -1,8 +1,10 @@
 // @/context/LanguageContext.tsx
 'use client';
 
+import { useRouter } from 'next/navigation';
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { getAllPublic } from '@/lib/client/query.js';
+import { COOKIE_NAME } from '@/locale/config';
 
 // Type definitions
 interface Language {
@@ -30,6 +32,7 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
     const [currentLanguage, setCurrentLanguage] = useState<string>('en');
     const [availableLanguages, setAvailableLanguages] = useState<Language[]>([]);
     const [isLoading, setIsLoading] = useState<boolean>(true);
+    const router = useRouter();
 
     // Language name mappings
     const languageNames: Record<string, { name: string; flag: string }> = {
@@ -44,66 +47,227 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
         zh: { name: 'Chinese', flag: '🇨🇳' }
     };
 
-    // Load language settings from database
-    useEffect(() => {
-        const loadLanguageSettings = async () => {
-            try {
-                setIsLoading(true);
-                const settings = await getAllPublic('site_settings');
-                
-                if (settings && settings.length > 0) {
-                    const siteSettings = settings[0];
-                    
-                    // Set current language from settings or localStorage
-                    const savedLanguage = localStorage.getItem('selectedLanguage');
-                    const currentLang = savedLanguage || siteSettings.language || 'en';
-                    setCurrentLanguage(currentLang);
-                    
-                    // Set available languages from settings
-                    const availableLangs: string[] = siteSettings.availableLanguages || ['en'];
-                    const languagesWithNames = availableLangs.map((code: string) => ({
-                        id: code,
-                        code: code,
-                        name: languageNames[code]?.name || code.toUpperCase(),
-                        flag: languageNames[code]?.flag || '🌐'
-                    }));
-                    
-                    setAvailableLanguages(languagesWithNames);
-                } else {
-                    // Fallback to defaults
-                    setCurrentLanguage('en');
-                    setAvailableLanguages([{
+    // Small map from language to representative country (ISO alpha-2). Not exhaustive — used as best-effort.
+    const langToCountry: Record<string, string> = {
+        en: 'US',
+        'en-GB': 'GB',
+        es: 'ES',
+        fr: 'FR',
+        de: 'DE',
+        it: 'IT',
+        pt: 'PT',
+        ja: 'JP',
+        ko: 'KR',
+        zh: 'CN'
+    };
+
+    // Convert a 2-letter country code (ISO) to emoji flag
+    const countryCodeToEmoji = (cc?: string) => {
+        if (!cc || cc.length !== 2) return '🌐';
+        const codePoints = [...cc.toUpperCase()].map((c) => 127397 + c.charCodeAt(0));
+        return String.fromCodePoint(...codePoints);
+    };
+
+    // Resolve a human-friendly language name using an optional package (iso-639-1) or Intl.DisplayNames
+    const resolveLanguageName = async (code: string) => {
+        const primary = code.split(/[-_]/)[0];
+
+        // Try iso-639-1 package first if available
+        try {
+            // dynamic import to avoid hard dependency
+            // @ts-expect-error
+            const iso = await import('iso-639-1');
+            if (iso && typeof iso.getName === 'function') {
+                const n = iso.getName(primary);
+                if (n) return n;
+            }
+        } catch (e) {
+            // package not available or failed — fall back
+        }
+
+        try {
+            if (typeof Intl !== 'undefined' && (Intl as any).DisplayNames) {
+                const dn = new (Intl as any).DisplayNames(['en'], { type: 'language' });
+                const name = dn.of(primary);
+                if (name) return name;
+            }
+        } catch (e) {
+            // ignore
+        }
+
+        return primary.toUpperCase();
+    };
+
+    // Extracted loader so other effects can refresh availableLanguages when locale changes
+    const loadLanguageSettings = async () => {
+        try {
+            setIsLoading(true);
+            const settings = await getAllPublic('site_settings');
+
+            if (settings && settings.length > 0) {
+                const siteSettings = settings[0];
+
+                // Set current language from settings or localStorage
+                const savedLanguage = typeof window !== 'undefined' ? localStorage.getItem('selectedLanguage') : null;
+                const currentLang = savedLanguage || siteSettings.language || 'en';
+                setCurrentLanguage(currentLang);
+
+                // Set available languages from settings
+                const availableLangs: string[] = siteSettings.availableLanguages || ['en'];
+                const languagesWithNames = await Promise.all(
+                    availableLangs.map(async (code: string) => {
+                        const primary = code.split(/[-_]/)[0];
+                        const resolvedName = await resolveLanguageName(code);
+                        const name =
+                            languageNames[code]?.name ||
+                            languageNames[primary]?.name ||
+                            resolvedName ||
+                            code.toUpperCase();
+                        const country = langToCountry[code] || langToCountry[primary];
+                        const flag = languageNames[code]?.flag || (country ? countryCodeToEmoji(country) : '🌐');
+                        return {
+                            id: code,
+                            code: code,
+                            name,
+                            flag,
+                            countryCode: country || undefined
+                        };
+                    })
+                );
+
+                setAvailableLanguages(languagesWithNames);
+            } else {
+                // Fallback to defaults
+                setCurrentLanguage('en');
+                setAvailableLanguages([
+                    {
                         id: 'en',
                         code: 'en',
                         name: 'English',
                         flag: '🇺🇸'
-                    }]);
-                }
-            } catch (error) {
-                console.error('Failed to load language settings:', error);
-                // Fallback to defaults on error
-                setCurrentLanguage('en');
-                setAvailableLanguages([{
+                    }
+                ]);
+            }
+        } catch (error) {
+            console.error('Failed to load language settings:', error);
+            // Fallback to defaults on error
+            setCurrentLanguage('en');
+            setAvailableLanguages([
+                {
                     id: 'en',
-                    code: 'en', 
+                    code: 'en',
                     name: 'English',
                     flag: '🇺🇸'
-                }]);
-            } finally {
-                setIsLoading(false);
-            }
-        };
+                }
+            ]);
+        } finally {
+            setIsLoading(false);
+        }
+    };
 
+    useEffect(() => {
         loadLanguageSettings();
     }, []);
 
+    // Listen for language changes from other tabs (BroadcastChannel preferred, storage as fallback)
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+
+        let bc: BroadcastChannel | null = null;
+
+        const handleExternalChange = (newLang?: string) => {
+            if (!newLang) return;
+            // If it's already the same, do nothing
+            if (newLang === currentLanguage) return;
+
+            // Update local state and trigger refresh so next-intl reloads messages
+            setCurrentLanguage(newLang);
+            try {
+                router.refresh();
+            } catch (e) {
+                try {
+                    window.location.reload();
+                } catch (err) {
+                    // ignore
+                }
+            }
+        };
+
+        try {
+            if ('BroadcastChannel' in window) {
+                bc = new BroadcastChannel('site-locale');
+                bc.onmessage = (ev) => {
+                    const lang = ev?.data?.language;
+                    if (lang) handleExternalChange(lang);
+                };
+            }
+        } catch (e) {
+            bc = null;
+        }
+
+        const onStorage = (e: StorageEvent) => {
+            if (e.key === 'selectedLanguage' && e.newValue) {
+                handleExternalChange(e.newValue);
+            }
+        };
+
+        window.addEventListener('storage', onStorage);
+
+        return () => {
+            window.removeEventListener('storage', onStorage);
+            if (bc) {
+                try {
+                    bc.close();
+                } catch (e) {
+                    // ignore
+                }
+            }
+        };
+    }, [currentLanguage, router]);
+
     // Handle language change
     const handleLanguageChange = (languageCode: string) => {
+        // Update local state for immediate UI update in this tab
         setCurrentLanguage(languageCode);
-        localStorage.setItem('selectedLanguage', languageCode);
-        
-        // Trigger page reload to apply new translations
-        window.location.reload();
+
+        // Persist to localStorage (used for cross-tab fallback)
+        try {
+            localStorage.setItem('selectedLanguage', languageCode);
+        } catch (e) {
+            // ignore storage errors
+        }
+
+        // Persist selection to cookie so server-side getRequestConfig can read it
+        try {
+            // 1 year max-age
+            const maxAge = 60 * 60 * 24 * 365;
+            document.cookie = `${COOKIE_NAME}=${encodeURIComponent(languageCode)}; Path=/; max-age=${maxAge}; SameSite=Lax`;
+        } catch (e) {
+            // ignore cookie write errors
+        }
+
+        // Broadcast the change to other tabs/windows using BroadcastChannel (if available)
+        try {
+            if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+                const bc = new BroadcastChannel('site-locale');
+                bc.postMessage({ language: languageCode });
+                bc.close();
+            }
+        } catch (e) {
+            // ignore
+        }
+
+        // Refresh server data so next-intl loads new messages for this tab
+        try {
+            router.refresh();
+        } catch (e) {
+            // If hooks cannot be used here for some reason, fallback to full reload
+            try {
+                window.location.reload();
+            } catch (err) {
+                // ignore
+            }
+        }
     };
 
     const value = {
@@ -113,11 +277,7 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
         isLoading
     };
 
-    return (
-        <LanguageContext.Provider value={value}>
-            {children}
-        </LanguageContext.Provider>
-    );
+    return <LanguageContext.Provider value={value}>{children}</LanguageContext.Provider>;
 }
 
 export function useLanguage() {

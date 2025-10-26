@@ -291,9 +291,9 @@ class QueryAPI {
             const url = '/api/revalidate';
             const options = {
                 method: 'POST',
-                body: JSON.stringify({ 
+                body: JSON.stringify({
                     path: `/api/query/${collection}`,
-                    tag: tag || collection 
+                    tag: tag || collection
                 })
             };
             return await this.makeRequest(url, options);

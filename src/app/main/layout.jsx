@@ -4,7 +4,6 @@
 import { Suspense } from 'react';
 import { LoadingPage } from '@/components/ui/loading-spinner';
 import { useAuth } from '@/hooks/useAuth';
-import { LanguageProvider } from '@/context/LanguageContext';
 import { LayoutProvider } from './context/LayoutProvider';
 
 export default function MainLayout({ children }) {
@@ -20,17 +19,15 @@ export default function MainLayout({ children }) {
     }
 
     return (
-        <LanguageProvider>
-            <LayoutProvider>
-                <Suspense
-                    fallback={
-                        <div className="flex h-screen w-screen items-center justify-center">
-                            <LoadingPage message="Loading content..." />
-                        </div>
-                    }>
-                    {children}
-                </Suspense>
-            </LayoutProvider>
-        </LanguageProvider>
+        <LayoutProvider>
+            <Suspense
+                fallback={
+                    <div className="flex h-screen w-screen items-center justify-center">
+                        <LoadingPage message="Loading content..." />
+                    </div>
+                }>
+                {children}
+            </Suspense>
+        </LayoutProvider>
     );
 }

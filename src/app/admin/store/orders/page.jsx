@@ -51,7 +51,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { TableSkeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { create, getAll, remove, update, revalidate } from '@/lib/client/query';
+import { create, getAll, remove, revalidate, update } from '@/lib/client/query';
 import { generatePDF } from '@/utils/generatePDF';
 
 const ORDER_STATUS = [
@@ -194,8 +194,8 @@ export default function OrdersPage() {
             if (isRetry) {
                 setIsRetrying(true);
                 setFetchError(null);
-            }  
-            
+            }
+
             const response = await getAll('orders', { limit: 0 });
             if (response.success) {
                 setOrders(response.data);
@@ -207,14 +207,14 @@ export default function OrdersPage() {
         } catch (error) {
             console.error('Fetch orders error:', error);
             const errorMessage = error.message || 'Failed to fetch orders';
-            
+
             // Check if it's a connection error
             if (errorMessage.includes('fetch failed') || errorMessage.includes('Error connecting to database')) {
                 setFetchError('Connection failed. Please check your internet connection and try again.');
             } else {
                 setFetchError(errorMessage);
             }
-            
+
             if (!isRetry) {
                 toast.error(errorMessage);
             }
@@ -275,12 +275,7 @@ export default function OrdersPage() {
     // Retry function to refetch all data
     const handleRetryFetch = async () => {
         setFetchError(null);
-        await Promise.all([
-            fetchOrders(true),
-            fetchCustomers(),
-            fetchCatalog(),
-            fetchStoreSettings()
-        ]);
+        await Promise.all([fetchOrders(true), fetchCustomers(), fetchCatalog(), fetchStoreSettings()]);
     };
 
     useEffect(() => {
@@ -312,7 +307,7 @@ export default function OrdersPage() {
         const cleanup = startRevalidation();
         return () => {
             if (cleanup && typeof cleanup.then === 'function') {
-                cleanup.then(clearFn => clearFn && clearFn());
+                cleanup.then((clearFn) => clearFn && clearFn());
             }
         };
     }, []);
@@ -789,21 +784,15 @@ export default function OrdersPage() {
                         <p className="text-muted-foreground">Manage and track your orders</p>
                     </div>
                 </div>
-                
+
                 <Card className="border-destructive/50">
                     <CardContent className="flex flex-col items-center justify-center py-12 text-center">
                         <div className="rounded-full bg-destructive/10 p-3 mb-4">
                             <AlertTriangle className="h-8 w-8 text-destructive" />
                         </div>
                         <h3 className="font-semibold text-lg mb-2">Connection Error</h3>
-                        <p className="text-muted-foreground mb-6 max-w-md">
-                            {fetchError}
-                        </p>
-                        <Button 
-                            onClick={handleRetryFetch}
-                            disabled={isRetrying}
-                            className="gap-2"
-                        >
+                        <p className="text-muted-foreground mb-6 max-w-md">{fetchError}</p>
+                        <Button onClick={handleRetryFetch} disabled={isRetrying} className="gap-2">
                             {isRetrying ? (
                                 <>
                                     <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
@@ -837,14 +826,13 @@ export default function OrdersPage() {
                     <div className="flex items-center gap-2">
                         <AlertTriangle className="h-4 w-4 text-yellow-600" />
                         <p className="text-sm text-yellow-800">
-                            Connection issues detected. Data may not be up to date. 
-                            <Button 
-                                variant="link" 
-                                size="sm" 
+                            Connection issues detected. Data may not be up to date.
+                            <Button
+                                variant="link"
+                                size="sm"
                                 onClick={handleRetryFetch}
                                 disabled={isRetrying}
-                                className="h-auto p-0 ml-1 text-yellow-800 underline"
-                            >
+                                className="h-auto p-0 ml-1 text-yellow-800 underline">
                                 {isRetrying ? 'Retrying...' : 'Retry now'}
                             </Button>
                         </p>

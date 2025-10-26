@@ -2,7 +2,8 @@
 
 import { SquareArrowLeft, SquareArrowRight } from 'lucide-react';
 import { redirect, usePathname } from 'next/navigation';
-import React, { useEffect, useState } from 'react';
+import React from 'react';
+import IntlSelector from '@/components/intl-selector';
 import {
     Breadcrumb,
     BreadcrumbItem,
@@ -28,67 +29,8 @@ export default function AdminLayout({ children }) {
     const pathname = usePathname();
     const breadcrumbs = findBreadcrumbPath(pathname);
     const [showMobileActions, setShowMobileActions] = React.useState(false);
-    const [adminLanguages, setAdminLanguages] = useState([]);
-    const [isLoadingLanguages, setIsLoadingLanguages] = useState(true);
-
-    // Language name mappings
-    const languageNames = {
-        en: { name: 'English', flag: '🇺🇸' },
-        es: { name: 'Spanish', flag: '🇪🇸' },
-        fr: { name: 'Français', flag: '🇫🇷' },
-        de: { name: 'German', flag: '🇩🇪' },
-        it: { name: 'Italian', flag: '🇮🇹' },
-        pt: { name: 'Portuguese', flag: '🇵🇹' },
-        ja: { name: 'Japanese', flag: '🇯🇵' },
-        ko: { name: 'Korean', flag: '🇰🇷' },
-        zh: { name: 'Chinese', flag: '🇨🇳' }
-    };
-
-    // Fetch admin languages directly from site settings
-    useEffect(() => {
-        const fetchAdminLanguages = async () => {
-            try {
-                setIsLoadingLanguages(true);
-                const response = await fetch('/api/query/public/site_settings');
-                const result = await response.json();
-                
-                if (result.success && result.data && result.data.length > 0) {
-                    const siteSettings = result.data[0];
-                    const availableLangs = siteSettings.availableLanguages || ['en'];
-                    
-                    const formattedLanguages = availableLangs.map(code => ({
-                        id: code,
-                        code: code,
-                        name: languageNames[code]?.name || code.toUpperCase(),
-                        flag: languageNames[code]?.flag || '🌐'
-                    }));
-                    
-                    setAdminLanguages(formattedLanguages);
-                } else {
-                    // Fallback to English only
-                    setAdminLanguages([{
-                        id: 'en',
-                        code: 'en',
-                        name: 'English',
-                        flag: '🇺🇸'
-                    }]);
-                }
-            } catch (error) {
-                console.error('Failed to fetch admin languages:', error);
-                // Fallback to English only
-                setAdminLanguages([{
-                    id: 'en',
-                    code: 'en',
-                    name: 'English',
-                    flag: '🇺🇸'
-                }]);
-            } finally {
-                setIsLoadingLanguages(false);
-            }
-        };
-
-        fetchAdminLanguages();
-    }, []);
+    // Use the same frontend Intl selector component used on the homepage.
+    // IntlSelector handles fetching available languages and formatting (including countryCode/flags).
 
     // Show loading spinner while authentication is being checked
     if (status === 'loading') {
@@ -150,10 +92,7 @@ export default function AdminLayout({ children }) {
                                 <SquareArrowRight />
                             </Button>
                             <NotificationsPopover />
-                            <LanguageSelector 
-                                slim={true} 
-                                languages={adminLanguages}
-                            />
+                            <IntlSelector slim={true} />
                             <ThemeSwitchGroup compact={true} />
                         </div>
                     </div>

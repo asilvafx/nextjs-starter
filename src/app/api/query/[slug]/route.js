@@ -1,6 +1,7 @@
 // app/api/query/[slug]/route.js
+
+import { revalidateTag, unstable_cache } from 'next/cache';
 import { NextResponse } from 'next/server';
-import { unstable_cache, revalidateTag } from 'next/cache';
 import DBService from '@/data/rest.db.js';
 import { withAdminAuth, withAuth } from '@/lib/server/auth.js';
 
@@ -66,12 +67,12 @@ async function handleGet(request, { params }) {
             const getCachedData = unstable_cache(
                 async (collection) => await DBService.readAll(collection),
                 [`collection-${slug}`],
-                { 
+                {
                     tags: [slug, `collection-${slug}`],
                     revalidate: 60 // Cache for 60 seconds
                 }
             );
-            
+
             result = await getCachedData(slug);
             if (!result) {
                 return NextResponse.json({

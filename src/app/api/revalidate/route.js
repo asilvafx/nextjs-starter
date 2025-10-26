@@ -8,17 +8,14 @@ async function handler(request) {
         const { path, tag } = await request.json();
 
         if (!path && !tag) {
-            return Response.json(
-                { success: false, error: 'Path or tag is required' },
-                { status: 400 }
-            );
+            return Response.json({ success: false, error: 'Path or tag is required' }, { status: 400 });
         }
 
         // Revalidate by path or tag
         if (path) {
             revalidatePath(path);
         }
-        
+
         if (tag) {
             revalidateTag(tag);
         }
@@ -28,13 +25,9 @@ async function handler(request) {
             message: `Revalidated ${path ? `path: ${path}` : ''}${path && tag ? ' and ' : ''}${tag ? `tag: ${tag}` : ''}`,
             revalidatedAt: new Date().toISOString()
         });
-
     } catch (error) {
         console.error('Revalidation error:', error);
-        return Response.json(
-            { success: false, error: error.message },
-            { status: 500 }
-        );
+        return Response.json({ success: false, error: error.message }, { status: 500 });
     }
 }
 

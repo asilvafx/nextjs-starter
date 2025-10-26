@@ -35,7 +35,7 @@ const getAvailableLanguages = async () => {
 // Language name mappings
 const languageNames = {
     en: 'English',
-    es: 'Spanish', 
+    es: 'Spanish',
     fr: 'French',
     de: 'German',
     it: 'Italian',
@@ -77,7 +77,7 @@ export default function SystemSettingsPage() {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [settingsId, setSettingsId] = useState(null);
     const [activeTab, setActiveTab] = useState('site');
-    const [availableLanguages, setAvailableLanguages] = useState([]); 
+    const [availableLanguages, setAvailableLanguages] = useState([]);
 
     const form = useForm({
         defaultValues: {
@@ -185,7 +185,7 @@ export default function SystemSettingsPage() {
         const initializeData = async () => {
             await fetchSettings();
             const languages = await getAvailableLanguages();
-            const formattedLanguages = languages.map(code => ({
+            const formattedLanguages = languages.map((code) => ({
                 code,
                 name: languageNames[code] || code.toUpperCase()
             }));

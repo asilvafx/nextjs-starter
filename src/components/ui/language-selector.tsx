@@ -1,10 +1,11 @@
 // @/components/ui/language-selector.tsx
 
-'use client'; 
+'use client';
 import { CheckIcon, ChevronDown, Languages, Loader2 } from 'lucide-react';
 import { usePathname, useRouter } from 'next/navigation';
 import { useLocale } from 'next-intl';
 import { useCallback, useState } from 'react';
+import { CircleFlag } from 'react-circle-flags';
 import { Command, CommandEmpty, CommandGroup, CommandItem, CommandList } from '@/components/ui/command';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useLanguage } from '@/context/LanguageContext';
@@ -23,28 +24,18 @@ interface LanguageSelectorProps {
     slim?: boolean;
 }
 
-export function LanguageSelector({
-    languages,
-    onChange,
-    value,
-    slim = false
-}: LanguageSelectorProps) {
+export function LanguageSelector({ languages, onChange, value, slim = false }: LanguageSelectorProps) {
     const [open, setOpen] = useState(false);
     const router = useRouter();
     const pathname = usePathname();
     const currentLocale = useLocale();
 
     // Use language context if no languages prop is provided (admin mode)
-    const { 
-        currentLanguage, 
-        availableLanguages, 
-        setCurrentLanguage, 
-        isLoading 
-    } = useLanguage(); 
+    const { currentLanguage, availableLanguages, setCurrentLanguage, isLoading } = useLanguage();
 
     // Use provided languages or context languages
     const languageList = languages || availableLanguages;
-    
+
     // Use the form value if provided, otherwise use context or current locale
     const selectedLanguageId = value || currentLanguage || currentLocale;
     const currentLanguageData = languageList.find((lang) => (lang.id || lang.code) === selectedLanguageId);
@@ -70,7 +61,7 @@ export function LanguageSelector({
     );
 
     // Show loading state
-    if (isLoading && !languages) { 
+    if (isLoading && !languages) {
         return (
             <div className={triggerClasses}>
                 <Loader2 size={16} className="animate-spin" />
@@ -78,7 +69,7 @@ export function LanguageSelector({
                 <ChevronDown size={16} className="opacity-50" />
             </div>
         );
-    } 
+    }
 
     return (
         <Popover open={open} onOpenChange={setOpen}>
@@ -100,27 +91,38 @@ export function LanguageSelector({
                         {/* <CommandInput placeholder="Search language..." /> */}
                         <CommandEmpty>No language found.</CommandEmpty>
                         <CommandGroup>
-                            {languageList && languageList.length > 0 ? languageList.map((language) => {
-                                const languageId = language.id || language.code;
-                                if (!languageId) return null; // Skip languages without id or code
-                                return (
-                                    <CommandItem
-                                        key={languageId}
-                                        className="flex items-center gap-2"
-                                        onSelect={() => handleSelect(languageId)}>
-                                        <div className="flex flex-grow items-center gap-2">
-                                            {language.flag && <span className="text-base">{language.flag}</span>}
-                                            <span>{language.name}</span>
-                                        </div>
-                                        <CheckIcon
-                                            className={cn(
-                                                'ml-auto h-4 w-4',
-                                                languageId === selectedLanguageId ? 'opacity-100' : 'opacity-0'
-                                            )}
-                                        />
-                                    </CommandItem>
-                                );
-                            }) : (
+                            {languageList && languageList.length > 0 ? (
+                                languageList.map((language) => {
+                                    const languageId = language.id || language.code;
+                                    if (!languageId) return null; // Skip languages without id or code
+                                    return (
+                                        <CommandItem
+                                            key={languageId}
+                                            className="flex items-center gap-2"
+                                            onSelect={() => handleSelect(languageId)}>
+                                            <div className="flex flex-grow items-center gap-2">
+                                                {language.countryCode ? (
+                                                    <span className="inline-flex h-5 w-5 items-center justify-center">
+                                                        <CircleFlag
+                                                            countryCode={language.countryCode.toLowerCase()}
+                                                            height={18}
+                                                        />
+                                                    </span>
+                                                ) : (
+                                                    language.flag && <span className="text-base">{language.flag}</span>
+                                                )}
+                                                <span>{language.name}</span>
+                                            </div>
+                                            <CheckIcon
+                                                className={cn(
+                                                    'ml-auto h-4 w-4',
+                                                    languageId === selectedLanguageId ? 'opacity-100' : 'opacity-0'
+                                                )}
+                                            />
+                                        </CommandItem>
+                                    );
+                                })
+                            ) : (
                                 <CommandItem disabled>
                                     <span className="text-muted-foreground">No languages available</span>
                                 </CommandItem>
