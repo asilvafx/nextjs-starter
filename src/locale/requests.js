@@ -6,9 +6,21 @@ import { cookies } from 'next/headers';
 import { hasLocale } from 'next-intl';
 import { getRequestConfig } from 'next-intl/server';
 import { COOKIE_NAME, defaultLocale, locales } from './config';
+import { getBundledTranslations } from './_messages';
 
 // Load and merge translation JSON files from the locale folder
 async function loadTranslations(locale) {
+    // Prefer bundled imports so the Next/Vercel build includes translations.
+    // This avoids reading from the filesystem at runtime in production
+    // (serverless/edge environments where the source files may not be available).
+    try {
+        const bundled = getBundledTranslations(locale);
+        if (bundled && Object.keys(bundled).length > 0) return bundled;
+    } catch (_e) {
+        // fallthrough to fs-based loader for development/local runs
+    }
+
+    // Fallback to previous filesystem-based loader (works in local dev).
     const localeDir = path.join(process.cwd(), 'src', 'locale', locale);
 
     try {
