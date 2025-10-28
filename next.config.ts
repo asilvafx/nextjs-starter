@@ -22,11 +22,10 @@ const nextConfig: NextConfig = {
     images: {
         remotePatterns: [
             new URL('https://**.blob.vercel-storage.com/**'),
-            new URL('https://placehold.co/**')
         ],
-    },
+    }, 
     experimental: {
-        useCache: true,
+        useCache: true,  
     },
 };
 

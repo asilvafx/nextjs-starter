@@ -2,8 +2,8 @@
 
 import { SquareArrowLeft, SquareArrowRight } from 'lucide-react';
 import { redirect, usePathname } from 'next/navigation';
-import React, { useEffect, useState } from 'react';
-import IntlSelector from '@/components/intl-selector';
+import { Fragment, useState } from 'react';
+import LanguageSwitch from '@/components/language-switch';
 import {
     Breadcrumb,
     BreadcrumbItem,
@@ -13,7 +13,6 @@ import {
     BreadcrumbSeparator
 } from '@/components/ui/breadcrumb';
 import { Button } from '@/components/ui/button';
-import { LanguageSelector } from '@/components/ui/language-selector';
 import { LoadingPage } from '@/components/ui/loading-spinner';
 import { NotificationsPopover } from '@/components/ui/notifications';
 import { Separator } from '@/components/ui/separator';
@@ -25,71 +24,10 @@ import { AppSidebar } from './components/app-sidebar';
 import { findBreadcrumbPath } from './config/navigation';
 
 export default function AdminLayout({ children }) {
-    const { isAuthenticated, user, status } = useAuth();
+    const { isAuthenticated, status } = useAuth();
     const pathname = usePathname();
     const breadcrumbs = findBreadcrumbPath(pathname);
-    const [showMobileActions, setShowMobileActions] = React.useState(false);
-    // Fetch languages for the admin header and pass them to IntlSelector to ensure
-    // the admin layout shows the same available languages as the homepage.
-    const [adminLanguages, setAdminLanguages] = useState([]);
-
-    useEffect(() => {
-        let mounted = true;
-
-        const load = async () => {
-            try {
-                const res = await fetch('/api/query/public/site_settings');
-                const json = await res.json();
-                if (json?.success && Array.isArray(json.data) && json.data.length > 0) {
-                    const siteSettings = json.data[0];
-                    const availableLangs = siteSettings.availableLanguages || ['en'];
-
-                    const languageNames = {
-                        en: { name: 'English', flag: '🇺🇸' },
-                        es: { name: 'Spanish', flag: '🇪🇸' },
-                        fr: { name: 'Français', flag: '🇫🇷' },
-                        de: { name: 'German', flag: '🇩🇪' },
-                        it: { name: 'Italian', flag: '🇮🇹' },
-                        pt: { name: 'Portuguese', flag: '🇵🇹' },
-                        ja: { name: 'Japanese', flag: '🇯🇵' },
-                        ko: { name: 'Korean', flag: '🇰🇷' },
-                        zh: { name: 'Chinese', flag: '🇨🇳' }
-                    };
-
-                    const langToCountry = {
-                        en: 'US',
-                        es: 'ES',
-                        fr: 'FR',
-                        de: 'DE',
-                        it: 'IT',
-                        pt: 'PT',
-                        ja: 'JP',
-                        ko: 'KR',
-                        zh: 'CN'
-                    };
-
-                    const formatted = availableLangs.map((code) => ({
-                        id: code,
-                        code,
-                        name: languageNames[code]?.name || code.toUpperCase(),
-                        flag: languageNames[code]?.flag || '🌐',
-                        countryCode: langToCountry[code] || undefined
-                    }));
-
-                    if (mounted) setAdminLanguages(formatted);
-                }
-            } catch (err) {
-                // don't block admin UI if languages can't be fetched
-                console.error('Failed to load admin languages', err);
-            }
-        };
-
-        load();
-
-        return () => {
-            mounted = false;
-        };
-    }, []);
+    const [showMobileActions, setShowMobileActions] = useState(false);
     // Use the same frontend Intl selector component used on the homepage.
     // IntlSelector handles fetching available languages and formatting (including countryCode/flags).
 
@@ -118,7 +56,7 @@ export default function AdminLayout({ children }) {
                         <Breadcrumb className={cn('md:block', showMobileActions && 'hidden')}>
                             <BreadcrumbList>
                                 {breadcrumbs.map((crumb, index) => (
-                                    <React.Fragment key={index}>
+                                    <Fragment key={index}>
                                         {index > 0 && <BreadcrumbSeparator>{'>'}</BreadcrumbSeparator>}
                                         <BreadcrumbItem>
                                             {index === breadcrumbs.length - 1 ? (
@@ -127,7 +65,7 @@ export default function AdminLayout({ children }) {
                                                 <BreadcrumbLink href={crumb.url}>{crumb.title}</BreadcrumbLink>
                                             )}
                                         </BreadcrumbItem>
-                                    </React.Fragment>
+                                    </Fragment>
                                 ))}
                             </BreadcrumbList>
                         </Breadcrumb>
@@ -153,7 +91,7 @@ export default function AdminLayout({ children }) {
                                 <SquareArrowRight />
                             </Button>
                             <NotificationsPopover />
-                            <IntlSelector slim={true} initialLanguages={adminLanguages} />
+                            <LanguageSwitch slim={true} />
                             <ThemeSwitchGroup compact={true} />
                         </div>
                     </div>

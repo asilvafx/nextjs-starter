@@ -7,10 +7,9 @@ import { useEffect, useState } from 'react';
 import { FaCartShopping } from 'react-icons/fa6';
 import { useCart } from 'react-use-cart';
 import { toast } from 'sonner';
-import IntlSelector from '@/components/intl-selector';
+import LanguageSwitch from '@/components/language-switch';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { LanguageSelector } from '@/components/ui/language-selector';
 import { LoadingPage } from '@/components/ui/loading-spinner';
 import { ThemeSwitchGroup } from '@/components/ui/theme-mode';
 import { useAuth } from '@/hooks/useAuth';
@@ -19,8 +18,9 @@ const Homepage = () => {
     console.log('Homepage component rendered');
     const [setupData, setSetupData] = useState(null);
     const [loading, setLoading] = useState(true);
+    // LanguageSwitch will fetch languages when needed — keep homepage code minimal.
 
-    const { isAuthenticated, user, logout } = useAuth();
+    const { isAuthenticated, logout } = useAuth();
     const { totalItems } = useCart();
 
     const testVisitorTracking = () => {
@@ -55,6 +55,9 @@ const Homepage = () => {
         setupDbEnv();
     }, []);
 
+    // Use the centralized LanguageSwitch component which will fetch languages
+    // when no `initialLanguages` prop is provided.
+
     if (loading) {
         return <LoadingPage />;
     }
@@ -76,10 +79,10 @@ const Homepage = () => {
 
                     <div className="mb-4 flex items-center gap-4">
                         <ThemeSwitchGroup />
-                        <IntlSelector slim={false} />
+                        <LanguageSwitch slim={false} />
                     </div>
 
-                    <div className="flex flex-col sm:flex-row gap-2">
+                    <div className="flex flex-col gap-2 sm:flex-row">
                         {!isAuthenticated ? (
                             <>
                                 <Link href="/auth/login" prefetch={false}>
@@ -104,11 +107,11 @@ const Homepage = () => {
                         )}
 
                         <Link href="/shop" className="relative">
-                            <Button className='w-full sm:w-auto'>Shop</Button>
+                            <Button className="w-full sm:w-auto">Shop</Button>
                         </Link>
 
                         <Link href="/shop/cart" className="relative">
-                            <Button className='w-full sm:w-auto'>
+                            <Button className="w-full sm:w-auto">
                                 <FaCartShopping />
                                 Cart
                                 <span className="badge -top-2 -right-2 absolute flex items-center justify-center rounded-full border bg-white px-2 font-bold text-black text-sm dark:bg-black dark:text-white">
