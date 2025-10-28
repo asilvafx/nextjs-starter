@@ -22,6 +22,7 @@ import {
 } from 'recharts';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
+import { Switch } from '@/components/ui/switch';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import {
     Dialog,
@@ -61,6 +62,7 @@ export default function AnalyticsPage() {
     const [webStatsLoading, setWebStatsLoading] = useState(true);
     const [googleAnalyticsOpen, setGoogleAnalyticsOpen] = useState(false);
     const [googleApiKey, setGoogleApiKey] = useState('');
+    const [googleAnalyticsEnabled, setGoogleAnalyticsEnabled] = useState(false);
 
     // Web Stats Data
     const [webStats, setWebStats] = useState({
@@ -107,6 +109,19 @@ export default function AnalyticsPage() {
 
     useEffect(() => {
         fetchWebStats();
+        // load saved analytics settings (api key + enabled)
+        (async () => {
+            try {
+                const res = await fetch('/api/analytics/settings');
+                const json = await res.json();
+                if (json?.success && json.data) {
+                    setGoogleApiKey(json.data.apiKey || '');
+                    setGoogleAnalyticsEnabled(!!json.data.enabled);
+                }
+            } catch (e) {
+                // ignore
+            }
+        })();
     }, []);
 
     const formatNumber = (value) => {
@@ -143,44 +158,49 @@ export default function AnalyticsPage() {
                             <RefreshCw className="mr-2 h-4 w-4" />
                             Refresh
                         </Button>
-                        <Dialog open={googleAnalyticsOpen} onOpenChange={setGoogleAnalyticsOpen}>
-                            <DialogTrigger asChild>
-                                <Button variant="outline">
-                                    <Settings className="mr-2 h-4 w-4" />
-                                    Google Analytics
+                        {/* Google Analytics admin controls */}
+                        <div className="flex items-center gap-4">
+                            <div className="flex items-center gap-2">
+                                <Switch
+                                    id="ga-enabled"
+                                    checked={googleAnalyticsEnabled}
+                                    onCheckedChange={(val) => setGoogleAnalyticsEnabled(!!val)}
+                                />
+                                <Label htmlFor="ga-enabled" className="text-sm">
+                                    Google Analytics enabled
+                                </Label>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <Input
+                                    id="api-key"
+                                    type="text"
+                                    placeholder="Measurement ID (G-XXXXXXXX)"
+                                    value={googleApiKey}
+                                    onChange={(e) => setGoogleApiKey(e.target.value)}
+                                />
+                                <Button
+                                    onClick={async () => {
+                                        try {
+                                            const res = await fetch('/api/analytics/settings', {
+                                                method: 'POST',
+                                                headers: { 'Content-Type': 'application/json' },
+                                                body: JSON.stringify({ enabled: googleAnalyticsEnabled, apiKey: googleApiKey })
+                                            });
+                                            const json = await res.json();
+                                            if (json?.success) {
+                                                toast.success('Google Analytics settings saved');
+                                            } else {
+                                                toast.error('Failed to save settings');
+                                            }
+                                        } catch (err) {
+                                            console.error(err);
+                                            toast.error('Failed to save settings');
+                                        }
+                                    }}>
+                                    Save
                                 </Button>
-                            </DialogTrigger>
-                            <DialogContent>
-                                <DialogHeader>
-                                    <DialogTitle>Google Analytics Integration</DialogTitle>
-                                    <DialogDescription>
-                                        Enter your Google Analytics API key to integrate analytics data
-                                    </DialogDescription>
-                                </DialogHeader>
-                                <form onSubmit={handleGoogleAnalyticsSubmit} className="space-y-4">
-                                    <div>
-                                        <Label htmlFor="api-key">API Key</Label>
-                                        <Input
-                                            id="api-key"
-                                            type="text"
-                                            placeholder="Enter your Google Analytics API key"
-                                            value={googleApiKey}
-                                            onChange={(e) => setGoogleApiKey(e.target.value)}
-                                            required
-                                        />
-                                    </div>
-                                    <div className="flex justify-end gap-2">
-                                        <Button
-                                            type="button"
-                                            variant="outline"
-                                            onClick={() => setGoogleAnalyticsOpen(false)}>
-                                            Cancel
-                                        </Button>
-                                        <Button type="submit">Save API Key</Button>
-                                    </div>
-                                </form>
-                            </DialogContent>
-                        </Dialog>
+                            </div>
+                        </div>
                     </div>
                 </div>
 

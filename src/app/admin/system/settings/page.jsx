@@ -422,8 +422,8 @@ export default function SystemSettingsPage() {
                                 </TabsContent>
                             </Tabs>
 
-                            <div className="right-0 bottom-0 left-0 z-10 mb-6 flex justify-center sm:fixed md:ml-[16rem]">
-                                <Button className="w-full sm:w-auto" type="submit" size="lg" disabled={isSubmitting}>
+                            <div className="right-0 bottom-0 left-0 z-10 mb-6 flex justify-center fixed md:ml-[16rem]">
+                                <Button className="w-auto" type="submit" size="lg" disabled={isSubmitting}>
                                     {isSubmitting ? (
                                         <>
                                             <div className="mr-2 h-4 w-4 animate-spin rounded-full border-white border-b-2 dark:border-black"></div>

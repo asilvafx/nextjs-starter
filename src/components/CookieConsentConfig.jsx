@@ -1,12 +1,16 @@
 const getConfig = (translations = {}) => {
     let GA_ID = null;
 
-    // Fetch Google Analytics ID from integrations
+    // Fetch Google Analytics ID from analytics settings API
     const fetchGoogleAnalyticsId = async () => {
         try {
-            const { getGoogleAnalyticsMeasurementId } = await import('@/lib/client/integrations');
-            GA_ID = await getGoogleAnalyticsMeasurementId();
-            return GA_ID;
+            const res = await fetch('/api/analytics/settings');
+            const json = await res.json();
+            if (json?.success && json.data && json.data.enabled && json.data.apiKey) {
+                GA_ID = json.data.apiKey;
+                return GA_ID;
+            }
+            return null;
         } catch (error) {
             console.warn('Failed to fetch Google Analytics measurement ID:', error);
             return null;

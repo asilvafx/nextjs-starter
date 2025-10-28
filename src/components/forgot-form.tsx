@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { getTurnstileSiteKey } from '@/lib/client/integrations';
+// Turnstile key will be fetched from public site settings
 import { cn } from '@/lib/utils';
 
 export function ForgotForm({ className, ...props }: React.ComponentProps<'div'>) {
@@ -23,8 +23,17 @@ export function ForgotForm({ className, ...props }: React.ComponentProps<'div'>)
 
     useEffect(() => {
         const fetchTurnstileKey = async () => {
-            const key = await getTurnstileSiteKey();
-            setTurnstileKey(key);
+            try {
+                const res = await fetch('/api/query/public/site_settings');
+                const json = await res.json();
+                const key = json?.success && json.data && json.data.turnstileEnabled && json.data.turnstileSiteKey
+                    ? json.data.turnstileSiteKey
+                    : null;
+                setTurnstileKey(key);
+            } catch (err) {
+                console.warn('Failed to fetch turnstile key', err);
+                setTurnstileKey(null);
+            }
         };
         fetchTurnstileKey();
     }, []);
