@@ -13,11 +13,13 @@ function TabsList({ className, ...props }: React.ComponentProps<typeof TabsPrimi
     return (
         <TabsPrimitive.List
             data-slot="tabs-list"
+            // Make the tab list responsive: limit to container width and allow horizontal scroll
             className={cn(
-                // Make the tab list responsive: limit to container width and allow horizontal scroll
-                'inline-flex flex-nowrap h-9 w-full max-w-full items-center justify-between gap-1 overflow-x-auto whitespace-nowrap rounded-lg bg-muted p-[3px] text-muted-foreground',
+                'flex flex-nowrap h-9 w-full max-w-full items-center justify-start gap-2 overflow-x-auto overflow-y-hidden whitespace-nowrap rounded-lg bg-muted p-[3px] text-muted-foreground',
                 className
             )}
+            // Enable smooth touch scrolling on iOS
+            style={{ WebkitOverflowScrolling: 'touch' }}
             {...props}
         />
     );
