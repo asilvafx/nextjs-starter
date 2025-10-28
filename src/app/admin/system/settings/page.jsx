@@ -1,5 +1,5 @@
 'use client';
-import { Boxes, Building, Key, Locate, Mail, MapPin, Plus, Save, Settings, Shield, Trash2 } from 'lucide-react';
+import { Boxes, Building, Key, Locate, Mail, MapPin, Plus, Save, Settings, Shield, Trash2, MessageSquare } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useFieldArray, useForm } from 'react-hook-form';
 import { toast } from 'sonner';
@@ -95,6 +95,13 @@ export default function SystemSettingsPage() {
             workingHours: [],
             serviceArea: '',
             serviceRadius: undefined,
+            // New integration settings
+            smsEnabled: false,
+            twilioApiKey: '',
+            googleMapsEnabled: false,
+            googleMapsApiKey: '',
+            turnstileEnabled: false,
+            turnstileSiteKey: '',
             emailProvider: 'none',
             emailUser: '',
             emailPass: '',
@@ -122,15 +129,15 @@ export default function SystemSettingsPage() {
     });
 
     const fetchSettings = async () => {
+        setIsLoading(true);
         try {
-            setIsLoading(true);
             const response = await getAll('site_settings');
 
             if (response?.success && response.data?.length > 0) {
                 const settings = response.data[0];
                 setSettingsId(settings.id);
 
-                // Reset form with fetched data
+                // Reset form with fetched data (including integration settings)
                 form.reset({
                     siteName: settings.siteName || '',
                     siteEmail: settings.siteEmail || '',
@@ -146,12 +153,14 @@ export default function SystemSettingsPage() {
                     workingHours: settings.workingHours || [],
                     serviceArea: settings.serviceArea || '',
                     serviceRadius: settings.serviceRadius,
+                    // Email / SMTP
                     emailProvider: settings.emailProvider || 'none',
                     emailUser: settings.emailUser || '',
                     emailPass: settings.emailPass || '',
                     smtpHost: settings.smtpHost || '',
                     smtpPort: settings.smtpPort || 587,
                     smtpSecure: settings.smtpSecure || false,
+                    // Application flags
                     allowRegistration: settings.allowRegistration ?? true,
                     enableFrontend: settings.enableFrontend ?? true,
                     baseUrl: settings.baseUrl || (typeof window !== 'undefined' ? window.location.origin : ''),
@@ -164,6 +173,14 @@ export default function SystemSettingsPage() {
                             }),
                             {}
                         ),
+                    // Integration / third-party settings
+                    smsEnabled: settings.smsEnabled || false,
+                    twilioApiKey: settings.twilioApiKey || '',
+                    googleMapsEnabled: settings.googleMapsEnabled || false,
+                    googleMapsApiKey: settings.googleMapsApiKey || '',
+                    turnstileEnabled: settings.turnstileEnabled || false,
+                    turnstileSiteKey: settings.turnstileSiteKey || '',
+                    // Web3
                     web3Active: settings.web3Active || false,
                     web3ContractAddress: settings.web3ContractAddress || '',
                     web3ContractSymbol: settings.web3ContractSymbol || '',
@@ -175,7 +192,6 @@ export default function SystemSettingsPage() {
             }
         } catch (error) {
             console.error('Error fetching settings:', error);
-            toast.error('Failed to load settings');
         } finally {
             setIsLoading(false);
         }
@@ -315,7 +331,7 @@ export default function SystemSettingsPage() {
                     <Form {...form}>
                         <form onSubmit={form.handleSubmit(onSubmit, onFormError)} className="space-y-6">
                             <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-                                <TabsList className="grid w-full grid-cols-4" disabled={isSubmitting}>
+                                <TabsList disabled={isSubmitting}>
                                     <TabsTrigger
                                         value="site"
                                         className="flex items-center gap-2"
@@ -344,6 +360,29 @@ export default function SystemSettingsPage() {
                                         <Boxes className="h-4 w-4" />
                                         Web3
                                     </TabsTrigger>
+                                    <TabsTrigger
+                                        value="sms"
+                                        className="flex items-center gap-2"
+                                        disabled={isSubmitting}>
+                                        <MessageSquare className="h-4 w-4" />
+                                        SMS
+                                    </TabsTrigger>
+
+                                    <TabsTrigger
+                                        value="location"
+                                        className="flex items-center gap-2"
+                                        disabled={isSubmitting}>
+                                        <MapPin className="h-4 w-4" />
+                                        Location
+                                    </TabsTrigger>
+
+                                    <TabsTrigger
+                                        value="security"
+                                        className="flex items-center gap-2"
+                                        disabled={isSubmitting}>
+                                        <Key className="h-4 w-4" />
+                                        Security
+                                    </TabsTrigger>
                                 </TabsList>
 
                                 <TabsContent value="site" className="space-y-6">
@@ -369,6 +408,17 @@ export default function SystemSettingsPage() {
 
                                 <TabsContent value="web3" className="space-y-6">
                                     <Web3Tab form={form} isSubmitting={isSubmitting} />
+                                </TabsContent>
+                                <TabsContent value="sms" className="space-y-6">
+                                    <SMSSettingsTab form={form} isSubmitting={isSubmitting} />
+                                </TabsContent>
+
+                                <TabsContent value="location" className="space-y-6">
+                                    <LocationTab form={form} getCurrentLocation={getCurrentLocation} isSubmitting={isSubmitting} languages={availableLanguages} />
+                                </TabsContent>
+
+                                <TabsContent value="security" className="space-y-6">
+                                    <SecurityTab form={form} isSubmitting={isSubmitting} />
                                 </TabsContent>
                             </Tabs>
 
@@ -402,6 +452,306 @@ export default function SystemSettingsPage() {
                 </div>
             </div>
         </ScrollArea>
+    );
+}
+
+// SMS Settings Tab
+function SMSSettingsTab({ form, isSubmitting }) {
+    const smsEnabled = form.watch('smsEnabled');
+
+    return (
+        <Card>
+            <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                    <MessageSquare className="h-5 w-5" />
+                    SMS Configuration
+                </CardTitle>
+                <CardDescription>Configure SMS provider (Twilio) and enable SMS features</CardDescription>
+            </CardHeader>
+            <CardContent className="grid gap-4">
+                <FormField
+                    control={form.control}
+                    name="smsEnabled"
+                    render={({ field }) => (
+                        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                            <div className="space-y-0.5">
+                                <FormLabel className="text-base">Enable SMS Integration</FormLabel>
+                                <FormDescription>Enable sending SMS via Twilio</FormDescription>
+                            </div>
+                            <FormControl>
+                                <Switch checked={field.value} onCheckedChange={field.onChange} disabled={isSubmitting} />
+                            </FormControl>
+                        </FormItem>
+                    )}
+                />
+
+                <FormField
+                    control={form.control}
+                    name="twilioApiKey"
+                    render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Twilio API Key</FormLabel>
+                            <FormControl>
+                                <Input placeholder="sk-xxxxxxxxxxxx" disabled={!smsEnabled || isSubmitting} {...field} />
+                            </FormControl>
+                            <FormMessage />
+                        </FormItem>
+                    )}
+                />
+            </CardContent>
+        </Card>
+    );
+}
+
+// Location Tab (moved from Site)
+function LocationTab({ form, getCurrentLocation, isSubmitting, languages }) {
+    return (
+        <div className="grid gap-6">
+            <Card>
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                        <MapPin className="h-5 w-5" />
+                        Location & Service Area
+                    </CardTitle>
+                    <CardDescription>Geographic information and service coverage</CardDescription>
+                </CardHeader>
+                <CardContent className="grid gap-4">
+                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                        <FormField
+                            control={form.control}
+                            name="latitude"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Latitude</FormLabel>
+                                    <FormControl>
+                                        <div className="flex gap-2">
+                                            <Input
+                                                type="number"
+                                                step="any"
+                                                placeholder="40.7128"
+                                                disabled={isSubmitting}
+                                                {...field}
+                                                onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)}
+                                            />
+                                            <Button
+                                                type="button"
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={getCurrentLocation}
+                                                disabled={isSubmitting}
+                                                className="px-3"
+                                                title="Get current location">
+                                                <Locate className="h-4 w-4" />
+                                            </Button>
+                                        </div>
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+
+                        <FormField
+                            control={form.control}
+                            name="longitude"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Longitude</FormLabel>
+                                    <FormControl>
+                                        <Input
+                                            type="number"
+                                            step="any"
+                                            placeholder="-74.0060"
+                                            disabled={isSubmitting}
+                                            {...field}
+                                            onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)}
+                                        />
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                    </div>
+
+                    <FormField
+                        control={form.control}
+                        name="country"
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Country *</FormLabel>
+                                <FormControl>
+                                    <CountryDropdown
+                                        key={field.value}
+                                        defaultValue={field.value}
+                                        disabled={isSubmitting}
+                                        onChange={(country) => {
+                                            const countryCode = country.alpha2.toUpperCase();
+                                            field.onChange(countryCode);
+                                            form.setValue('countryIso', country.alpha3);
+                                        }}
+                                        placeholder="Select a country"
+                                    />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+
+                    <FormField
+                        control={form.control}
+                        name="availableLanguages"
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Available Languages *</FormLabel>
+                                <FormControl>
+                                    <MultiLanguageSelector
+                                        languages={languages}
+                                        value={field.value}
+                                        onChange={field.onChange}
+                                        disabled={isSubmitting}
+                                        defaultLanguage={form.watch('language')}
+                                        onDefaultLanguageChange={(langCode) => {
+                                            form.setValue('language', langCode);
+                                        }}
+                                    />
+                                </FormControl>
+                                <FormDescription>
+                                    Select all languages available for content creation. Click on a language card to set
+                                    it as the default language.
+                                </FormDescription>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+
+                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                        <FormField
+                            control={form.control}
+                            name="serviceArea"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Service Area</FormLabel>
+                                    <FormControl>
+                                        <Input placeholder="Metropolitan Area" disabled={isSubmitting} {...field} />
+                                    </FormControl>
+                                    <FormDescription>Describe your service coverage area</FormDescription>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+
+                        <FormField
+                            control={form.control}
+                            name="serviceRadius"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Service Radius (km)</FormLabel>
+                                    <FormControl>
+                                        <Input
+                                            type="number"
+                                            placeholder="50"
+                                            disabled={isSubmitting}
+                                            {...field}
+                                            onChange={(e) => field.onChange(e.target.value ? parseInt(e.target.value, 10) : undefined)}
+                                        />
+                                    </FormControl>
+                                    <FormDescription>Maximum distance for services (in kilometers)</FormDescription>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                    </div>
+                </CardContent>
+            </Card>
+
+            <Card>
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                        <MapPin className="h-5 w-5" />
+                        Google Maps Integration
+                    </CardTitle>
+                    <CardDescription>Enable Google Maps and provide API key for Places/Maps services</CardDescription>
+                </CardHeader>
+                <CardContent className="grid gap-4">
+                    <FormField
+                        control={form.control}
+                        name="googleMapsEnabled"
+                        render={({ field }) => (
+                            <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                                <div className="space-y-0.5">
+                                    <FormLabel className="text-base">Enable Google Maps</FormLabel>
+                                    <FormDescription>Enable Google Maps for address autocomplete and maps features</FormDescription>
+                                </div>
+                                <FormControl>
+                                    <Switch checked={field.value} onCheckedChange={field.onChange} disabled={isSubmitting} />
+                                </FormControl>
+                            </FormItem>
+                        )}
+                    />
+
+                    <FormField
+                        control={form.control}
+                        name="googleMapsApiKey"
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Google Maps API Key</FormLabel>
+                                <FormControl>
+                                    <Input placeholder="AIza..." disabled={!form.watch('googleMapsEnabled') || isSubmitting} {...field} />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+                </CardContent>
+            </Card>
+        </div>
+    );
+}
+
+// Security Tab (Turnstile)
+function SecurityTab({ form, isSubmitting }) {
+    const enabled = form.watch('turnstileEnabled');
+
+    return (
+        <Card>
+            <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                    <Shield className="h-5 w-5" />
+                    Security / Turnstile
+                </CardTitle>
+                <CardDescription>Cloudflare Turnstile site key and enable/disable the verification</CardDescription>
+            </CardHeader>
+            <CardContent className="grid gap-4">
+                <FormField
+                    control={form.control}
+                    name="turnstileEnabled"
+                    render={({ field }) => (
+                        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                            <div className="space-y-0.5">
+                                <FormLabel className="text-base">Enable Turnstile</FormLabel>
+                                <FormDescription>Enable Cloudflare Turnstile security verification</FormDescription>
+                            </div>
+                            <FormControl>
+                                <Switch checked={field.value} onCheckedChange={field.onChange} disabled={isSubmitting} />
+                            </FormControl>
+                        </FormItem>
+                    )}
+                />
+
+                <FormField
+                    control={form.control}
+                    name="turnstileSiteKey"
+                    render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Turnstile Site Key</FormLabel>
+                            <FormControl>
+                                <Input placeholder="1x00000000000000000000" disabled={!enabled || isSubmitting} {...field} />
+                            </FormControl>
+                            <FormMessage />
+                        </FormItem>
+                    )}
+                />
+            </CardContent>
+        </Card>
     );
 }
 
@@ -487,173 +837,7 @@ function SiteSettingsTab({ form, languages, getCurrentLocation, isSubmitting }) 
                 </CardContent>
             </Card>
 
-            <Card>
-                <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                        <MapPin className="h-5 w-5" />
-                        Location & Service Area
-                    </CardTitle>
-                    <CardDescription>Geographic information and service coverage</CardDescription>
-                </CardHeader>
-                <CardContent className="grid gap-4">
-                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                        <FormField
-                            control={form.control}
-                            name="latitude"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Latitude</FormLabel>
-                                    <FormControl>
-                                        <div className="flex gap-2">
-                                            <Input
-                                                type="number"
-                                                step="any"
-                                                placeholder="40.7128"
-                                                disabled={isSubmitting}
-                                                {...field}
-                                                onChange={(e) =>
-                                                    field.onChange(
-                                                        e.target.value ? parseFloat(e.target.value) : undefined
-                                                    )
-                                                }
-                                            />
-                                            <Button
-                                                type="button"
-                                                variant="outline"
-                                                size="sm"
-                                                onClick={getCurrentLocation}
-                                                disabled={isSubmitting}
-                                                className="px-3"
-                                                title="Get current location">
-                                                <Locate className="h-4 w-4" />
-                                            </Button>
-                                        </div>
-                                    </FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-
-                        <FormField
-                            control={form.control}
-                            name="longitude"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Longitude</FormLabel>
-                                    <FormControl>
-                                        <Input
-                                            type="number"
-                                            step="any"
-                                            placeholder="-74.0060"
-                                            disabled={isSubmitting}
-                                            {...field}
-                                            onChange={(e) =>
-                                                field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)
-                                            }
-                                        />
-                                    </FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-                    </div>
-
-                    <FormField
-                        control={form.control}
-                        name="country"
-                        render={({ field }) => {
-                            return (
-                                <FormItem>
-                                    <FormLabel>Country *</FormLabel>
-                                    <FormControl>
-                                        <CountryDropdown
-                                            key={field.value}
-                                            defaultValue={field.value}
-                                            disabled={isSubmitting}
-                                            onChange={(country) => {
-                                                const countryCode = country.alpha2.toUpperCase();
-                                                field.onChange(countryCode);
-                                                form.setValue('countryIso', country.alpha3);
-                                            }}
-                                            placeholder="Select a country"
-                                        />
-                                    </FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                            );
-                        }}
-                    />
-
-                    <FormField
-                        control={form.control}
-                        name="availableLanguages"
-                        render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>Available Languages *</FormLabel>
-                                <FormControl>
-                                    <MultiLanguageSelector
-                                        languages={languages}
-                                        value={field.value}
-                                        onChange={field.onChange}
-                                        disabled={isSubmitting}
-                                        defaultLanguage={form.watch('language')}
-                                        onDefaultLanguageChange={(langCode) => {
-                                            form.setValue('language', langCode);
-                                        }}
-                                    />
-                                </FormControl>
-                                <FormDescription>
-                                    Select all languages available for content creation. Click on a language card to set
-                                    it as the default language.
-                                </FormDescription>
-                                <FormMessage />
-                            </FormItem>
-                        )}
-                    />
-
-                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                        <FormField
-                            control={form.control}
-                            name="serviceArea"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Service Area</FormLabel>
-                                    <FormControl>
-                                        <Input placeholder="Metropolitan Area" disabled={isSubmitting} {...field} />
-                                    </FormControl>
-                                    <FormDescription>Describe your service coverage area</FormDescription>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-
-                        <FormField
-                            control={form.control}
-                            name="serviceRadius"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Service Radius (km)</FormLabel>
-                                    <FormControl>
-                                        <Input
-                                            type="number"
-                                            placeholder="50"
-                                            disabled={isSubmitting}
-                                            {...field}
-                                            onChange={(e) =>
-                                                field.onChange(
-                                                    e.target.value ? parseInt(e.target.value, 10) : undefined
-                                                )
-                                            }
-                                        />
-                                    </FormControl>
-                                    <FormDescription>Maximum distance for services (in kilometers)</FormDescription>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-                    </div>
-                </CardContent>
-            </Card>
+            {/* Location moved to dedicated Location tab */}
 
             <Card>
                 <CardHeader>

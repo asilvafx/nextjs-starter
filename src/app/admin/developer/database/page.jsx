@@ -1,3 +1,5 @@
+// @/app/admin/developer/database/page.jsx
+
 'use client';
 
 import {

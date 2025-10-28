@@ -11,8 +11,7 @@ import { useCart } from 'react-use-cart';
 import GooglePlacesInput from '@/components/google-places-input';
 import { Button } from '@/components/ui/button';
 import { CountryDropdown } from '@/components/ui/country-dropdown';
-import { PhoneInput } from '@/components/ui/phone-input';
-import { getGoogleMapsApiKey, getTurnstileSiteKey } from '@/lib/client/integrations';
+import { PhoneInput } from '@/components/ui/phone-input'; 
 import ShippingMethodSelector from './ShippingMethodSelector.jsx';
 
 const PaymentForm = ({
@@ -648,11 +647,19 @@ const PaymentForm = ({
         const defaultC = getDefaultCountry();
         setCountry(defaultC);
 
-        // Fetch integration keys
+        // Fetch keys from public site settings (site_settings)
         const fetchIntegrationKeys = async () => {
-            const [turnstileKey, googleMapsKey] = await Promise.all([getTurnstileSiteKey(), getGoogleMapsApiKey()]);
-            setTurnstileKey(turnstileKey);
-            setGoogleMapsApiKey(googleMapsKey);
+            try {
+                const res = await fetch('/api/query/public/site_settings');
+                const json = await res.json();
+                if (json?.success && Array.isArray(json.data) && json.data.length > 0) {
+                    const settings = json.data[0] || {};
+                    setTurnstileKey(settings.turnstileEnabled ? settings.turnstileSiteKey : null);
+                    setGoogleMapsApiKey(settings.googleMapsEnabled ? settings.googleMapsApiKey : null);
+                }
+            } catch (err) {
+                console.error('Failed to fetch site settings for integration keys:', err);
+            }
         };
 
         fetchIntegrationKeys();

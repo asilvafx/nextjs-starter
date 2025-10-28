@@ -1,6 +1,7 @@
 // @/app/admin/config/navigation.js
 
 import {
+    BrainCircuit,
     Code,
     Database,
     Frame,
@@ -133,6 +134,11 @@ export const navigation = {
             title: 'Database',
             url: '/admin/developer/database',
             icon: Database
+        },
+        {
+            title: 'AI Agent',
+            url: '/admin/developer/ai',
+            icon: BrainCircuit
         },
         {
             title: 'API',

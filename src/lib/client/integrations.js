@@ -82,33 +82,6 @@ export async function isIntegrationEnabled(integrationId) {
 }
 
 /**
- * Get Cloudflare Turnstile site key if enabled
- * @returns {Promise<string|null>} Site key or null if not enabled
- */
-export async function getTurnstileSiteKey() {
-    const integration = await getIntegration('cloudflare-turnstile');
-    return integration?.publicSettings?.siteKey || null;
-}
-
-/**
- * Get Google Maps API key if enabled
- * @returns {Promise<string|null>} API key or null if not enabled
- */
-export async function getGoogleMapsApiKey() {
-    const integration = await getIntegration('google-maps');
-    return integration?.publicSettings?.apiKey || null;
-}
-
-/**
- * Get Google Analytics measurement ID if enabled
- * @returns {Promise<string|null>} Measurement ID or null if not enabled
- */
-export async function getGoogleAnalyticsMeasurementId() {
-    const integration = await getIntegration('google-analytics');
-    return integration?.publicSettings?.measurementId || null;
-}
-
-/**
  * Clear the integrations cache (useful for forced refresh)
  */
 export function clearIntegrationsCache() {
