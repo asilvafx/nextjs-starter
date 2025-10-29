@@ -180,14 +180,14 @@ export default function SystemSettingsPage() {
                     googleMapsApiKey: settings.googleMapsApiKey || '',
                     turnstileEnabled: settings.turnstileEnabled || false,
                     turnstileSiteKey: settings.turnstileSiteKey || '',
-                    // Web3
-                    web3Active: settings.web3Active || false,
-                    web3ContractAddress: settings.web3ContractAddress || '',
-                    web3ContractSymbol: settings.web3ContractSymbol || '',
-                    web3ChainSymbol: settings.web3ChainSymbol || '',
-                    web3InfuraRpc: settings.web3InfuraRpc || '',
-                    web3ChainId: settings.web3ChainId || 1,
-                    web3NetworkName: settings.web3NetworkName || 'Ethereum Mainnet'
+                    // Web3 - read from nested web3 object if present
+                    web3Active: settings.web3?.active || false,
+                    web3ContractAddress: settings.web3?.contractAddress || '',
+                    web3ContractSymbol: settings.web3?.contractSymbol || '',
+                    web3ChainSymbol: settings.web3?.chainSymbol || '',
+                    web3InfuraRpc: settings.web3?.infuraRpc || '',
+                    web3ChainId: settings.web3?.chainId || 1,
+                    web3NetworkName: settings.web3?.networkName || 'Ethereum Mainnet'
                 });
             }
         } catch (error) {
@@ -240,6 +240,27 @@ export default function SystemSettingsPage() {
                 socialNetworks: data.socialNetworks || [],
                 workingHours: data.workingHours || []
             };
+
+            // Package web3 fields into a nested object to store as `web3` in the DB
+            const web3 = {
+                active: !!data.web3Active,
+                contractAddress: data.web3ContractAddress || '',
+                contractSymbol: data.web3ContractSymbol || '',
+                chainSymbol: data.web3ChainSymbol || '',
+                infuraRpc: data.web3InfuraRpc || '',
+                chainId: data.web3ChainId ? parseInt(data.web3ChainId, 10) : 1,
+                networkName: data.web3NetworkName || 'Ethereum Mainnet'
+            };
+
+            // Assign nested web3 object and remove individual web3 fields
+            cleanData.web3 = web3;
+            delete cleanData.web3Active;
+            delete cleanData.web3ContractAddress;
+            delete cleanData.web3ContractSymbol;
+            delete cleanData.web3ChainSymbol;
+            delete cleanData.web3InfuraRpc;
+            delete cleanData.web3ChainId;
+            delete cleanData.web3NetworkName;
 
             if (settingsId) {
                 await update(settingsId, cleanData, 'site_settings');
@@ -485,19 +506,21 @@ function SMSSettingsTab({ form, isSubmitting }) {
                     )}
                 />
 
-                <FormField
-                    control={form.control}
-                    name="twilioApiKey"
-                    render={({ field }) => (
-                        <FormItem>
-                            <FormLabel>Twilio API Key</FormLabel>
-                            <FormControl>
-                                <Input placeholder="sk-xxxxxxxxxxxx" disabled={!smsEnabled || isSubmitting} {...field} />
-                            </FormControl>
-                            <FormMessage />
-                        </FormItem>
-                    )}
-                />
+                {smsEnabled && (
+                    <FormField
+                        control={form.control}
+                        name="twilioApiKey"
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Twilio API Key</FormLabel>
+                                <FormControl>
+                                    <Input placeholder="sk-xxxxxxxxxxxx" disabled={isSubmitting} {...field} />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+                )}
             </CardContent>
         </Card>
     );
@@ -505,6 +528,7 @@ function SMSSettingsTab({ form, isSubmitting }) {
 
 // Location Tab (moved from Site)
 function LocationTab({ form, getCurrentLocation, isSubmitting, languages }) {
+    const mapsEnabled = form.watch('googleMapsEnabled');
     return (
         <div className="grid gap-6">
             <Card>
@@ -688,19 +712,21 @@ function LocationTab({ form, getCurrentLocation, isSubmitting, languages }) {
                         )}
                     />
 
-                    <FormField
-                        control={form.control}
-                        name="googleMapsApiKey"
-                        render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>Google Maps API Key</FormLabel>
-                                <FormControl>
-                                    <Input placeholder="AIza..." disabled={!form.watch('googleMapsEnabled') || isSubmitting} {...field} />
-                                </FormControl>
-                                <FormMessage />
-                            </FormItem>
-                        )}
-                    />
+                    {mapsEnabled && (
+                        <FormField
+                            control={form.control}
+                            name="googleMapsApiKey"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Google Maps API Key</FormLabel>
+                                    <FormControl>
+                                        <Input placeholder="AIza..." disabled={isSubmitting} {...field} />
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                    )}
                 </CardContent>
             </Card>
         </div>
@@ -711,14 +737,17 @@ function LocationTab({ form, getCurrentLocation, isSubmitting, languages }) {
 function SecurityTab({ form, isSubmitting }) {
     const enabled = form.watch('turnstileEnabled');
 
+    const allowRegistration = form.watch('allowRegistration');
+    const enableFrontend = form.watch('enableFrontend');
+
     return (
         <Card>
             <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                     <Shield className="h-5 w-5" />
-                    Security / Turnstile
+                    Security
                 </CardTitle>
-                <CardDescription>Cloudflare Turnstile site key and enable/disable the verification</CardDescription>
+                <CardDescription>Secure and protect your website</CardDescription>
             </CardHeader>
             <CardContent className="grid gap-4">
                 <FormField
@@ -737,16 +766,51 @@ function SecurityTab({ form, isSubmitting }) {
                     )}
                 />
 
+                {enabled && (
+                    <FormField
+                        control={form.control}
+                        name="turnstileSiteKey"
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Turnstile Site Key</FormLabel>
+                                <FormControl>
+                                    <Input placeholder="1x00000000000000000000" disabled={isSubmitting} {...field} />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+                )}
+
+                {/* Move registration/frontend toggles here */}
                 <FormField
                     control={form.control}
-                    name="turnstileSiteKey"
+                    name="allowRegistration"
                     render={({ field }) => (
-                        <FormItem>
-                            <FormLabel>Turnstile Site Key</FormLabel>
+                        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                            <div className="space-y-0.5">
+                                <FormLabel className="text-base">Allow User Registration</FormLabel>
+                                <FormDescription>Allow new users to create accounts</FormDescription>
+                            </div>
                             <FormControl>
-                                <Input placeholder="1x00000000000000000000" disabled={!enabled || isSubmitting} {...field} />
+                                <Switch checked={field.value} onCheckedChange={field.onChange} disabled={isSubmitting} />
                             </FormControl>
-                            <FormMessage />
+                        </FormItem>
+                    )}
+                />
+
+                <FormField
+                    control={form.control}
+                    name="enableFrontend"
+                    render={({ field }) => (
+                        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                            <div className="space-y-0.5">
+                                <FormLabel className="text-base">Enable Frontend</FormLabel>
+                                <FormDescription>Allow access to the public-facing website</FormDescription>
+                            </div>
+                            <FormControl>
+                                <Switch checked={field.value} onCheckedChange={field.onChange} disabled={isSubmitting} />
+                            </FormControl>
                         </FormItem>
                     )}
                 />
@@ -1060,45 +1124,7 @@ function OAuthTab({ form, oauthProviders, isSubmitting }) {
                         )}
                     />
 
-                    <FormField
-                        control={form.control}
-                        name="allowRegistration"
-                        render={({ field }) => (
-                            <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                                <div className="space-y-0.5">
-                                    <FormLabel className="text-base">Allow User Registration</FormLabel>
-                                    <FormDescription>Allow new users to create accounts</FormDescription>
-                                </div>
-                                <FormControl>
-                                    <Switch
-                                        checked={field.value}
-                                        onCheckedChange={field.onChange}
-                                        disabled={isSubmitting}
-                                    />
-                                </FormControl>
-                            </FormItem>
-                        )}
-                    />
-
-                    <FormField
-                        control={form.control}
-                        name="enableFrontend"
-                        render={({ field }) => (
-                            <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                                <div className="space-y-0.5">
-                                    <FormLabel className="text-base">Enable Frontend</FormLabel>
-                                    <FormDescription>Allow access to the public-facing website</FormDescription>
-                                </div>
-                                <FormControl>
-                                    <Switch
-                                        checked={field.value}
-                                        onCheckedChange={field.onChange}
-                                        disabled={isSubmitting}
-                                    />
-                                </FormControl>
-                            </FormItem>
-                        )}
-                    />
+                        {/* allowRegistration and enableFrontend moved to Security tab */}
                 </CardContent>
             </Card>
 
