@@ -17,6 +17,11 @@ let lastCacheUpdate = null;
 let cachePromise = null; // To prevent multiple simultaneous fetches
 const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes in milliseconds
 
+// Lightweight cron trigger to run due cronjobs occasionally.
+// We'll track lastCronTrigger and call /api/cronjobs/run non-blocking when interval passed.
+let lastCronTrigger = 0;
+const CRON_TRIGGER_INTERVAL = 60 * 1000; // 1 minute
+
 // Function to fetch and cache roles
 async function getCachedRoles(origin, forceRefresh = false) {
     // Check if cache is still valid (unless force refresh is requested)
@@ -99,6 +104,22 @@ function checkDynamicRouteAccess(userRole, pathname, dynamicRoleAccess) {
 export default auth(async (req) => {
     const { pathname } = req.nextUrl;
     const session = req.auth;
+
+    // Trigger cronjobs runner occasionally (non-blocking)
+    try {
+        const now = Date.now();
+        if (now - lastCronTrigger > CRON_TRIGGER_INTERVAL) {
+            lastCronTrigger = now;
+            // fire-and-forget to run due cronjobs on the server
+            // don't await to avoid slowing middleware
+            fetch(new URL('/api/cronjobs/run', req.url).toString(), { method: 'POST' }).catch((err) => {
+                // ignore errors
+                console.debug('cron trigger failed', err);
+            });
+        }
+    } catch (e) {
+        // ignore
+    }
 
     try {
         // Get cached roles data

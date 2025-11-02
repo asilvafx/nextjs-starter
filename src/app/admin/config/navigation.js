@@ -155,6 +155,11 @@ export const navigation = {
                 }
             ]
         }
+        ,
+        {
+            title: 'Cronjobs',
+            url: '/admin/developer/cronjobs'
+        }
     ],
     System: [
         {

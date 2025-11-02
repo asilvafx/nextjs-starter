@@ -115,7 +115,7 @@ async function handlePublicGet(request, { params }) {
         const key = url.searchParams.get('key');
         const value = url.searchParams.get('value');
         const page = parseInt(url.searchParams.get('page'), 10) || 1;
-        const limit = Math.min(parseInt(url.searchParams.get('limit'), 10) || 10, 100); // Max 100 items
+        const limit = Math.min(parseInt(url.searchParams.get('limit'), 10) || null); // All values
         const search = url.searchParams.get('search');
 
         if (!slug) {
@@ -203,9 +203,15 @@ async function handlePublicGet(request, { params }) {
         }
 
         // Pagination
-        const startIndex = (page - 1) * limit;
-        const endIndex = startIndex + limit;
-        const paginatedItems = items.slice(startIndex, endIndex);
+        let paginatedItems = items;
+        let startIndex = 1;
+        let endIndex = items.length;
+
+        if(limit){
+            startIndex = (page - 1) * limit;
+            endIndex = startIndex + limit;
+            paginatedItems = items.slice(startIndex, endIndex);
+        }
 
         return NextResponse.json({
             success: true,
@@ -213,9 +219,9 @@ async function handlePublicGet(request, { params }) {
             pagination: {
                 currentPage: page,
                 totalItems: items.length,
-                totalPages: Math.ceil(items.length / limit),
-                hasNext: endIndex < items.length,
-                hasPrev: page > 1
+                totalPages: limit ? Math.ceil(items.length / limit) : 1,
+                hasNext: limit ? endIndex < items.length : false,
+                hasPrev: limit ? page > 1 : false
             }
         });
     } catch (error) {

@@ -164,6 +164,105 @@ export default function EndpointsPage() {
                 parameters: 'file (multipart/form-data), folder, resize (query)',
                 example: '{"success": true, "data": {"filename": "...", "url": "...", "size": 123456}}',
                 createdAt: new Date().toISOString()
+            },
+            // AI Agent endpoints
+            {
+                id: 'ai-models-list',
+                method: 'GET',
+                path: '/api/ai/models',
+                description: 'List AI agent models (admin)',
+                status: 'active',
+                authentication: 'admin',
+                rateLimit: '50/hour',
+                usage: 0,
+                responseFormat: 'JSON',
+                parameters: 'none',
+                example: '{"success": true, "data": [{"id":"...","name":"..."}] }',
+                createdAt: new Date().toISOString()
+            },
+            {
+                id: 'ai-models-create',
+                method: 'POST',
+                path: '/api/ai/models',
+                description: 'Create a new AI model (admin)',
+                status: 'active',
+                authentication: 'admin',
+                rateLimit: '20/hour',
+                usage: 0,
+                responseFormat: 'JSON',
+                parameters: 'name, modelId, description, enabled, config',
+                example: '{"success": true, "data": {"id":"...","name":"..."}}',
+                createdAt: new Date().toISOString()
+            },
+            {
+                id: 'ai-models-update',
+                method: 'PUT',
+                path: '/api/ai/models/[id]',
+                description: 'Update an existing AI model by id (admin)',
+                status: 'active',
+                authentication: 'admin',
+                rateLimit: '50/hour',
+                usage: 0,
+                responseFormat: 'JSON',
+                parameters: 'id (path), body with model fields',
+                example: '{"success": true, "data": {...}}',
+                createdAt: new Date().toISOString()
+            },
+            {
+                id: 'ai-models-delete',
+                method: 'DELETE',
+                path: '/api/ai/models/[id]',
+                description: 'Delete an AI model by id (admin)',
+                status: 'active',
+                authentication: 'admin',
+                rateLimit: '20/hour',
+                usage: 0,
+                responseFormat: 'JSON',
+                parameters: 'id (path)',
+                example: '{"success": true, "message": "Deleted" }',
+                createdAt: new Date().toISOString()
+            },
+            {
+                id: 'ai-models-use',
+                method: 'POST',
+                path: '/api/ai/models/[id]/use',
+                description: 'Run a specific AI model by id. Body: { prompt, modelSettings }',
+                status: 'active',
+                authentication: 'required',
+                rateLimit: '50/hour',
+                usage: 0,
+                responseFormat: 'JSON',
+                parameters: 'id (path), prompt (body), modelSettings (body)',
+                example: '{"success": true, "data": {...}}',
+                createdAt: new Date().toISOString()
+            },
+            {
+                id: 'ai-settings-get',
+                method: 'GET',
+                path: '/api/ai/settings',
+                description: 'Get AI agent settings (enabled, replicate API key) (admin)',
+                status: 'active',
+                authentication: 'admin',
+                rateLimit: '20/hour',
+                usage: 0,
+                responseFormat: 'JSON',
+                parameters: 'none',
+                example: '{"success": true, "data": {"enabled": true}}',
+                createdAt: new Date().toISOString()
+            },
+            {
+                id: 'ai-settings-post',
+                method: 'POST',
+                path: '/api/ai/settings',
+                description: 'Create or update AI agent settings (admin)',
+                status: 'active',
+                authentication: 'admin',
+                rateLimit: '20/hour',
+                usage: 0,
+                responseFormat: 'JSON',
+                parameters: 'enabled, replicateApiKey',
+                example: '{"success": true, "data": {...}}',
+                createdAt: new Date().toISOString()
             }
         ];
     };
@@ -263,7 +362,8 @@ export default function EndpointsPage() {
 
     const filteredEndpoints = endpoints.filter((endpoint) => {
         // Only show query public routes and upload routes
-        const isRelevantRoute = endpoint.path.includes('/api/query/public/') || endpoint.path.includes('/api/upload');
+        const isRelevantRoute =
+            endpoint.path.includes('/api/query/public/') || endpoint.path.includes('/api/upload') || endpoint.path.includes('/api/ai/');
         const matchesSearch =
             endpoint.path.toLowerCase().includes(searchTerm.toLowerCase()) ||
             endpoint.description.toLowerCase().includes(searchTerm.toLowerCase());
