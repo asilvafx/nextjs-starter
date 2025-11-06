@@ -216,16 +216,24 @@ const ServiceBooking = ({ service, storeSettings = null, onBack, onBookingComple
             const ordersJson = await ordersRes.json();
 
             if (ordersRes.ok && ordersJson?.success) {
-                toast.success('Appointment booked successfully!');
-                // Return full saved order data to caller
-                onBookingComplete?.(ordersJson.data || { orderId: ordersJson.orderId });
-                // Reset form
-                setSelectedDate('');
-                setSelectedTime('');
-                setCustomerName('');
-                setCustomerEmail('');
-                setCustomerPhone('');
-                setNotes('');
+                // Store saved order data in localStorage so the success page can read it
+                const savedOrder = ordersJson.data || { id: ordersJson.orderId, ...orderData };
+                try {
+                    localStorage.setItem('orderData', JSON.stringify(savedOrder));
+                } catch (e) {
+                    console.warn('Failed to persist orderData to localStorage:', e);
+                }
+
+                // Redirect user to the unified success page for orders
+                const successOrderId = ordersJson.orderId || savedOrder.uid || savedOrder.id;
+                const successUrl = `/shop/checkout/success?order_id=${encodeURIComponent(
+                    successOrderId
+                )}&payment_method=${encodeURIComponent(orderData.paymentMethod || '')}`;
+
+                // Optionally call callback for internal handling, then navigate
+                onBookingComplete?.(savedOrder);
+                window.location.href = successUrl;
+                return;
             } else {
                 toast.error(ordersJson?.error || 'Failed to book appointment');
             }

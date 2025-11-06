@@ -80,6 +80,29 @@ const PaymentSuccess = () => {
                     return;
                 }
 
+                // Normalize items and appointment info so both shop orders and service orders render correctly
+                const rawItems = typeof orderData.items === 'string' ? JSON.parse(orderData.items) : orderData.items || [];
+                const items = rawItems.map((it) => {
+                    // Normalize appointment info: some flows store appointment as fields on the item
+                    const appointmentFromFields =
+                        it.appointment ||
+                        (it.appointmentDate || it.appointmentTime
+                            ? {
+                                  date: it.appointmentDate || it.appointment?.date || it.startDate || '',
+                                  time: it.appointmentTime || it.appointment?.time || it.startTime || ''
+                              }
+                            : null);
+
+                    // Ensure deliveryMethod may come from item or top-level order
+                    const deliveryMethod = it.deliveryMethod || orderData.deliveryMethod || it.shippingMethod || it.method || null;
+
+                    return {
+                        ...it,
+                        appointment: appointmentFromFields,
+                        deliveryMethod
+                    };
+                });
+
                 const orderDetailsData = {
                     orderId: orderData.id || actualOrderId,
                     paymentIntentId: orderData.tx,
@@ -88,7 +111,7 @@ const PaymentSuccess = () => {
                     customerName: orderData.customer?.firstName
                         ? `${orderData.customer.firstName} ${orderData.customer.lastName}`
                         : orderData.cst_name,
-                    items: typeof orderData.items === 'string' ? JSON.parse(orderData.items) : orderData.items,
+                    items,
                     // Fix totals calculation - use actual order totals, not recalculated ones
                     total: orderData.total || orderData.amount,
                     subtotal: orderData.subtotal || orderData.cartTotal,
@@ -111,8 +134,8 @@ const PaymentSuccess = () => {
                               countryIso: orderData.customer.countryIso
                           }
                         : typeof orderData.shipping_address === 'string'
-                          ? JSON.parse(orderData.shipping_address)
-                          : orderData.shipping_address,
+                        ? JSON.parse(orderData.shipping_address)
+                        : orderData.shipping_address,
                     orderDate: orderData.createdAt
                         ? new Date(orderData.createdAt).toLocaleDateString('fr-FR', {
                               weekday: 'long',

@@ -106,6 +106,14 @@ const Homepage = () => {
                             </>
                         )}
 
+                        <Link href="/blocks-demo" className="relative">
+                            <Button className="w-full sm:w-auto">Blocks</Button>
+                        </Link>
+
+                        <Link href="/book-service" className="relative">
+                            <Button className="w-full sm:w-auto">Online Booking</Button>
+                        </Link>
+
                         <Link href="/shop" className="relative">
                             <Button className="w-full sm:w-auto">Shop</Button>
                         </Link>
