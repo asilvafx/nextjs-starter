@@ -161,7 +161,21 @@ export default function BookServicePage() {
         if (selectedService.requiresAppointment) {
             return (
                 <div className="container mx-auto px-4 py-8">
-                    <ServiceBooking service={selectedService} onBack={() => setSelectedService(null)} />
+                    <ServiceBooking
+                        service={selectedService}
+                        storeSettings={storeSettings}
+                        onBack={() => setSelectedService(null)}
+                        onBookingComplete={(data) => {
+                            // After successful booking, redirect to the checkout success page with order id
+                            if (data?.order?.id) {
+                                router.push(`/shop/checkout/success?order_id=${data.order.id}&payment_method=${data.order.paymentMethod || 'appointment'}`);
+                            } else if (data?.orderId) {
+                                router.push(`/shop/checkout/success?order_id=${data.orderId}`);
+                            } else {
+                                setSelectedService(null);
+                            }
+                        }}
+                    />
                 </div>
             );
         }

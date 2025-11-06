@@ -33,7 +33,7 @@ export async function OPTIONS() {
 
 export async function POST(req) {
     try {
-        const { amount, currency = 'eur', email = '', automatic_payment_methods } = await req.json();
+        const { amount, currency = 'eur', email = '', automatic_payment_methods, metadata = {} } = await req.json();
 
         if (!amount || amount <= 0) {
             return new Response(JSON.stringify({ error: 'Invalid amount' }), {
@@ -61,7 +61,8 @@ export async function POST(req) {
             amount: parseInt(amount, 10),
             currency,
             customer: customer.id,
-            metadata: { customer_email: email }
+            // merge client-provided metadata (order_id, service_id, etc.) with a customer_email fallback
+            metadata: Object.assign({ customer_email: email }, metadata)
         };
 
         if (automatic_payment_methods) {

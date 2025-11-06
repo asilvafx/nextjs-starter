@@ -7,17 +7,36 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { PhoneInput } from '@/components/ui/phone-input';
-import { createPublic } from '@/lib/client/query';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 
-const ServiceBooking = ({ service, onBack, onBookingComplete }) => {
+const ServiceBooking = ({ service, storeSettings = null, onBack, onBookingComplete }) => {
     const [selectedDate, setSelectedDate] = useState('');
     const [selectedTime, setSelectedTime] = useState('');
     const [customerName, setCustomerName] = useState('');
     const [customerEmail, setCustomerEmail] = useState('');
     const [customerPhone, setCustomerPhone] = useState('');
     const [notes, setNotes] = useState('');
+    const [selectedPaymentMethod, setSelectedPaymentMethod] = useState('');
+
+    const getAvailablePaymentMethods = (settings) => {
+        const methods = [];
+        const hasStripe = !!settings?.paymentMethods?.cardPayments;
+
+        if (hasStripe && settings?.paymentMethods?.cardPayments) {
+            methods.push({ value: 'card', label: `💳 Card`, description: 'Pay with card' });
+        }
+
+        if (settings?.paymentMethods?.bankTransfer) {
+            methods.push({ value: 'bank_transfer', label: `🏦 Bank Transfer`, description: 'Pay via bank transfer' });
+        }
+
+        if (settings?.paymentMethods?.payOnDelivery) {
+            methods.push({ value: 'pay_on_delivery', label: `📦 Pay on Delivery`, description: 'Pay on delivery' });
+        }
+
+        return methods;
+    };
     const [availableSlots, setAvailableSlots] = useState([]);
     const [isLoading, setIsLoading] = useState(false);
     const [isBooking, setIsBooking] = useState(false);
@@ -105,13 +124,101 @@ const ServiceBooking = ({ service, onBack, onBookingComplete }) => {
                 notes
             };
 
-            // Use the client's createPublic helper which handles CSRF and public request flow
-            const data = await createPublic(payload, 'book-appointment');
+            // Build a base order object so it's available regardless of payment method
+            const orderId = `ORD-${Date.now()}`;
+            const orderData = {
+                id: orderId,
+                customer: {
+                    firstName: customerName.split(' ')[0] || customerName,
+                    lastName: customerName.split(' ').slice(1).join(' ') || '',
+                    email: customerEmail,
+                    phone: customerPhone || ''
+                },
+                items: [
+                    {
+                        id: service.id,
+                        name: service.name,
+                        price: service.price,
+                        quantity: 1,
+                        type: 'service',
+                        appointmentDate: selectedDate,
+                        appointmentTime: selectedTime
+                    }
+                ],
+                subtotal: service.price,
+                total: service.price,
+                // default values — will be adjusted per payment method
+                paymentMethod: selectedPaymentMethod || '',
+                paymentStatus: selectedPaymentMethod === 'card' ? 'pending' : 'pending',
+                status: 'scheduled',
+                isServiceAppointment: true,
+                appointment: payload,
+                createdAt: new Date().toISOString()
+            };
 
-            // createPublic returns the `data` property from the API response on success
-            if (data) {
+            // If payment method is card, create PaymentIntent and redirect to checkout
+            if (selectedPaymentMethod === 'card') {
+                // ensure orderData reflects card payment
+                orderData.paymentMethod = 'card';
+                orderData.paymentStatus = 'pending';
+
+                const stripeRes = await fetch('/api/stripe', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        amount: Math.round((service.price || 0) * 100),
+                        currency: (storeSettings?.currency || 'EUR').toLowerCase(),
+                        email: customerEmail,
+                        automatic_payment_methods: true,
+                        metadata: { order_id: orderData.id, service_id: service.id }
+                    })
+                });
+
+                const stripeJson = await stripeRes.json();
+                if (stripeJson?.error) {
+                    throw new Error(stripeJson.error || 'Stripe payment initialization failed');
+                }
+
+                const clientSecret = stripeJson.client_secret;
+
+                // Store orderData locally so Checkout/PaymentForm can pick it up
+                localStorage.setItem('orderData', JSON.stringify(orderData));
+
+                // Redirect to checkout where PaymentForm will complete the payment
+                const redirectUrl = `/shop/checkout?service_order=true&order_id=${orderData.id}&client_secret=${encodeURIComponent(
+                    clientSecret
+                )}`;
+                window.location.href = redirectUrl;
+                return;
+            }
+
+            // Handle alternative payment methods (bank transfer, pay on delivery)
+            // Ensure orderData reflects the selected non-card payment method
+            if (selectedPaymentMethod === 'bank_transfer') {
+                orderData.paymentMethod = 'bank_transfer';
+                orderData.paymentStatus = 'pending';
+            } else if (selectedPaymentMethod === 'pay_on_delivery') {
+                orderData.paymentMethod = 'pay_on_delivery';
+                orderData.paymentStatus = 'pending';
+            } else {
+                // default to unpaid/pending
+                orderData.paymentMethod = orderData.paymentMethod || 'none';
+                orderData.paymentStatus = orderData.paymentStatus || 'pending';
+            }
+
+            // Create order via the orders API (this will persist the order and include appointment data)
+            const ordersRes = await fetch('/api/orders', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(orderData)
+            });
+
+            const ordersJson = await ordersRes.json();
+
+            if (ordersRes.ok && ordersJson?.success) {
                 toast.success('Appointment booked successfully!');
-                onBookingComplete?.(data);
+                // Return full saved order data to caller
+                onBookingComplete?.(ordersJson.data || { orderId: ordersJson.orderId });
                 // Reset form
                 setSelectedDate('');
                 setSelectedTime('');
@@ -120,7 +227,7 @@ const ServiceBooking = ({ service, onBack, onBookingComplete }) => {
                 setCustomerPhone('');
                 setNotes('');
             } else {
-                toast.error('Failed to book appointment');
+                toast.error(ordersJson?.error || 'Failed to book appointment');
             }
         } catch (error) {
             console.error('Error booking appointment:', error);
@@ -300,6 +407,27 @@ const ServiceBooking = ({ service, onBack, onBookingComplete }) => {
                                 <p>
                                     <strong>Price:</strong> €{service.price}
                                 </p>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Payment Methods */}
+                    {selectedDate && selectedTime && (
+                        <div className="mb-4">
+                            <h3 className="font-medium mb-2">Payment</h3>
+                            <div className="space-y-2">
+                                {getAvailablePaymentMethods(storeSettings).map((m) => (
+                                    <button
+                                        key={m.value}
+                                        type="button"
+                                        onClick={() => setSelectedPaymentMethod(m.value)}
+                                        className={`w-full text-left cursor-pointer rounded border p-3 ${
+                                            selectedPaymentMethod === m.value ? 'border-primary bg-primary/5' : ''
+                                        }`}>
+                                        <div className="font-medium">{m.label}</div>
+                                        <div className="text-muted-foreground text-sm">{m.description}</div>
+                                    </button>
+                                ))}
                             </div>
                         </div>
                     )}
