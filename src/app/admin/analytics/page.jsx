@@ -1,7 +1,8 @@
 // @/app/admin/analytics/page.jsx
+
 'use client';
 
-import { Eye, Globe, RefreshCw, Settings, Users } from 'lucide-react';
+import { Eye, Globe, RefreshCw, Users, Calendar } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import {
     Area,
@@ -23,15 +24,7 @@ import {
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogHeader,
-    DialogTitle,
-    DialogTrigger
-} from '@/components/ui/dialog';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'; 
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -146,34 +139,47 @@ export default function AnalyticsPage() {
     return (
         <ScrollArea className="h-[calc(100vh-80px)]">
             <div className="space-y-4">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col lg:flex-row lg:flex-wrap items-start justify-between gap-2">
                     <div>
-                        <h1 className="font-bold text-3xl">Website Analytics</h1>
+                        <h1 className="font-semibold text-2xl">Website Analytics</h1>
                         <p className="text-muted-foreground">
                             Comprehensive visitor statistics and website performance
                         </p>
                     </div>
                     <div className="flex gap-2">
+                        <Button variant="default" onClick={refreshData}>
+                            <Calendar className="mr-2 h-4 w-4" />
+                            Last 30 Days
+                        </Button>
                         <Button variant="outline" onClick={refreshData}>
                             <RefreshCw className="mr-2 h-4 w-4" />
                             Refresh
                         </Button>
-                        {/* Google Analytics admin controls */}
-                        <div className="flex items-center gap-4">
-                            <div className="flex items-center gap-2">
-                                <Switch
-                                    id="ga-enabled"
-                                    checked={googleAnalyticsEnabled}
-                                    onCheckedChange={(val) => setGoogleAnalyticsEnabled(!!val)}
-                                />
-                                <Label htmlFor="ga-enabled" className="text-sm">
-                                    Google Analytics enabled
-                                </Label>
-                            </div>
-                            <div className="flex items-center gap-2">
+                       
+                    </div>
+                </div>
+                
+                {/* Google Analytics API section */} 
+                <div className="space-y-4">
+                    <Card> 
+                    <CardHeader>
+                        <div className="w-full flex items-center justify-between gap-2">
+                            <Label htmlFor="ga-enabled" className="text-sm capitalize">
+                                Google Analytics Enabled
+                            </Label>
+                            <Switch
+                                id="ga-enabled"
+                                checked={googleAnalyticsEnabled}
+                                onCheckedChange={(val) => setGoogleAnalyticsEnabled(!!val)}
+                            />
+                        </div>
+                    </CardHeader>
+                    <CardContent>
+                          <div className="w-full flex flex-col items-start gap-2">
                                 <Input
                                     id="api-key"
                                     type="text"
+                                    className="flex-1 mb-2"
                                     placeholder="Measurement ID (G-XXXXXXXX)"
                                     value={googleApiKey}
                                     onChange={(e) => setGoogleApiKey(e.target.value)}
@@ -200,8 +206,8 @@ export default function AnalyticsPage() {
                                     Save
                                 </Button>
                             </div>
-                        </div>
-                    </div>
+                    </CardContent>
+                    </Card>
                 </div>
 
                 {/* Website Analytics Section */}

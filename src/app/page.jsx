@@ -3,8 +3,7 @@
 import { LayoutProvider } from './main/context/LayoutProvider';
 import Homepage from './main/page';
 
-const Page = () => {
-    console.log('Root Page component rendered');
+const Page = () => { 
     return (
         <LayoutProvider>
             <Homepage />
