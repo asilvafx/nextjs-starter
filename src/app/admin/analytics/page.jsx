@@ -2,7 +2,7 @@
 
 'use client';
 
-import { Eye, Globe, RefreshCw, Users, Calendar } from 'lucide-react';
+import { Eye, RefreshCw, Users, Calendar } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import {
     Area,
@@ -58,8 +58,7 @@ export default function AnalyticsPage() {
     const [googleAnalyticsEnabled, setGoogleAnalyticsEnabled] = useState(false);
 
     // Web Stats Data
-    const [webStats, setWebStats] = useState({
-        totalVisitors: 0,
+    const [webStats, setWebStats] = useState({ 
         uniqueVisitors: 0,
         pageViews: 0
     });
@@ -79,8 +78,7 @@ export default function AnalyticsPage() {
             if (result.success && result.data) {
                 const data = result.data;
 
-                setWebStats({
-                    totalVisitors: data.overview.totalVisitors,
+                setWebStats({ 
                     uniqueVisitors: data.overview.uniqueVisitors,
                     pageViews: data.overview.pageViews
                 });
@@ -141,7 +139,7 @@ export default function AnalyticsPage() {
             <div className="space-y-4">
                 <div className="flex flex-col lg:flex-row lg:flex-wrap items-start justify-between gap-2">
                     <div>
-                        <h1 className="font-semibold text-2xl">Website Analytics</h1>
+                        <h1 className="font-bold text-2xl">Website Analytics</h1>
                         <p className="text-muted-foreground">
                             Comprehensive visitor statistics and website performance
                         </p>
@@ -164,8 +162,8 @@ export default function AnalyticsPage() {
                     <Card> 
                     <CardHeader>
                         <div className="w-full flex items-center justify-between gap-2">
-                            <Label htmlFor="ga-enabled" className="text-sm capitalize">
-                                Google Analytics Enabled
+                            <Label htmlFor="ga-enabled" className="text-md font-semibold capitalize">
+                                Google Analytics API
                             </Label>
                             <Switch
                                 id="ga-enabled"
@@ -173,6 +171,9 @@ export default function AnalyticsPage() {
                                 onCheckedChange={(val) => setGoogleAnalyticsEnabled(!!val)}
                             />
                         </div>
+                        <p className="text-sm text-muted-foreground">
+                            Enable your Google Analytics and get more insights.
+                        </p>
                     </CardHeader>
                     <CardContent>
                           <div className="w-full flex flex-col items-start gap-2">
@@ -243,23 +244,17 @@ export default function AnalyticsPage() {
                                 </Card>
                             </>
                         ) : (
-                            <>
-                                <StatCard
-                                    title="Total Visitors"
-                                    value={formatNumber(webStats.totalVisitors)}
-                                    icon={Users}
-                                    description="Total page visits"
-                                />
+                            <> 
                                 <StatCard
                                     title="Unique Visitors"
                                     value={formatNumber(webStats.uniqueVisitors)}
-                                    icon={Eye}
+                                    icon={Users}
                                     description="Unique IP addresses"
                                 />
                                 <StatCard
                                     title="Page Views"
                                     value={formatNumber(webStats.pageViews)}
-                                    icon={Globe}
+                                    icon={Eye}
                                     description="Total page views"
                                 />
                             </>

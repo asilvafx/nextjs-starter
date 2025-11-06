@@ -265,7 +265,7 @@ export default function Overview() {
                 {/* Header Section */}
                 <div className="flex flex-col lg:flex-row lg:flex-wrap items-start justify-between gap-2">
                     <div className="w-full md:max-w-sm">
-                        <h1 className="font-semibold text-2xl">Dashboard Overview</h1>
+                        <h1 className="font-bold text-2xl">Dashboard Overview</h1>
                         <p className="text-muted-foreground">
                             Welcome back! Here's what's happening with your website.
                         </p>
