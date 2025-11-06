@@ -1,11 +1,13 @@
 'use client';
 
 import { ArrowLeft, Calendar, CheckCircle, Clock, Euro, User } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useId } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { PhoneInput } from '@/components/ui/phone-input';
+import { createPublic } from '@/lib/client/query';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 
@@ -19,6 +21,8 @@ const ServiceBooking = ({ service, onBack, onBookingComplete }) => {
     const [availableSlots, setAvailableSlots] = useState([]);
     const [isLoading, setIsLoading] = useState(false);
     const [isBooking, setIsBooking] = useState(false);
+
+    const uid = useId();
 
     // Generate available time slots
     const generateTimeSlots = (workingHours, duration, bufferTime) => {
@@ -45,8 +49,13 @@ const ServiceBooking = ({ service, onBack, onBookingComplete }) => {
 
         setIsLoading(true);
         try {
-            const dayOfWeek = new Date(date).toLocaleDateString('en-US', { weekday: 'lowercase' });
-            const workingHours = service.appointmentSettings?.workingHours?.[dayOfWeek];
+                // toLocaleDateString doesn't support a 'lowercase' option for weekday.
+                // Get the long weekday name and normalize to lowercase to match the
+                // `appointmentSettings.workingHours` keys (e.g. 'monday', 'tuesday').
+                const dayOfWeek = new Date(date)
+                    .toLocaleDateString('en-US', { weekday: 'long' })
+                    .toLowerCase();
+                const workingHours = service.appointmentSettings?.workingHours?.[dayOfWeek];
 
             if (!workingHours?.enabled) {
                 setAvailableSlots([]);
@@ -86,27 +95,23 @@ const ServiceBooking = ({ service, onBack, onBookingComplete }) => {
 
         setIsBooking(true);
         try {
-            const response = await fetch('/api/query/public/book-appointment', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    serviceId: service.id,
-                    date: selectedDate,
-                    startTime: selectedTime,
-                    customerName,
-                    customerEmail,
-                    customerPhone,
-                    notes
-                })
-            });
+            const payload = {
+                serviceId: service.id,
+                date: selectedDate,
+                startTime: selectedTime,
+                customerName,
+                customerEmail,
+                customerPhone,
+                notes
+            };
 
-            const result = await response.json();
+            // Use the client's createPublic helper which handles CSRF and public request flow
+            const data = await createPublic(payload, 'book-appointment');
 
-            if (result.success) {
+            // createPublic returns the `data` property from the API response on success
+            if (data) {
                 toast.success('Appointment booked successfully!');
-                onBookingComplete?.(result.data);
+                onBookingComplete?.(data);
                 // Reset form
                 setSelectedDate('');
                 setSelectedTime('');
@@ -115,11 +120,12 @@ const ServiceBooking = ({ service, onBack, onBookingComplete }) => {
                 setCustomerPhone('');
                 setNotes('');
             } else {
-                toast.error(result.error || 'Failed to book appointment');
+                toast.error('Failed to book appointment');
             }
         } catch (error) {
             console.error('Error booking appointment:', error);
-            toast.error('Failed to book appointment');
+            // Surface API error message when available
+            toast.error(error?.message || 'Failed to book appointment');
         } finally {
             setIsBooking(false);
         }
@@ -180,9 +186,9 @@ const ServiceBooking = ({ service, onBack, onBookingComplete }) => {
                         </h4>
                         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                             <div>
-                                <Label htmlFor="customerName">Full Name *</Label>
+                                <Label htmlFor={`customerName-${uid}`}>Full Name *</Label>
                                 <Input
-                                    id="customerName"
+                                    id={`customerName-${uid}`}
                                     value={customerName}
                                     onChange={(e) => setCustomerName(e.target.value)}
                                     placeholder="John Doe"
@@ -190,9 +196,9 @@ const ServiceBooking = ({ service, onBack, onBookingComplete }) => {
                                 />
                             </div>
                             <div>
-                                <Label htmlFor="customerEmail">Email Address *</Label>
+                                <Label htmlFor={`customerEmail-${uid}`}>Email Address *</Label>
                                 <Input
-                                    id="customerEmail"
+                                    id={`customerEmail-${uid}`}
                                     type="email"
                                     value={customerEmail}
                                     onChange={(e) => setCustomerEmail(e.target.value)}
@@ -202,12 +208,11 @@ const ServiceBooking = ({ service, onBack, onBookingComplete }) => {
                             </div>
                         </div>
                         <div>
-                            <Label htmlFor="customerPhone">Phone Number</Label>
-                            <Input
-                                id="customerPhone"
-                                type="tel"
+                            <Label htmlFor={`customerPhone-${uid}`}>Phone Number</Label>
+                            <PhoneInput
+                                id={`customerPhone-${uid}`}
                                 value={customerPhone}
-                                onChange={(e) => setCustomerPhone(e.target.value)}
+                                onChange={(val) => setCustomerPhone(val || '')}
                                 placeholder="+1 (555) 123-4567"
                             />
                         </div>
@@ -215,9 +220,9 @@ const ServiceBooking = ({ service, onBack, onBookingComplete }) => {
 
                     {/* Date Selection */}
                     <div>
-                        <Label htmlFor="appointmentDate">Select Date *</Label>
+                        <Label htmlFor={`appointmentDate-${uid}`}>Select Date *</Label>
                         <Input
-                            id="appointmentDate"
+                            id={`appointmentDate-${uid}`}
                             type="date"
                             value={selectedDate}
                             onChange={(e) => setSelectedDate(e.target.value)}
@@ -259,9 +264,9 @@ const ServiceBooking = ({ service, onBack, onBookingComplete }) => {
 
                     {/* Notes */}
                     <div>
-                        <Label htmlFor="notes">Additional Notes</Label>
+                        <Label htmlFor={`notes-${uid}`}>Additional Notes</Label>
                         <Textarea
-                            id="notes"
+                            id={`notes-${uid}`}
                             value={notes}
                             onChange={(e) => setNotes(e.target.value)}
                             placeholder="Any special requests or information..."

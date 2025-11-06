@@ -3,7 +3,9 @@
 'use client';
 
 import { Clock, Euro, MapPin, Users } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import { useCart } from 'react-use-cart';
 import { toast } from 'sonner';
 import ServiceBooking from '@/components/ServiceBooking';
 import { Badge } from '@/components/ui/badge';
@@ -15,22 +17,31 @@ export default function BookServicePage() {
     const [services, setServices] = useState([]);
     const [selectedService, setSelectedService] = useState(null);
     const [isLoading, setIsLoading] = useState(true);
+    const [storeSettings, setStoreSettings] = useState(null);
+    const [selectedPaymentMethod, setSelectedPaymentMethod] = useState('');
+    const router = useRouter();
+    const { emptyCart } = useCart();
 
-    // Fetch available services that require appointments
+    // Fetch available services (all services, regardless of requiresAppointment) and store settings
     const fetchServices = async () => {
         try {
             setIsLoading(true);
-            const response = await getAll('catalog_items');
+            const [response, settingsRes] = await Promise.all([getAll('catalog'), getAll('store_settings')]);
 
             if (response?.success && response.data) {
-                // Filter for services that require appointments
+                // Only include services that require an appointment
                 const appointmentServices = response.data.filter(
-                    (item) => item.type === 'service' && item.requiresAppointment && item.status === 'active'
+                    (item) => item.type === 'service' && item.isActive && item.requiresAppointment
                 );
+                console.log(response);
                 setServices(appointmentServices);
             }
+
+            if (settingsRes?.success && Array.isArray(settingsRes.data) && settingsRes.data.length > 0) {
+                setStoreSettings(settingsRes.data[0]);
+            }
         } catch (error) {
-            console.error('Error fetching services:', error);
+            console.error('Error fetching services or settings:', error);
             toast.error('Failed to load services');
         } finally {
             setIsLoading(false);
@@ -57,10 +68,154 @@ export default function BookServicePage() {
         );
     }
 
+    const getAvailablePaymentMethods = () => {
+        const methods = [];
+
+    const hasStripe = !!storeSettings?.paymentMethods?.cardPayments;
+
+        if (hasStripe && storeSettings?.paymentMethods?.cardPayments) {
+            methods.push({ value: 'card', label: `💳 Card`, description: 'Pay with card' });
+        }
+
+        if (storeSettings?.paymentMethods?.bankTransfer) {
+            methods.push({ value: 'bank_transfer', label: `🏦 Bank Transfer`, description: 'Pay via bank transfer' });
+        }
+
+        if (storeSettings?.paymentMethods?.payOnDelivery) {
+            methods.push({ value: 'pay_on_delivery', label: `📦 Pay on Delivery`, description: 'Pay on delivery' });
+        }
+
+        return methods;
+    };
+
+    const purchaseService = async (service, method) => {
+        try {
+            const paymentMethod = method || (getAvailablePaymentMethods()[0]?.value || 'pending');
+
+            const orderId = `${Math.floor(Date.now() / 1000)}_${Math.floor(Math.random() * (9999 - 1000 + 1)) + 1000}`;
+
+            const orderData = {
+                id: orderId,
+                customer: { firstName: '', lastName: '', email: '', phone: '' },
+                items: [
+                    {
+                        id: service.id,
+                        name: service.name,
+                        price: service.price || 0,
+                        quantity: 1,
+                        type: 'service',
+                        deliveryMethod: service.deliveryMethod || service.delivery || 'none',
+                        // include appointment info if present
+                        appointment: service.appointment || null
+                    }
+                ],
+                cartTotal: service.price || 0,
+                subtotal: service.price || 0,
+                subtotalInclVat: service.price || 0,
+                shippingCost: 0,
+                shipping: 0,
+                vatEnabled: storeSettings?.vatEnabled || false,
+                vatPercentage: storeSettings?.vatPercentage || 0,
+                vatAmount: 0,
+                total: service.price || 0,
+                amount: service.price || 0,
+                totalItems: 1,
+                currency: storeSettings?.currency || 'EUR',
+                status: 'pending',
+                paymentStatus: paymentMethod === 'card' ? 'paid' : 'pending',
+                paymentMethod: paymentMethod,
+                method: paymentMethod,
+                shippingMethod: service.deliveryMethod || 'none',
+                createdAt: new Date().toISOString()
+            };
+
+            // Store locally so success page can read it
+            localStorage.setItem('orderData', JSON.stringify(orderData));
+
+            // Create order record on server for non-card methods
+            if (paymentMethod !== 'card') {
+                const res = await fetch('/api/orders', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(orderData)
+                });
+                const json = await res.json();
+
+                if (!json?.success) {
+                    toast.error('Failed to create order');
+                    return;
+                }
+            }
+
+            // Clear cart if any and redirect to success
+            emptyCart();
+            router.push(`/shop/checkout/success?order_id=${orderData.id}&payment_method=${paymentMethod}`);
+        } catch (err) {
+            console.error('Purchase service error', err);
+            toast.error('Failed to process purchase');
+        }
+    };
+
     if (selectedService) {
+        // If service requires appointment, show booking flow, else show purchase UI
+        if (selectedService.requiresAppointment) {
+            return (
+                <div className="container mx-auto px-4 py-8">
+                    <ServiceBooking service={selectedService} onBack={() => setSelectedService(null)} />
+                </div>
+            );
+        }
+
+        // Purchase UI for non-booking services
         return (
             <div className="container mx-auto px-4 py-8">
-                <ServiceBooking service={selectedService} onBack={() => setSelectedService(null)} />
+                <Card className="mx-auto w-full max-w-2xl">
+                    <CardHeader>
+                        <CardTitle>{selectedService.name}</CardTitle>
+                        <CardDescription>{selectedService.description}</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="mb-4">
+                            <div className="flex items-center justify-between">
+                                <div className="font-medium text-lg">Price</div>
+                                <div className="font-semibold">€{selectedService.price}</div>
+                            </div>
+                            <div className="text-sm text-muted-foreground mt-2">
+                                Delivery Method: {selectedService.deliveryMethod || 'none'}
+                            </div>
+                        </div>
+
+                        <div className="mb-4">
+                            <h3 className="font-medium mb-2">Payment</h3>
+                            <div className="space-y-2">
+                                {getAvailablePaymentMethods().map((m) => (
+                                    <button
+                                        key={m.value}
+                                        type="button"
+                                        onClick={() => setSelectedPaymentMethod(m.value)}
+                                        className={`w-full text-left cursor-pointer rounded border p-3 ${
+                                            selectedPaymentMethod === m.value ? 'border-primary bg-primary/5' : ''
+                                        }`}>
+                                        <div className="font-medium">{m.label}</div>
+                                        <div className="text-muted-foreground text-sm">{m.description}</div>
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div className="flex gap-2">
+                            <button
+                                type="button"
+                                onClick={() => purchaseService(selectedService, selectedPaymentMethod)}
+                                className="button primary w-full">
+                                Buy Service
+                            </button>
+                            <button type="button" onClick={() => setSelectedService(null)} className="button">
+                                Back
+                            </button>
+                        </div>
+                    </CardContent>
+                </Card>
             </div>
         );
     }

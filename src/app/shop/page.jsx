@@ -154,6 +154,9 @@ function Shop() {
         // Only show active items
         filtered = filtered.filter((item) => item.isActive !== false);
 
+    // Exclude services that require an appointment from the shop listing
+    filtered = filtered.filter((item) => !(item.type === 'service' && item.requiresAppointment));
+
         setFilteredItems(filtered);
     };
 

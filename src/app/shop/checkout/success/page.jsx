@@ -4,6 +4,7 @@
 
 import { motion } from 'framer-motion';
 import { ArrowLeft, CheckCircle, Download, Home, ShoppingBag, XCircle } from 'lucide-react';
+import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
@@ -320,9 +321,12 @@ const PaymentSuccess = () => {
                                             className="flex items-center justify-between rounded-lg bg-muted/30 p-3">
                                             <div className="flex items-center space-x-4">
                                                 {item.image && (
-                                                    <img
+                                                    <Image
                                                         src={item.image}
                                                         alt={item.name}
+                                                        width={48}
+                                                        height={48}
+                                                        unoptimized={true}
                                                         className="h-12 w-12 rounded-md object-cover"
                                                     />
                                                 )}
@@ -331,6 +335,21 @@ const PaymentSuccess = () => {
                                                     <p className="text-gray-500 text-sm">
                                                         {t('quantity')}: {item.quantity}
                                                     </p>
+                                                    {/* Service-specific details */}
+                                                    {item.type === 'service' && item.appointment && (
+                                                        <div className="text-sm text-muted-foreground mt-1">
+                                                            <div>
+                                                                <strong>Appointment:</strong>{' '}
+                                                                {item.appointment.date || item.appointment.startDate || ''}{' '}
+                                                                {item.appointment.time || item.appointment.startTime || ''}
+                                                            </div>
+                                                            {item.deliveryMethod && (
+                                                                <div>
+                                                                    <strong>Delivery:</strong> {item.deliveryMethod}
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    )}
                                                 </div>
                                             </div>
                                             <p className="font-semibold">
