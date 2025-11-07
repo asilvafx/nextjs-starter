@@ -1,5 +1,6 @@
 'use client';
 
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { SquareArrowLeft, SquareArrowRight } from 'lucide-react';
 import { redirect, usePathname } from 'next/navigation';
 import { Fragment, useState } from 'react';
@@ -96,7 +97,11 @@ export default function AdminLayout({ children }) {
                         </div>
                     </div>
                 </header>
-                <div className="flex flex-1 flex-col gap-4 p-4 pt-0">{children}</div>
+                <div className="p-4">
+                    <ScrollArea className="h-[calc(100vh-80px)]"> 
+                        {children}
+                    </ScrollArea>
+                </div>
             </SidebarInset>
         </SidebarProvider>
     );

@@ -5,10 +5,7 @@
 import { ArrowUpDown, Eye, Loader2, MoreHorizontal, Pencil, Plus, Search, Trash2, User2 } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
-import { v6 as uuidv6 } from 'uuid';
-import ActionDropdown from '@/components/admin/ActionDropdown';
-import AdminHeader from '@/components/admin/AdminHeader';
-import AdminTable from '@/components/admin/AdminTable';
+import { v6 as uuidv6 } from 'uuid'; 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -21,7 +18,6 @@ import {
     DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useAuth } from '@/hooks/useAuth';
@@ -388,7 +384,7 @@ export default function UsersPage() {
     }
 
     return (
-        <ScrollArea className="h-[calc(100vh-80px)]">
+         
             <div className="space-y-4">
                 {/* Header (matches dashboard overview style) */}
                 <div className="flex flex-col lg:flex-row lg:flex-wrap items-start justify-between gap-2">
@@ -762,7 +758,6 @@ export default function UsersPage() {
                         )}
                     </DialogContent>
                 </Dialog>
-            </div>
-        </ScrollArea>
+            </div> 
     );
 }

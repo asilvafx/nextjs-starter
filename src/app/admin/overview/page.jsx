@@ -22,8 +22,7 @@ import {
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { ScrollArea } from '@/components/ui/scroll-area';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'; 
 import { Skeleton } from '@/components/ui/skeleton';
 import { getAll } from '@/lib/client/query';
 
@@ -259,8 +258,7 @@ export default function Overview() {
         return date.toLocaleDateString();
     };
 
-    return (
-        <ScrollArea className="h-[calc(100vh-80px)]">
+    return ( 
             <div className="space-y-4">
                 {/* Header Section */}
                 <div className="flex flex-col lg:flex-row lg:flex-wrap items-start justify-between gap-2">
@@ -495,7 +493,6 @@ export default function Overview() {
                         </div>
                     </CardContent>
                 </Card>
-            </div>
-        </ScrollArea>
+            </div> 
     );
 }
