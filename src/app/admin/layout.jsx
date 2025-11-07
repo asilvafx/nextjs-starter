@@ -97,7 +97,7 @@ export default function AdminLayout({ children }) {
                         </div>
                     </div>
                 </header>
-                <div className="p-4">
+                <div className="px-4">
                     <ScrollArea className="h-[calc(100vh-80px)]"> 
                         {children}
                     </ScrollArea>
