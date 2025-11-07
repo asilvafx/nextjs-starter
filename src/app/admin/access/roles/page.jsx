@@ -1,7 +1,7 @@
 // @/app/admin/access/roles/page.jsx
 
 'use client';
-
+ 
 import {
     ChevronDown,
     ChevronUp,
@@ -420,10 +420,12 @@ export default function RolesPage() {
         return null;
     }
 
-    return (
-        <ScrollArea className="h-[calc(100vh-80px)]">
+    return ( 
             <div className="space-y-4">
-                <AdminHeader title="Roles Management" description="Manage user roles and their route permissions">
+                <AdminHeader 
+                    title="Roles Management" 
+                    description="Manage user roles and their route permissions"
+                >
                     <Button onClick={openCreateDialog} className="flex items-center gap-2">
                         <Plus className="h-4 w-4" />
                         Create Role
@@ -831,7 +833,6 @@ export default function RolesPage() {
                         </DialogFooter>
                     </DialogContent>
                 </Dialog>
-            </div>
-        </ScrollArea>
+            </div> 
     );
 }

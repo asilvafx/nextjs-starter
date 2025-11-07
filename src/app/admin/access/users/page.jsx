@@ -2,6 +2,7 @@
 
 'use client';
 
+import AdminHeader from '@/components/admin/AdminHeader';
 import { ArrowUpDown, Eye, Loader2, MoreHorizontal, Pencil, Plus, Search, Trash2, User2 } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
@@ -386,19 +387,15 @@ export default function UsersPage() {
     return (
          
             <div className="space-y-4">
-                {/* Header (matches dashboard overview style) */}
-                <div className="flex flex-col lg:flex-row lg:flex-wrap items-start justify-between gap-2">
-                    <div className="w-full md:max-w-sm">
-                        <h1 className="font-bold text-2xl">Users</h1>
-                        <p className="text-muted-foreground">Manage user accounts and permissions.</p>
-                    </div>
-                    <div className="flex gap-2"> 
+                 <AdminHeader
+                    title="Users"
+                    description="Manage user accounts and permissions."
+                >
                         <Button onClick={openCreateDialog} size="sm">
-                            <Plus className="mr-2 h-4 w-4" />
-                            Create User
+                        <Plus className="mr-2 h-4 w-4" />
+                        Create User
                         </Button>
-                    </div>
-                </div>
+                </AdminHeader>    
 
                 {/* Search bar */}
                 <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">

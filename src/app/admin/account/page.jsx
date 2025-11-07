@@ -10,7 +10,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -872,9 +871,8 @@ export default function AccountPage() {
 
     // Show loading skeleton while user is loading
     if (status === 'loading' || !user?.id) {
-        return (
-            <ScrollArea className="h-[calc(100vh-80px)]">
-                <div className="container mx-auto space-y-6 p-6">
+        return ( 
+                <div>
                     <div className="space-y-2">
                         <Skeleton className="h-8 w-48" />
                         <Skeleton className="h-4 w-96" />
@@ -885,21 +883,19 @@ export default function AccountPage() {
                         <Skeleton className="h-32 w-full" />
                         <Skeleton className="h-32 w-full" />
                     </div>
-                </div>
-            </ScrollArea>
+                </div> 
         );
     }
 
-    return (
-        <ScrollArea className="h-[calc(100vh-80px)]">
-            <div className="container mx-auto space-y-6 p-6">
+    return ( 
+            <div>
                 <AdminHeader
                     title="Account Settings"
                     description="Manage your account information, security, and notification preferences"
                 />
 
-                <Tabs defaultValue="profile" className="space-y-6">
-                    <TabsList className="grid w-full grid-cols-3">
+                <Tabs defaultValue="profile" className="space-y-2">
+                    <TabsList>
                         <TabsTrigger value="profile" className="flex items-center gap-2">
                             <User className="h-4 w-4" />
                             Profile
@@ -961,6 +957,5 @@ export default function AccountPage() {
                     </TabsContent>
                 </Tabs>
             </div>
-        </ScrollArea>
     );
 }

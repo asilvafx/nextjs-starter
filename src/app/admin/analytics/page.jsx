@@ -2,6 +2,7 @@
 
 'use client';
 
+import AdminHeader from '@/components/admin/AdminHeader';
 import { Eye, RefreshCw, Users, Calendar } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import {
@@ -134,17 +135,13 @@ export default function AnalyticsPage() {
         fetchWebStats();
     };
 
-    return (
-        <ScrollArea className="h-[calc(100vh-80px)]">
+    return ( 
             <div className="space-y-4">
-                <div className="flex flex-col lg:flex-row lg:flex-wrap items-start justify-between gap-2">
-                    <div>
-                        <h1 className="font-bold text-2xl">Website Analytics</h1>
-                        <p className="text-muted-foreground">
-                            Comprehensive visitor statistics and website performance
-                        </p>
-                    </div>
-                    <div className="flex gap-2">
+
+                <AdminHeader
+                    title="Website Analytics"
+                    description="Comprehensive visitor statistics and website performance"
+                >
                         <Button variant="default" onClick={refreshData}>
                             <Calendar className="mr-2 h-4 w-4" />
                             Last 30 Days
@@ -153,10 +150,8 @@ export default function AnalyticsPage() {
                             <RefreshCw className="mr-2 h-4 w-4" />
                             Refresh
                         </Button>
-                       
-                    </div>
-                </div>
-                
+                </AdminHeader>   
+
                 {/* Google Analytics API section */} 
                 <div className="space-y-4">
                     <Card> 
@@ -432,7 +427,6 @@ export default function AnalyticsPage() {
                         </CardContent>
                     </Card>
                 </div>
-            </div>
-        </ScrollArea>
+            </div> 
     );
 }

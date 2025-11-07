@@ -2,6 +2,7 @@
 
 'use client';
 
+import AdminHeader from '@/components/admin/AdminHeader';
 import {
     Activity,
     AlertCircle,
@@ -261,22 +262,18 @@ export default function Overview() {
     return ( 
             <div className="space-y-4">
                 {/* Header Section */}
-                <div className="flex flex-col lg:flex-row lg:flex-wrap items-start justify-between gap-2">
-                    <div className="w-full md:max-w-sm">
-                        <h1 className="font-bold text-2xl">Dashboard Overview</h1>
-                        <p className="text-muted-foreground">
-                            Welcome back! Here's what's happening with your website.
-                        </p>
-                    </div>
-                    <div className="flex gap-2"> 
+
+                <AdminHeader
+                    title="Dashboard Overview"
+                    description="Welcome back! Here's what's happening with your website."
+                >
                         <Link href="/" target="_blank" rel="noopener noreferrer">
                             <Button variant="outline" size="sm">
                                 <Eye className="mr-2 h-4 w-4" />
                                 View Site
                             </Button>
                         </Link>
-                    </div>
-                </div>
+                </AdminHeader>  
 
                 {/* Main Statistics Grid */}
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">

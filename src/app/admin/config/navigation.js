@@ -1,7 +1,7 @@
 // @/app/admin/config/navigation.js
 
 import {
-    BrainCircuit,
+    Brain,
     Code,
     Database,
     Frame,
@@ -138,7 +138,7 @@ export const navigation = {
         {
             title: 'AI Agent',
             url: '/admin/developer/ai',
-            icon: BrainCircuit
+            icon: Brain
         },
         {
             title: 'API',
@@ -158,7 +158,8 @@ export const navigation = {
         ,
         {
             title: 'Cronjobs',
-            url: '/admin/developer/cronjobs'
+            url: '/admin/developer/cronjobs',
+            icon: Brain
         }
     ],
     System: [
