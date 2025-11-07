@@ -390,6 +390,21 @@ export default function UsersPage() {
     return (
         <ScrollArea className="h-[calc(100vh-80px)]">
             <div className="space-y-4">
+                {/* Header (matches dashboard overview style) */}
+                <div className="flex flex-col lg:flex-row lg:flex-wrap items-start justify-between gap-2">
+                    <div className="w-full md:max-w-sm">
+                        <h1 className="font-bold text-2xl">Users</h1>
+                        <p className="text-muted-foreground">Manage user accounts and permissions.</p>
+                    </div>
+                    <div className="flex gap-2"> 
+                        <Button onClick={openCreateDialog} size="sm">
+                            <Plus className="mr-2 h-4 w-4" />
+                            Create User
+                        </Button>
+                    </div>
+                </div>
+
+                {/* Search bar */}
                 <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
                     <div className="flex w-full flex-1 gap-4 sm:w-auto">
                         <div className="relative flex-1">
@@ -402,10 +417,6 @@ export default function UsersPage() {
                             />
                         </div>
                     </div>
-                    <Button onClick={openCreateDialog}>
-                        <Plus className="mr-2 h-4 w-4" />
-                        Create User
-                    </Button>
                 </div>
 
                 <div className="flex h-full w-full flex-col">
@@ -572,7 +583,121 @@ export default function UsersPage() {
                     </div>
                 )}
 
-                <ConfirmationDialog
+                {/* Create / Edit User Dialog */}
+                    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+                        <DialogContent className="sm:max-w-[600px]">
+                            <DialogHeader>
+                                <DialogTitle>{editUser ? 'Edit User' : 'Create User'}</DialogTitle>
+                                <DialogDescription>
+                                    {editUser
+                                        ? 'Update the user profile and optionally change their password.'
+                                        : 'Create a new user account. A welcome email can be sent to the user.'}
+                                </DialogDescription>
+                            </DialogHeader>
+
+                            <form onSubmit={handleSubmit} className="grid gap-4 py-2">
+                                <div>
+                                    <label className="text-sm text-muted-foreground">Display name</label>
+                                    <Input
+                                        required
+                                        value={formData.displayName}
+                                        onChange={(e) => setFormData({ ...formData, displayName: e.target.value })}
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="text-sm text-muted-foreground">Email</label>
+                                    <Input
+                                        required
+                                        type="email"
+                                        value={formData.email}
+                                        onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="text-sm text-muted-foreground">Role</label>
+                                    <Select value={formData.role} onValueChange={(val) => setFormData({ ...formData, role: val })}>
+                                        <SelectTrigger>
+                                            <SelectValue placeholder="Select role" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {roles.map((r) => (
+                                                <SelectItem key={r} value={r}>
+                                                    {r}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+
+                                {/* Password controls */}
+                                {!editUser && (
+                                    <div>
+                                        <label className="text-sm text-muted-foreground">Password</label>
+                                        <Input
+                                            required
+                                            type="password"
+                                            value={formData.password}
+                                            onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                                        />
+                                    </div>
+                                )}
+
+                                {editUser && (
+                                    <div className="flex items-center gap-2">
+                                        <Checkbox
+                                            checked={!!formData.changePassword}
+                                            onCheckedChange={(v) => setFormData({ ...formData, changePassword: !!v })}
+                                        />
+                                        <div className="flex-1">
+                                            <div className="text-sm font-medium">Change Password</div>
+                                            <div className="text-sm text-muted-foreground">Enable to set a new password</div>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {( !editUser || formData.changePassword ) && (
+                                    <div>
+                                        <label className="text-sm text-muted-foreground">New password</label>
+                                        <Input
+                                            type="password"
+                                            value={formData.password}
+                                            onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                                        />
+                                    </div>
+                                )}
+
+                                <div className="flex items-center gap-4">
+                                    <div className="flex items-center gap-2">
+                                        <Checkbox
+                                            checked={!!formData.sendEmail}
+                                            onCheckedChange={(v) => setFormData({ ...formData, sendEmail: !!v })}
+                                        />
+                                        <div className="text-sm">Send email</div>
+                                    </div>
+                                </div>
+
+                                <div className="flex items-center justify-end gap-2 pt-2">
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        onClick={() => {
+                                            setIsOpen(false);
+                                            setEditUser(null);
+                                            setFormData(initialFormData);
+                                        }}>
+                                        Cancel
+                                    </Button>
+                                    <Button type="submit" disabled={isSubmitting}>
+                                        {isSubmitting ? 'Saving...' : editUser ? 'Save changes' : 'Create user'}
+                                    </Button>
+                                </div>
+                            </form>
+                        </DialogContent>
+                    </Dialog>
+
+                    <ConfirmationDialog
                     open={deleteConfirmOpen}
                     onOpenChange={setDeleteConfirmOpen}
                     onConfirm={handleDelete}
