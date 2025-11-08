@@ -2,11 +2,10 @@
 
 'use client';
 
-import AdminHeader from '@/app/admin/components/AdminHeader';
 import {
     Activity,
     AlertCircle,
-    ArrowRight, 
+    ArrowRight,
     Clock,
     Database,
     DollarSign,
@@ -22,10 +21,11 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
+import AdminHeader from '@/app/admin/components/AdminHeader';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'; 
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { getAll } from '@/lib/client/query';
+import { getDashboardStats } from '@/lib/server/dashboard';
 
 // Enhanced Dashboard Card Component
 const StatCard = ({ label, value, icon: Icon, description, trend, loading = false, className = '' }) => {
@@ -157,78 +157,75 @@ export default function Overview() {
     });
 
     const [recentActivity, setRecentActivity] = useState([]);
-    const [loading, setLoading] = useState(true); 
+    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         const fetchDashboardData = async () => {
             setLoading(true);
             try {
-                // Fetch all collections data
-                const [users, orders, products, categories, collections] = await Promise.all([
-                    getAll('users', { limit: 0 }).catch(() => ({ data: [] })),
-                    getAll('orders', { limit: 0 }).catch(() => ({ data: [] })),
-                    getAll('catalog', { limit: 0 }).catch(() => ({ data: [] })),
-                    getAll('categories', { limit: 0 }).catch(() => ({ data: [] })),
-                    getAll('collections', { limit: 0 }).catch(() => ({ data: [] }))
-                ]);
+                // Direct server function call - no HTTP request!
+                const result = await getDashboardStats();
 
-                // Calculate revenue from orders
-                const revenue = orders?.data?.reduce((acc, order) => acc + (parseFloat(order.total) || 0), 0) || 0;
+                if (result.success && result.data) {
+                    const { counts, revenue, recentActivity } = result.data;
 
-                const currentStats = {
-                    users: users?.data?.length || 0,
-                    orders: orders?.data?.length || 0,
-                    products: products?.data?.length || 0,
-                    revenue: revenue,
-                    categories: categories?.data?.length || 0,
-                    collections: collections?.data?.length || 0
-                };
-
-                setStats(currentStats);
- 
-                // Generate recent activity from actual data
-                const activities = [];
-
-                // Recent users
-                if (users?.data) {
-                    users.data.slice(0, 3).forEach((user) => {
-                        activities.push({
-                            type: 'user',
-                            title: 'New User Registration',
-                            description: `${user.name || user.displayName || user.email} joined`,
-                            timestamp: formatTimeAgo(user.createdAt)
-                        });
+                    // Set statistics
+                    setStats({
+                        users: counts.users || 0,
+                        orders: counts.orders || 0,
+                        products: counts.products || 0,
+                        revenue: revenue || 0,
+                        categories: counts.categories || 0,
+                        collections: counts.collections || 0
                     });
-                }
 
-                // Recent orders
-                if (orders?.data) {
-                    orders.data.slice(0, 2).forEach((order) => {
-                        activities.push({
-                            type: 'order',
-                            title: 'New Order',
-                            description: `Order #${order.id?.substring(0, 8)} - $${order.total || '0.00'}`,
-                            timestamp: formatTimeAgo(order.createdAt)
+                    // Generate activity feed from recent data
+                    const activities = [];
+
+                    // Recent users
+                    if (recentActivity.users) {
+                        recentActivity.users.forEach((user) => {
+                            activities.push({
+                                type: 'user',
+                                title: 'New User Registration',
+                                description: `${user.name} joined`,
+                                timestamp: formatTimeAgo(user.createdAt),
+                                createdAt: user.createdAt
+                            });
                         });
-                    });
-                }
+                    }
 
-                // Recent products
-                if (products?.data) {
-                    products.data.slice(0, 2).forEach((product) => {
-                        activities.push({
-                            type: 'product',
-                            title: 'Product Added',
-                            description: `${product.name || 'New Product'} added to catalog`,
-                            timestamp: formatTimeAgo(product.createdAt)
+                    // Recent orders
+                    if (recentActivity.orders) {
+                        recentActivity.orders.forEach((order) => {
+                            activities.push({
+                                type: 'order',
+                                title: 'New Order',
+                                description: `Order #${order.id?.substring(0, 8)} - $${order.total || '0.00'}`,
+                                timestamp: formatTimeAgo(order.createdAt),
+                                createdAt: order.createdAt
+                            });
                         });
-                    });
+                    }
+
+                    // Recent products
+                    if (recentActivity.products) {
+                        recentActivity.products.forEach((product) => {
+                            activities.push({
+                                type: 'product',
+                                title: 'Product Added',
+                                description: `${product.name || 'New Product'} added to catalog`,
+                                timestamp: formatTimeAgo(product.createdAt),
+                                createdAt: product.createdAt
+                            });
+                        });
+                    }
+
+                    // Sort activities by timestamp (most recent first)
+                    activities.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+                    setRecentActivity(activities.slice(0, 8));
                 }
-
-                // Sort activities by timestamp (most recent first)
-                activities.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-
-                setRecentActivity(activities.slice(0, 8));
             } catch (error) {
                 console.error('Error fetching dashboard data:', error);
             } finally {
@@ -259,237 +256,234 @@ export default function Overview() {
         return date.toLocaleDateString();
     };
 
-    return ( 
-            <div className="space-y-4">
-                {/* Header Section */}
+    return (
+        <div className="space-y-4">
+            {/* Header Section */}
 
-                <AdminHeader
-                    title="Dashboard Overview"
-                    description="Welcome back! Here's what's happening with your website."
-                >
-                        <Link href="/" target="_blank" rel="noopener noreferrer">
-                            <Button variant="outline" size="sm">
-                                <Eye className="mr-2 h-4 w-4" />
-                                View Site
-                            </Button>
-                        </Link>
-                </AdminHeader>  
+            <AdminHeader
+                title="Dashboard Overview"
+                description="Welcome back! Here's what's happening with your website.">
+                <Link href="/" target="_blank" rel="noopener noreferrer">
+                    <Button variant="outline" size="sm">
+                        <Eye className="mr-2 h-4 w-4" />
+                        View Site
+                    </Button>
+                </Link>
+            </AdminHeader>
 
-                {/* Main Statistics Grid */}
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
-                    <StatCard
-                        label="Total Users"
-                        value={stats.users.toLocaleString()}
-                        icon={Users}
-                        description="Registered users" 
-                        loading={loading}
-                    />
-                    <StatCard
-                        label="Total Orders"
-                        value={stats.orders.toLocaleString()}
-                        icon={ShoppingCart}
-                        description="Orders processed" 
-                        loading={loading}
-                    />
-                    <StatCard
-                        label="Catalog"
-                        value={stats.products.toLocaleString()}
-                        icon={Package}
-                        description="Items in catalog" 
-                        loading={loading}
-                    />
-                    <StatCard
-                        label="Revenue"
-                        value={`$${stats.revenue.toLocaleString('en-US', { minimumFractionDigits: 2 })}`}
-                        icon={DollarSign}
-                        description="Total revenue" 
-                        loading={loading}
-                    />
-                </div>
+            {/* Main Statistics Grid */}
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+                <StatCard
+                    label="Total Users"
+                    value={stats.users.toLocaleString()}
+                    icon={Users}
+                    description="Registered users"
+                    loading={loading}
+                />
+                <StatCard
+                    label="Total Orders"
+                    value={stats.orders.toLocaleString()}
+                    icon={ShoppingCart}
+                    description="Orders processed"
+                    loading={loading}
+                />
+                <StatCard
+                    label="Catalog"
+                    value={stats.products.toLocaleString()}
+                    icon={Package}
+                    description="Items in catalog"
+                    loading={loading}
+                />
+                <StatCard
+                    label="Revenue"
+                    value={`$${stats.revenue.toLocaleString('en-US', { minimumFractionDigits: 2 })}`}
+                    icon={DollarSign}
+                    description="Total revenue"
+                    loading={loading}
+                />
+            </div>
 
-                {/* Secondary Statistics */}
-                <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-                    <Card className="p-4">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <div className="font-bold text-2xl">
-                                    {loading ? <Skeleton className="h-6 w-8" /> : stats.categories}
-                                </div>
-                                <div className="text-muted-foreground text-sm">Categories</div>
+            {/* Secondary Statistics */}
+            <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+                <Card className="p-4">
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <div className="font-bold text-2xl">
+                                {loading ? <Skeleton className="h-6 w-8" /> : stats.categories}
                             </div>
-                            <FileText className="h-8 w-8 text-muted-foreground" />
+                            <div className="text-muted-foreground text-sm">Categories</div>
                         </div>
-                    </Card>
+                        <FileText className="h-8 w-8 text-muted-foreground" />
+                    </div>
+                </Card>
 
-                    <Card className="p-4">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <div className="font-bold text-2xl">
-                                    {loading ? <Skeleton className="h-6 w-8" /> : stats.collections}
-                                </div>
-                                <div className="text-muted-foreground text-sm">Collections</div>
+                <Card className="p-4">
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <div className="font-bold text-2xl">
+                                {loading ? <Skeleton className="h-6 w-8" /> : stats.collections}
                             </div>
-                            <FileText className="h-8 w-8 text-muted-foreground" />
+                            <div className="text-muted-foreground text-sm">Collections</div>
                         </div>
-                    </Card>
+                        <FileText className="h-8 w-8 text-muted-foreground" />
+                    </div>
+                </Card>
 
-                    <Card className="p-4">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <div className="font-bold text-2xl">
-                                    {loading ? <Skeleton className="h-6 w-8" /> : '98.5%'}
-                                </div>
-                                <div className="text-muted-foreground text-sm">Uptime</div>
+                <Card className="p-4">
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <div className="font-bold text-2xl">
+                                {loading ? <Skeleton className="h-6 w-8" /> : '98.5%'}
                             </div>
-                            <Activity className="h-8 w-8 text-green-600" />
+                            <div className="text-muted-foreground text-sm">Uptime</div>
                         </div>
-                    </Card>
+                        <Activity className="h-8 w-8 text-green-600" />
+                    </div>
+                </Card>
 
-                    <Card className="p-4">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <div className="font-bold text-2xl">
-                                    {loading ? <Skeleton className="h-6 w-8" /> : '2.1s'}
-                                </div>
-                                <div className="text-muted-foreground text-sm">Load Time</div>
+                <Card className="p-4">
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <div className="font-bold text-2xl">
+                                {loading ? <Skeleton className="h-6 w-8" /> : '2.1s'}
                             </div>
-                            <Clock className="h-8 w-8 text-blue-600" />
+                            <div className="text-muted-foreground text-sm">Load Time</div>
                         </div>
-                    </Card>
-                </div>
+                        <Clock className="h-8 w-8 text-blue-600" />
+                    </div>
+                </Card>
+            </div>
 
-                {/* Quick Actions and Recent Activity */}
-                <div className="grid gap-6 lg:grid-cols-2">
-                    {/* Quick Actions */}
-                    <Card>
-                        <CardHeader>
-                            <CardTitle className="flex items-center gap-2">
-                                <Plus className="h-5 w-5" />
-                                Quick Actions
-                            </CardTitle>
-                            <CardDescription>Quickly access common administrative tasks</CardDescription>
-                        </CardHeader>
-                        <CardContent className="space-y-3">
-                            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-1">
-                                <QuickActionCard
-                                    title="Manage Catalog"
-                                    description="View and manager products/services"
-                                    icon={Package}
-                                    href="/admin/dashboard/store/catalog"
-                                    color="primary"
-                                />
-                                <QuickActionCard
-                                    title="Manage Users"
-                                    description="View and manage user accounts"
-                                    icon={Users}
-                                    href="/admin/dashboard/store/customers"
-                                    color="default"
-                                />
-                                <QuickActionCard
-                                    title="View Orders"
-                                    description="Check recent orders and fulfillment"
-                                    icon={ShoppingCart}
-                                    href="/admin/dashboard/store/orders"
-                                    color="success"
-                                />
-                                <QuickActionCard
-                                    title="Site Settings"
-                                    description="Configure website settings"
-                                    icon={Settings}
-                                    href="/admin/system/settings"
-                                    color="default"
-                                />
-                                <QuickActionCard
-                                    title="System Maintenance"
-                                    description="Backup, cache, and system tools"
-                                    icon={Database}
-                                    href="/admin/system/maintenance"
-                                    color="warning"
-                                />
-                            </div>
-                        </CardContent>
-                    </Card>
-
-                    {/* Recent Activity */}
-                    <Card>
-                        <CardHeader>
-                            <CardTitle className="flex items-center gap-2">
-                                <Activity className="h-5 w-5" />
-                                Recent Activity
-                            </CardTitle>
-                            <CardDescription>Latest updates and changes on your website</CardDescription>
-                        </CardHeader>
-                        <CardContent className="p-0">
-                            {loading ? (
-                                <div>
-                                    {[1, 2, 3, 4, 5].map((i) => (
-                                        <ActivityItem key={i} loading={true} />
-                                    ))}
-                                </div>
-                            ) : recentActivity.length > 0 ? (
-                                <div>
-                                    {recentActivity.map((activity, index) => (
-                                        <ActivityItem
-                                            key={index}
-                                            type={activity.type}
-                                            title={activity.title}
-                                            description={activity.description}
-                                            timestamp={activity.timestamp}
-                                        />
-                                    ))}
-                                </div>
-                            ) : (
-                                <div className="p-6 text-center text-muted-foreground">
-                                    <AlertCircle className="mx-auto mb-4 h-12 w-12" />
-                                    <p>No recent activity to display</p>
-                                    <p className="mt-2 text-sm">
-                                        Activity will appear here as you use your admin panel
-                                    </p>
-                                </div>
-                            )}
-                        </CardContent>
-                    </Card>
-                </div>
-
-                {/* System Status */}
+            {/* Quick Actions and Recent Activity */}
+            <div className="grid gap-6 lg:grid-cols-2">
+                {/* Quick Actions */}
                 <Card>
                     <CardHeader>
                         <CardTitle className="flex items-center gap-2">
-                            <AlertCircle className="h-5 w-5" />
-                            System Status
+                            <Plus className="h-5 w-5" />
+                            Quick Actions
                         </CardTitle>
-                        <CardDescription>Current system health and important notifications</CardDescription>
+                        <CardDescription>Quickly access common administrative tasks</CardDescription>
                     </CardHeader>
-                    <CardContent>
-                        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                            <div className="flex items-center gap-3 rounded-lg border p-3">
-                                <div className="h-3 w-3 rounded-full bg-green-500"></div>
-                                <div>
-                                    <div className="font-medium">Database Status</div>
-                                    <div className="text-muted-foreground text-sm">All systems operational</div>
-                                </div>
-                            </div>
-
-                            <div className="flex items-center gap-3 rounded-lg border p-3">
-                                <div className="h-3 w-3 rounded-full bg-green-500"></div>
-                                <div>
-                                    <div className="font-medium">API Status</div>
-                                    <div className="text-muted-foreground text-sm">All endpoints responding</div>
-                                </div>
-                            </div>
-
-                            <div className="flex items-center gap-3 rounded-lg border p-3">
-                                <div className="h-3 w-3 rounded-full bg-yellow-500"></div>
-                                <div>
-                                    <div className="font-medium">Cache Status</div>
-                                    <div className="text-muted-foreground text-sm">
-                                        {loading ? <Skeleton className="h-4 w-20" /> : 'Optimization recommended'}
-                                    </div>
-                                </div>
-                            </div>
+                    <CardContent className="space-y-3">
+                        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-1">
+                            <QuickActionCard
+                                title="Manage Catalog"
+                                description="View and manager products/services"
+                                icon={Package}
+                                href="/admin/dashboard/store/catalog"
+                                color="primary"
+                            />
+                            <QuickActionCard
+                                title="Manage Users"
+                                description="View and manage user accounts"
+                                icon={Users}
+                                href="/admin/dashboard/store/customers"
+                                color="default"
+                            />
+                            <QuickActionCard
+                                title="View Orders"
+                                description="Check recent orders and fulfillment"
+                                icon={ShoppingCart}
+                                href="/admin/dashboard/store/orders"
+                                color="success"
+                            />
+                            <QuickActionCard
+                                title="Site Settings"
+                                description="Configure website settings"
+                                icon={Settings}
+                                href="/admin/system/settings"
+                                color="default"
+                            />
+                            <QuickActionCard
+                                title="System Maintenance"
+                                description="Backup, cache, and system tools"
+                                icon={Database}
+                                href="/admin/system/maintenance"
+                                color="warning"
+                            />
                         </div>
                     </CardContent>
                 </Card>
-            </div> 
+
+                {/* Recent Activity */}
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                            <Activity className="h-5 w-5" />
+                            Recent Activity
+                        </CardTitle>
+                        <CardDescription>Latest updates and changes on your website</CardDescription>
+                    </CardHeader>
+                    <CardContent className="p-0">
+                        {loading ? (
+                            <div>
+                                {[1, 2, 3, 4, 5].map((i) => (
+                                    <ActivityItem key={i} loading={true} />
+                                ))}
+                            </div>
+                        ) : recentActivity.length > 0 ? (
+                            <div>
+                                {recentActivity.map((activity, index) => (
+                                    <ActivityItem
+                                        key={index}
+                                        type={activity.type}
+                                        title={activity.title}
+                                        description={activity.description}
+                                        timestamp={activity.timestamp}
+                                    />
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="p-6 text-center text-muted-foreground">
+                                <AlertCircle className="mx-auto mb-4 h-12 w-12" />
+                                <p>No recent activity to display</p>
+                                <p className="mt-2 text-sm">Activity will appear here as you use your admin panel</p>
+                            </div>
+                        )}
+                    </CardContent>
+                </Card>
+            </div>
+
+            {/* System Status */}
+            <Card>
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                        <AlertCircle className="h-5 w-5" />
+                        System Status
+                    </CardTitle>
+                    <CardDescription>Current system health and important notifications</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                        <div className="flex items-center gap-3 rounded-lg border p-3">
+                            <div className="h-3 w-3 rounded-full bg-green-500"></div>
+                            <div>
+                                <div className="font-medium">Database Status</div>
+                                <div className="text-muted-foreground text-sm">All systems operational</div>
+                            </div>
+                        </div>
+
+                        <div className="flex items-center gap-3 rounded-lg border p-3">
+                            <div className="h-3 w-3 rounded-full bg-green-500"></div>
+                            <div>
+                                <div className="font-medium">API Status</div>
+                                <div className="text-muted-foreground text-sm">All endpoints responding</div>
+                            </div>
+                        </div>
+
+                        <div className="flex items-center gap-3 rounded-lg border p-3">
+                            <div className="h-3 w-3 rounded-full bg-yellow-500"></div>
+                            <div>
+                                <div className="font-medium">Cache Status</div>
+                                <div className="text-muted-foreground text-sm">
+                                    {loading ? <Skeleton className="h-4 w-20" /> : 'Optimization recommended'}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </CardContent>
+            </Card>
+        </div>
     );
 }

@@ -36,8 +36,7 @@ import {
     DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { ScrollArea } from '@/components/ui/scroll-area';
+import { Label } from '@/components/ui/label';  
 import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -109,7 +108,7 @@ export default function RolesPage() {
     const [allRoles, setAllRoles] = useState([]);
     const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
     const [roleToDelete, setRoleToDelete] = useState(null);
-    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isSubmitting, setIsSubmitting] = useState(false); 
     const [isViewOpen, setIsViewOpen] = useState(false);
     const [viewRole, setViewRole] = useState(null);
     const [newRoute, setNewRoute] = useState('');
@@ -128,7 +127,9 @@ export default function RolesPage() {
         try {
             hasFetchedRoles.current = true;
             setLoading(true);
-            const res = await getAll('roles');
+            const res = await getAll('roles', { 
+                limit: 0
+            });
 
             // Ensure data is an array
             const rolesArray = Array.isArray(res.data) ? res.data : [];
@@ -138,7 +139,18 @@ export default function RolesPage() {
                 await createDefaultRoles();
             } else {
                 setRoles(rolesArray);
-                setAllRoles(rolesArray);
+                setAllRoles((prev) => {
+                    const newRoles = [...prev];
+                    rolesArray.forEach((role) => {
+                        const index = newRoles.findIndex((r) => r.id === role.id);
+                        if (index !== -1) {
+                            newRoles[index] = role;
+                        } else {
+                            newRoles.push(role);
+                        }
+                    });
+                    return newRoles;
+                });
             }
         } catch (error) {
             console.error('Error fetching roles:', error);
@@ -191,6 +203,12 @@ export default function RolesPage() {
             fetchRoles();
         }
     }, [currentUser?.id, status]);
+
+    useEffect(() => {
+        if (!hasFetchedRoles.current) {
+            fetchRoles();
+        }
+    }, []);
 
     // Sorting function
     const handleSort = (key) => {
@@ -433,179 +451,158 @@ export default function RolesPage() {
                 </AdminHeader>
 
                 {/* Search and Filters */}
-                <Card>
-                    <CardHeader>
-                        <CardTitle className="flex items-center gap-2">
-                            <Search className="h-5 w-5" />
-                            Search & Filters
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="flex flex-col gap-4 md:flex-row md:items-center">
-                            <div className="relative flex-1">
-                                <Search className="-translate-y-1/2 absolute top-1/2 left-3 h-4 w-4 transform text-gray-400" />
-                                <Input
-                                    placeholder="Search roles by title, description, or routes..."
-                                    value={search}
-                                    onChange={(e) => setSearch(e.target.value)}
-                                    className="pl-10"
-                                />
-                            </div>
+                <div className="flex flex-col gap-4 md:flex-row md:items-center">
+                        <div className="relative flex-1">
+                            <Search className="-translate-y-1/2 absolute top-1/2 left-3 h-4 w-4 transform text-gray-400" />
+                            <Input
+                                placeholder="Search roles by title, description, or routes..."
+                                value={search}
+                                onChange={(e) => setSearch(e.target.value)}
+                                className="pl-10"
+                            />
                         </div>
-                    </CardContent>
-                </Card>
+                    </div>
 
-                {/* Roles Table */}
-                <Card>
-                    <CardHeader>
-                        <CardTitle className="flex items-center gap-2">
-                            <Users className="h-5 w-5" />
-                            Roles ({roles.length})
-                        </CardTitle>
-                        <CardDescription>Manage system roles and their permissions</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        {loading ? (
-                            <div className="space-y-4">
-                                {[...Array(5)].map((_, i) => (
-                                    <div key={i} className="flex items-center space-x-4">
-                                        <Skeleton className="h-12 w-12 rounded-full" />
-                                        <div className="flex-1 space-y-2">
-                                            <Skeleton className="h-4 w-[200px]" />
-                                            <Skeleton className="h-4 w-[300px]" />
+                {/* Roles Table */} 
+                {loading ? (
+                    <div className="space-y-4">
+                        {[...Array(5)].map((_, i) => (
+                            <div key={i} className="flex items-center space-x-4">
+                                <Skeleton className="h-12 w-12 rounded-full" />
+                                <div className="flex-1 space-y-2">
+                                    <Skeleton className="h-4 w-[200px]" />
+                                    <Skeleton className="h-4 w-[300px]" />
+                                </div>
+                                <Skeleton className="h-8 w-20" />
+                            </div>
+                        ))}
+                    </div>
+                ) : roles.length === 0 ? (
+                    <div className="py-8 text-center">
+                        <Shield className="mx-auto mb-4 h-12 w-12 text-gray-400" />
+                        <h3 className="mb-2 font-medium text-lg">No roles found</h3>
+                        <p className="mb-4 text-muted-foreground">
+                            {search
+                                ? 'Try adjusting your search criteria'
+                                : 'Get started by creating your first role'}
+                        </p>
+                        {!search && <Button onClick={openCreateDialog}>Create First Role</Button>}
+                    </div>
+                ) : (
+                    <div className="rounded-md">
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead
+                                        className="cursor-pointer hover:bg-muted/50"
+                                        onClick={() => handleSort('title')}>
+                                        <div className="flex items-center gap-2">
+                                            Role Title
+                                            {sortConfig.key === 'title' &&
+                                                (sortConfig.direction === 'asc' ? (
+                                                    <ChevronUp className="h-4 w-4" />
+                                                ) : (
+                                                    <ChevronDown className="h-4 w-4" />
+                                                ))}
                                         </div>
-                                        <Skeleton className="h-8 w-20" />
-                                    </div>
-                                ))}
-                            </div>
-                        ) : roles.length === 0 ? (
-                            <div className="py-8 text-center">
-                                <Shield className="mx-auto mb-4 h-12 w-12 text-gray-400" />
-                                <h3 className="mb-2 font-medium text-lg">No roles found</h3>
-                                <p className="mb-4 text-muted-foreground">
-                                    {search
-                                        ? 'Try adjusting your search criteria'
-                                        : 'Get started by creating your first role'}
-                                </p>
-                                {!search && <Button onClick={openCreateDialog}>Create First Role</Button>}
-                            </div>
-                        ) : (
-                            <div className="rounded-md border">
-                                <Table>
-                                    <TableHeader>
-                                        <TableRow>
-                                            <TableHead
-                                                className="cursor-pointer hover:bg-muted/50"
-                                                onClick={() => handleSort('title')}>
+                                    </TableHead>
+                                    <TableHead>Description</TableHead>
+                                    <TableHead
+                                        className="cursor-pointer hover:bg-muted/50"
+                                        onClick={() => handleSort('routes')}>
+                                        <div className="flex items-center gap-2">
+                                            Permissions
+                                            {sortConfig.key === 'routes' &&
+                                                (sortConfig.direction === 'asc' ? (
+                                                    <ChevronUp className="h-4 w-4" />
+                                                ) : (
+                                                    <ChevronDown className="h-4 w-4" />
+                                                ))}
+                                        </div>
+                                    </TableHead>
+                                    <TableHead className="text-right">Actions</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {Array.isArray(roles) &&
+                                    roles.map((role) => (
+                                        <TableRow key={role.id} className="hover:bg-muted/50">
+                                            <TableCell data-label="Role" className="font-medium">
                                                 <div className="flex items-center gap-2">
-                                                    Role Title
-                                                    {sortConfig.key === 'title' &&
-                                                        (sortConfig.direction === 'asc' ? (
-                                                            <ChevronUp className="h-4 w-4" />
-                                                        ) : (
-                                                            <ChevronDown className="h-4 w-4" />
-                                                        ))}
+                                                    <Shield
+                                                        className={`h-4 w-4 ${isProtectedRole(role.title) ? 'text-amber-500' : 'text-primary'}`}
+                                                    />
+                                                    <span>{role.title}</span>
+                                                    {isProtectedRole(role.title) && (
+                                                        <Badge
+                                                            variant="outline"
+                                                            className="border-amber-300 text-amber-600 text-xs">
+                                                            System Role
+                                                        </Badge>
+                                                    )}
                                                 </div>
-                                            </TableHead>
-                                            <TableHead>Description</TableHead>
-                                            <TableHead
-                                                className="cursor-pointer hover:bg-muted/50"
-                                                onClick={() => handleSort('routes')}>
-                                                <div className="flex items-center gap-2">
-                                                    Routes
-                                                    {sortConfig.key === 'routes' &&
-                                                        (sortConfig.direction === 'asc' ? (
-                                                            <ChevronUp className="h-4 w-4" />
-                                                        ) : (
-                                                            <ChevronDown className="h-4 w-4" />
-                                                        ))}
+                                            </TableCell>
+                                            <TableCell data-label="Description">
+                                                <div className="max-w-xs truncate" title={role.description}>
+                                                    {role.description}
                                                 </div>
-                                            </TableHead>
-                                            <TableHead className="text-right">Actions</TableHead>
+                                            </TableCell>
+                                            <TableCell data-label="Permissions">
+                                                <div className="flex flex-wrap gap-1">
+                                                    {role.routes?.slice(0, 2).map((route, index) => (
+                                                        <Badge
+                                                            key={index}
+                                                            variant="secondary"
+                                                            className="text-xs">
+                                                            {route}
+                                                        </Badge>
+                                                    ))}
+                                                    {role.routes?.length > 2 && (
+                                                        <Badge variant="outline" className="text-xs">
+                                                            +{role.routes.length - 2} more
+                                                        </Badge>
+                                                    )}
+                                                </div>
+                                            </TableCell>
+                                            <TableCell data-label="Actions" className="text-right">
+                                                <DropdownMenu>
+                                                    <DropdownMenuTrigger asChild>
+                                                        <Button variant="ghost" size="sm">
+                                                            <MoreHorizontal className="h-4 w-4" />
+                                                        </Button>
+                                                    </DropdownMenuTrigger>
+                                                    <DropdownMenuContent align="end">
+                                                        <DropdownMenuItem onClick={() => handleView(role)}>
+                                                            <Eye className="mr-2 h-4 w-4" />
+                                                            View Details
+                                                        </DropdownMenuItem>
+                                                        <DropdownMenuItem onClick={() => handleEdit(role)}>
+                                                            <Edit className="mr-2 h-4 w-4" />
+                                                            Edit Role
+                                                        </DropdownMenuItem>
+                                                        <DropdownMenuItem
+                                                            onClick={() => handleDeleteClick(role)}
+                                                            className={
+                                                                isProtectedRole(role.title)
+                                                                    ? 'cursor-not-allowed text-muted-foreground'
+                                                                    : 'text-destructive'
+                                                            }
+                                                            disabled={isProtectedRole(role.title)}>
+                                                            <Trash className="mr-2 h-4 w-4" />
+                                                            {isProtectedRole(role.title)
+                                                                ? 'Protected Role'
+                                                                : 'Delete Role'}
+                                                        </DropdownMenuItem>
+                                                    </DropdownMenuContent>
+                                                </DropdownMenu>
+                                            </TableCell>
                                         </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                        {Array.isArray(roles) &&
-                                            roles.map((role) => (
-                                                <TableRow key={role.id} className="hover:bg-muted/50">
-                                                    <TableCell className="font-medium">
-                                                        <div className="flex items-center gap-2">
-                                                            <Shield
-                                                                className={`h-4 w-4 ${isProtectedRole(role.title) ? 'text-amber-500' : 'text-primary'}`}
-                                                            />
-                                                            <span>{role.title}</span>
-                                                            {isProtectedRole(role.title) && (
-                                                                <Badge
-                                                                    variant="outline"
-                                                                    className="border-amber-300 text-amber-600 text-xs">
-                                                                    System Role
-                                                                </Badge>
-                                                            )}
-                                                        </div>
-                                                    </TableCell>
-                                                    <TableCell>
-                                                        <div className="max-w-xs truncate" title={role.description}>
-                                                            {role.description}
-                                                        </div>
-                                                    </TableCell>
-                                                    <TableCell>
-                                                        <div className="flex flex-wrap gap-1">
-                                                            {role.routes?.slice(0, 2).map((route, index) => (
-                                                                <Badge
-                                                                    key={index}
-                                                                    variant="secondary"
-                                                                    className="text-xs">
-                                                                    {route}
-                                                                </Badge>
-                                                            ))}
-                                                            {role.routes?.length > 2 && (
-                                                                <Badge variant="outline" className="text-xs">
-                                                                    +{role.routes.length - 2} more
-                                                                </Badge>
-                                                            )}
-                                                        </div>
-                                                    </TableCell>
-                                                    <TableCell className="text-right">
-                                                        <DropdownMenu>
-                                                            <DropdownMenuTrigger asChild>
-                                                                <Button variant="ghost" size="sm">
-                                                                    <MoreHorizontal className="h-4 w-4" />
-                                                                </Button>
-                                                            </DropdownMenuTrigger>
-                                                            <DropdownMenuContent align="end">
-                                                                <DropdownMenuItem onClick={() => handleView(role)}>
-                                                                    <Eye className="mr-2 h-4 w-4" />
-                                                                    View Details
-                                                                </DropdownMenuItem>
-                                                                <DropdownMenuItem onClick={() => handleEdit(role)}>
-                                                                    <Edit className="mr-2 h-4 w-4" />
-                                                                    Edit Role
-                                                                </DropdownMenuItem>
-                                                                <DropdownMenuItem
-                                                                    onClick={() => handleDeleteClick(role)}
-                                                                    className={
-                                                                        isProtectedRole(role.title)
-                                                                            ? 'cursor-not-allowed text-muted-foreground'
-                                                                            : 'text-destructive'
-                                                                    }
-                                                                    disabled={isProtectedRole(role.title)}>
-                                                                    <Trash className="mr-2 h-4 w-4" />
-                                                                    {isProtectedRole(role.title)
-                                                                        ? 'Protected Role'
-                                                                        : 'Delete Role'}
-                                                                </DropdownMenuItem>
-                                                            </DropdownMenuContent>
-                                                        </DropdownMenu>
-                                                    </TableCell>
-                                                </TableRow>
-                                            ))}
-                                    </TableBody>
-                                </Table>
-                            </div>
-                        )}
-                    </CardContent>
-                </Card>
-
+                                    ))}
+                            </TableBody>
+                        </Table>
+                    </div>
+                )} 
+ 
                 {/* Create/Edit Role Dialog */}
                 <Dialog open={isOpen} onOpenChange={setIsOpen}>
                     <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
@@ -695,10 +692,10 @@ export default function RolesPage() {
                                     )}
 
                                     <div className="space-y-2">
-                                        <Label>Selected Routes ({formData.routes.length})</Label>
+                                        <Label>Selected Permissions ({formData.routes.length})</Label>
                                         {formData.routes.length === 0 ? (
                                             <p className="rounded-md border bg-muted/20 p-3 text-muted-foreground text-sm">
-                                                No routes selected. Use the route selector above or add custom routes.
+                                                No routes selected. Use the route selector above or add custom permissions.
                                             </p>
                                         ) : (
                                             <div className="flex flex-wrap gap-2 rounded-md border bg-muted/20 p-3">
@@ -768,7 +765,7 @@ export default function RolesPage() {
                                                 <Badge key={index} variant="secondary">
                                                     {route}
                                                 </Badge>
-                                            )) || <p className="text-muted-foreground text-sm">No routes assigned</p>}
+                                            )) || <p className="text-muted-foreground text-sm">No permissions assigned</p>}
                                         </div>
                                     </div>
 

@@ -45,8 +45,7 @@ export default function LanguageSwitch({ slim = false, initialLanguages = null }
 
                 // fallback
                 if (mounted) setLanguages([{ id: 'en', code: 'en', name: 'English', flag: '🇺🇸' }]);
-            } catch (err) {
-                console.error('LanguageSwitch: failed to load languages', err);
+            } catch (err) { 
                 if (mounted) setLanguages([{ id: 'en', code: 'en', name: 'English', flag: '🇺🇸' }]);
             }
         };

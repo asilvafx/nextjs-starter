@@ -19,6 +19,7 @@ import {
     DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
+import { AdminPagination } from '@/components/ui/pagination.jsx';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useAuth } from '@/hooks/useAuth';
@@ -469,70 +470,46 @@ export default function UsersPage() {
                                             <TableCell data-label="Created at">
                                                 {new Date(user.createdAt).toLocaleDateString()}
                                             </TableCell>
-                                            <TableCell className="space-x-2 text-right">
-                                                {/* Mobile view - show individual buttons */}
-                                                <div className="flex space-x-2 sm:hidden">
-                                                    <Button
-                                                        variant="outline"
-                                                        size="icon"
-                                                        onClick={() => handleView(user)}>
-                                                        <Eye className="h-4 w-4" />
-                                                    </Button>
-                                                    <Button
-                                                        variant="outline"
-                                                        size="icon"
-                                                        onClick={() => handleEdit(user)}
-                                                        disabled={user.email === currentUser?.email}>
-                                                        <Pencil className="h-4 w-4" />
-                                                    </Button>
-                                                    <Button
-                                                        variant="outline"
-                                                        size="icon"
-                                                        onClick={() => handleDeleteClick(user)}
-                                                        disabled={user.email === currentUser?.email}>
-                                                        <Trash2 color="red" className="h-4 w-4" />
-                                                    </Button>
-                                                </div>
-
-                                                {/* Desktop view - dropdown menu */}
-                                                <div className="hidden sm:block">
-                                                    <DropdownMenu>
-                                                        <DropdownMenuTrigger asChild>
-                                                            <Button
-                                                                variant="ghost"
-                                                                size="icon"
-                                                                className="h-8 w-8"
-                                                                disabled={
-                                                                    user.email === currentUser?.email || isDeleting
-                                                                }>
-                                                                {isDeleting && userToDelete?.id === user.id ? (
-                                                                    <Loader2 className="h-4 w-4 animate-spin" />
-                                                                ) : (
-                                                                    <MoreHorizontal className="h-4 w-4" />
-                                                                )}
-                                                            </Button>
-                                                        </DropdownMenuTrigger>
-                                                        <DropdownMenuContent align="end" className="w-[160px]">
-                                                            <DropdownMenuItem onClick={() => handleView(user)}>
-                                                                <Eye className="mr-2 h-4 w-4" />
-                                                                View
-                                                            </DropdownMenuItem>
-                                                            <DropdownMenuItem
-                                                                onClick={() => handleEdit(user)}
-                                                                disabled={user.email === currentUser?.email}>
-                                                                <Pencil className="mr-2 h-4 w-4" />
-                                                                Edit
-                                                            </DropdownMenuItem>
-                                                            <DropdownMenuItem
-                                                                onClick={() => handleDeleteClick(user)}
-                                                                className="text-destructive focus:text-destructive"
-                                                                disabled={user.email === currentUser?.email}>
-                                                                <Trash2 className="mr-2 h-4 w-4" />
-                                                                Delete
-                                                            </DropdownMenuItem>
-                                                        </DropdownMenuContent>
-                                                    </DropdownMenu>
-                                                </div>
+                                            <TableCell className="text-right">
+                                                <DropdownMenu>
+                                                    <DropdownMenuTrigger asChild>
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            disabled={user.email === currentUser?.email || isDeleting}>
+                                                            {isDeleting && userToDelete?.id === user.id ? (
+                                                                <Loader2 className="h-4 w-4 animate-spin" />
+                                                            ) : (
+                                                                <MoreHorizontal className="h-4 w-4" />
+                                                            )}
+                                                        </Button>
+                                                    </DropdownMenuTrigger>
+                                                    <DropdownMenuContent align="end">
+                                                        <DropdownMenuItem onClick={() => handleView(user)}>
+                                                            <Eye className="mr-2 h-4 w-4" />
+                                                            View Details
+                                                        </DropdownMenuItem>
+                                                        <DropdownMenuItem
+                                                            onClick={() => handleEdit(user)}
+                                                            disabled={user.email === currentUser?.email}>
+                                                            <Pencil className="mr-2 h-4 w-4" />
+                                                            Edit User
+                                                        </DropdownMenuItem>
+                                                        <DropdownMenuItem
+                                                            onClick={() => handleDeleteClick(user)}
+                                                            className={
+                                                                user.email === currentUser?.email
+                                                                    ? 'cursor-not-allowed text-muted-foreground'
+                                                                    : 'text-destructive'
+                                                            }
+                                                            disabled={user.email === currentUser?.email}>
+                                                            <Trash2 className="mr-2 h-4 w-4" />
+                                                            {user.email === currentUser?.email
+                                                                ? 'Cannot Delete'
+                                                                : 'Delete User'}
+                                                        </DropdownMenuItem>
+                                                    </DropdownMenuContent>
+                                                </DropdownMenu>
                                             </TableCell>
                                         </TableRow>
                                     ))
@@ -544,36 +521,17 @@ export default function UsersPage() {
 
                 {/* Pagination */}
                 {!loading && users.length > 0 && (
-                    <div className="flex items-center justify-between px-2">
-                        <div className="flex-1 text-muted-foreground text-sm">{allUsers.length} users total</div>
-                        <div className="flex items-center space-x-6 lg:space-x-8">
-                            <div className="flex w-[100px] items-center justify-center font-medium text-sm">
-                                Page {currentPage} of {Math.ceil(allUsers.length / 10)}
-                            </div>
-                            <div className="flex items-center space-x-2">
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => {
-                                        setCurrentPage((prev) => Math.max(prev - 1, 1));
-                                        fetchUsers();
-                                    }}
-                                    disabled={currentPage === 1 || loading}>
-                                    Previous
-                                </Button>
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => {
-                                        setCurrentPage((prev) => prev + 1);
-                                        fetchUsers();
-                                    }}
-                                    disabled={currentPage >= Math.ceil(allUsers.length / 10) || loading}>
-                                    Next
-                                </Button>
-                            </div>
-                        </div>
-                    </div>
+                    <AdminPagination
+                        currentPage={currentPage}
+                        totalItems={allUsers.length}
+                        itemsPerPage={10}
+                        onPageChange={(page) => {
+                            setCurrentPage(page);
+                            fetchUsers();
+                        }}
+                        loading={loading}
+                        itemLabel="users"
+                    />
                 )}
 
                 {/* Create / Edit User Dialog */}

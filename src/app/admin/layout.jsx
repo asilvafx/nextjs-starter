@@ -1,5 +1,6 @@
 'use client';
 
+import './styles.css';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { SquareArrowLeft, SquareArrowRight } from 'lucide-react';
 import { redirect, usePathname } from 'next/navigation';

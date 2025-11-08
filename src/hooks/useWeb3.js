@@ -330,7 +330,11 @@ export const useWeb3Settings = () => {
     useEffect(() => {
         const fetchSettings = async () => {
             try {
-                const response = await fetch(`/api/query/public/site_settings?_t=${Date.now()}`);
+                const response = await fetch(`/api/query/public/site_settings`, {
+                    next: { 
+                        revalidate: 300 // Cache for 5 minutes (300 seconds)
+                    }
+                });
                 if (response.ok) {
                     const data = await response.json();
                     if (data.success && data.data?.length > 0) {
