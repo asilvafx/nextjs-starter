@@ -2,7 +2,7 @@
 
 'use client';
 
-import AdminHeader from '@/components/admin/AdminHeader';
+import AdminHeader from '@/app/admin/components/AdminHeader';
 import { ArrowUpDown, Eye, Loader2, MoreHorizontal, Pencil, Plus, Search, Trash2, User2 } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';

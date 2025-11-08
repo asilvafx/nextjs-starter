@@ -24,7 +24,7 @@ import {
 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
-import AdminHeader from '@/components/admin/AdminHeader';
+import AdminHeader from '@/app/admin/components/AdminHeader';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
@@ -46,8 +46,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { PhoneInput } from '@/components/ui/phone-input';
-import { ScrollArea } from '@/components/ui/scroll-area';
+import { PhoneInput } from '@/components/ui/phone-input'; 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { TableSkeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -875,8 +874,7 @@ export default function OrdersPage() {
 
             {loading ? (
                 <TableSkeleton columns={7} rows={5} />
-            ) : (
-                <ScrollArea className="h-[calc(100vh-250px)]">
+            ) : ( 
                     <Table>
                         <TableHeader>
                             <TableRow>
@@ -2223,8 +2221,7 @@ export default function OrdersPage() {
                                 ))
                             )}
                         </TableBody>
-                    </Table>
-                </ScrollArea>
+                    </Table> 
             )}
 
             {/* Create Order Dialog */}

@@ -2,7 +2,7 @@
 
 'use client';
 
-import AdminHeader from '@/components/admin/AdminHeader';
+import AdminHeader from '@/app/admin/components/AdminHeader';
 import { Eye, RefreshCw, Users, Calendar } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import {

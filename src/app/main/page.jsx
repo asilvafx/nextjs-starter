@@ -22,13 +22,7 @@ const Homepage = () => {
 
     const { isAuthenticated, logout } = useAuth();
     const { totalItems } = useCart();
-
-    const testVisitorTracking = () => {
-        if (window.VisitorTracker) {
-            window.VisitorTracker.trackPageView();
-        }
-    };
-
+ 
     const handleSignOut = async () => {
         await logout();
     };
@@ -127,13 +121,7 @@ const Homepage = () => {
                                 </span>
                             </Button>
                         </Link>
-                    </div>
-                    {/* Temporary test button for visitor tracking */}
-                    <div className="mb-4">
-                        <Button onClick={testVisitorTracking} variant="outline" size="sm">
-                            Test Visitor Tracking
-                        </Button>
-                    </div>
+                    </div> 
                 </div>
             </div>
             <div className="section mb-4">

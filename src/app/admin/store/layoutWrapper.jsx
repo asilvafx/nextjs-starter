@@ -1,5 +1,6 @@
 'use client';
 
+import AdminHeader from '@/app/admin/components/AdminHeader';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Button } from '@/components/ui/button';
@@ -27,11 +28,8 @@ export default function StoreLayout({ children }) {
     const pathname = usePathname();
 
     return (
-        <div className="space-y-6">
-            <div>
-                <h1 className="font-bold text-3xl">Catalog Management</h1>
-                <p className="text-muted-foreground">Manage your products, categories, and collections</p>
-            </div>
+        <div className="space-y-4">
+             <AdminHeader title="Catalog Management" description="Manage your products, categories, and collections" />
 
             <div className="flex items-center space-x-4 border-b pb-4">
                 {sections.map((section) => (

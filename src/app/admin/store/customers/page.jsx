@@ -3,7 +3,7 @@
 import { Edit, Plus, Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
-import AdminHeader from '@/components/admin/AdminHeader';
+import AdminHeader from '@/app/admin/components/AdminHeader';
 import {
   Dialog,
   DialogContent,

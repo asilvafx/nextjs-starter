@@ -3,7 +3,7 @@
 import { CheckCircle, Copy, Image as ImageIcon, Loader2, Search, Star, Trash2, Upload } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
-import AdminHeader from '@/components/admin/AdminHeader';
+import AdminHeader from '@/app/admin/components/AdminHeader';
 import {
     AlertDialog,
     AlertDialogAction,

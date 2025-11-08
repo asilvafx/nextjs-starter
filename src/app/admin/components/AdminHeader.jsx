@@ -10,7 +10,7 @@ export default function AdminHeader({ title, description, children }) {
                 <h1 className="font-bold text-2xl">{title}</h1>
                 {description && <p className="text-muted-foreground">{description}</p>}
             </div>
-            <div className="flex gap-2">{children}</div>
+            <div className="flex flex-wrap gap-2">{children}</div>
         </div>
     );
 }

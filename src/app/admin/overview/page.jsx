@@ -2,7 +2,7 @@
 
 'use client';
 
-import AdminHeader from '@/components/admin/AdminHeader';
+import AdminHeader from '@/app/admin/components/AdminHeader';
 import {
     Activity,
     AlertCircle,

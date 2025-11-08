@@ -2,7 +2,7 @@
 'use client';
 
 import { useSession } from 'next-auth/react';
-import { createContext, useContext, useEffect } from 'react';
+import { createContext, useContext, useEffect, useRef } from 'react';
 import { initializeVisitorTracking } from '@/lib/client/visitor-tracking';
 import '../styles.css';
 
@@ -10,6 +10,7 @@ const LayoutContext = createContext();
 
 export const LayoutProvider = ({ children }) => {
     const { data: session, status } = useSession();
+    const isFirstRender = useRef(true);
 
     const layoutValue = {
         session,
@@ -29,6 +30,17 @@ export const LayoutProvider = ({ children }) => {
         };
 
         initTracking();
+    }, []);
+
+    useEffect(() => {
+        // Track page views on subsequent renders
+        if (isFirstRender.current) {
+            return;
+        }
+        if (window.VisitorTracker) {
+            isFirstRender.current = true;
+            window.VisitorTracker.trackPageView();
+        }
     }, []);
 
     return (
