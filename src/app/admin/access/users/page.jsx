@@ -2,15 +2,28 @@
 
 'use client';
 
-import AdminHeader from '@/app/admin/components/AdminHeader';
-import { ArrowUpDown, Eye, Loader2, MoreHorizontal, Pencil, Plus, Search, Trash2, User2 } from 'lucide-react';
+import {
+    ArrowUpDown,
+    Eye,
+    EyeOff,
+    KeyRound,
+    Loader2,
+    MoreHorizontal,
+    Pencil,
+    Plus,
+    Search,
+    Trash2,
+    User2
+} from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
-import { v6 as uuidv6 } from 'uuid'; 
+import { v6 as uuidv6 } from 'uuid';
+import AdminHeader from '@/app/admin/components/AdminHeader';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ConfirmationDialog } from '@/components/ui/confirmation-dialog';
+import { CountryDropdown } from '@/components/ui/country-dropdown';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import {
     DropdownMenu,
@@ -20,6 +33,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { AdminPagination } from '@/components/ui/pagination.jsx';
+import { PhoneInput } from '@/components/ui/phone-input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useAuth } from '@/hooks/useAuth';
@@ -28,6 +42,8 @@ import { create, getAll, remove, update } from '@/lib/client/query';
 const initialFormData = {
     displayName: '',
     email: '',
+    phone: '',
+    country: '',
     role: 'user',
     password: '',
     sendEmail: true,
@@ -55,6 +71,7 @@ export default function UsersPage() {
     const [isViewOpen, setIsViewOpen] = useState(false);
     const [viewUser, setViewUser] = useState(null);
     const [isDeleting, setIsDeleting] = useState(false);
+    const [showPassword, setShowPassword] = useState(false);
 
     // Use refs to prevent multiple API calls
     const hasFetchedRoles = useRef(false);
@@ -197,6 +214,39 @@ export default function UsersPage() {
         setUsers(getFilteredAndSortedUsers());
     }, [search, sortConfig, getFilteredAndSortedUsers]);
 
+    // Generate random 8-char password with numbers, upper/lower case, may have special char
+    const generatePassword = () => {
+        const lowercase = 'abcdefghijklmnopqrstuvwxyz';
+        const uppercase = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+        const numbers = '0123456789';
+        const special = '!@#$%^&*';
+
+        // Ensure at least: 2 lowercase, 2 uppercase, 2 numbers, and may have 0-2 special chars
+        let password = '';
+
+        // Add guaranteed characters (6 chars)
+        password += lowercase[Math.floor(Math.random() * lowercase.length)];
+        password += lowercase[Math.floor(Math.random() * lowercase.length)];
+        password += uppercase[Math.floor(Math.random() * uppercase.length)];
+        password += uppercase[Math.floor(Math.random() * uppercase.length)];
+        password += numbers[Math.floor(Math.random() * numbers.length)];
+        password += numbers[Math.floor(Math.random() * numbers.length)];
+
+        // Add 2 more random chars from all sets (may include special)
+        const allChars = lowercase + uppercase + numbers + special;
+        password += allChars[Math.floor(Math.random() * allChars.length)];
+        password += allChars[Math.floor(Math.random() * allChars.length)];
+
+        // Shuffle the password
+        password = password
+            .split('')
+            .sort(() => Math.random() - 0.5)
+            .join('');
+
+        setFormData({ ...formData, password });
+        toast.success('Password generated');
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
 
@@ -218,6 +268,8 @@ export default function UsersPage() {
             let userData = {
                 displayName: formData.displayName,
                 email: formData.email,
+                phone: formData.phone || '',
+                country: formData.country || '',
                 role: formData.role
             };
 
@@ -342,6 +394,8 @@ export default function UsersPage() {
         setFormData({
             displayName: user.displayName,
             email: user.email,
+            phone: user.phone || '',
+            country: user.country || '',
             role: user.role
         });
         setIsOpen(true);
@@ -372,6 +426,7 @@ export default function UsersPage() {
     const openCreateDialog = () => {
         setEditUser(null);
         setFormData(initialFormData);
+        setShowPassword(false);
         setIsOpen(true);
     };
 
@@ -386,333 +441,409 @@ export default function UsersPage() {
     }
 
     return (
-         
-            <div className="space-y-4">
-                 <AdminHeader
-                    title="Users"
-                    description="Manage user accounts and permissions."
-                >
-                        <Button onClick={openCreateDialog} size="sm">
-                        <Plus className="mr-2 h-4 w-4" />
-                        Create User
-                        </Button>
-                </AdminHeader>    
+        <div className="space-y-4">
+            <AdminHeader title="Users" description="Manage user accounts and permissions.">
+                <Button onClick={openCreateDialog} size="sm">
+                    <Plus className="mr-2 h-4 w-4" />
+                    Create User
+                </Button>
+            </AdminHeader>
 
-                {/* Search bar */}
-                <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
-                    <div className="flex w-full flex-1 gap-4 sm:w-auto">
-                        <div className="relative flex-1">
-                            <Search className="absolute top-2.5 left-2 h-4 w-4 text-muted-foreground" />
-                            <Input
-                                placeholder="Search users..."
-                                value={search}
-                                onChange={(e) => setSearch(e.target.value)}
-                                className="pl-8"
-                            />
-                        </div>
+            {/* Search bar */}
+            <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
+                <div className="flex w-full flex-1 gap-4 sm:w-auto">
+                    <div className="relative flex-1">
+                        <Search className="absolute top-2.5 left-2 h-4 w-4 text-muted-foreground" />
+                        <Input
+                            placeholder="Search users..."
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                            className="pl-8"
+                        />
                     </div>
                 </div>
+            </div>
 
-                <div className="flex h-full w-full flex-col">
-                    {loading ? (
-                        <TableSkeleton />
-                    ) : (
-                        <Table>
-                            <TableHeader>
+            <div className="flex h-full w-full flex-col">
+                {loading ? (
+                    <TableSkeleton />
+                ) : (
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead
+                                    className="cursor-pointer hover:bg-accent/50"
+                                    onClick={() => handleSort('displayName')}>
+                                    <div className="flex items-center justify-center">
+                                        Name
+                                        <ArrowUpDown className="ml-2 h-3 w-3" />
+                                    </div>
+                                </TableHead>
+                                <TableHead>Email</TableHead>
+                                <TableHead
+                                    className="cursor-pointer hover:bg-accent/50"
+                                    onClick={() => handleSort('role')}>
+                                    <div className="flex items-center justify-center">
+                                        Role
+                                        <ArrowUpDown className="ml-2 h-3 w-3" />
+                                    </div>
+                                </TableHead>
+                                <TableHead
+                                    className="cursor-pointer hover:bg-accent/50"
+                                    onClick={() => handleSort('createdAt')}>
+                                    <div className="flex items-center justify-center">
+                                        Created At
+                                        <ArrowUpDown className="ml-2 h-3 w-3" />
+                                    </div>
+                                </TableHead>
+                                <TableHead className="text-right">Actions</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {users.length === 0 ? (
                                 <TableRow>
-                                    <TableHead
-                                        className="cursor-pointer hover:bg-accent/50"
-                                        onClick={() => handleSort('displayName')}>
-                                        <div className="flex items-center justify-center">
-                                            Name
-                                            <ArrowUpDown className="ml-2 h-3 w-3" />
-                                        </div>
-                                    </TableHead>
-                                    <TableHead>Email</TableHead>
-                                    <TableHead
-                                        className="cursor-pointer hover:bg-accent/50"
-                                        onClick={() => handleSort('role')}>
-                                        <div className="flex items-center justify-center">
-                                            Role
-                                            <ArrowUpDown className="ml-2 h-3 w-3" />
-                                        </div>
-                                    </TableHead>
-                                    <TableHead
-                                        className="cursor-pointer hover:bg-accent/50"
-                                        onClick={() => handleSort('createdAt')}>
-                                        <div className="flex items-center justify-center">
-                                            Created At
-                                            <ArrowUpDown className="ml-2 h-3 w-3" />
-                                        </div>
-                                    </TableHead>
-                                    <TableHead className="text-right">Actions</TableHead>
+                                    <TableCell colSpan={5} className="text-center">
+                                        No users found
+                                    </TableCell>
                                 </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {users.length === 0 ? (
-                                    <TableRow>
-                                        <TableCell colSpan={5} className="text-center">
-                                            No users found
+                            ) : (
+                                users.map((user) => (
+                                    <TableRow key={user.id}>
+                                        <TableCell data-label="Name" className="capitalize">
+                                            {user.displayName} {user.email === currentUser?.email ?? '(You)'}
+                                        </TableCell>
+                                        <TableCell data-label="Email">{user.email}</TableCell>
+                                        <TableCell data-label="Role">
+                                            <span className="rounded-full bg-slate-100 px-2 py-1 text-black text-xs capitalize">
+                                                {user.role}
+                                            </span>
+                                        </TableCell>
+                                        <TableCell data-label="Created at">
+                                            {new Date(user.createdAt).toLocaleDateString()}
+                                        </TableCell>
+                                        <TableCell className="text-right">
+                                            <DropdownMenu>
+                                                <DropdownMenuTrigger asChild>
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        disabled={user.email === currentUser?.email || isDeleting}>
+                                                        {isDeleting && userToDelete?.id === user.id ? (
+                                                            <Loader2 className="h-4 w-4 animate-spin" />
+                                                        ) : (
+                                                            <MoreHorizontal className="h-4 w-4" />
+                                                        )}
+                                                    </Button>
+                                                </DropdownMenuTrigger>
+                                                <DropdownMenuContent align="end">
+                                                    <DropdownMenuItem onClick={() => handleView(user)}>
+                                                        <Eye className="mr-2 h-4 w-4" />
+                                                        View Details
+                                                    </DropdownMenuItem>
+                                                    <DropdownMenuItem
+                                                        onClick={() => handleEdit(user)}
+                                                        disabled={user.email === currentUser?.email}>
+                                                        <Pencil className="mr-2 h-4 w-4" />
+                                                        Edit User
+                                                    </DropdownMenuItem>
+                                                    <DropdownMenuItem
+                                                        onClick={() => handleDeleteClick(user)}
+                                                        className={
+                                                            user.email === currentUser?.email
+                                                                ? 'cursor-not-allowed text-muted-foreground'
+                                                                : 'text-destructive'
+                                                        }
+                                                        disabled={user.email === currentUser?.email}>
+                                                        <Trash2 className="mr-2 h-4 w-4" />
+                                                        {user.email === currentUser?.email
+                                                            ? 'Cannot Delete'
+                                                            : 'Delete User'}
+                                                    </DropdownMenuItem>
+                                                </DropdownMenuContent>
+                                            </DropdownMenu>
                                         </TableCell>
                                     </TableRow>
-                                ) : (
-                                    users.map((user) => (
-                                        <TableRow key={user.id}>
-                                            <TableCell data-label="Name" className="capitalize">
-                                                {user.displayName} {user.email === currentUser?.email ?? '(You)'}
-                                            </TableCell>
-                                            <TableCell data-label="Email">{user.email}</TableCell>
-                                            <TableCell data-label="Role">
-                                                <span className="rounded-full bg-slate-100 px-2 py-1 text-black text-xs capitalize">
-                                                    {user.role}
-                                                </span>
-                                            </TableCell>
-                                            <TableCell data-label="Created at">
-                                                {new Date(user.createdAt).toLocaleDateString()}
-                                            </TableCell>
-                                            <TableCell className="text-right">
-                                                <DropdownMenu>
-                                                    <DropdownMenuTrigger asChild>
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="sm"
-                                                            disabled={user.email === currentUser?.email || isDeleting}>
-                                                            {isDeleting && userToDelete?.id === user.id ? (
-                                                                <Loader2 className="h-4 w-4 animate-spin" />
-                                                            ) : (
-                                                                <MoreHorizontal className="h-4 w-4" />
-                                                            )}
-                                                        </Button>
-                                                    </DropdownMenuTrigger>
-                                                    <DropdownMenuContent align="end">
-                                                        <DropdownMenuItem onClick={() => handleView(user)}>
-                                                            <Eye className="mr-2 h-4 w-4" />
-                                                            View Details
-                                                        </DropdownMenuItem>
-                                                        <DropdownMenuItem
-                                                            onClick={() => handleEdit(user)}
-                                                            disabled={user.email === currentUser?.email}>
-                                                            <Pencil className="mr-2 h-4 w-4" />
-                                                            Edit User
-                                                        </DropdownMenuItem>
-                                                        <DropdownMenuItem
-                                                            onClick={() => handleDeleteClick(user)}
-                                                            className={
-                                                                user.email === currentUser?.email
-                                                                    ? 'cursor-not-allowed text-muted-foreground'
-                                                                    : 'text-destructive'
-                                                            }
-                                                            disabled={user.email === currentUser?.email}>
-                                                            <Trash2 className="mr-2 h-4 w-4" />
-                                                            {user.email === currentUser?.email
-                                                                ? 'Cannot Delete'
-                                                                : 'Delete User'}
-                                                        </DropdownMenuItem>
-                                                    </DropdownMenuContent>
-                                                </DropdownMenu>
-                                            </TableCell>
-                                        </TableRow>
-                                    ))
-                                )}
-                            </TableBody>
-                        </Table>
-                    )}
-                </div>
-
-                {/* Pagination */}
-                {!loading && users.length > 0 && (
-                    <AdminPagination
-                        currentPage={currentPage}
-                        totalItems={allUsers.length}
-                        itemsPerPage={10}
-                        onPageChange={(page) => {
-                            setCurrentPage(page);
-                            fetchUsers();
-                        }}
-                        loading={loading}
-                        itemLabel="users"
-                    />
+                                ))
+                            )}
+                        </TableBody>
+                    </Table>
                 )}
+            </div>
 
-                {/* Create / Edit User Dialog */}
-                    <Dialog open={isOpen} onOpenChange={setIsOpen}>
-                        <DialogContent className="sm:max-w-[600px]">
-                            <DialogHeader>
-                                <DialogTitle>{editUser ? 'Edit User' : 'Create User'}</DialogTitle>
-                                <DialogDescription>
-                                    {editUser
-                                        ? 'Update the user profile and optionally change their password.'
-                                        : 'Create a new user account. A welcome email can be sent to the user.'}
-                                </DialogDescription>
-                            </DialogHeader>
+            {/* Pagination */}
+            {!loading && users.length > 0 && (
+                <AdminPagination
+                    currentPage={currentPage}
+                    totalItems={allUsers.length}
+                    itemsPerPage={10}
+                    onPageChange={(page) => {
+                        setCurrentPage(page);
+                        fetchUsers();
+                    }}
+                    loading={loading}
+                    itemLabel="users"
+                />
+            )}
 
-                            <form onSubmit={handleSubmit} className="grid gap-4 py-2">
-                                <div>
-                                    <label className="text-sm text-muted-foreground">Display name</label>
-                                    <Input
-                                        required
-                                        value={formData.displayName}
-                                        onChange={(e) => setFormData({ ...formData, displayName: e.target.value })}
-                                    />
-                                </div>
+            {/* Create / Edit User Dialog */}
+            <Dialog open={isOpen} onOpenChange={setIsOpen}>
+                <DialogContent className="sm:max-w-[600px]">
+                    <DialogHeader>
+                        <DialogTitle>{editUser ? 'Edit User' : 'Create User'}</DialogTitle>
+                        <DialogDescription>
+                            {editUser
+                                ? 'Update the user profile and optionally change their password.'
+                                : 'Create a new user account. A welcome email can be sent to the user.'}
+                        </DialogDescription>
+                    </DialogHeader>
 
-                                <div>
-                                    <label className="text-sm text-muted-foreground">Email</label>
-                                    <Input
-                                        required
-                                        type="email"
-                                        value={formData.email}
-                                        onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                                    />
-                                </div>
+                    <form onSubmit={handleSubmit} className="grid gap-4 py-2">
+                        <div>
+                            <label className="text-muted-foreground text-sm">Display name</label>
+                            <Input
+                                required
+                                value={formData.displayName}
+                                onChange={(e) => setFormData({ ...formData, displayName: e.target.value })}
+                            />
+                        </div>
 
-                                <div>
-                                    <label className="text-sm text-muted-foreground">Role</label>
-                                    <Select value={formData.role} onValueChange={(val) => setFormData({ ...formData, role: val })}>
-                                        <SelectTrigger>
-                                            <SelectValue placeholder="Select role" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {roles.map((r) => (
-                                                <SelectItem key={r} value={r}>
-                                                    {r}
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
+                        <div>
+                            <label className="text-muted-foreground text-sm">Email</label>
+                            <Input
+                                required
+                                type="email"
+                                value={formData.email}
+                                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                            />
+                        </div>
 
-                                {/* Password controls */}
-                                {!editUser && (
-                                    <div>
-                                        <label className="text-sm text-muted-foreground">Password</label>
+                        <div>
+                            <label className="text-muted-foreground text-sm">
+                                Phone <span className="text-muted-foreground/60">(optional)</span>
+                            </label>
+                            <PhoneInput
+                                value={formData.phone}
+                                onChange={(value) => setFormData({ ...formData, phone: value || '' })}
+                                defaultCountry="US"
+                                international
+                            />
+                        </div>
+
+                        <div>
+                            <label className="text-muted-foreground text-sm">
+                                Country <span className="text-muted-foreground/60">(optional)</span>
+                            </label>
+                            <CountryDropdown
+                                defaultValue={formData.country}
+                                onChange={(country) => setFormData({ ...formData, country: country.alpha2 })}
+                                placeholder="Select country"
+                            />
+                        </div>
+
+                        <div>
+                            <label className="text-muted-foreground text-sm">Role</label>
+                            <Select
+                                value={formData.role}
+                                onValueChange={(val) => setFormData({ ...formData, role: val })}>
+                                <SelectTrigger className="w-full">
+                                    <SelectValue placeholder="Select role" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {roles.map((r) => (
+                                        <SelectItem key={r} value={r}>
+                                            {r}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+
+                        {/* Password controls */}
+                        {!editUser && (
+                            <div>
+                                <label className="text-muted-foreground text-sm">Password</label>
+                                <div className="flex gap-2">
+                                    <div className="relative flex-1">
                                         <Input
                                             required
-                                            type="password"
+                                            type={showPassword ? 'text' : 'password'}
                                             value={formData.password}
                                             onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                                            className="pr-10"
                                         />
+                                        <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="icon"
+                                            onClick={() => setShowPassword(!showPassword)}
+                                            className="absolute top-0 right-0 h-full"
+                                            title={showPassword ? 'Hide password' : 'Show password'}>
+                                            {showPassword ? (
+                                                <EyeOff className="h-4 w-4" />
+                                            ) : (
+                                                <Eye className="h-4 w-4" />
+                                            )}
+                                        </Button>
                                     </div>
-                                )}
-
-                                {editUser && (
-                                    <div className="flex items-center gap-2">
-                                        <Checkbox
-                                            checked={!!formData.changePassword}
-                                            onCheckedChange={(v) => setFormData({ ...formData, changePassword: !!v })}
-                                        />
-                                        <div className="flex-1">
-                                            <div className="text-sm font-medium">Change Password</div>
-                                            <div className="text-sm text-muted-foreground">Enable to set a new password</div>
-                                        </div>
-                                    </div>
-                                )}
-
-                                {( !editUser || formData.changePassword ) && (
-                                    <div>
-                                        <label className="text-sm text-muted-foreground">New password</label>
-                                        <Input
-                                            type="password"
-                                            value={formData.password}
-                                            onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                                        />
-                                    </div>
-                                )}
-
-                                <div className="flex items-center gap-4">
-                                    <div className="flex items-center gap-2">
-                                        <Checkbox
-                                            checked={!!formData.sendEmail}
-                                            onCheckedChange={(v) => setFormData({ ...formData, sendEmail: !!v })}
-                                        />
-                                        <div className="text-sm">Send email</div>
-                                    </div>
-                                </div>
-
-                                <div className="flex items-center justify-end gap-2 pt-2">
                                     <Button
                                         type="button"
-                                        variant="ghost"
-                                        onClick={() => {
-                                            setIsOpen(false);
-                                            setEditUser(null);
-                                            setFormData(initialFormData);
-                                        }}>
-                                        Cancel
-                                    </Button>
-                                    <Button type="submit" disabled={isSubmitting}>
-                                        {isSubmitting ? 'Saving...' : editUser ? 'Save changes' : 'Create user'}
+                                        variant="outline"
+                                        size="icon"
+                                        onClick={generatePassword}
+                                        title="Generate password">
+                                        <KeyRound className="h-4 w-4" />
                                     </Button>
                                 </div>
-                            </form>
-                        </DialogContent>
-                    </Dialog>
-
-                    <ConfirmationDialog
-                    open={deleteConfirmOpen}
-                    onOpenChange={setDeleteConfirmOpen}
-                    onConfirm={handleDelete}
-                    title="Delete User"
-                    description={`Are you sure you want to delete ${userToDelete?.displayName || 'this user'}? This action cannot be undone.`}
-                    confirmText="Delete"
-                    cancelText="Cancel"
-                    requireConfirmText="delete"
-                />
-
-                <Dialog open={isViewOpen} onOpenChange={setIsViewOpen}>
-                    <DialogContent className="sm:max-w-[425px]">
-                        <DialogHeader>
-                            <DialogTitle>User Profile</DialogTitle>
-                            <DialogDescription>Detailed information about the user.</DialogDescription>
-                        </DialogHeader>
-
-                        {viewUser && (
-                            <div className="grid gap-4 py-4">
-                                <Card>
-                                    <CardHeader className="pb-4">
-                                        <div className="flex items-center gap-4">
-                                            <div className="rounded-full bg-accent p-2">
-                                                <User2 className="h-8 w-8" />
-                                            </div>
-                                            <div>
-                                                <h3 className="font-semibold capitalize">{viewUser.displayName}</h3>
-                                                <p className="text-muted-foreground text-sm">{viewUser.email}</p>
-                                            </div>
-                                        </div>
-                                    </CardHeader>
-                                    <CardContent className="space-y-4">
-                                        <div className="grid grid-cols-2 gap-4 text-sm">
-                                            <div>
-                                                <p className="text-muted-foreground">Role</p>
-                                                <p className="font-medium capitalize">{viewUser.role}</p>
-                                            </div>
-                                            <div>
-                                                <p className="text-muted-foreground">Created</p>
-                                                <p className="font-medium">
-                                                    {new Date(viewUser.createdAt).toLocaleDateString()}
-                                                </p>
-                                            </div>
-                                            {viewUser.web3 && (
-                                                <div className="col-span-2">
-                                                    <p className="text-muted-foreground">Web3 Address</p>
-                                                    <p className="break-all font-medium">{viewUser.web3.public_key}</p>
-                                                </div>
-                                            )}
-                                            <div className="col-span-2">
-                                                <p className="text-muted-foreground">Last Updated</p>
-                                                <p className="font-medium">
-                                                    {viewUser.updatedAt
-                                                        ? new Date(viewUser.updatedAt).toLocaleString()
-                                                        : 'Never'}
-                                                </p>
-                                            </div>
-                                        </div>
-                                    </CardContent>
-                                </Card>
                             </div>
                         )}
-                    </DialogContent>
-                </Dialog>
-            </div> 
+
+                        {editUser && (
+                            <div className="flex items-center gap-2">
+                                <Checkbox
+                                    checked={!!formData.changePassword}
+                                    onCheckedChange={(v) => {
+                                        setFormData({ ...formData, changePassword: !!v });
+                                        setShowPassword(false);
+                                    }}
+                                />
+                                <div className="flex-1">
+                                    <div className="font-medium text-sm">Change Password</div>
+                                    <div className="text-muted-foreground text-sm">Enable to set a new password</div>
+                                </div>
+                            </div>
+                        )}
+
+                        {editUser && formData.changePassword && (
+                            <div>
+                                <label className="text-muted-foreground text-sm">New password</label>
+                                <div className="flex gap-2">
+                                    <div className="relative flex-1">
+                                        <Input
+                                            type={showPassword ? 'text' : 'password'}
+                                            value={formData.password}
+                                            onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                                            className="pr-10"
+                                        />
+                                        <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="icon"
+                                            onClick={() => setShowPassword(!showPassword)}
+                                            className="absolute top-0 right-0 h-full"
+                                            title={showPassword ? 'Hide password' : 'Show password'}>
+                                            {showPassword ? (
+                                                <EyeOff className="h-4 w-4" />
+                                            ) : (
+                                                <Eye className="h-4 w-4" />
+                                            )}
+                                        </Button>
+                                    </div>
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="icon"
+                                        onClick={generatePassword}
+                                        title="Generate password">
+                                        <KeyRound className="h-4 w-4" />
+                                    </Button>
+                                </div>
+                            </div>
+                        )}
+
+                        <div className="flex items-center gap-4">
+                            <div className="flex items-center gap-2">
+                                <Checkbox
+                                    checked={!!formData.sendEmail}
+                                    onCheckedChange={(v) => setFormData({ ...formData, sendEmail: !!v })}
+                                />
+                                <div className="text-sm">Send email</div>
+                            </div>
+                        </div>
+
+                        <div className="flex items-center justify-end gap-2 pt-2">
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                onClick={() => {
+                                    setIsOpen(false);
+                                    setEditUser(null);
+                                    setFormData(initialFormData);
+                                }}>
+                                Cancel
+                            </Button>
+                            <Button type="submit" disabled={isSubmitting}>
+                                {isSubmitting ? 'Saving...' : editUser ? 'Save changes' : 'Create user'}
+                            </Button>
+                        </div>
+                    </form>
+                </DialogContent>
+            </Dialog>
+
+            <ConfirmationDialog
+                open={deleteConfirmOpen}
+                onOpenChange={setDeleteConfirmOpen}
+                onConfirm={handleDelete}
+                title="Delete User"
+                description={`Are you sure you want to delete ${userToDelete?.displayName || 'this user'}? This action cannot be undone.`}
+                confirmText="Delete"
+                cancelText="Cancel"
+                requireConfirmText="delete"
+            />
+
+            <Dialog open={isViewOpen} onOpenChange={setIsViewOpen}>
+                <DialogContent className="sm:max-w-[425px]">
+                    <DialogHeader>
+                        <DialogTitle>User Profile</DialogTitle>
+                        <DialogDescription>Detailed information about the user.</DialogDescription>
+                    </DialogHeader>
+
+                    {viewUser && (
+                        <div className="grid gap-4 py-4">
+                            <Card>
+                                <CardHeader className="pb-4">
+                                    <div className="flex items-center gap-4">
+                                        <div className="rounded-full bg-accent p-2">
+                                            <User2 className="h-8 w-8" />
+                                        </div>
+                                        <div>
+                                            <h3 className="font-semibold capitalize">{viewUser.displayName}</h3>
+                                            <p className="text-muted-foreground text-sm">{viewUser.email}</p>
+                                        </div>
+                                    </div>
+                                </CardHeader>
+                                <CardContent className="space-y-4">
+                                    <div className="grid grid-cols-2 gap-4 text-sm">
+                                        <div>
+                                            <p className="text-muted-foreground">Role</p>
+                                            <p className="font-medium capitalize">{viewUser.role}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-muted-foreground">Created</p>
+                                            <p className="font-medium">
+                                                {new Date(viewUser.createdAt).toLocaleDateString()}
+                                            </p>
+                                        </div>
+                                        {viewUser.web3 && (
+                                            <div className="col-span-2">
+                                                <p className="text-muted-foreground">Web3 Address</p>
+                                                <p className="break-all font-medium">{viewUser.web3.public_key}</p>
+                                            </div>
+                                        )}
+                                        <div className="col-span-2">
+                                            <p className="text-muted-foreground">Last Updated</p>
+                                            <p className="font-medium">
+                                                {viewUser.updatedAt
+                                                    ? new Date(viewUser.updatedAt).toLocaleString()
+                                                    : 'Never'}
+                                            </p>
+                                        </div>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        </div>
+                    )}
+                </DialogContent>
+            </Dialog>
+        </div>
     );
 }

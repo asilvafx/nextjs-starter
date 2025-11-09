@@ -88,3 +88,106 @@ export async function getDashboardStats() {
         };
     }
 }
+
+/**
+ * Get all orders
+ * Server-side function to fetch all orders
+ * @returns {Promise<Object>} Orders data
+ */
+export async function getAllOrders() {
+    try {
+        const orders = await DBService.readAll('orders');
+        const ordersArray = Array.isArray(orders) ? orders : Object.values(orders || {});
+
+        return {
+            success: true,
+            data: ordersArray
+        };
+    } catch (error) {
+        console.error('Error fetching orders:', error);
+        return {
+            success: false,
+            error: 'Failed to fetch orders',
+            message: error.message,
+            data: []
+        };
+    }
+}
+
+/**
+ * Get all customers
+ * Server-side function to fetch all customers
+ * @returns {Promise<Object>} Customers data
+ */
+export async function getAllCustomers() {
+    try {
+        const customers = await DBService.readAll('customers');
+        const customersArray = Array.isArray(customers) ? customers : Object.values(customers || {});
+
+        return {
+            success: true,
+            data: customersArray
+        };
+    } catch (error) {
+        console.error('Error fetching customers:', error);
+        return {
+            success: false,
+            error: 'Failed to fetch customers',
+            message: error.message,
+            data: []
+        };
+    }
+}
+
+/**
+ * Get all catalog items
+ * Server-side function to fetch all catalog products
+ * @returns {Promise<Object>} Catalog data
+ */
+export async function getAllCatalog() {
+    try {
+        const catalog = await DBService.readAll('catalog');
+        const catalogArray = Array.isArray(catalog) ? catalog : Object.values(catalog || {});
+
+        return {
+            success: true,
+            data: catalogArray
+        };
+    } catch (error) {
+        console.error('Error fetching catalog:', error);
+        return {
+            success: false,
+            error: 'Failed to fetch catalog',
+            message: error.message,
+            data: []
+        };
+    }
+}
+
+/**
+ * Get store settings (public)
+ * Server-side function to fetch store settings
+ * @returns {Promise<Object>} Store settings data
+ */
+export async function getStoreSettings() {
+    try {
+        const settings = await DBService.readAll('site_settings');
+        const settingsArray = Array.isArray(settings) ? settings : Object.values(settings || {});
+
+        // Find store settings or return default
+        const storeSetting = settingsArray.find((s) => s.key === 'store' || s.type === 'store');
+
+        return {
+            success: true,
+            data: storeSetting || null
+        };
+    } catch (error) {
+        console.error('Error fetching store settings:', error);
+        return {
+            success: false,
+            error: 'Failed to fetch store settings',
+            message: error.message,
+            data: null
+        };
+    }
+}

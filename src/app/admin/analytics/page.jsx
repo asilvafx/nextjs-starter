@@ -139,68 +139,16 @@ export default function AnalyticsPage() {
             <AdminHeader
                 title="Website Analytics"
                 description="Comprehensive visitor statistics and website performance">
+
+                <Button variant="outline" onClick={refreshData}>
+                    <RefreshCw className="h-4 w-4" /> 
+                </Button>
                 <Button variant="default" onClick={refreshData}>
                     <Calendar className="mr-2 h-4 w-4" />
                     Last 30 Days
                 </Button>
-                <Button variant="outline" onClick={refreshData}>
-                    <RefreshCw className="mr-2 h-4 w-4" />
-                    Refresh
-                </Button>
             </AdminHeader>
-
-            {/* Google Analytics API section */}
-            <div className="space-y-4">
-                <Card>
-                    <CardHeader>
-                        <div className="flex w-full items-center justify-between gap-2">
-                            <Label htmlFor="ga-enabled" className="font-semibold text-md capitalize">
-                                Google Analytics API
-                            </Label>
-                            <Switch
-                                id="ga-enabled"
-                                checked={googleAnalyticsEnabled}
-                                onCheckedChange={(val) => setGoogleAnalyticsEnabled(!!val)}
-                            />
-                        </div>
-                        <p className="text-muted-foreground text-sm">
-                            Enable your Google Analytics and get more insights.
-                        </p>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="flex w-full flex-col items-start gap-2">
-                            <Input
-                                id="api-key"
-                                type="text"
-                                className="mb-2 flex-1"
-                                placeholder="Measurement ID (G-XXXXXXXX)"
-                                value={googleApiKey}
-                                onChange={(e) => setGoogleApiKey(e.target.value)}
-                            />
-                            <Button
-                                onClick={async () => {
-                                    try {
-                                        const result = await saveAnalyticsSettings({
-                                            enabled: googleAnalyticsEnabled,
-                                            apiKey: googleApiKey
-                                        });
-                                        if (result?.success) {
-                                            toast.success('Google Analytics settings saved');
-                                        } else {
-                                            toast.error('Failed to save settings');
-                                        }
-                                    } catch (err) {
-                                        console.error(err);
-                                        toast.error('Failed to save settings');
-                                    }
-                                }}>
-                                Save
-                            </Button>
-                        </div>
-                    </CardContent>
-                </Card>
-            </div>
-
+ 
             {/* Website Analytics Section */}
             <div className="space-y-4">
                 {/* Web Stats Grid */}
@@ -419,6 +367,59 @@ export default function AnalyticsPage() {
                     </CardContent>
                 </Card>
             </div>
+
+               {/* Google Analytics API section */}
+            <div className="space-y-4">
+                <Card>
+                    <CardHeader>
+                        <div className="flex w-full items-center justify-between gap-2">
+                            <Label htmlFor="ga-enabled" className="font-semibold text-md capitalize">
+                                Google Analytics API
+                            </Label>
+                            <Switch
+                                id="ga-enabled"
+                                checked={googleAnalyticsEnabled}
+                                onCheckedChange={(val) => setGoogleAnalyticsEnabled(!!val)}
+                            />
+                        </div>
+                        <p className="text-muted-foreground text-sm">
+                            Enable your Google Analytics and get more insights.
+                        </p>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="flex w-full flex-col items-start gap-2">
+                            <Input
+                                id="api-key"
+                                type="text"
+                                className="mb-2 flex-1"
+                                placeholder="Measurement ID (G-XXXXXXXX)"
+                                value={googleApiKey}
+                                onChange={(e) => setGoogleApiKey(e.target.value)}
+                            />
+                            <Button
+                                onClick={async () => {
+                                    try {
+                                        const result = await saveAnalyticsSettings({
+                                            enabled: googleAnalyticsEnabled,
+                                            apiKey: googleApiKey
+                                        });
+                                        if (result?.success) {
+                                            toast.success('Google Analytics settings saved');
+                                        } else {
+                                            toast.error('Failed to save settings');
+                                        }
+                                    } catch (err) {
+                                        console.error(err);
+                                        toast.error('Failed to save settings');
+                                    }
+                                }}>
+                                Save
+                            </Button>
+                        </div>
+                    </CardContent>
+                </Card>
+            </div>
+            
         </div>
     );
 }

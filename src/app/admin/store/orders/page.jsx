@@ -46,12 +46,13 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { PhoneInput } from '@/components/ui/phone-input'; 
+import { PhoneInput } from '@/components/ui/phone-input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { TableSkeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { create, getAll, remove, revalidate, update } from '@/lib/client/query';
+import { create, remove, revalidate, update } from '@/lib/client/query';
+import { getAllCatalog, getAllCustomers, getAllOrders, getStoreSettings } from '@/lib/server/admin';
 import { generatePDF } from '@/utils/generatePDF';
 
 const ORDER_STATUS = [
@@ -169,9 +170,9 @@ export default function OrdersPage() {
 
     const fetchStoreSettings = async () => {
         try {
-            const response = await getAll('store_settings');
-            if (response?.success && response.data?.length > 0) {
-                const settings = response.data[0];
+            const response = await getStoreSettings();
+            if (response?.success && response.data) {
+                const settings = response.data;
                 setStoreSettings(settings);
 
                 // Update initial form data with VAT settings if they exist
@@ -196,7 +197,7 @@ export default function OrdersPage() {
                 setFetchError(null);
             }
 
-            const response = await getAll('orders', { limit: 0 });
+            const response = await getAllOrders();
             if (response.success) {
                 setOrders(response.data);
                 setAllOrders(response.data);
@@ -226,7 +227,7 @@ export default function OrdersPage() {
 
     const fetchCustomers = async () => {
         try {
-            const response = await getAll('customers', { limit: 0 });
+            const response = await getAllCustomers();
             if (response.success) {
                 setCustomers(response.data);
             } else {
@@ -240,7 +241,7 @@ export default function OrdersPage() {
 
     const fetchCatalog = async () => {
         try {
-            const response = await getAll('catalog', { limit: 0 });
+            const response = await getAllCatalog();
             if (response.success) {
                 setCatalog(response.data);
             } else {
@@ -307,7 +308,7 @@ export default function OrdersPage() {
         const cleanup = startRevalidation();
         return () => {
             if (cleanup && typeof cleanup.then === 'function') {
-                cleanup.then((clearFn) => clearFn && clearFn());
+                cleanup.then((clearFn) => clearFn?.());
             }
         };
     }, []);
@@ -787,11 +788,11 @@ export default function OrdersPage() {
 
                 <Card className="border-destructive/50">
                     <CardContent className="flex flex-col items-center justify-center py-12 text-center">
-                        <div className="rounded-full bg-destructive/10 p-3 mb-4">
+                        <div className="mb-4 rounded-full bg-destructive/10 p-3">
                             <AlertTriangle className="h-8 w-8 text-destructive" />
                         </div>
-                        <h3 className="font-semibold text-lg mb-2">Connection Error</h3>
-                        <p className="text-muted-foreground mb-6 max-w-md">{fetchError}</p>
+                        <h3 className="mb-2 font-semibold text-lg">Connection Error</h3>
+                        <p className="mb-6 max-w-md text-muted-foreground">{fetchError}</p>
                         <Button onClick={handleRetryFetch} disabled={isRetrying} className="gap-2">
                             {isRetrying ? (
                                 <>
@@ -827,7 +828,7 @@ export default function OrdersPage() {
                                 size="sm"
                                 onClick={handleRetryFetch}
                                 disabled={isRetrying}
-                                className="h-auto p-0 ml-1 text-yellow-800 underline">
+                                className="ml-1 h-auto p-0 text-yellow-800 underline">
                                 {isRetrying ? 'Retrying...' : 'Retry now'}
                             </Button>
                         </p>
@@ -874,1354 +875,1284 @@ export default function OrdersPage() {
 
             {loading ? (
                 <TableSkeleton columns={7} rows={5} />
-            ) : ( 
-                    <Table>
-                        <TableHeader>
+            ) : (
+                <Table>
+                    <TableHeader>
+                        <TableRow>
+                            <TableHead className="cursor-pointer" onClick={() => handleSort('id')}>
+                                <div className="flex items-center">
+                                    Order ID
+                                    <ArrowUpDown className="ml-2 h-4 w-4" />
+                                </div>
+                            </TableHead>
+                            <TableHead
+                                className="hidden cursor-pointer sm:table-cell"
+                                onClick={() => handleSort('customer.name')}>
+                                <div className="flex items-center">
+                                    Customer
+                                    <ArrowUpDown className="ml-2 h-4 w-4" />
+                                </div>
+                            </TableHead>
+                            <TableHead className="cursor-pointer" onClick={() => handleSort('total')}>
+                                <div className="flex items-center">
+                                    Total
+                                    <ArrowUpDown className="ml-2 h-4 w-4" />
+                                </div>
+                            </TableHead>
+                            <TableHead className="hidden md:table-cell">Status</TableHead>
+                            <TableHead className="hidden lg:table-cell">Payment</TableHead>
+                            <TableHead
+                                className="hidden cursor-pointer xl:table-cell"
+                                onClick={() => handleSort('createdAt')}>
+                                <div className="flex items-center">
+                                    Created At
+                                    <ArrowUpDown className="ml-2 h-4 w-4" />
+                                </div>
+                            </TableHead>
+                            <TableHead className="text-right">Actions</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {filteredOrders.length === 0 ? (
                             <TableRow>
-                                <TableHead className="cursor-pointer" onClick={() => handleSort('id')}>
-                                    <div className="flex items-center">
-                                        Order ID
-                                        <ArrowUpDown className="ml-2 h-4 w-4" />
-                                    </div>
-                                </TableHead>
-                                <TableHead
-                                    className="hidden cursor-pointer sm:table-cell"
-                                    onClick={() => handleSort('customer.name')}>
-                                    <div className="flex items-center">
-                                        Customer
-                                        <ArrowUpDown className="ml-2 h-4 w-4" />
-                                    </div>
-                                </TableHead>
-                                <TableHead className="cursor-pointer" onClick={() => handleSort('total')}>
-                                    <div className="flex items-center">
-                                        Total
-                                        <ArrowUpDown className="ml-2 h-4 w-4" />
-                                    </div>
-                                </TableHead>
-                                <TableHead className="hidden md:table-cell">Status</TableHead>
-                                <TableHead className="hidden lg:table-cell">Payment</TableHead>
-                                <TableHead
-                                    className="hidden cursor-pointer xl:table-cell"
-                                    onClick={() => handleSort('createdAt')}>
-                                    <div className="flex items-center">
-                                        Created At
-                                        <ArrowUpDown className="ml-2 h-4 w-4" />
-                                    </div>
-                                </TableHead>
-                                <TableHead className="text-right">Actions</TableHead>
+                                <TableCell colSpan={7} className="text-center">
+                                    No orders found
+                                </TableCell>
                             </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {filteredOrders.length === 0 ? (
-                                <TableRow>
-                                    <TableCell colSpan={7} className="text-center">
-                                        No orders found
+                        ) : (
+                            filteredOrders.map((order) => (
+                                <TableRow key={order.id}>
+                                    <TableCell className="font-medium">
+                                        <div className="flex flex-col">
+                                            <span className="truncate font-semibold">{order.id}</span>
+                                            <div className="text-muted-foreground text-xs sm:hidden">
+                                                {`${order.customer.firstName} ${order.customer.lastName}`.trim()}
+                                            </div>
+                                        </div>
                                     </TableCell>
-                                </TableRow>
-                            ) : (
-                                filteredOrders.map((order) => (
-                                    <TableRow key={order.id}>
-                                        <TableCell className="font-medium">
-                                            <div className="flex flex-col">
-                                                <span className="truncate font-semibold">{order.id}</span>
-                                                <div className="text-muted-foreground text-xs sm:hidden">
-                                                    {`${order.customer.firstName} ${order.customer.lastName}`.trim()}
-                                                </div>
+                                    <TableCell className="hidden sm:table-cell">
+                                        <div>
+                                            <div className="truncate font-medium">
+                                                {`${order.customer.firstName} ${order.customer.lastName}`.trim()}
                                             </div>
-                                        </TableCell>
-                                        <TableCell className="hidden sm:table-cell">
-                                            <div>
-                                                <div className="truncate font-medium">
-                                                    {`${order.customer.firstName} ${order.customer.lastName}`.trim()}
-                                                </div>
-                                                <div className="truncate text-muted-foreground text-sm">
-                                                    {order.customer.email}
-                                                </div>
+                                            <div className="truncate text-muted-foreground text-sm">
+                                                {order.customer.email}
                                             </div>
-                                        </TableCell>
-                                        <TableCell>
-                                            <div className="flex flex-col">
-                                                <span className="font-semibold">{formatPrice(order.total)}</span>
-                                                <div className="md:hidden">
-                                                    <Badge
-                                                        variant={
-                                                            order.status === 'delivered'
-                                                                ? 'default'
-                                                                : order.status === 'cancelled'
-                                                                  ? 'destructive'
-                                                                  : order.status === 'shipped'
-                                                                    ? 'secondary'
-                                                                    : order.status === 'processing'
-                                                                      ? 'outline'
-                                                                      : 'outline'
-                                                        }>
-                                                        {ORDER_STATUS.find((s) => s.value === order.status)?.label}
-                                                    </Badge>
-                                                </div>
-                                            </div>
-                                        </TableCell>
-                                        <TableCell className="hidden md:table-cell">
-                                            <Select
-                                                value={order.status}
-                                                onValueChange={(value) => handleStatusChangeRequest(order.id, value)}>
-                                                <SelectTrigger
-                                                    className={`h-8 ${
+                                        </div>
+                                    </TableCell>
+                                    <TableCell>
+                                        <div className="flex flex-col">
+                                            <span className="font-semibold">{formatPrice(order.total)}</span>
+                                            <div className="md:hidden">
+                                                <Badge
+                                                    variant={
                                                         order.status === 'delivered'
-                                                            ? 'bg-green-100 text-green-800'
+                                                            ? 'default'
                                                             : order.status === 'cancelled'
-                                                              ? 'bg-red-100 text-red-800'
+                                                              ? 'destructive'
                                                               : order.status === 'shipped'
-                                                                ? 'bg-blue-100 text-blue-800'
+                                                                ? 'secondary'
                                                                 : order.status === 'processing'
-                                                                  ? 'bg-yellow-100 text-yellow-800'
-                                                                  : 'bg-gray-100 text-gray-800'
-                                                    }`}>
-                                                    <SelectValue>
-                                                        {ORDER_STATUS.find((s) => s.value === order.status)?.label}
-                                                    </SelectValue>
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                    {ORDER_STATUS.map((status) => (
-                                                        <SelectItem key={status.value} value={status.value}>
-                                                            {status.label}
-                                                        </SelectItem>
-                                                    ))}
-                                                </SelectContent>
-                                            </Select>
-                                        </TableCell>
-                                        <TableCell className="hidden lg:table-cell">
-                                            <Badge
-                                                variant={
-                                                    order.paymentStatus === 'paid'
-                                                        ? 'default'
-                                                        : order.paymentStatus === 'failed'
-                                                          ? 'destructive'
-                                                          : order.paymentStatus === 'refunded'
-                                                            ? 'secondary'
-                                                            : 'outline'
-                                                }>
-                                                {order.paymentStatus.charAt(0).toUpperCase() +
-                                                    order.paymentStatus.slice(1)}
-                                            </Badge>
-                                        </TableCell>
-                                        <TableCell className="hidden text-muted-foreground text-sm xl:table-cell">
-                                            {formatDate(order.createdAt)}
-                                        </TableCell>
-                                        <TableCell className="text-right">
-                                            {/* Desktop Actions */}
-                                            <div className="hidden justify-end gap-1 md:flex">
-                                                <Button
-                                                    variant="outline"
-                                                    size="icon"
-                                                    onClick={() => openInvoiceDialog(order)}>
-                                                    <FileText className="h-4 w-4" />
-                                                </Button>
-                                                <Dialog open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
-                                                    <DialogTrigger asChild>
-                                                        <Button
-                                                            variant="outline"
-                                                            size="icon"
-                                                            onClick={() => {
-                                                                setSelectedOrder(order);
-                                                                setIsDetailsOpen(true);
-                                                            }}>
-                                                            <Eye className="h-4 w-4" />
-                                                        </Button>
-                                                    </DialogTrigger>
-                                                    <DialogContent className="max-h-[90vh] max-w-4xl overflow-y-auto">
-                                                        <DialogHeader>
-                                                            <DialogTitle className="font-bold text-xl">
-                                                                Order Details #{selectedOrder?.id}
-                                                            </DialogTitle>
-                                                        </DialogHeader>
-                                                        {selectedOrder && (
-                                                            <Tabs defaultValue="customer" className="w-full">
-                                                                <TabsList className="grid w-full grid-cols-4">
-                                                                    <TabsTrigger
-                                                                        value="customer"
-                                                                        className="flex items-center gap-2">
-                                                                        <User className="h-4 w-4" />
-                                                                        Customer
-                                                                    </TabsTrigger>
-                                                                    <TabsTrigger
-                                                                        value="shipping"
-                                                                        className="flex items-center gap-2">
-                                                                        <Truck className="h-4 w-4" />
-                                                                        Shipping
-                                                                    </TabsTrigger>
-                                                                    <TabsTrigger
-                                                                        value="payment"
-                                                                        className="flex items-center gap-2">
-                                                                        <CreditCard className="h-4 w-4" />
-                                                                        Payment
-                                                                    </TabsTrigger>
-                                                                    <TabsTrigger
-                                                                        value="status"
-                                                                        className="flex items-center gap-2">
-                                                                        <Info className="h-4 w-4" />
-                                                                        Status
-                                                                    </TabsTrigger>
-                                                                </TabsList>
-
-                                                                <TabsContent
+                                                                  ? 'outline'
+                                                                  : 'outline'
+                                                    }>
+                                                    {ORDER_STATUS.find((s) => s.value === order.status)?.label}
+                                                </Badge>
+                                            </div>
+                                        </div>
+                                    </TableCell>
+                                    <TableCell className="hidden md:table-cell">
+                                        <Select
+                                            value={order.status}
+                                            onValueChange={(value) => handleStatusChangeRequest(order.id, value)}>
+                                            <SelectTrigger
+                                                className={`h-8 ${
+                                                    order.status === 'delivered'
+                                                        ? 'bg-green-100 text-green-800'
+                                                        : order.status === 'cancelled'
+                                                          ? 'bg-red-100 text-red-800'
+                                                          : order.status === 'shipped'
+                                                            ? 'bg-blue-100 text-blue-800'
+                                                            : order.status === 'processing'
+                                                              ? 'bg-yellow-100 text-yellow-800'
+                                                              : 'bg-gray-100 text-gray-800'
+                                                }`}>
+                                                <SelectValue>
+                                                    {ORDER_STATUS.find((s) => s.value === order.status)?.label}
+                                                </SelectValue>
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {ORDER_STATUS.map((status) => (
+                                                    <SelectItem key={status.value} value={status.value}>
+                                                        {status.label}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    </TableCell>
+                                    <TableCell className="hidden lg:table-cell">
+                                        <Badge
+                                            variant={
+                                                order.paymentStatus === 'paid'
+                                                    ? 'default'
+                                                    : order.paymentStatus === 'failed'
+                                                      ? 'destructive'
+                                                      : order.paymentStatus === 'refunded'
+                                                        ? 'secondary'
+                                                        : 'outline'
+                                            }>
+                                            {order.paymentStatus.charAt(0).toUpperCase() + order.paymentStatus.slice(1)}
+                                        </Badge>
+                                    </TableCell>
+                                    <TableCell className="hidden text-muted-foreground text-sm xl:table-cell">
+                                        {formatDate(order.createdAt)}
+                                    </TableCell>
+                                    <TableCell className="text-right">
+                                        {/* Desktop Actions */}
+                                        <div className="hidden justify-end gap-1 md:flex">
+                                            <Button
+                                                variant="outline"
+                                                size="icon"
+                                                onClick={() => openInvoiceDialog(order)}>
+                                                <FileText className="h-4 w-4" />
+                                            </Button>
+                                            <Dialog open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
+                                                <DialogTrigger asChild>
+                                                    <Button
+                                                        variant="outline"
+                                                        size="icon"
+                                                        onClick={() => {
+                                                            setSelectedOrder(order);
+                                                            setIsDetailsOpen(true);
+                                                        }}>
+                                                        <Eye className="h-4 w-4" />
+                                                    </Button>
+                                                </DialogTrigger>
+                                                <DialogContent className="max-h-[90vh] max-w-4xl overflow-y-auto">
+                                                    <DialogHeader>
+                                                        <DialogTitle className="font-bold text-xl">
+                                                            Order Details #{selectedOrder?.id}
+                                                        </DialogTitle>
+                                                    </DialogHeader>
+                                                    {selectedOrder && (
+                                                        <Tabs defaultValue="customer" className="w-full">
+                                                            <TabsList className="grid w-full grid-cols-4">
+                                                                <TabsTrigger
                                                                     value="customer"
-                                                                    className="mt-4 space-y-4">
-                                                                    <Card>
-                                                                        <CardHeader>
-                                                                            <h3 className="font-semibold">
-                                                                                Customer Information
-                                                                            </h3>
-                                                                        </CardHeader>
-                                                                        <CardContent className="grid gap-3">
-                                                                            <div className="grid grid-cols-2 gap-4">
-                                                                                <div>
-                                                                                    <label className="font-medium text-gray-500 text-sm">
-                                                                                        Name
-                                                                                    </label>
-                                                                                    <p className="text-sm">
-                                                                                        {`${selectedOrder.customer.firstName} ${selectedOrder.customer.lastName}`.trim()}
-                                                                                    </p>
-                                                                                </div>
-                                                                                <div>
-                                                                                    <label className="font-medium text-gray-500 text-sm">
-                                                                                        Email
-                                                                                    </label>
-                                                                                    <p className="text-sm">
-                                                                                        {selectedOrder.customer.email}
-                                                                                    </p>
-                                                                                </div>
-                                                                            </div>
-                                                                            {selectedOrder.customer.phone && (
-                                                                                <div>
-                                                                                    <label className="font-medium text-gray-500 text-sm">
-                                                                                        Phone
-                                                                                    </label>
-                                                                                    <p className="text-sm">
-                                                                                        {selectedOrder.customer.phone}
-                                                                                    </p>
-                                                                                </div>
-                                                                            )}
-                                                                        </CardContent>
-                                                                    </Card>
-                                                                </TabsContent>
-
-                                                                <TabsContent
+                                                                    className="flex items-center gap-2">
+                                                                    <User className="h-4 w-4" />
+                                                                    Customer
+                                                                </TabsTrigger>
+                                                                <TabsTrigger
                                                                     value="shipping"
-                                                                    className="mt-4 space-y-4">
-                                                                    <Card>
-                                                                        <CardHeader>
-                                                                            <h3 className="font-semibold">
-                                                                                Shipping Address
-                                                                            </h3>
-                                                                        </CardHeader>
-                                                                        <CardContent className="space-y-2">
-                                                                            <p className="text-sm">
-                                                                                {selectedOrder.customer.streetAddress}
-                                                                            </p>
-                                                                            {selectedOrder.customer.apartmentUnit && (
+                                                                    className="flex items-center gap-2">
+                                                                    <Truck className="h-4 w-4" />
+                                                                    Shipping
+                                                                </TabsTrigger>
+                                                                <TabsTrigger
+                                                                    value="payment"
+                                                                    className="flex items-center gap-2">
+                                                                    <CreditCard className="h-4 w-4" />
+                                                                    Payment
+                                                                </TabsTrigger>
+                                                                <TabsTrigger
+                                                                    value="status"
+                                                                    className="flex items-center gap-2">
+                                                                    <Info className="h-4 w-4" />
+                                                                    Status
+                                                                </TabsTrigger>
+                                                            </TabsList>
+
+                                                            <TabsContent value="customer" className="mt-4 space-y-4">
+                                                                <Card>
+                                                                    <CardHeader>
+                                                                        <h3 className="font-semibold">
+                                                                            Customer Information
+                                                                        </h3>
+                                                                    </CardHeader>
+                                                                    <CardContent className="grid gap-3">
+                                                                        <div className="grid grid-cols-2 gap-4">
+                                                                            <div>
+                                                                                <label className="font-medium text-gray-500 text-sm">
+                                                                                    Name
+                                                                                </label>
                                                                                 <p className="text-sm">
-                                                                                    {
-                                                                                        selectedOrder.customer
-                                                                                            .apartmentUnit
-                                                                                    }
+                                                                                    {`${selectedOrder.customer.firstName} ${selectedOrder.customer.lastName}`.trim()}
                                                                                 </p>
-                                                                            )}
+                                                                            </div>
+                                                                            <div>
+                                                                                <label className="font-medium text-gray-500 text-sm">
+                                                                                    Email
+                                                                                </label>
+                                                                                <p className="text-sm">
+                                                                                    {selectedOrder.customer.email}
+                                                                                </p>
+                                                                            </div>
+                                                                        </div>
+                                                                        {selectedOrder.customer.phone && (
+                                                                            <div>
+                                                                                <label className="font-medium text-gray-500 text-sm">
+                                                                                    Phone
+                                                                                </label>
+                                                                                <p className="text-sm">
+                                                                                    {selectedOrder.customer.phone}
+                                                                                </p>
+                                                                            </div>
+                                                                        )}
+                                                                    </CardContent>
+                                                                </Card>
+                                                            </TabsContent>
+
+                                                            <TabsContent value="shipping" className="mt-4 space-y-4">
+                                                                <Card>
+                                                                    <CardHeader>
+                                                                        <h3 className="font-semibold">
+                                                                            Shipping Address
+                                                                        </h3>
+                                                                    </CardHeader>
+                                                                    <CardContent className="space-y-2">
+                                                                        <p className="text-sm">
+                                                                            {selectedOrder.customer.streetAddress}
+                                                                        </p>
+                                                                        {selectedOrder.customer.apartmentUnit && (
                                                                             <p className="text-sm">
-                                                                                {selectedOrder.customer.city},{' '}
-                                                                                {selectedOrder.customer.state}{' '}
-                                                                                {selectedOrder.customer.zipCode}
+                                                                                {selectedOrder.customer.apartmentUnit}
                                                                             </p>
-                                                                            <p className="font-medium text-sm">
-                                                                                {selectedOrder.customer.country}
-                                                                            </p>
-                                                                            {selectedOrder.deliveryNotes && (
-                                                                                <div className="mt-3 border-t pt-3">
-                                                                                    <label className="font-medium text-gray-500 text-sm">
-                                                                                        Delivery Notes
-                                                                                    </label>
-                                                                                    <p className="text-sm">
-                                                                                        {selectedOrder.deliveryNotes}
+                                                                        )}
+                                                                        <p className="text-sm">
+                                                                            {selectedOrder.customer.city},{' '}
+                                                                            {selectedOrder.customer.state}{' '}
+                                                                            {selectedOrder.customer.zipCode}
+                                                                        </p>
+                                                                        <p className="font-medium text-sm">
+                                                                            {selectedOrder.customer.country}
+                                                                        </p>
+                                                                        {selectedOrder.deliveryNotes && (
+                                                                            <div className="mt-3 border-t pt-3">
+                                                                                <label className="font-medium text-gray-500 text-sm">
+                                                                                    Delivery Notes
+                                                                                </label>
+                                                                                <p className="text-sm">
+                                                                                    {selectedOrder.deliveryNotes}
+                                                                                </p>
+                                                                            </div>
+                                                                        )}
+                                                                    </CardContent>
+                                                                </Card>
+
+                                                                <Card>
+                                                                    <CardHeader className="flex flex-row items-center justify-between">
+                                                                        <h3 className="font-semibold">
+                                                                            Admin Shipping Notes
+                                                                        </h3>
+                                                                        <Button
+                                                                            variant="outline"
+                                                                            size="sm"
+                                                                            onClick={() => {
+                                                                                if (isEditingShippingNotes) {
+                                                                                    setIsEditingShippingNotes(false);
+                                                                                    setTempShippingNotes('');
+                                                                                } else {
+                                                                                    setIsEditingShippingNotes(true);
+                                                                                    setTempShippingNotes(
+                                                                                        selectedOrder.shippingNotes ||
+                                                                                            ''
+                                                                                    );
+                                                                                }
+                                                                            }}>
+                                                                            {isEditingShippingNotes
+                                                                                ? 'Cancel'
+                                                                                : 'Edit Notes'}
+                                                                        </Button>
+                                                                    </CardHeader>
+                                                                    <CardContent>
+                                                                        {!isEditingShippingNotes ? (
+                                                                            <div className="text-sm">
+                                                                                {selectedOrder.shippingNotes ? (
+                                                                                    <p>{selectedOrder.shippingNotes}</p>
+                                                                                ) : (
+                                                                                    <p className="text-gray-500 italic">
+                                                                                        No shipping notes added
                                                                                     </p>
-                                                                                </div>
-                                                                            )}
-                                                                        </CardContent>
-                                                                    </Card>
-
-                                                                    <Card>
-                                                                        <CardHeader className="flex flex-row items-center justify-between">
-                                                                            <h3 className="font-semibold">
-                                                                                Admin Shipping Notes
-                                                                            </h3>
-                                                                            <Button
-                                                                                variant="outline"
-                                                                                size="sm"
-                                                                                onClick={() => {
-                                                                                    if (isEditingShippingNotes) {
-                                                                                        setIsEditingShippingNotes(
-                                                                                            false
-                                                                                        );
-                                                                                        setTempShippingNotes('');
-                                                                                    } else {
-                                                                                        setIsEditingShippingNotes(true);
+                                                                                )}
+                                                                            </div>
+                                                                        ) : (
+                                                                            <div className="space-y-3">
+                                                                                <textarea
+                                                                                    className="w-full resize-none rounded-md border p-3"
+                                                                                    rows={4}
+                                                                                    placeholder="Add internal shipping notes (visible only to admins)..."
+                                                                                    value={tempShippingNotes}
+                                                                                    onChange={(e) =>
                                                                                         setTempShippingNotes(
-                                                                                            selectedOrder.shippingNotes ||
-                                                                                                ''
-                                                                                        );
+                                                                                            e.target.value
+                                                                                        )
                                                                                     }
-                                                                                }}>
-                                                                                {isEditingShippingNotes
-                                                                                    ? 'Cancel'
-                                                                                    : 'Edit Notes'}
-                                                                            </Button>
-                                                                        </CardHeader>
-                                                                        <CardContent>
-                                                                            {!isEditingShippingNotes ? (
-                                                                                <div className="text-sm">
-                                                                                    {selectedOrder.shippingNotes ? (
-                                                                                        <p>
-                                                                                            {
-                                                                                                selectedOrder.shippingNotes
-                                                                                            }
-                                                                                        </p>
-                                                                                    ) : (
-                                                                                        <p className="text-gray-500 italic">
-                                                                                            No shipping notes added
-                                                                                        </p>
-                                                                                    )}
-                                                                                </div>
-                                                                            ) : (
-                                                                                <div className="space-y-3">
-                                                                                    <textarea
-                                                                                        className="w-full resize-none rounded-md border p-3"
-                                                                                        rows={4}
-                                                                                        placeholder="Add internal shipping notes (visible only to admins)..."
-                                                                                        value={tempShippingNotes}
-                                                                                        onChange={(e) =>
-                                                                                            setTempShippingNotes(
-                                                                                                e.target.value
-                                                                                            )
-                                                                                        }
-                                                                                    />
-                                                                                    <div className="flex gap-2">
-                                                                                        <Button
-                                                                                            size="sm"
-                                                                                            disabled={
-                                                                                                isSavingShippingNotes
-                                                                                            }
-                                                                                            onClick={async () => {
-                                                                                                try {
-                                                                                                    setIsSavingShippingNotes(
-                                                                                                        true
+                                                                                />
+                                                                                <div className="flex gap-2">
+                                                                                    <Button
+                                                                                        size="sm"
+                                                                                        disabled={isSavingShippingNotes}
+                                                                                        onClick={async () => {
+                                                                                            try {
+                                                                                                setIsSavingShippingNotes(
+                                                                                                    true
+                                                                                                );
+                                                                                                const updateData = {
+                                                                                                    shippingNotes:
+                                                                                                        tempShippingNotes
+                                                                                                };
+
+                                                                                                const response =
+                                                                                                    await update(
+                                                                                                        selectedOrder.id,
+                                                                                                        updateData,
+                                                                                                        'orders'
                                                                                                     );
-                                                                                                    const updateData = {
-                                                                                                        shippingNotes:
-                                                                                                            tempShippingNotes
-                                                                                                    };
 
-                                                                                                    const response =
-                                                                                                        await update(
-                                                                                                            selectedOrder.id,
-                                                                                                            updateData,
-                                                                                                            'orders'
-                                                                                                        );
+                                                                                                if (
+                                                                                                    response.success ||
+                                                                                                    response
+                                                                                                ) {
+                                                                                                    toast.success(
+                                                                                                        'Shipping notes updated successfully'
+                                                                                                    );
 
-                                                                                                    if (
-                                                                                                        response.success ||
+                                                                                                    // Update orders in state instead of full reload
+                                                                                                    updateOrderInState(
+                                                                                                        selectedOrder.id,
+                                                                                                        updateData
+                                                                                                    );
+
+                                                                                                    // Exit edit mode
+                                                                                                    setIsEditingShippingNotes(
+                                                                                                        false
+                                                                                                    );
+                                                                                                    setTempShippingNotes(
+                                                                                                        ''
+                                                                                                    );
+                                                                                                } else {
+                                                                                                    console.log(
                                                                                                         response
-                                                                                                    ) {
-                                                                                                        toast.success(
-                                                                                                            'Shipping notes updated successfully'
-                                                                                                        );
-
-                                                                                                        // Update orders in state instead of full reload
-                                                                                                        updateOrderInState(
-                                                                                                            selectedOrder.id,
-                                                                                                            updateData
-                                                                                                        );
-
-                                                                                                        // Exit edit mode
-                                                                                                        setIsEditingShippingNotes(
-                                                                                                            false
-                                                                                                        );
-                                                                                                        setTempShippingNotes(
-                                                                                                            ''
-                                                                                                        );
-                                                                                                    } else {
-                                                                                                        console.log(
-                                                                                                            response
-                                                                                                        );
-                                                                                                        toast.error(
-                                                                                                            'Failed to update shipping notes'
-                                                                                                        );
-                                                                                                    }
-                                                                                                } catch (error) {
-                                                                                                    console.error(
-                                                                                                        'Error updating shipping notes:',
-                                                                                                        error
                                                                                                     );
                                                                                                     toast.error(
                                                                                                         'Failed to update shipping notes'
                                                                                                     );
-                                                                                                } finally {
-                                                                                                    setIsSavingShippingNotes(
-                                                                                                        false
-                                                                                                    );
                                                                                                 }
-                                                                                            }}>
-                                                                                            {isSavingShippingNotes ? (
-                                                                                                <>
-                                                                                                    <div className="mr-2 h-4 w-4 animate-spin rounded-full border-white border-b-2" />
-                                                                                                    Saving...
-                                                                                                </>
-                                                                                            ) : (
-                                                                                                'Save Notes'
-                                                                                            )}
-                                                                                        </Button>
-                                                                                        <Button
-                                                                                            variant="outline"
-                                                                                            size="sm"
-                                                                                            onClick={() => {
-                                                                                                setIsEditingShippingNotes(
+                                                                                            } catch (error) {
+                                                                                                console.error(
+                                                                                                    'Error updating shipping notes:',
+                                                                                                    error
+                                                                                                );
+                                                                                                toast.error(
+                                                                                                    'Failed to update shipping notes'
+                                                                                                );
+                                                                                            } finally {
+                                                                                                setIsSavingShippingNotes(
                                                                                                     false
                                                                                                 );
-                                                                                                setTempShippingNotes(
-                                                                                                    ''
-                                                                                                );
-                                                                                            }}>
-                                                                                            Cancel
-                                                                                        </Button>
+                                                                                            }
+                                                                                        }}>
+                                                                                        {isSavingShippingNotes ? (
+                                                                                            <>
+                                                                                                <div className="mr-2 h-4 w-4 animate-spin rounded-full border-white border-b-2" />
+                                                                                                Saving...
+                                                                                            </>
+                                                                                        ) : (
+                                                                                            'Save Notes'
+                                                                                        )}
+                                                                                    </Button>
+                                                                                    <Button
+                                                                                        variant="outline"
+                                                                                        size="sm"
+                                                                                        onClick={() => {
+                                                                                            setIsEditingShippingNotes(
+                                                                                                false
+                                                                                            );
+                                                                                            setTempShippingNotes('');
+                                                                                        }}>
+                                                                                        Cancel
+                                                                                    </Button>
+                                                                                </div>
+                                                                            </div>
+                                                                        )}
+                                                                    </CardContent>
+                                                                </Card>
+                                                            </TabsContent>
+
+                                                            <TabsContent value="payment" className="mt-4 space-y-4">
+                                                                <Card>
+                                                                    <CardHeader className="flex flex-row items-center justify-between">
+                                                                        <h3 className="font-semibold">
+                                                                            Payment Details
+                                                                        </h3>
+                                                                        <Button
+                                                                            variant="outline"
+                                                                            size="sm"
+                                                                            onClick={() => {
+                                                                                if (isEditingPayment) {
+                                                                                    setIsEditingPayment(false);
+                                                                                    setEditPaymentData({
+                                                                                        paymentStatus: '',
+                                                                                        paymentMethod: ''
+                                                                                    });
+                                                                                } else {
+                                                                                    setIsEditingPayment(true);
+                                                                                    setEditPaymentData({
+                                                                                        paymentStatus:
+                                                                                            selectedOrder.paymentStatus ||
+                                                                                            'pending',
+                                                                                        paymentMethod:
+                                                                                            selectedOrder.paymentMethod ||
+                                                                                            selectedOrder.method ||
+                                                                                            'credit_card'
+                                                                                    });
+                                                                                }
+                                                                            }}>
+                                                                            {isEditingPayment
+                                                                                ? 'Cancel'
+                                                                                : 'Edit Payment'}
+                                                                        </Button>
+                                                                    </CardHeader>
+                                                                    <CardContent className="space-y-4">
+                                                                        {!isEditingPayment ? (
+                                                                            <div className="grid grid-cols-2 gap-4">
+                                                                                <div>
+                                                                                    <label className="font-medium text-gray-500 text-sm">
+                                                                                        Payment Method
+                                                                                    </label>
+                                                                                    <p className="text-sm">
+                                                                                        {selectedOrder.paymentMethod ||
+                                                                                            selectedOrder.method ||
+                                                                                            'Card'}
+                                                                                    </p>
+                                                                                </div>
+                                                                                <div>
+                                                                                    <label className="font-medium text-gray-500 text-sm">
+                                                                                        Payment Status
+                                                                                    </label>
+                                                                                    <Badge
+                                                                                        variant={
+                                                                                            selectedOrder.paymentStatus ===
+                                                                                            'paid'
+                                                                                                ? 'default'
+                                                                                                : 'outline'
+                                                                                        }>
+                                                                                        {selectedOrder.paymentStatus}
+                                                                                    </Badge>
+                                                                                </div>
+                                                                            </div>
+                                                                        ) : (
+                                                                            // Edit Mode
+                                                                            <div className="space-y-4">
+                                                                                <div className="grid grid-cols-2 gap-4">
+                                                                                    <div>
+                                                                                        <Label htmlFor="payment-method">
+                                                                                            Payment Method
+                                                                                        </Label>
+                                                                                        <Select
+                                                                                            value={
+                                                                                                editPaymentData.paymentMethod
+                                                                                            }
+                                                                                            onValueChange={(value) =>
+                                                                                                setEditPaymentData({
+                                                                                                    ...editPaymentData,
+                                                                                                    paymentMethod: value
+                                                                                                })
+                                                                                            }>
+                                                                                            <SelectTrigger>
+                                                                                                <SelectValue />
+                                                                                            </SelectTrigger>
+                                                                                            <SelectContent>
+                                                                                                {PAYMENT_METHODS.map(
+                                                                                                    (method) => (
+                                                                                                        <SelectItem
+                                                                                                            key={
+                                                                                                                method.value
+                                                                                                            }
+                                                                                                            value={
+                                                                                                                method.value
+                                                                                                            }>
+                                                                                                            {
+                                                                                                                method.label
+                                                                                                            }
+                                                                                                        </SelectItem>
+                                                                                                    )
+                                                                                                )}
+                                                                                            </SelectContent>
+                                                                                        </Select>
+                                                                                    </div>
+                                                                                    <div>
+                                                                                        <Label htmlFor="payment-status">
+                                                                                            Payment Status
+                                                                                        </Label>
+                                                                                        <Select
+                                                                                            value={
+                                                                                                editPaymentData.paymentStatus
+                                                                                            }
+                                                                                            onValueChange={(value) =>
+                                                                                                setEditPaymentData({
+                                                                                                    ...editPaymentData,
+                                                                                                    paymentStatus: value
+                                                                                                })
+                                                                                            }>
+                                                                                            <SelectTrigger>
+                                                                                                <SelectValue />
+                                                                                            </SelectTrigger>
+                                                                                            <SelectContent>
+                                                                                                {PAYMENT_STATUS.map(
+                                                                                                    (status) => (
+                                                                                                        <SelectItem
+                                                                                                            key={
+                                                                                                                status.value
+                                                                                                            }
+                                                                                                            value={
+                                                                                                                status.value
+                                                                                                            }>
+                                                                                                            {
+                                                                                                                status.label
+                                                                                                            }
+                                                                                                        </SelectItem>
+                                                                                                    )
+                                                                                                )}
+                                                                                            </SelectContent>
+                                                                                        </Select>
                                                                                     </div>
                                                                                 </div>
-                                                                            )}
-                                                                        </CardContent>
-                                                                    </Card>
-                                                                </TabsContent>
 
-                                                                <TabsContent value="payment" className="mt-4 space-y-4">
-                                                                    <Card>
-                                                                        <CardHeader className="flex flex-row items-center justify-between">
-                                                                            <h3 className="font-semibold">
-                                                                                Payment Details
-                                                                            </h3>
-                                                                            <Button
-                                                                                variant="outline"
-                                                                                size="sm"
-                                                                                onClick={() => {
-                                                                                    if (isEditingPayment) {
-                                                                                        setIsEditingPayment(false);
-                                                                                        setEditPaymentData({
-                                                                                            paymentStatus: '',
-                                                                                            paymentMethod: ''
-                                                                                        });
-                                                                                    } else {
-                                                                                        setIsEditingPayment(true);
-                                                                                        setEditPaymentData({
-                                                                                            paymentStatus:
-                                                                                                selectedOrder.paymentStatus ||
-                                                                                                'pending',
-                                                                                            paymentMethod:
-                                                                                                selectedOrder.paymentMethod ||
-                                                                                                selectedOrder.method ||
-                                                                                                'credit_card'
-                                                                                        });
-                                                                                    }
-                                                                                }}>
-                                                                                {isEditingPayment
-                                                                                    ? 'Cancel'
-                                                                                    : 'Edit Payment'}
-                                                                            </Button>
-                                                                        </CardHeader>
-                                                                        <CardContent className="space-y-4">
-                                                                            {!isEditingPayment ? (
+                                                                                <div className="flex gap-2 pt-2">
+                                                                                    <Button
+                                                                                        onClick={async () => {
+                                                                                            try {
+                                                                                                setIsSubmitting(true);
+
+                                                                                                const updateData = {
+                                                                                                    paymentStatus:
+                                                                                                        editPaymentData.paymentStatus,
+                                                                                                    paymentMethod:
+                                                                                                        editPaymentData.paymentMethod
+                                                                                                };
+
+                                                                                                const updateResponse =
+                                                                                                    await update(
+                                                                                                        selectedOrder.id,
+                                                                                                        updateData,
+                                                                                                        'orders'
+                                                                                                    );
+
+                                                                                                if (updateResponse) {
+                                                                                                    toast.success(
+                                                                                                        'Payment details updated successfully'
+                                                                                                    );
+
+                                                                                                    // Update orders in state instead of full reload
+                                                                                                    updateOrderInState(
+                                                                                                        selectedOrder.id,
+                                                                                                        updateData
+                                                                                                    );
+
+                                                                                                    // Exit edit mode
+                                                                                                    setIsEditingPayment(
+                                                                                                        false
+                                                                                                    );
+                                                                                                    setEditPaymentData({
+                                                                                                        paymentStatus:
+                                                                                                            '',
+                                                                                                        paymentMethod:
+                                                                                                            ''
+                                                                                                    });
+                                                                                                } else {
+                                                                                                    toast.error(
+                                                                                                        'Failed to update payment details'
+                                                                                                    );
+                                                                                                }
+                                                                                            } catch (error) {
+                                                                                                console.error(
+                                                                                                    'Error updating payment:',
+                                                                                                    error
+                                                                                                );
+                                                                                                toast.error(
+                                                                                                    'Failed to update payment details'
+                                                                                                );
+                                                                                            } finally {
+                                                                                                setIsSubmitting(false);
+                                                                                            }
+                                                                                        }}
+                                                                                        disabled={isSubmitting}>
+                                                                                        {isSubmitting ? (
+                                                                                            <>
+                                                                                                <div className="mr-2 h-4 w-4 animate-spin rounded-full border-white border-b-2" />
+                                                                                                Updating...
+                                                                                            </>
+                                                                                        ) : (
+                                                                                            'Update Payment'
+                                                                                        )}
+                                                                                    </Button>
+                                                                                    <Button
+                                                                                        variant="outline"
+                                                                                        onClick={() => {
+                                                                                            setIsEditingPayment(false);
+                                                                                            setEditPaymentData({
+                                                                                                paymentStatus: '',
+                                                                                                paymentMethod: ''
+                                                                                            });
+                                                                                        }}>
+                                                                                        Cancel
+                                                                                    </Button>
+                                                                                </div>
+                                                                            </div>
+                                                                        )}
+
+                                                                        {/* Coupon Information */}
+                                                                        {selectedOrder.coupon && (
+                                                                            <div className="rounded-lg border border-green-200 bg-green-50 p-4">
+                                                                                <h4 className="mb-2 font-medium text-green-700">
+                                                                                    Applied Coupon
+                                                                                </h4>
                                                                                 <div className="grid grid-cols-2 gap-4">
                                                                                     <div>
                                                                                         <label className="font-medium text-gray-500 text-sm">
-                                                                                            Payment Method
+                                                                                            Code
                                                                                         </label>
-                                                                                        <p className="text-sm">
-                                                                                            {selectedOrder.paymentMethod ||
-                                                                                                selectedOrder.method ||
-                                                                                                'Card'}
+                                                                                        <p className="rounded border bg-white px-2 py-1 font-mono text-sm">
+                                                                                            {selectedOrder.coupon.code}
                                                                                         </p>
                                                                                     </div>
                                                                                     <div>
                                                                                         <label className="font-medium text-gray-500 text-sm">
-                                                                                            Payment Status
+                                                                                            Discount
+                                                                                        </label>
+                                                                                        <p className="font-semibold text-green-600 text-sm">
+                                                                                            {selectedOrder.coupon
+                                                                                                .type === 'percentage'
+                                                                                                ? `${selectedOrder.coupon.value}%`
+                                                                                                : `€${selectedOrder.coupon.value}`}{' '}
+                                                                                            (€
+                                                                                            {selectedOrder.discountAmount?.toFixed(
+                                                                                                2
+                                                                                            )}{' '}
+                                                                                            saved)
+                                                                                        </p>
+                                                                                    </div>
+                                                                                </div>
+                                                                                {selectedOrder.coupon.name && (
+                                                                                    <div className="mt-2">
+                                                                                        <label className="font-medium text-gray-500 text-sm">
+                                                                                            Description
+                                                                                        </label>
+                                                                                        <p className="text-sm">
+                                                                                            {selectedOrder.coupon.name}
+                                                                                        </p>
+                                                                                    </div>
+                                                                                )}
+                                                                            </div>
+                                                                        )}
+
+                                                                        {/* Service Appointment Information */}
+                                                                        {selectedOrder.isServiceAppointment && (
+                                                                            <div className="rounded-lg border border-blue-200 bg-blue-50 p-4">
+                                                                                <h4 className="mb-2 font-medium text-blue-700">
+                                                                                    Service Appointment
+                                                                                </h4>
+                                                                                <div className="grid grid-cols-2 gap-4">
+                                                                                    <div>
+                                                                                        <label className="font-medium text-gray-500 text-sm">
+                                                                                            Appointment ID
+                                                                                        </label>
+                                                                                        <p className="rounded border bg-white px-2 py-1 font-mono text-sm">
+                                                                                            {
+                                                                                                selectedOrder.appointmentId
+                                                                                            }
+                                                                                        </p>
+                                                                                    </div>
+                                                                                    <div>
+                                                                                        <label className="font-medium text-gray-500 text-sm">
+                                                                                            Status
                                                                                         </label>
                                                                                         <Badge
                                                                                             variant={
-                                                                                                selectedOrder.paymentStatus ===
-                                                                                                'paid'
+                                                                                                selectedOrder.status ===
+                                                                                                'completed'
                                                                                                     ? 'default'
                                                                                                     : 'outline'
                                                                                             }>
-                                                                                            {
-                                                                                                selectedOrder.paymentStatus
-                                                                                            }
+                                                                                            {selectedOrder.status}
                                                                                         </Badge>
                                                                                     </div>
                                                                                 </div>
-                                                                            ) : (
-                                                                                // Edit Mode
-                                                                                <div className="space-y-4">
-                                                                                    <div className="grid grid-cols-2 gap-4">
-                                                                                        <div>
-                                                                                            <Label htmlFor="payment-method">
-                                                                                                Payment Method
-                                                                                            </Label>
-                                                                                            <Select
-                                                                                                value={
-                                                                                                    editPaymentData.paymentMethod
-                                                                                                }
-                                                                                                onValueChange={(
-                                                                                                    value
-                                                                                                ) =>
-                                                                                                    setEditPaymentData({
-                                                                                                        ...editPaymentData,
-                                                                                                        paymentMethod:
-                                                                                                            value
-                                                                                                    })
-                                                                                                }>
-                                                                                                <SelectTrigger>
-                                                                                                    <SelectValue />
-                                                                                                </SelectTrigger>
-                                                                                                <SelectContent>
-                                                                                                    {PAYMENT_METHODS.map(
-                                                                                                        (method) => (
-                                                                                                            <SelectItem
-                                                                                                                key={
-                                                                                                                    method.value
-                                                                                                                }
-                                                                                                                value={
-                                                                                                                    method.value
-                                                                                                                }>
-                                                                                                                {
-                                                                                                                    method.label
-                                                                                                                }
-                                                                                                            </SelectItem>
-                                                                                                        )
+                                                                                {selectedOrder.items.some(
+                                                                                    (item) => item.appointmentDate
+                                                                                ) && (
+                                                                                    <div className="mt-2">
+                                                                                        <label className="font-medium text-gray-500 text-sm">
+                                                                                            Appointment Details
+                                                                                        </label>
+                                                                                        {selectedOrder.items
+                                                                                            .filter(
+                                                                                                (item) =>
+                                                                                                    item.appointmentDate
+                                                                                            )
+                                                                                            .map((item, index) => (
+                                                                                                <div
+                                                                                                    key={index}
+                                                                                                    className="mt-1 rounded border bg-white p-2 text-sm">
+                                                                                                    <p>
+                                                                                                        <strong>
+                                                                                                            {item.name}
+                                                                                                        </strong>
+                                                                                                    </p>
+                                                                                                    <p>
+                                                                                                        📅{' '}
+                                                                                                        {
+                                                                                                            item.appointmentDate
+                                                                                                        }{' '}
+                                                                                                        at{' '}
+                                                                                                        {
+                                                                                                            item.appointmentTime
+                                                                                                        }
+                                                                                                    </p>
+                                                                                                </div>
+                                                                                            ))}
+                                                                                    </div>
+                                                                                )}
+                                                                            </div>
+                                                                        )}
+
+                                                                        {/* Order Items */}
+                                                                        <div className="mt-6">
+                                                                            <h4 className="mb-3 font-medium">
+                                                                                Order Items
+                                                                            </h4>
+                                                                            <Table>
+                                                                                <TableHeader>
+                                                                                    <TableRow>
+                                                                                        <TableHead>Product</TableHead>
+                                                                                        <TableHead>Qty</TableHead>
+                                                                                        <TableHead>Price</TableHead>
+                                                                                        <TableHead className="text-right">
+                                                                                            Total
+                                                                                        </TableHead>
+                                                                                    </TableRow>
+                                                                                </TableHeader>
+                                                                                <TableBody>
+                                                                                    {selectedOrder.items.map(
+                                                                                        (item, index) => (
+                                                                                            <TableRow key={index}>
+                                                                                                <TableCell className="font-medium">
+                                                                                                    {item.name}
+                                                                                                </TableCell>
+                                                                                                <TableCell>
+                                                                                                    {item.quantity}
+                                                                                                </TableCell>
+                                                                                                <TableCell>
+                                                                                                    {formatPrice(
+                                                                                                        item.price
                                                                                                     )}
-                                                                                                </SelectContent>
-                                                                                            </Select>
-                                                                                        </div>
-                                                                                        <div>
-                                                                                            <Label htmlFor="payment-status">
-                                                                                                Payment Status
-                                                                                            </Label>
-                                                                                            <Select
-                                                                                                value={
-                                                                                                    editPaymentData.paymentStatus
-                                                                                                }
-                                                                                                onValueChange={(
-                                                                                                    value
-                                                                                                ) =>
-                                                                                                    setEditPaymentData({
-                                                                                                        ...editPaymentData,
-                                                                                                        paymentStatus:
-                                                                                                            value
-                                                                                                    })
-                                                                                                }>
-                                                                                                <SelectTrigger>
-                                                                                                    <SelectValue />
-                                                                                                </SelectTrigger>
-                                                                                                <SelectContent>
-                                                                                                    {PAYMENT_STATUS.map(
-                                                                                                        (status) => (
-                                                                                                            <SelectItem
-                                                                                                                key={
-                                                                                                                    status.value
-                                                                                                                }
-                                                                                                                value={
-                                                                                                                    status.value
-                                                                                                                }>
-                                                                                                                {
-                                                                                                                    status.label
-                                                                                                                }
-                                                                                                            </SelectItem>
-                                                                                                        )
+                                                                                                </TableCell>
+                                                                                                <TableCell className="text-right">
+                                                                                                    {formatPrice(
+                                                                                                        item.price *
+                                                                                                            item.quantity
                                                                                                     )}
-                                                                                                </SelectContent>
-                                                                                            </Select>
-                                                                                        </div>
-                                                                                    </div>
-
-                                                                                    <div className="flex gap-2 pt-2">
-                                                                                        <Button
-                                                                                            onClick={async () => {
-                                                                                                try {
-                                                                                                    setIsSubmitting(
-                                                                                                        true
-                                                                                                    );
-
-                                                                                                    const updateData = {
-                                                                                                        paymentStatus:
-                                                                                                            editPaymentData.paymentStatus,
-                                                                                                        paymentMethod:
-                                                                                                            editPaymentData.paymentMethod
-                                                                                                    };
-
-                                                                                                    const updateResponse =
-                                                                                                        await update(
-                                                                                                            selectedOrder.id,
-                                                                                                            updateData,
-                                                                                                            'orders'
-                                                                                                        );
-
-                                                                                                    if (
-                                                                                                        updateResponse
-                                                                                                    ) {
-                                                                                                        toast.success(
-                                                                                                            'Payment details updated successfully'
-                                                                                                        );
-
-                                                                                                        // Update orders in state instead of full reload
-                                                                                                        updateOrderInState(
-                                                                                                            selectedOrder.id,
-                                                                                                            updateData
-                                                                                                        );
-
-                                                                                                        // Exit edit mode
-                                                                                                        setIsEditingPayment(
-                                                                                                            false
-                                                                                                        );
-                                                                                                        setEditPaymentData(
-                                                                                                            {
-                                                                                                                paymentStatus:
-                                                                                                                    '',
-                                                                                                                paymentMethod:
-                                                                                                                    ''
-                                                                                                            }
-                                                                                                        );
-                                                                                                    } else {
-                                                                                                        toast.error(
-                                                                                                            'Failed to update payment details'
-                                                                                                        );
-                                                                                                    }
-                                                                                                } catch (error) {
-                                                                                                    console.error(
-                                                                                                        'Error updating payment:',
-                                                                                                        error
-                                                                                                    );
-                                                                                                    toast.error(
-                                                                                                        'Failed to update payment details'
-                                                                                                    );
-                                                                                                } finally {
-                                                                                                    setIsSubmitting(
-                                                                                                        false
-                                                                                                    );
-                                                                                                }
-                                                                                            }}
-                                                                                            disabled={isSubmitting}>
-                                                                                            {isSubmitting ? (
-                                                                                                <>
-                                                                                                    <div className="mr-2 h-4 w-4 animate-spin rounded-full border-white border-b-2" />
-                                                                                                    Updating...
-                                                                                                </>
-                                                                                            ) : (
-                                                                                                'Update Payment'
-                                                                                            )}
-                                                                                        </Button>
-                                                                                        <Button
-                                                                                            variant="outline"
-                                                                                            onClick={() => {
-                                                                                                setIsEditingPayment(
-                                                                                                    false
-                                                                                                );
-                                                                                                setEditPaymentData({
-                                                                                                    paymentStatus: '',
-                                                                                                    paymentMethod: ''
-                                                                                                });
-                                                                                            }}>
-                                                                                            Cancel
-                                                                                        </Button>
-                                                                                    </div>
-                                                                                </div>
-                                                                            )}
-
-                                                                            {/* Coupon Information */}
-                                                                            {selectedOrder.coupon && (
-                                                                                <div className="rounded-lg border border-green-200 bg-green-50 p-4">
-                                                                                    <h4 className="mb-2 font-medium text-green-700">
-                                                                                        Applied Coupon
-                                                                                    </h4>
-                                                                                    <div className="grid grid-cols-2 gap-4">
-                                                                                        <div>
-                                                                                            <label className="font-medium text-gray-500 text-sm">
-                                                                                                Code
-                                                                                            </label>
-                                                                                            <p className="rounded border bg-white px-2 py-1 font-mono text-sm">
-                                                                                                {
-                                                                                                    selectedOrder.coupon
-                                                                                                        .code
-                                                                                                }
-                                                                                            </p>
-                                                                                        </div>
-                                                                                        <div>
-                                                                                            <label className="font-medium text-gray-500 text-sm">
-                                                                                                Discount
-                                                                                            </label>
-                                                                                            <p className="font-semibold text-green-600 text-sm">
-                                                                                                {selectedOrder.coupon
-                                                                                                    .type ===
-                                                                                                'percentage'
-                                                                                                    ? `${selectedOrder.coupon.value}%`
-                                                                                                    : `€${selectedOrder.coupon.value}`}{' '}
-                                                                                                (€
-                                                                                                {selectedOrder.discountAmount?.toFixed(
-                                                                                                    2
-                                                                                                )}{' '}
-                                                                                                saved)
-                                                                                            </p>
-                                                                                        </div>
-                                                                                    </div>
-                                                                                    {selectedOrder.coupon.name && (
-                                                                                        <div className="mt-2">
-                                                                                            <label className="font-medium text-gray-500 text-sm">
-                                                                                                Description
-                                                                                            </label>
-                                                                                            <p className="text-sm">
-                                                                                                {
-                                                                                                    selectedOrder.coupon
-                                                                                                        .name
-                                                                                                }
-                                                                                            </p>
-                                                                                        </div>
+                                                                                                </TableCell>
+                                                                                            </TableRow>
+                                                                                        )
                                                                                     )}
-                                                                                </div>
-                                                                            )}
+                                                                                    <TableRow className="border-t-2">
+                                                                                        <TableCell
+                                                                                            colSpan={2}></TableCell>
+                                                                                        <TableCell className="font-semibold">
+                                                                                            Subtotal:
+                                                                                        </TableCell>
+                                                                                        <TableCell className="text-right font-semibold">
+                                                                                            {formatPrice(
+                                                                                                selectedOrder.subtotal
+                                                                                            )}
+                                                                                        </TableCell>
+                                                                                    </TableRow>
+                                                                                    <TableRow>
+                                                                                        <TableCell
+                                                                                            colSpan={2}></TableCell>
+                                                                                        <TableCell className="font-semibold">
+                                                                                            Shipping:
+                                                                                        </TableCell>
+                                                                                        <TableCell className="text-right font-semibold">
+                                                                                            {formatPrice(
+                                                                                                selectedOrder.shippingCost ||
+                                                                                                    0
+                                                                                            )}
+                                                                                        </TableCell>
+                                                                                    </TableRow>
+                                                                                    {selectedOrder.taxEnabled &&
+                                                                                    selectedOrder.taxAmount &&
+                                                                                    selectedOrder.taxAmount > 0 ? (
+                                                                                        <TableRow>
+                                                                                            <TableCell
+                                                                                                colSpan={2}></TableCell>
+                                                                                            <TableCell className="font-semibold">
+                                                                                                Tax (
+                                                                                                {selectedOrder.taxRate}
+                                                                                                %):
+                                                                                            </TableCell>
+                                                                                            <TableCell className="text-right font-semibold">
+                                                                                                {formatPrice(
+                                                                                                    selectedOrder.taxAmount
+                                                                                                )}
+                                                                                            </TableCell>
+                                                                                        </TableRow>
+                                                                                    ) : null}
+                                                                                    {selectedOrder.discountAmount &&
+                                                                                    selectedOrder.discountAmount > 0 ? (
+                                                                                        <TableRow>
+                                                                                            <TableCell
+                                                                                                colSpan={2}></TableCell>
+                                                                                            <TableCell className="font-semibold text-green-600">
+                                                                                                Discount
+                                                                                                {selectedOrder.coupon
+                                                                                                    ? ` (${selectedOrder.coupon.code})`
+                                                                                                    : ''}
+                                                                                                :
+                                                                                            </TableCell>
+                                                                                            <TableCell className="text-right font-semibold text-green-600">
+                                                                                                -
+                                                                                                {formatPrice(
+                                                                                                    selectedOrder.discountAmount
+                                                                                                )}
+                                                                                            </TableCell>
+                                                                                        </TableRow>
+                                                                                    ) : null}
+                                                                                    <TableRow className="border-t">
+                                                                                        <TableCell
+                                                                                            colSpan={2}></TableCell>
+                                                                                        <TableCell className="font-bold">
+                                                                                            Total:
+                                                                                        </TableCell>
+                                                                                        <TableCell className="text-right font-bold text-lg">
+                                                                                            {formatPrice(
+                                                                                                selectedOrder.total
+                                                                                            )}
+                                                                                        </TableCell>
+                                                                                    </TableRow>
+                                                                                </TableBody>
+                                                                            </Table>
+                                                                        </div>
+                                                                    </CardContent>
+                                                                </Card>
+                                                            </TabsContent>
 
-                                                                            {/* Service Appointment Information */}
-                                                                            {selectedOrder.isServiceAppointment && (
-                                                                                <div className="rounded-lg border border-blue-200 bg-blue-50 p-4">
-                                                                                    <h4 className="mb-2 font-medium text-blue-700">
-                                                                                        Service Appointment
-                                                                                    </h4>
-                                                                                    <div className="grid grid-cols-2 gap-4">
-                                                                                        <div>
-                                                                                            <label className="font-medium text-gray-500 text-sm">
-                                                                                                Appointment ID
-                                                                                            </label>
-                                                                                            <p className="rounded border bg-white px-2 py-1 font-mono text-sm">
-                                                                                                {
-                                                                                                    selectedOrder.appointmentId
-                                                                                                }
-                                                                                            </p>
-                                                                                        </div>
-                                                                                        <div>
-                                                                                            <label className="font-medium text-gray-500 text-sm">
-                                                                                                Status
-                                                                                            </label>
+                                                            <TabsContent value="status" className="mt-4 space-y-4">
+                                                                <Card>
+                                                                    <CardHeader className="flex flex-row items-center justify-between">
+                                                                        <h3 className="font-semibold">
+                                                                            Order Status & Timeline
+                                                                        </h3>
+                                                                        <Button
+                                                                            variant="outline"
+                                                                            size="sm"
+                                                                            onClick={() => {
+                                                                                if (isEditingStatus) {
+                                                                                    setIsEditingStatus(false);
+                                                                                    setEditStatusData({
+                                                                                        status: '',
+                                                                                        tracking: '',
+                                                                                        sendEmail: true
+                                                                                    });
+                                                                                } else {
+                                                                                    setIsEditingStatus(true);
+                                                                                    setEditStatusData({
+                                                                                        status: selectedOrder.status,
+                                                                                        tracking:
+                                                                                            selectedOrder.tracking ||
+                                                                                            '',
+                                                                                        sendEmail: true
+                                                                                    });
+                                                                                }
+                                                                            }}>
+                                                                            <Pencil className="mr-2 h-4 w-4" />
+                                                                            {isEditingStatus ? 'Cancel' : 'Edit Status'}
+                                                                        </Button>
+                                                                    </CardHeader>
+                                                                    <CardContent className="space-y-4">
+                                                                        {!isEditingStatus ? (
+                                                                            // View Mode
+                                                                            <>
+                                                                                <div className="grid grid-cols-2 gap-4">
+                                                                                    <div>
+                                                                                        <label className="font-medium text-gray-500 text-sm">
+                                                                                            Current Status
+                                                                                        </label>
+                                                                                        <div className="mt-1">
                                                                                             <Badge
                                                                                                 variant={
                                                                                                     selectedOrder.status ===
-                                                                                                    'completed'
+                                                                                                    'delivered'
                                                                                                         ? 'default'
                                                                                                         : 'outline'
                                                                                                 }>
-                                                                                                {selectedOrder.status}
+                                                                                                {
+                                                                                                    ORDER_STATUS.find(
+                                                                                                        (s) =>
+                                                                                                            s.value ===
+                                                                                                            selectedOrder.status
+                                                                                                    )?.label
+                                                                                                }
                                                                                             </Badge>
                                                                                         </div>
                                                                                     </div>
-                                                                                    {selectedOrder.items.some(
-                                                                                        (item) => item.appointmentDate
-                                                                                    ) && (
-                                                                                        <div className="mt-2">
-                                                                                            <label className="font-medium text-gray-500 text-sm">
-                                                                                                Appointment Details
-                                                                                            </label>
-                                                                                            {selectedOrder.items
-                                                                                                .filter(
-                                                                                                    (item) =>
-                                                                                                        item.appointmentDate
-                                                                                                )
-                                                                                                .map((item, index) => (
-                                                                                                    <div
-                                                                                                        key={index}
-                                                                                                        className="mt-1 rounded border bg-white p-2 text-sm">
-                                                                                                        <p>
-                                                                                                            <strong>
-                                                                                                                {
-                                                                                                                    item.name
-                                                                                                                }
-                                                                                                            </strong>
-                                                                                                        </p>
-                                                                                                        <p>
-                                                                                                            📅{' '}
-                                                                                                            {
-                                                                                                                item.appointmentDate
-                                                                                                            }{' '}
-                                                                                                            at{' '}
-                                                                                                            {
-                                                                                                                item.appointmentTime
-                                                                                                            }
-                                                                                                        </p>
-                                                                                                    </div>
-                                                                                                ))}
-                                                                                        </div>
-                                                                                    )}
+                                                                                    <div>
+                                                                                        <label className="font-medium text-gray-500 text-sm">
+                                                                                            Order Date
+                                                                                        </label>
+                                                                                        <p className="mt-1 text-sm">
+                                                                                            {formatDate(
+                                                                                                selectedOrder.createdAt
+                                                                                            )}
+                                                                                        </p>
+                                                                                    </div>
                                                                                 </div>
-                                                                            )}
-
-                                                                            {/* Order Items */}
-                                                                            <div className="mt-6">
-                                                                                <h4 className="mb-3 font-medium">
-                                                                                    Order Items
-                                                                                </h4>
-                                                                                <Table>
-                                                                                    <TableHeader>
-                                                                                        <TableRow>
-                                                                                            <TableHead>
-                                                                                                Product
-                                                                                            </TableHead>
-                                                                                            <TableHead>Qty</TableHead>
-                                                                                            <TableHead>Price</TableHead>
-                                                                                            <TableHead className="text-right">
-                                                                                                Total
-                                                                                            </TableHead>
-                                                                                        </TableRow>
-                                                                                    </TableHeader>
-                                                                                    <TableBody>
-                                                                                        {selectedOrder.items.map(
-                                                                                            (item, index) => (
-                                                                                                <TableRow key={index}>
-                                                                                                    <TableCell className="font-medium">
-                                                                                                        {item.name}
-                                                                                                    </TableCell>
-                                                                                                    <TableCell>
-                                                                                                        {item.quantity}
-                                                                                                    </TableCell>
-                                                                                                    <TableCell>
-                                                                                                        {formatPrice(
-                                                                                                            item.price
-                                                                                                        )}
-                                                                                                    </TableCell>
-                                                                                                    <TableCell className="text-right">
-                                                                                                        {formatPrice(
-                                                                                                            item.price *
-                                                                                                                item.quantity
-                                                                                                        )}
-                                                                                                    </TableCell>
-                                                                                                </TableRow>
-                                                                                            )
-                                                                                        )}
-                                                                                        <TableRow className="border-t-2">
-                                                                                            <TableCell
-                                                                                                colSpan={2}></TableCell>
-                                                                                            <TableCell className="font-semibold">
-                                                                                                Subtotal:
-                                                                                            </TableCell>
-                                                                                            <TableCell className="text-right font-semibold">
-                                                                                                {formatPrice(
-                                                                                                    selectedOrder.subtotal
-                                                                                                )}
-                                                                                            </TableCell>
-                                                                                        </TableRow>
-                                                                                        <TableRow>
-                                                                                            <TableCell
-                                                                                                colSpan={2}></TableCell>
-                                                                                            <TableCell className="font-semibold">
-                                                                                                Shipping:
-                                                                                            </TableCell>
-                                                                                            <TableCell className="text-right font-semibold">
-                                                                                                {formatPrice(
-                                                                                                    selectedOrder.shippingCost ||
-                                                                                                        0
-                                                                                                )}
-                                                                                            </TableCell>
-                                                                                        </TableRow>
-                                                                                        {selectedOrder.taxEnabled &&
-                                                                                        selectedOrder.taxAmount &&
-                                                                                        selectedOrder.taxAmount > 0 ? (
-                                                                                            <TableRow>
-                                                                                                <TableCell
-                                                                                                    colSpan={
-                                                                                                        2
-                                                                                                    }></TableCell>
-                                                                                                <TableCell className="font-semibold">
-                                                                                                    Tax (
-                                                                                                    {
-                                                                                                        selectedOrder.taxRate
-                                                                                                    }
-                                                                                                    %):
-                                                                                                </TableCell>
-                                                                                                <TableCell className="text-right font-semibold">
-                                                                                                    {formatPrice(
-                                                                                                        selectedOrder.taxAmount
-                                                                                                    )}
-                                                                                                </TableCell>
-                                                                                            </TableRow>
-                                                                                        ) : null}
-                                                                                        {selectedOrder.discountAmount &&
-                                                                                        selectedOrder.discountAmount >
-                                                                                            0 ? (
-                                                                                            <TableRow>
-                                                                                                <TableCell
-                                                                                                    colSpan={
-                                                                                                        2
-                                                                                                    }></TableCell>
-                                                                                                <TableCell className="font-semibold text-green-600">
-                                                                                                    Discount
-                                                                                                    {selectedOrder.coupon
-                                                                                                        ? ` (${selectedOrder.coupon.code})`
-                                                                                                        : ''}
-                                                                                                    :
-                                                                                                </TableCell>
-                                                                                                <TableCell className="text-right font-semibold text-green-600">
-                                                                                                    -
-                                                                                                    {formatPrice(
-                                                                                                        selectedOrder.discountAmount
-                                                                                                    )}
-                                                                                                </TableCell>
-                                                                                            </TableRow>
-                                                                                        ) : null}
-                                                                                        <TableRow className="border-t">
-                                                                                            <TableCell
-                                                                                                colSpan={2}></TableCell>
-                                                                                            <TableCell className="font-bold">
-                                                                                                Total:
-                                                                                            </TableCell>
-                                                                                            <TableCell className="text-right font-bold text-lg">
-                                                                                                {formatPrice(
-                                                                                                    selectedOrder.total
-                                                                                                )}
-                                                                                            </TableCell>
-                                                                                        </TableRow>
-                                                                                    </TableBody>
-                                                                                </Table>
-                                                                            </div>
-                                                                        </CardContent>
-                                                                    </Card>
-                                                                </TabsContent>
-
-                                                                <TabsContent value="status" className="mt-4 space-y-4">
-                                                                    <Card>
-                                                                        <CardHeader className="flex flex-row items-center justify-between">
-                                                                            <h3 className="font-semibold">
-                                                                                Order Status & Timeline
-                                                                            </h3>
-                                                                            <Button
-                                                                                variant="outline"
-                                                                                size="sm"
-                                                                                onClick={() => {
-                                                                                    if (isEditingStatus) {
-                                                                                        setIsEditingStatus(false);
-                                                                                        setEditStatusData({
-                                                                                            status: '',
-                                                                                            tracking: '',
-                                                                                            sendEmail: true
-                                                                                        });
-                                                                                    } else {
-                                                                                        setIsEditingStatus(true);
-                                                                                        setEditStatusData({
-                                                                                            status: selectedOrder.status,
-                                                                                            tracking:
-                                                                                                selectedOrder.tracking ||
-                                                                                                '',
-                                                                                            sendEmail: true
-                                                                                        });
-                                                                                    }
-                                                                                }}>
-                                                                                <Pencil className="mr-2 h-4 w-4" />
-                                                                                {isEditingStatus
-                                                                                    ? 'Cancel'
-                                                                                    : 'Edit Status'}
-                                                                            </Button>
-                                                                        </CardHeader>
-                                                                        <CardContent className="space-y-4">
-                                                                            {!isEditingStatus ? (
-                                                                                // View Mode
-                                                                                <>
-                                                                                    <div className="grid grid-cols-2 gap-4">
-                                                                                        <div>
-                                                                                            <label className="font-medium text-gray-500 text-sm">
-                                                                                                Current Status
-                                                                                            </label>
-                                                                                            <div className="mt-1">
-                                                                                                <Badge
-                                                                                                    variant={
-                                                                                                        selectedOrder.status ===
-                                                                                                        'delivered'
-                                                                                                            ? 'default'
-                                                                                                            : 'outline'
-                                                                                                    }>
-                                                                                                    {
-                                                                                                        ORDER_STATUS.find(
-                                                                                                            (s) =>
-                                                                                                                s.value ===
-                                                                                                                selectedOrder.status
-                                                                                                        )?.label
-                                                                                                    }
-                                                                                                </Badge>
-                                                                                            </div>
-                                                                                        </div>
-                                                                                        <div>
-                                                                                            <label className="font-medium text-gray-500 text-sm">
-                                                                                                Order Date
-                                                                                            </label>
-                                                                                            <p className="mt-1 text-sm">
-                                                                                                {formatDate(
-                                                                                                    selectedOrder.createdAt
-                                                                                                )}
+                                                                                {selectedOrder.tracking && (
+                                                                                    <div>
+                                                                                        <label className="font-medium text-gray-500 text-sm">
+                                                                                            Tracking Number
+                                                                                        </label>
+                                                                                        <div className="mt-1 flex items-center gap-2">
+                                                                                            <p className="rounded bg-gray-100 px-2 py-1 font-mono text-sm">
+                                                                                                {selectedOrder.tracking}
                                                                                             </p>
-                                                                                        </div>
-                                                                                    </div>
-                                                                                    {selectedOrder.tracking && (
-                                                                                        <div>
-                                                                                            <label className="font-medium text-gray-500 text-sm">
-                                                                                                Tracking Number
-                                                                                            </label>
-                                                                                            <div className="mt-1 flex items-center gap-2">
-                                                                                                <p className="rounded bg-gray-100 px-2 py-1 font-mono text-sm">
-                                                                                                    {
-                                                                                                        selectedOrder.tracking
-                                                                                                    }
-                                                                                                </p>
-                                                                                                <Button
-                                                                                                    variant="outline"
-                                                                                                    size="sm"
-                                                                                                    onClick={() => {
-                                                                                                        const trackingUrl =
-                                                                                                            generateTrackingUrl(
-                                                                                                                selectedOrder.tracking
-                                                                                                            );
-                                                                                                        window.open(
-                                                                                                            trackingUrl,
-                                                                                                            '_blank'
+                                                                                            <Button
+                                                                                                variant="outline"
+                                                                                                size="sm"
+                                                                                                onClick={() => {
+                                                                                                    const trackingUrl =
+                                                                                                        generateTrackingUrl(
+                                                                                                            selectedOrder.tracking
                                                                                                         );
-                                                                                                    }}>
-                                                                                                    Track Package
-                                                                                                </Button>
-                                                                                            </div>
-                                                                                        </div>
-                                                                                    )}
-                                                                                </>
-                                                                            ) : (
-                                                                                // Edit Mode
-                                                                                <div className="space-y-4">
-                                                                                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                                                                                        <div>
-                                                                                            <label className="font-medium text-gray-700 text-sm">
-                                                                                                Order Status
-                                                                                            </label>
-                                                                                            <Select
-                                                                                                value={
-                                                                                                    editStatusData.status
-                                                                                                }
-                                                                                                onValueChange={(
-                                                                                                    value
-                                                                                                ) =>
-                                                                                                    setEditStatusData({
-                                                                                                        ...editStatusData,
-                                                                                                        status: value
-                                                                                                    })
-                                                                                                }>
-                                                                                                <SelectTrigger className="mt-1">
-                                                                                                    <SelectValue placeholder="Select status" />
-                                                                                                </SelectTrigger>
-                                                                                                <SelectContent>
-                                                                                                    {ORDER_STATUS.map(
-                                                                                                        (status) => (
-                                                                                                            <SelectItem
-                                                                                                                key={
-                                                                                                                    status.value
-                                                                                                                }
-                                                                                                                value={
-                                                                                                                    status.value
-                                                                                                                }>
-                                                                                                                {
-                                                                                                                    status.label
-                                                                                                                }
-                                                                                                            </SelectItem>
-                                                                                                        )
-                                                                                                    )}
-                                                                                                </SelectContent>
-                                                                                            </Select>
-                                                                                        </div>
-                                                                                        <div>
-                                                                                            <label className="font-medium text-gray-700 text-sm">
-                                                                                                Tracking Number
-                                                                                            </label>
-                                                                                            <Input
-                                                                                                placeholder="Enter tracking number (optional)"
-                                                                                                value={
-                                                                                                    editStatusData.tracking
-                                                                                                }
-                                                                                                onChange={(e) =>
-                                                                                                    setEditStatusData({
-                                                                                                        ...editStatusData,
-                                                                                                        tracking:
-                                                                                                            e.target
-                                                                                                                .value
-                                                                                                    })
-                                                                                                }
-                                                                                                className="mt-1"
-                                                                                            />
+                                                                                                    window.open(
+                                                                                                        trackingUrl,
+                                                                                                        '_blank'
+                                                                                                    );
+                                                                                                }}>
+                                                                                                Track Package
+                                                                                            </Button>
                                                                                         </div>
                                                                                     </div>
-
-                                                                                    <div className="flex items-center space-x-2">
-                                                                                        <Checkbox
-                                                                                            id="sendEmailUpdate"
-                                                                                            checked={
-                                                                                                editStatusData.sendEmail
+                                                                                )}
+                                                                            </>
+                                                                        ) : (
+                                                                            // Edit Mode
+                                                                            <div className="space-y-4">
+                                                                                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                                                                                    <div>
+                                                                                        <label className="font-medium text-gray-700 text-sm">
+                                                                                            Order Status
+                                                                                        </label>
+                                                                                        <Select
+                                                                                            value={
+                                                                                                editStatusData.status
                                                                                             }
-                                                                                            onCheckedChange={(
-                                                                                                checked
-                                                                                            ) =>
+                                                                                            onValueChange={(value) =>
                                                                                                 setEditStatusData({
                                                                                                     ...editStatusData,
-                                                                                                    sendEmail: checked
+                                                                                                    status: value
+                                                                                                })
+                                                                                            }>
+                                                                                            <SelectTrigger className="mt-1">
+                                                                                                <SelectValue placeholder="Select status" />
+                                                                                            </SelectTrigger>
+                                                                                            <SelectContent>
+                                                                                                {ORDER_STATUS.map(
+                                                                                                    (status) => (
+                                                                                                        <SelectItem
+                                                                                                            key={
+                                                                                                                status.value
+                                                                                                            }
+                                                                                                            value={
+                                                                                                                status.value
+                                                                                                            }>
+                                                                                                            {
+                                                                                                                status.label
+                                                                                                            }
+                                                                                                        </SelectItem>
+                                                                                                    )
+                                                                                                )}
+                                                                                            </SelectContent>
+                                                                                        </Select>
+                                                                                    </div>
+                                                                                    <div>
+                                                                                        <label className="font-medium text-gray-700 text-sm">
+                                                                                            Tracking Number
+                                                                                        </label>
+                                                                                        <Input
+                                                                                            placeholder="Enter tracking number (optional)"
+                                                                                            value={
+                                                                                                editStatusData.tracking
+                                                                                            }
+                                                                                            onChange={(e) =>
+                                                                                                setEditStatusData({
+                                                                                                    ...editStatusData,
+                                                                                                    tracking:
+                                                                                                        e.target.value
                                                                                                 })
                                                                                             }
+                                                                                            className="mt-1"
                                                                                         />
-                                                                                        <label
-                                                                                            htmlFor="sendEmailUpdate"
-                                                                                            className="font-medium text-sm">
-                                                                                            Send email notification to
-                                                                                            customer
-                                                                                            {editStatusData.tracking &&
-                                                                                                editStatusData.sendEmail && (
-                                                                                                    <span className="block text-gray-500 text-xs">
-                                                                                                        (will include
-                                                                                                        tracking
-                                                                                                        information)
-                                                                                                    </span>
-                                                                                                )}
-                                                                                        </label>
                                                                                     </div>
+                                                                                </div>
 
-                                                                                    <div className="flex gap-2 pt-2">
-                                                                                        <Button
-                                                                                            onClick={async () => {
-                                                                                                try {
-                                                                                                    setIsUpdatingStatus(
-                                                                                                        true
+                                                                                <div className="flex items-center space-x-2">
+                                                                                    <Checkbox
+                                                                                        id="sendEmailUpdate"
+                                                                                        checked={
+                                                                                            editStatusData.sendEmail
+                                                                                        }
+                                                                                        onCheckedChange={(checked) =>
+                                                                                            setEditStatusData({
+                                                                                                ...editStatusData,
+                                                                                                sendEmail: checked
+                                                                                            })
+                                                                                        }
+                                                                                    />
+                                                                                    <label
+                                                                                        htmlFor="sendEmailUpdate"
+                                                                                        className="font-medium text-sm">
+                                                                                        Send email notification to
+                                                                                        customer
+                                                                                        {editStatusData.tracking &&
+                                                                                            editStatusData.sendEmail && (
+                                                                                                <span className="block text-gray-500 text-xs">
+                                                                                                    (will include
+                                                                                                    tracking
+                                                                                                    information)
+                                                                                                </span>
+                                                                                            )}
+                                                                                    </label>
+                                                                                </div>
+
+                                                                                <div className="flex gap-2 pt-2">
+                                                                                    <Button
+                                                                                        onClick={async () => {
+                                                                                            try {
+                                                                                                setIsUpdatingStatus(
+                                                                                                    true
+                                                                                                );
+
+                                                                                                // Update order with new status and tracking
+                                                                                                const updateData = {
+                                                                                                    status: editStatusData.status
+                                                                                                };
+                                                                                                if (
+                                                                                                    editStatusData.tracking.trim()
+                                                                                                ) {
+                                                                                                    updateData.tracking =
+                                                                                                        editStatusData.tracking.trim();
+                                                                                                }
+
+                                                                                                const updateResponse =
+                                                                                                    await update(
+                                                                                                        selectedOrder.id,
+                                                                                                        updateData,
+                                                                                                        'orders'
                                                                                                     );
 
-                                                                                                    // Update order with new status and tracking
-                                                                                                    const updateData = {
-                                                                                                        status: editStatusData.status
-                                                                                                    };
+                                                                                                if (updateResponse) {
+                                                                                                    // Send email notification if requested
                                                                                                     if (
-                                                                                                        editStatusData.tracking.trim()
+                                                                                                        editStatusData.sendEmail
                                                                                                     ) {
-                                                                                                        updateData.tracking =
-                                                                                                            editStatusData.tracking.trim();
-                                                                                                    }
-
-                                                                                                    const updateResponse =
-                                                                                                        await update(
-                                                                                                            selectedOrder.id,
-                                                                                                            updateData,
-                                                                                                            'orders'
-                                                                                                        );
-
-                                                                                                    if (
-                                                                                                        updateResponse
-                                                                                                    ) {
-                                                                                                        // Send email notification if requested
-                                                                                                        if (
-                                                                                                            editStatusData.sendEmail
-                                                                                                        ) {
-                                                                                                            const emailPayload =
-                                                                                                                {
-                                                                                                                    type: 'order_status_update',
-                                                                                                                    email: selectedOrder
-                                                                                                                        .customer
-                                                                                                                        .email,
-                                                                                                                    customerName:
-                                                                                                                        `${selectedOrder.customer.firstName} ${selectedOrder.customer.lastName}`.trim(),
-                                                                                                                    orderId:
-                                                                                                                        selectedOrder.id,
-                                                                                                                    orderDate:
-                                                                                                                        selectedOrder.createdAt,
-                                                                                                                    items: selectedOrder.items,
-                                                                                                                    subtotal:
-                                                                                                                        selectedOrder.subtotal,
-                                                                                                                    shippingCost:
-                                                                                                                        selectedOrder.shippingCost,
-                                                                                                                    total: selectedOrder.total,
-                                                                                                                    shippingAddress:
-                                                                                                                        {
-                                                                                                                            street: selectedOrder
-                                                                                                                                .customer
-                                                                                                                                .streetAddress,
-                                                                                                                            unit: selectedOrder
-                                                                                                                                .customer
-                                                                                                                                .apartmentUnit,
-                                                                                                                            city: selectedOrder
-                                                                                                                                .customer
-                                                                                                                                .city,
-                                                                                                                            state: selectedOrder
-                                                                                                                                .customer
-                                                                                                                                .state,
-                                                                                                                            zip: selectedOrder
-                                                                                                                                .customer
-                                                                                                                                .zipCode,
-                                                                                                                            country:
-                                                                                                                                selectedOrder
-                                                                                                                                    .customer
-                                                                                                                                    .country
-                                                                                                                        },
-                                                                                                                    status:
-                                                                                                                        editStatusData.status ===
-                                                                                                                        'shipped'
-                                                                                                                            ? 'in_transit'
-                                                                                                                            : editStatusData.status,
-                                                                                                                    trackingNumber:
-                                                                                                                        editStatusData.tracking.trim() ||
-                                                                                                                        undefined,
-                                                                                                                    trackingUrl:
-                                                                                                                        editStatusData.tracking.trim()
-                                                                                                                            ? generateTrackingUrl(
-                                                                                                                                  editStatusData.tracking.trim()
-                                                                                                                              )
-                                                                                                                            : undefined
-                                                                                                                };
-
-                                                                                                            await fetch(
-                                                                                                                '/api/email',
-                                                                                                                {
-                                                                                                                    method: 'POST',
-                                                                                                                    headers:
-                                                                                                                        {
-                                                                                                                            'Content-Type':
-                                                                                                                                'application/json'
-                                                                                                                        },
-                                                                                                                    body: JSON.stringify(
-                                                                                                                        emailPayload
-                                                                                                                    )
-                                                                                                                }
-                                                                                                            );
-
-                                                                                                            toast.success(
-                                                                                                                'Order status updated and customer notified'
-                                                                                                            );
-                                                                                                        } else {
-                                                                                                            toast.success(
-                                                                                                                'Order status updated successfully'
-                                                                                                            );
-                                                                                                        }
-
-                                                                                                        // Update orders in state instead of full reload
-                                                                                                        updateOrderInState(
-                                                                                                            selectedOrder.id,
-                                                                                                            updateData
-                                                                                                        );
-
-                                                                                                        // Exit edit mode
-                                                                                                        setIsEditingStatus(
-                                                                                                            false
-                                                                                                        );
-                                                                                                        setEditStatusData(
+                                                                                                        const emailPayload =
                                                                                                             {
-                                                                                                                status: '',
-                                                                                                                tracking:
-                                                                                                                    '',
-                                                                                                                sendEmail: true
+                                                                                                                type: 'order_status_update',
+                                                                                                                email: selectedOrder
+                                                                                                                    .customer
+                                                                                                                    .email,
+                                                                                                                customerName:
+                                                                                                                    `${selectedOrder.customer.firstName} ${selectedOrder.customer.lastName}`.trim(),
+                                                                                                                orderId:
+                                                                                                                    selectedOrder.id,
+                                                                                                                orderDate:
+                                                                                                                    selectedOrder.createdAt,
+                                                                                                                items: selectedOrder.items,
+                                                                                                                subtotal:
+                                                                                                                    selectedOrder.subtotal,
+                                                                                                                shippingCost:
+                                                                                                                    selectedOrder.shippingCost,
+                                                                                                                total: selectedOrder.total,
+                                                                                                                shippingAddress:
+                                                                                                                    {
+                                                                                                                        street: selectedOrder
+                                                                                                                            .customer
+                                                                                                                            .streetAddress,
+                                                                                                                        unit: selectedOrder
+                                                                                                                            .customer
+                                                                                                                            .apartmentUnit,
+                                                                                                                        city: selectedOrder
+                                                                                                                            .customer
+                                                                                                                            .city,
+                                                                                                                        state: selectedOrder
+                                                                                                                            .customer
+                                                                                                                            .state,
+                                                                                                                        zip: selectedOrder
+                                                                                                                            .customer
+                                                                                                                            .zipCode,
+                                                                                                                        country:
+                                                                                                                            selectedOrder
+                                                                                                                                .customer
+                                                                                                                                .country
+                                                                                                                    },
+                                                                                                                status:
+                                                                                                                    editStatusData.status ===
+                                                                                                                    'shipped'
+                                                                                                                        ? 'in_transit'
+                                                                                                                        : editStatusData.status,
+                                                                                                                trackingNumber:
+                                                                                                                    editStatusData.tracking.trim() ||
+                                                                                                                    undefined,
+                                                                                                                trackingUrl:
+                                                                                                                    editStatusData.tracking.trim()
+                                                                                                                        ? generateTrackingUrl(
+                                                                                                                              editStatusData.tracking.trim()
+                                                                                                                          )
+                                                                                                                        : undefined
+                                                                                                            };
+
+                                                                                                        await fetch(
+                                                                                                            '/api/email',
+                                                                                                            {
+                                                                                                                method: 'POST',
+                                                                                                                headers:
+                                                                                                                    {
+                                                                                                                        'Content-Type':
+                                                                                                                            'application/json'
+                                                                                                                    },
+                                                                                                                body: JSON.stringify(
+                                                                                                                    emailPayload
+                                                                                                                )
                                                                                                             }
                                                                                                         );
+
+                                                                                                        toast.success(
+                                                                                                            'Order status updated and customer notified'
+                                                                                                        );
                                                                                                     } else {
-                                                                                                        toast.error(
-                                                                                                            'Failed to update order status'
+                                                                                                        toast.success(
+                                                                                                            'Order status updated successfully'
                                                                                                         );
                                                                                                     }
-                                                                                                } catch (error) {
-                                                                                                    console.error(
-                                                                                                        'Error updating status:',
-                                                                                                        error
+
+                                                                                                    // Update orders in state instead of full reload
+                                                                                                    updateOrderInState(
+                                                                                                        selectedOrder.id,
+                                                                                                        updateData
                                                                                                     );
+
+                                                                                                    // Exit edit mode
+                                                                                                    setIsEditingStatus(
+                                                                                                        false
+                                                                                                    );
+                                                                                                    setEditStatusData({
+                                                                                                        status: '',
+                                                                                                        tracking: '',
+                                                                                                        sendEmail: true
+                                                                                                    });
+                                                                                                } else {
                                                                                                     toast.error(
                                                                                                         'Failed to update order status'
                                                                                                     );
-                                                                                                } finally {
-                                                                                                    setIsUpdatingStatus(
-                                                                                                        false
-                                                                                                    );
                                                                                                 }
-                                                                                            }}
-                                                                                            disabled={
-                                                                                                !editStatusData.status ||
-                                                                                                isUpdatingStatus
-                                                                                            }>
-                                                                                            {isUpdatingStatus ? (
-                                                                                                <>
-                                                                                                    <div className="mr-2 h-4 w-4 animate-spin rounded-full border-white border-b-2" />
-                                                                                                    Updating...
-                                                                                                </>
-                                                                                            ) : (
-                                                                                                'Update Status'
-                                                                                            )}
-                                                                                        </Button>
-                                                                                        <Button
-                                                                                            variant="outline"
-                                                                                            onClick={() => {
-                                                                                                setIsEditingStatus(
+                                                                                            } catch (error) {
+                                                                                                console.error(
+                                                                                                    'Error updating status:',
+                                                                                                    error
+                                                                                                );
+                                                                                                toast.error(
+                                                                                                    'Failed to update order status'
+                                                                                                );
+                                                                                            } finally {
+                                                                                                setIsUpdatingStatus(
                                                                                                     false
                                                                                                 );
-                                                                                                setEditStatusData({
-                                                                                                    status: '',
-                                                                                                    tracking: '',
-                                                                                                    sendEmail: true
-                                                                                                });
-                                                                                            }}>
-                                                                                            Cancel
-                                                                                        </Button>
-                                                                                    </div>
+                                                                                            }
+                                                                                        }}
+                                                                                        disabled={
+                                                                                            !editStatusData.status ||
+                                                                                            isUpdatingStatus
+                                                                                        }>
+                                                                                        {isUpdatingStatus ? (
+                                                                                            <>
+                                                                                                <div className="mr-2 h-4 w-4 animate-spin rounded-full border-white border-b-2" />
+                                                                                                Updating...
+                                                                                            </>
+                                                                                        ) : (
+                                                                                            'Update Status'
+                                                                                        )}
+                                                                                    </Button>
+                                                                                    <Button
+                                                                                        variant="outline"
+                                                                                        onClick={() => {
+                                                                                            setIsEditingStatus(false);
+                                                                                            setEditStatusData({
+                                                                                                status: '',
+                                                                                                tracking: '',
+                                                                                                sendEmail: true
+                                                                                            });
+                                                                                        }}>
+                                                                                        Cancel
+                                                                                    </Button>
                                                                                 </div>
-                                                                            )}
-                                                                        </CardContent>
-                                                                    </Card>
-                                                                </TabsContent>
-                                                            </Tabs>
-                                                        )}
-                                                    </DialogContent>
-                                                </Dialog>
-                                                <Button
-                                                    variant="outline"
-                                                    size="icon"
-                                                    onClick={() => handleDeleteOrder(order)}
-                                                    className="text-red-600 hover:bg-red-50 hover:text-red-700">
-                                                    <Trash2 className="h-4 w-4" />
-                                                </Button>
-                                            </div>
+                                                                            </div>
+                                                                        )}
+                                                                    </CardContent>
+                                                                </Card>
+                                                            </TabsContent>
+                                                        </Tabs>
+                                                    )}
+                                                </DialogContent>
+                                            </Dialog>
+                                            <Button
+                                                variant="outline"
+                                                size="icon"
+                                                onClick={() => handleDeleteOrder(order)}
+                                                className="text-red-600 hover:bg-red-50 hover:text-red-700">
+                                                <Trash2 className="h-4 w-4" />
+                                            </Button>
+                                        </div>
 
-                                            {/* Mobile Actions Dropdown */}
-                                            <div className="md:hidden">
-                                                <DropdownMenu>
-                                                    <DropdownMenuTrigger asChild>
-                                                        <Button variant="outline" size="icon">
-                                                            <MoreVertical className="h-4 w-4" />
-                                                        </Button>
-                                                    </DropdownMenuTrigger>
-                                                    <DropdownMenuContent align="end">
-                                                        <DropdownMenuItem onClick={() => openInvoiceDialog(order)}>
-                                                            <FileText className="mr-2 h-4 w-4" />
-                                                            Invoice
-                                                        </DropdownMenuItem>
-                                                        <DropdownMenuItem
-                                                            onClick={() => {
-                                                                setSelectedOrder(order);
-                                                                setIsDetailsOpen(true);
-                                                            }}>
-                                                            <Eye className="mr-2 h-4 w-4" />
-                                                            View Order
-                                                        </DropdownMenuItem>
-                                                        <DropdownMenuItem
-                                                            onClick={() => handleDeleteOrder(order)}
-                                                            className="text-red-600 focus:text-red-600">
-                                                            <Trash2 className="mr-2 h-4 w-4" />
-                                                            Delete Order
-                                                        </DropdownMenuItem>
-                                                    </DropdownMenuContent>
-                                                </DropdownMenu>
-                                            </div>
-                                        </TableCell>
-                                    </TableRow>
-                                ))
-                            )}
-                        </TableBody>
-                    </Table> 
+                                        {/* Mobile Actions Dropdown */}
+                                        <div className="md:hidden">
+                                            <DropdownMenu>
+                                                <DropdownMenuTrigger asChild>
+                                                    <Button variant="outline" size="icon">
+                                                        <MoreVertical className="h-4 w-4" />
+                                                    </Button>
+                                                </DropdownMenuTrigger>
+                                                <DropdownMenuContent align="end">
+                                                    <DropdownMenuItem onClick={() => openInvoiceDialog(order)}>
+                                                        <FileText className="mr-2 h-4 w-4" />
+                                                        Invoice
+                                                    </DropdownMenuItem>
+                                                    <DropdownMenuItem
+                                                        onClick={() => {
+                                                            setSelectedOrder(order);
+                                                            setIsDetailsOpen(true);
+                                                        }}>
+                                                        <Eye className="mr-2 h-4 w-4" />
+                                                        View Order
+                                                    </DropdownMenuItem>
+                                                    <DropdownMenuItem
+                                                        onClick={() => handleDeleteOrder(order)}
+                                                        className="text-red-600 focus:text-red-600">
+                                                        <Trash2 className="mr-2 h-4 w-4" />
+                                                        Delete Order
+                                                    </DropdownMenuItem>
+                                                </DropdownMenuContent>
+                                            </DropdownMenu>
+                                        </div>
+                                    </TableCell>
+                                </TableRow>
+                            ))
+                        )}
+                    </TableBody>
+                </Table>
             )}
 
             {/* Create Order Dialog */}
