@@ -455,7 +455,7 @@ export default function RolesPage() {
                         <div className="relative flex-1">
                             <Search className="-translate-y-1/2 absolute top-1/2 left-3 h-4 w-4 transform text-gray-400" />
                             <Input
-                                placeholder="Search roles by title, description, or routes..."
+                                placeholder="Search roles by title, description, or routes"
                                 value={search}
                                 onChange={(e) => setSearch(e.target.value)}
                                 className="pl-10"
@@ -528,7 +528,7 @@ export default function RolesPage() {
                                     roles.map((role) => (
                                         <TableRow key={role.id} className="hover:bg-muted/50">
                                             <TableCell data-label="Role" className="font-medium">
-                                                <div className="flex items-center gap-2">
+                                                <div className="flex items-center justify-end sm:justify-start gap-2">
                                                     <Shield
                                                         className={`h-4 w-4 ${isProtectedRole(role.title) ? 'text-amber-500' : 'text-primary'}`}
                                                     />
@@ -543,12 +543,12 @@ export default function RolesPage() {
                                                 </div>
                                             </TableCell>
                                             <TableCell data-label="Description">
-                                                <div className="max-w-xs truncate" title={role.description}>
+                                                <div className="ps-2 truncate" title={role.description}>
                                                     {role.description}
                                                 </div>
                                             </TableCell>
                                             <TableCell data-label="Permissions">
-                                                <div className="flex flex-wrap gap-1">
+                                                <div className="flex flex-wrap items-center justify-end sm:justify-start gap-1">
                                                     {role.routes?.slice(0, 2).map((route, index) => (
                                                         <Badge
                                                             key={index}

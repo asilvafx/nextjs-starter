@@ -86,7 +86,7 @@ export default function AdminLayout({ children }) {
                         {/* Layout Actions */}
                         <div className={`ms-auto items-center gap-2 ${showMobileActions ? 'flex' : 'hidden'} md:flex`}>
                             <Button
-                                variant="outline"
+                                variant="default"
                                 size="icon"
                                 onClick={() => setShowMobileActions(!showMobileActions)}
                                 className={cn('md:hidden', !showMobileActions && 'hidden')}>
