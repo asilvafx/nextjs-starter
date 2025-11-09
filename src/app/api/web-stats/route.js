@@ -226,139 +226,32 @@ async function handlePost(request) {
 }
 
 // GET - Retrieve analytics data (authenticated)
+// Wrapper for server function - kept for backward compatibility
 async function handleGet(request) {
     try {
+        const { getWebStats } = await import('@/lib/server/analytics.js');
+
         const url = new URL(request.url);
         const startDate = url.searchParams.get('startDate');
         const endDate = url.searchParams.get('endDate');
-        const _type = url.searchParams.get('type') || 'overview';
+        const type = url.searchParams.get('type') || 'overview';
 
-        // Get all web stats
-        const stats = await DBService.readAll('web_stats');
+        const result = await getWebStats({ startDate, endDate, type });
 
-        if (!stats) {
-            return NextResponse.json({
-                success: true,
-                data: {
-                    totalVisitors: 0,
-                    uniqueVisitors: 0,
-                    pageViews: 0,
-                    countries: [],
-                    browsers: [],
-                    devices: []
-                }
-            });
+        if (result.success) {
+            return NextResponse.json(result);
+        } else {
+            return NextResponse.json(result, { status: 500 });
         }
-
-        // Convert to array if it's an object
-        let statsArray = Array.isArray(stats) ? stats : Object.values(stats);
-
-        // Filter by date range if provided
-        if (startDate && endDate) {
-            statsArray = statsArray.filter((stat) => {
-                const statDate = new Date(stat.timestamp);
-                return statDate >= new Date(startDate) && statDate <= new Date(endDate);
-            });
-        }
-
-        // Calculate analytics
-        const totalVisitors = statsArray.length;
-        const uniqueVisitors = new Set(statsArray.map((stat) => stat.ip)).size;
-        const pageViews = statsArray.length;
-
-        // Group by country
-        const countryStats = statsArray.reduce((acc, stat) => {
-            acc[stat.country] = (acc[stat.country] || 0) + 1;
-            return acc;
-        }, {});
-
-        // Group by browser
-        const browserStats = statsArray.reduce((acc, stat) => {
-            acc[stat.browser] = (acc[stat.browser] || 0) + 1;
-            return acc;
-        }, {});
-
-        // Group by device type
-        const deviceStats = statsArray.reduce((acc, stat) => {
-            const device = stat.isMobile ? 'Mobile' : 'Desktop';
-            acc[device] = (acc[device] || 0) + 1;
-            return acc;
-        }, {});
-
-        // Group by OS
-        const osStats = statsArray.reduce((acc, stat) => {
-            acc[stat.os] = (acc[stat.os] || 0) + 1;
-            return acc;
-        }, {});
-
-        // Daily visitors for charts
-        const dailyStats = statsArray.reduce((acc, stat) => {
-            const date = stat.date || new Date(stat.timestamp).toISOString().split('T')[0];
-            acc[date] = (acc[date] || 0) + 1;
-            return acc;
-        }, {});
-
-        // Hourly distribution
-        const hourlyStats = statsArray.reduce((acc, stat) => {
-            const hour = stat.hour || new Date(stat.timestamp).getHours();
-            acc[hour] = (acc[hour] || 0) + 1;
-            return acc;
-        }, {});
-
-        // Top pages
-        const pageStats = statsArray.reduce((acc, stat) => {
-            const page = stat.page || stat.url || 'Unknown';
-            acc[page] = (acc[page] || 0) + 1;
-            return acc;
-        }, {});
-
-        // Average load time
-        const loadTimes = statsArray.filter((stat) => stat.loadTime).map((stat) => stat.loadTime);
-        const avgLoadTime =
-            loadTimes.length > 0 ? loadTimes.reduce((sum, time) => sum + time, 0) / loadTimes.length : 0;
-
-        const analyticsData = {
-            overview: {
-                totalVisitors,
-                uniqueVisitors,
-                pageViews,
-                avgLoadTime: Math.round(avgLoadTime),
-                bounceRate: 0 // Calculate based on your needs
-            },
-            countries: Object.entries(countryStats)
-                .map(([country, count]) => ({ country, count }))
-                .sort((a, b) => b.count - a.count)
-                .slice(0, 10),
-            browsers: Object.entries(browserStats)
-                .map(([browser, count]) => ({ browser, count }))
-                .sort((a, b) => b.count - a.count),
-            devices: Object.entries(deviceStats).map(([device, count]) => ({ device, count })),
-            os: Object.entries(osStats)
-                .map(([os, count]) => ({ os, count }))
-                .sort((a, b) => b.count - a.count),
-            daily: Object.entries(dailyStats)
-                .map(([date, count]) => ({ date, visitors: count }))
-                .sort((a, b) => new Date(a.date) - new Date(b.date)),
-            hourly: Array.from({ length: 24 }, (_, hour) => ({
-                hour,
-                visitors: hourlyStats[hour] || 0
-            })),
-            pages: Object.entries(pageStats)
-                .map(([page, count]) => ({ page, views: count }))
-                .sort((a, b) => b.views - a.views)
-                .slice(0, 10)
-        };
-
-        return NextResponse.json({
-            success: true,
-            data: analyticsData
-        });
     } catch (error) {
         console.error('Analytics retrieval error:', error);
-        return NextResponse.json({
-            error: 'Failed to retrieve analytics data',
-            message: error.message
-        });
+        return NextResponse.json(
+            {
+                error: 'Failed to retrieve analytics data',
+                message: error.message
+            },
+            { status: 500 }
+        );
     }
 }
 

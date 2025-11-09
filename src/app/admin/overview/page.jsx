@@ -25,7 +25,7 @@ import AdminHeader from '@/app/admin/components/AdminHeader';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { getDashboardStats } from '@/lib/server/dashboard';
+import { getDashboardStats } from '@/lib/server/admin';
 
 // Enhanced Dashboard Card Component
 const StatCard = ({ label, value, icon: Icon, description, trend, loading = false, className = '' }) => {
