@@ -134,6 +134,8 @@ export default function StoreSettingsPage() {
                 const settings = await getAll('store_settings');
                 const settingsData = settings?.data[0];
 
+                console.log(settings);
+
                 if (settings.success && settingsData?.id) {
                     setSettingsId(settingsData?.id);
                     setFormData({
@@ -212,12 +214,12 @@ export default function StoreSettingsPage() {
     }
 
     return (
-        <div className="space-y-6 p-4">
+        <div className="space-y-4">
             <AdminHeader title="Store Settings" description="Manage your store's configuration and preferences" />
 
             <form onSubmit={onSubmit} className="space-y-6">
                 <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-                    <TabsList className="grid w-full grid-cols-4">
+                    <TabsList>
                         <TabsTrigger value="business" className="flex items-center gap-2">
                             <Building className="h-4 w-4" />
                             Business
@@ -959,7 +961,7 @@ function GeneralTab({ formData, handleInputChange, errors }) {
 // Skeleton Loading Component
 function StoreSettingsSkeleton() {
     return (
-        <div className="space-y-6 p-4">
+        <div className="space-y-4">
             <div className="flex items-center justify-between">
                 <div>
                     <Skeleton className="h-8 w-48" />

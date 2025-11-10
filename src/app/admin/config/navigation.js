@@ -2,6 +2,7 @@
 
 import {
     Brain,
+    Blocks,
     Code,
     Database,
     Frame,
@@ -11,9 +12,10 @@ import {
     PieChart,
     Settings,
     Store,
-    Users,
-    Waypoints,
-    Wrench
+    Users, 
+    Wrench,
+    ClockFading, 
+    CalendarDays
 } from 'lucide-react';
 
 export const navigation = {
@@ -92,7 +94,7 @@ export const navigation = {
         {
             title: 'Workspace',
             url: '#',
-            icon: Waypoints,
+            icon: CalendarDays,
             items: [
                 {
                     title: 'Agenda',
@@ -126,7 +128,7 @@ export const navigation = {
         {
             title: 'Blocks',
             url: '/admin/blocks',
-            icon: Gauge
+            icon: Blocks
         }
     ],
     Developer: [
@@ -159,7 +161,7 @@ export const navigation = {
         {
             title: 'Cronjobs',
             url: '/admin/developer/cronjobs',
-            icon: Brain
+            icon: ClockFading
         }
     ],
     System: [

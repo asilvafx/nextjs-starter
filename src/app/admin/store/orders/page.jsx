@@ -779,13 +779,8 @@ export default function OrdersPage() {
     if (fetchError && !loading) {
         return (
             <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                    <div>
-                        <h2 className="font-semibold text-2xl">Orders</h2>
-                        <p className="text-muted-foreground">Manage and track your orders</p>
-                    </div>
-                </div>
-
+                <AdminHeader title="Orders" description="Manage and track your orders" /> 
+                
                 <Card className="border-destructive/50">
                     <CardContent className="flex flex-col items-center justify-center py-12 text-center">
                         <div className="mb-4 rounded-full bg-destructive/10 p-3">
