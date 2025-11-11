@@ -90,6 +90,9 @@ const Homepage = () => {
                             </>
                         ) : (
                             <>
+                                <Link href="/account" prefetch={false}>
+                                    <Button className="w-full sm:w-auto sm:justify-self-end">My Account</Button>
+                                </Link>
                                 <Link href="/admin" prefetch={false}>
                                     <Button className="w-full sm:w-auto sm:justify-self-end">Administration</Button>
                                 </Link>

@@ -1,6 +1,45 @@
 
+:root {
+  --sb-track-color: #7b7878;
+  --sb-thumb-color: #2e2f2e;
+  --sb-size: 5px;
+}
 
 body {
     overflow: hidden;
     overscroll-behavior: none;
+}
+
+*::-webkit-scrollbar {
+  width: var(--sb-size)
+}
+
+*::-webkit-scrollbar-track {
+  background: var(--sb-track-color);
+  border-radius: 3px;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: var(--sb-thumb-color);
+  border-radius: 3px;
+  
+}
+
+@supports not selector(::-webkit-scrollbar) {
+  * {
+    scrollbar-color: var(--sb-thumb-color)
+                     var(--sb-track-color);
+  }
+}
+
+main {
+  width: 100%;
+  max-width: calc(100% - 16rem);
+  position: relative;
+}
+ 
+@media screen and (max-width: 600px) {
+    main {
+      max-width: 100%; 
+    }
 }

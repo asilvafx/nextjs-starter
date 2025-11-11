@@ -191,3 +191,68 @@ export async function getStoreSettings() {
         };
     }
 }
+
+/**
+ * Get all store settings
+ * Server-side function to fetch all store settings from site_settings collection
+ * @returns {Promise<Object>} All store settings data
+ */
+export async function getAllStoreSettings() {
+    try {
+        const settings = await DBService.readAll('store_settings');
+        const settingsArray = Array.isArray(settings) ? settings : Object.values(settings || {});
+
+        return {
+            success: true,
+            data: settingsArray
+        };
+    } catch (error) {
+        console.error('Error fetching all store settings:', error);
+        return {
+            success: false,
+            error: 'Failed to fetch all store settings',
+            message: error.message,
+            data: []
+        };
+    }
+}
+
+/**
+ * Update or create store settings
+ * Server-side function to save store settings
+ * @param {Object} settingsData - The settings data to save
+ * @returns {Promise<Object>} Save result
+ */
+export async function updateStoreSettings(settingsData) {
+    try {
+        let result;
+        
+        if (settingsData.id) {
+            // Update existing settings
+            result = await DBService.update(settingsData.id, settingsData, 'store_settings');
+        } else {
+            // Create new settings
+            const newSettings = {
+                ...settingsData,
+                id: Date.now().toString(),
+                key: 'store',
+                type: 'store',
+                updatedAt: new Date().toISOString(),
+                createdAt: new Date().toISOString()
+            };
+            result = await DBService.create(newSettings, 'store_settings');
+        }
+
+        return {
+            success: true,
+            data: result
+        };
+    } catch (error) {
+        console.error('Error updating store settings:', error);
+        return {
+            success: false,
+            error: 'Failed to update store settings',
+            message: error.message
+        };
+    }
+}

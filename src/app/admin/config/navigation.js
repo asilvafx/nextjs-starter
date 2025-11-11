@@ -169,12 +169,7 @@ export const navigation = {
             title: 'Settings',
             url: '/admin/system/settings',
             icon: Settings
-        },
-        {
-            title: 'Integrations',
-            url: '/admin/system/integrations',
-            icon: Frame
-        },
+        }, 
         {
             title: 'Maintenance',
             url: '/admin/system/maintenance',

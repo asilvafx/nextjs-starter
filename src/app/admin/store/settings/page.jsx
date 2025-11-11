@@ -12,6 +12,7 @@ import {
     Loader2,
     Package,
     Plus,
+    Save,
     Settings,
     Store,
     Truck,
@@ -25,13 +26,12 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { CountryDropdown } from '@/components/ui/country-dropdown';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-// Form components removed - using traditional React state management
+import { Label } from '@/components/ui/label'; 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { create, getAll, update } from '@/lib/client/query';
+import { getStoreSettings, updateStoreSettings } from '@/lib/server/admin';
 
 // Default form state
 const defaultFormState = {
@@ -131,17 +131,16 @@ export default function StoreSettingsPage() {
                 // Mark as fetched immediately to prevent race conditions
                 fetchedRef.current = true;
 
-                const settings = await getAll('store_settings');
-                const settingsData = settings?.data[0];
+                const settings = await getStoreSettings();
+                const settingsData = settings?.data;
 
-                console.log(settings);
-
-                if (settings.success && settingsData?.id) {
+                if (settings.success && settingsData?.id) { 
                     setSettingsId(settingsData?.id);
                     setFormData({
                         businessName: settingsData.businessName || '',
                         tvaNumber: settingsData.tvaNumber || '',
                         address: settingsData.address || '',
+                        vatEnabled: settingsData.vatEnabled !== false,
                         vatPercentage: settingsData.vatPercentage || 20,
                         vatIncludedInPrice: settingsData.vatIncludedInPrice !== false,
                         applyVatAtCheckout: settingsData.applyVatAtCheckout || false,
@@ -150,6 +149,13 @@ export default function StoreSettingsPage() {
                             stripePublicKey: settingsData.paymentMethods?.stripePublicKey || '',
                             stripeSecretKey: settingsData.paymentMethods?.stripeSecretKey || '',
                             bankTransfer: settingsData.paymentMethods?.bankTransfer || false,
+                            bankTransferDetails: {
+                                bankName: settingsData.paymentMethods?.bankTransferDetails?.bankName || '',
+                                accountHolder: settingsData.paymentMethods?.bankTransferDetails?.accountHolder || '',
+                                iban: settingsData.paymentMethods?.bankTransferDetails?.iban || '',
+                                bic: settingsData.paymentMethods?.bankTransferDetails?.bic || '',
+                                additionalInstructions: settingsData.paymentMethods?.bankTransferDetails?.additionalInstructions || ''
+                            },
                             payOnDelivery: settingsData.paymentMethods?.payOnDelivery || false
                         },
                         freeShippingEnabled: settingsData.freeShippingEnabled || false,
@@ -163,6 +169,28 @@ export default function StoreSettingsPage() {
                     setSelectedAllowedCountries(settingsData.allowedCountries || []);
                     setSelectedBannedCountries(settingsData.bannedCountries || []);
                     setCarriers(settingsData.carriers || []);
+                } else {
+                    // Create new database table for store_settings if not exist,
+                     try {
+                        const createResult = await updateStoreSettings(defaultFormState);
+                        if (createResult.success && createResult.data?.id) {
+                            setSettingsId(createResult.data.id);
+                            setFormData(defaultFormState);
+                            setSelectedAllowedCountries(defaultFormState.allowedCountries);
+                            setSelectedBannedCountries(defaultFormState.bannedCountries);
+                            setCarriers(defaultFormState.carriers);
+                        } else {
+                            throw new Error('Failed to create store settings');
+                        }
+                    } catch (createError) {
+                        console.error('Error creating store settings:', createError);
+                        toast.error('Failed to initialize store settings');
+                        // Keep the default form state for manual entry
+                        setFormData(defaultFormState);
+                        setSelectedAllowedCountries([]);
+                        setSelectedBannedCountries([]);
+                        setCarriers([]);
+                    }
                 }
             } catch (error) {
                 // Reset fetched flag on error so it can try again
@@ -191,105 +219,139 @@ export default function StoreSettingsPage() {
                 ...formData,
                 allowedCountries: selectedAllowedCountries,
                 bannedCountries: selectedBannedCountries,
-                carriers: carriers
+                carriers: carriers,
+                id: settingsId,
+                updatedAt: new Date().toISOString()
             };
 
-            if (settingsId) {
-                await update(settingsId, submissionData, 'store_settings');
+            const result = await updateStoreSettings(submissionData);
+            
+            if (result.success) {
+                if (!settingsId && result.data?.id) {
+                    setSettingsId(result.data.id);
+                }
+                toast.success('Store settings saved successfully!');
             } else {
-                await create(submissionData, 'store_settings');
+                throw new Error(result.error || 'Failed to save settings');
             }
-
-            toast.success('Store settings saved successfully!');
         } catch (error) {
             console.error('Save error:', error);
             toast.error('Failed to save settings');
         } finally {
             setIsSubmitting(false);
         }
-    };
+    }; 
 
-    if (isLoading) {
-        return <StoreSettingsSkeleton />;
+    if(isLoading) {
+        return  (
+        <StoreSettingsSkeleton />
+        )
     }
 
     return (
         <div className="space-y-4">
             <AdminHeader title="Store Settings" description="Manage your store's configuration and preferences" />
 
-            <form onSubmit={onSubmit} className="space-y-6">
-                <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-                    <TabsList>
-                        <TabsTrigger value="business" className="flex items-center gap-2">
-                            <Building className="h-4 w-4" />
-                            Business
-                        </TabsTrigger>
-                        <TabsTrigger value="payments" className="flex items-center gap-2">
-                            <CreditCard className="h-4 w-4" />
-                            Payments
-                        </TabsTrigger>
-                        <TabsTrigger value="shipping" className="flex items-center gap-2">
-                            <Truck className="h-4 w-4" />
-                            Shipping
-                        </TabsTrigger>
-                        <TabsTrigger value="general" className="flex items-center gap-2">
-                            <Settings className="h-4 w-4" />
-                            General
-                        </TabsTrigger>
-                    </TabsList>
+            <div className="relative">
+                <form onSubmit={onSubmit} className="space-y-6">
+                    <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+                        <TabsList disabled={isSubmitting}>
+                            <TabsTrigger 
+                                value="business" 
+                                className="flex items-center gap-2"
+                                disabled={isSubmitting}
+                            >
+                                <Building className="h-4 w-4" />
+                                Business
+                            </TabsTrigger>
+                            <TabsTrigger 
+                                value="payments" 
+                                className="flex items-center gap-2"
+                                disabled={isSubmitting}
+                            >
+                                <CreditCard className="h-4 w-4" />
+                                Payments
+                            </TabsTrigger>
+                            <TabsTrigger 
+                                value="shipping" 
+                                className="flex items-center gap-2"
+                                disabled={isSubmitting}
+                            >
+                                <Truck className="h-4 w-4" />
+                                Shipping
+                            </TabsTrigger>
+                            <TabsTrigger 
+                                value="general" 
+                                className="flex items-center gap-2"
+                                disabled={isSubmitting}
+                            >
+                                <Settings className="h-4 w-4" />
+                                General
+                            </TabsTrigger>
+                        </TabsList>
 
-                    <TabsContent value="business" className="space-y-6">
-                        <BusinessTab
-                            formData={formData}
-                            handleInputChange={handleInputChange}
-                            handleNestedInputChange={handleNestedInputChange}
-                            errors={errors}
-                        />
-                    </TabsContent>
+                        <TabsContent value="business" className="space-y-6">
+                            <BusinessTab
+                                formData={formData}
+                                handleInputChange={handleInputChange}
+                                handleNestedInputChange={handleNestedInputChange}
+                                errors={errors}
+                            />
+                        </TabsContent>
 
-                    <TabsContent value="payments" className="space-y-6">
-                        <PaymentsTab
-                            formData={formData}
-                            handleNestedInputChange={handleNestedInputChange}
-                            errors={errors}
-                        />
-                    </TabsContent>
+                        <TabsContent value="payments" className="space-y-6">
+                            <PaymentsTab
+                                formData={formData}
+                                handleNestedInputChange={handleNestedInputChange}
+                                errors={errors}
+                            />
+                        </TabsContent>
 
-                    <TabsContent value="shipping" className="space-y-6">
-                        <ShippingTab
-                            formData={formData}
-                            handleInputChange={handleInputChange}
-                            selectedAllowedCountries={selectedAllowedCountries}
-                            selectedBannedCountries={selectedBannedCountries}
-                            setSelectedAllowedCountries={setSelectedAllowedCountries}
-                            setSelectedBannedCountries={setSelectedBannedCountries}
-                            carriers={carriers}
-                            setCarriers={setCarriers}
-                            errors={errors}
-                        />
-                    </TabsContent>
+                        <TabsContent value="shipping" className="space-y-6">
+                            <ShippingTab
+                                formData={formData}
+                                handleInputChange={handleInputChange}
+                                selectedAllowedCountries={selectedAllowedCountries}
+                                selectedBannedCountries={selectedBannedCountries}
+                                setSelectedAllowedCountries={setSelectedAllowedCountries}
+                                setSelectedBannedCountries={setSelectedBannedCountries}
+                                carriers={carriers}
+                                setCarriers={setCarriers}
+                                errors={errors}
+                            />
+                        </TabsContent>
 
-                    <TabsContent value="general" className="space-y-6">
-                        <GeneralTab formData={formData} handleInputChange={handleInputChange} errors={errors} />
-                    </TabsContent>
-                </Tabs>
+                        <TabsContent value="general" className="space-y-6">
+                            <GeneralTab formData={formData} handleInputChange={handleInputChange} errors={errors} />
+                        </TabsContent>
+                    </Tabs>
 
-                <div className="flex justify-end">
-                    <Button type="submit" size="lg" disabled={isSubmitting}>
-                        {isSubmitting ? (
-                            <>
-                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                Saving...
-                            </>
-                        ) : (
-                            <>
-                                <Store className="mr-2 h-4 w-4" />
-                                Save Settings
-                            </>
-                        )}
-                    </Button>
-                </div>
-            </form>
+                    <div className="right-0 bottom-0 left-0 z-10 mb-6 flex justify-center fixed md:ml-[16rem]">
+                        <Button className="w-auto" type="submit" size="lg" disabled={isSubmitting}>
+                            {isSubmitting ? (
+                                <>
+                                    <div className="mr-2 h-4 w-4 animate-spin rounded-full border-white border-b-2 dark:border-black"></div>
+                                    Saving...
+                                </>
+                            ) : (
+                                <>
+                                    <Save className="mr-1 h-4 w-4" />
+                                    Save Changes
+                                </>
+                            )}
+                        </Button>
+                    </div>
+                </form>
+
+                {isSubmitting && (
+                    <div className="absolute inset-0 z-50 flex items-center justify-center rounded-lg bg-background/50">
+                        <div className="flex flex-col items-center gap-4 rounded-lg border bg-background p-6 shadow-lg">
+                            <div className="h-8 w-8 animate-spin rounded-full border-primary border-b-2"></div>
+                            <p className="text-muted-foreground text-sm">Saving settings...</p>
+                        </div>
+                    </div>
+                )}
+            </div>
         </div>
     );
 }
@@ -420,165 +482,185 @@ function BusinessTab({ formData, handleInputChange, handleNestedInputChange, err
 // Payments Tab Component
 function PaymentsTab({ formData, handleNestedInputChange, errors }) {
     return (
-        <Card>
-            <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                    <CreditCard className="h-5 w-5" />
-                    Payment Methods
-                </CardTitle>
-                <CardDescription>Configure available payment options for your customers</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-                <div className="flex flex-row items-center justify-between rounded-lg border p-4">
-                    <div className="space-y-0.5">
-                        <Label className="text-base">Accept Card Payments (Stripe)</Label>
-                        <p className="text-muted-foreground text-sm">Process payments via Stripe</p>
+        <div className="space-y-6">
+            <Card>
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                        <CreditCard className="h-5 w-5" />
+                        Payment Methods
+                    </CardTitle>
+                    <CardDescription>Configure available payment options for your customers</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    <div className="flex flex-row items-center justify-between rounded-lg border p-4">
+                        <div className="space-y-0.5">
+                            <Label className="text-base">Bank Transfer</Label>
+                            <p className="text-muted-foreground text-sm">Accept bank transfer payments</p>
+                        </div>
+                        <Switch
+                            checked={formData.paymentMethods?.bankTransfer || false}
+                            onCheckedChange={(checked) =>
+                                handleNestedInputChange('paymentMethods', 'bankTransfer', checked)
+                            }
+                        />
                     </div>
-                    <Switch
-                        checked={formData.paymentMethods?.cardPayments || false}
-                        onCheckedChange={(checked) =>
-                            handleNestedInputChange('paymentMethods', 'cardPayments', checked)
-                        }
-                    />
-                </div>
-                {formData.paymentMethods?.cardPayments && (
-                    <>
-                        <div>
-                            <Label htmlFor="stripePublicKey">Stripe Public Key</Label>
-                            <Input
-                                id="stripePublicKey"
-                                placeholder="pk_..."
-                                value={formData.paymentMethods?.stripePublicKey || ''}
-                                onChange={(e) =>
-                                    handleNestedInputChange('paymentMethods', 'stripePublicKey', e.target.value)
-                                }
-                            />
+                    {formData.paymentMethods?.bankTransfer && (
+                        <>
+                            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                                <div>
+                                    <Label htmlFor="bankName">Bank Name</Label>
+                                    <Input
+                                        id="bankName"
+                                        placeholder="Bank Name"
+                                        value={formData.paymentMethods?.bankTransferDetails?.bankName || ''}
+                                        onChange={(e) => {
+                                            const newDetails = {
+                                                ...formData.paymentMethods?.bankTransferDetails,
+                                                bankName: e.target.value
+                                            };
+                                            handleNestedInputChange('paymentMethods', 'bankTransferDetails', newDetails);
+                                        }}
+                                    />
+                                </div>
+                                <div>
+                                    <Label htmlFor="accountHolder">Account Holder</Label>
+                                    <Input
+                                        id="accountHolder"
+                                        placeholder="Account Holder Name"
+                                        value={formData.paymentMethods?.bankTransferDetails?.accountHolder || ''}
+                                        onChange={(e) => {
+                                            const newDetails = {
+                                                ...formData.paymentMethods?.bankTransferDetails,
+                                                accountHolder: e.target.value
+                                            };
+                                            handleNestedInputChange('paymentMethods', 'bankTransferDetails', newDetails);
+                                        }}
+                                    />
+                                </div>
+                            </div>
+                            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                                <div>
+                                    <Label htmlFor="iban">IBAN</Label>
+                                    <Input
+                                        id="iban"
+                                        placeholder="FR76 XXXX XXXX XXXX XXXX XXXX XXX"
+                                        value={formData.paymentMethods?.bankTransferDetails?.iban || ''}
+                                        onChange={(e) => {
+                                            const newDetails = {
+                                                ...formData.paymentMethods?.bankTransferDetails,
+                                                iban: e.target.value
+                                            };
+                                            handleNestedInputChange('paymentMethods', 'bankTransferDetails', newDetails);
+                                        }}
+                                    />
+                                </div>
+                                <div>
+                                    <Label htmlFor="bic">BIC/SWIFT</Label>
+                                    <Input
+                                        id="bic"
+                                        placeholder="BNPAFRPPXXX"
+                                        value={formData.paymentMethods?.bankTransferDetails?.bic || ''}
+                                        onChange={(e) => {
+                                            const newDetails = {
+                                                ...formData.paymentMethods?.bankTransferDetails,
+                                                bic: e.target.value
+                                            };
+                                            handleNestedInputChange('paymentMethods', 'bankTransferDetails', newDetails);
+                                        }}
+                                    />
+                                </div>
+                            </div>
+                            <div>
+                                <Label htmlFor="additionalInstructions">Additional Instructions</Label>
+                                <Input
+                                    id="additionalInstructions"
+                                    placeholder="Additional transfer instructions (optional)"
+                                    value={formData.paymentMethods?.bankTransferDetails?.additionalInstructions || ''}
+                                    onChange={(e) => {
+                                        const newDetails = {
+                                            ...formData.paymentMethods?.bankTransferDetails,
+                                            additionalInstructions: e.target.value
+                                        };
+                                        handleNestedInputChange('paymentMethods', 'bankTransferDetails', newDetails);
+                                    }}
+                                />
+                            </div>
+                        </>
+                    )}
+                    <div className="flex flex-row items-center justify-between rounded-lg border p-4">
+                        <div className="space-y-0.5">
+                            <Label className="text-base">Pay on Delivery</Label>
+                            <p className="text-muted-foreground text-sm">
+                                Allow customers to pay when receiving their order
+                            </p>
                         </div>
-                        <div>
-                            <Label htmlFor="stripeSecretKey">Stripe Secret Key</Label>
-                            <Input
-                                id="stripeSecretKey"
-                                type="password"
-                                placeholder="sk_..."
-                                value={formData.paymentMethods?.stripeSecretKey || ''}
-                                onChange={(e) =>
-                                    handleNestedInputChange('paymentMethods', 'stripeSecretKey', e.target.value)
-                                }
-                            />
-                        </div>
-                    </>
-                )}
-                <div className="flex flex-row items-center justify-between rounded-lg border p-4">
-                    <div className="space-y-0.5">
-                        <Label className="text-base">Bank Transfer</Label>
-                        <p className="text-muted-foreground text-sm">Accept bank transfer payments</p>
+                        <Switch
+                            checked={formData.paymentMethods?.payOnDelivery || false}
+                            onCheckedChange={(checked) =>
+                                handleNestedInputChange('paymentMethods', 'payOnDelivery', checked)
+                            }
+                        />
                     </div>
-                    <Switch
-                        checked={formData.paymentMethods?.bankTransfer || false}
-                        onCheckedChange={(checked) =>
-                            handleNestedInputChange('paymentMethods', 'bankTransfer', checked)
-                        }
-                    />
-                </div>
-                {formData.paymentMethods?.bankTransfer && (
-                    <>
-                        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                            <div>
-                                <Label htmlFor="bankName">Bank Name</Label>
-                                <Input
-                                    id="bankName"
-                                    placeholder="Bank Name"
-                                    value={formData.paymentMethods?.bankTransferDetails?.bankName || ''}
-                                    onChange={(e) => {
-                                        const newDetails = {
-                                            ...formData.paymentMethods?.bankTransferDetails,
-                                            bankName: e.target.value
-                                        };
-                                        handleNestedInputChange('paymentMethods', 'bankTransferDetails', newDetails);
-                                    }}
-                                />
-                            </div>
-                            <div>
-                                <Label htmlFor="accountHolder">Account Holder</Label>
-                                <Input
-                                    id="accountHolder"
-                                    placeholder="Account Holder Name"
-                                    value={formData.paymentMethods?.bankTransferDetails?.accountHolder || ''}
-                                    onChange={(e) => {
-                                        const newDetails = {
-                                            ...formData.paymentMethods?.bankTransferDetails,
-                                            accountHolder: e.target.value
-                                        };
-                                        handleNestedInputChange('paymentMethods', 'bankTransferDetails', newDetails);
-                                    }}
-                                />
-                            </div>
+                </CardContent>
+            </Card>
+
+            <Card>
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                        <Settings className="h-5 w-5" />
+                        Payment Integrations
+                    </CardTitle>
+                    <CardDescription>Configure third-party payment processing services</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    <div className="flex flex-row items-center justify-between rounded-lg border p-4">
+                        <div className="space-y-0.5">
+                            <Label className="text-base">Stripe Payment Processing</Label>
+                            <p className="text-muted-foreground text-sm">Accept credit cards and other payments via Stripe</p>
                         </div>
-                        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                            <div>
-                                <Label htmlFor="iban">IBAN</Label>
-                                <Input
-                                    id="iban"
-                                    placeholder="FR76 XXXX XXXX XXXX XXXX XXXX XXX"
-                                    value={formData.paymentMethods?.bankTransferDetails?.iban || ''}
-                                    onChange={(e) => {
-                                        const newDetails = {
-                                            ...formData.paymentMethods?.bankTransferDetails,
-                                            iban: e.target.value
-                                        };
-                                        handleNestedInputChange('paymentMethods', 'bankTransferDetails', newDetails);
-                                    }}
-                                />
-                            </div>
-                            <div>
-                                <Label htmlFor="bic">BIC/SWIFT</Label>
-                                <Input
-                                    id="bic"
-                                    placeholder="BNPAFRPPXXX"
-                                    value={formData.paymentMethods?.bankTransferDetails?.bic || ''}
-                                    onChange={(e) => {
-                                        const newDetails = {
-                                            ...formData.paymentMethods?.bankTransferDetails,
-                                            bic: e.target.value
-                                        };
-                                        handleNestedInputChange('paymentMethods', 'bankTransferDetails', newDetails);
-                                    }}
-                                />
-                            </div>
-                        </div>
-                        <div>
-                            <Label htmlFor="additionalInstructions">Additional Instructions</Label>
-                            <Input
-                                id="additionalInstructions"
-                                placeholder="Additional transfer instructions (optional)"
-                                value={formData.paymentMethods?.bankTransferDetails?.additionalInstructions || ''}
-                                onChange={(e) => {
-                                    const newDetails = {
-                                        ...formData.paymentMethods?.bankTransferDetails,
-                                        additionalInstructions: e.target.value
-                                    };
-                                    handleNestedInputChange('paymentMethods', 'bankTransferDetails', newDetails);
-                                }}
-                            />
-                        </div>
-                    </>
-                )}
-                <div className="flex flex-row items-center justify-between rounded-lg border p-4">
-                    <div className="space-y-0.5">
-                        <Label className="text-base">Pay on Delivery</Label>
-                        <p className="text-muted-foreground text-sm">
-                            Allow customers to pay when receiving their order
-                        </p>
+                        <Switch
+                            checked={formData.paymentMethods?.cardPayments || false}
+                            onCheckedChange={(checked) =>
+                                handleNestedInputChange('paymentMethods', 'cardPayments', checked)
+                            }
+                        />
                     </div>
-                    <Switch
-                        checked={formData.paymentMethods?.payOnDelivery || false}
-                        onCheckedChange={(checked) =>
-                            handleNestedInputChange('paymentMethods', 'payOnDelivery', checked)
-                        }
-                    />
-                </div>
-            </CardContent>
-        </Card>
+                    {formData.paymentMethods?.cardPayments && (
+                        <div className="space-y-4">
+                            <div>
+                                <Label htmlFor="stripePublicKey">Stripe Publishable Key</Label>
+                                <Input
+                                    id="stripePublicKey"
+                                    placeholder="pk_test_... or pk_live_..."
+                                    value={formData.paymentMethods?.stripePublicKey || ''}
+                                    onChange={(e) =>
+                                        handleNestedInputChange('paymentMethods', 'stripePublicKey', e.target.value)
+                                    }
+                                />
+                                <p className="mt-1 text-muted-foreground text-sm">
+                                    Your Stripe publishable key (safe to expose in client-side code)
+                                </p>
+                            </div>
+                            <div>
+                                <Label htmlFor="stripeSecretKey">Stripe Secret Key</Label>
+                                <Input
+                                    id="stripeSecretKey"
+                                    type="password"
+                                    placeholder="sk_test_... or sk_live_..."
+                                    value={formData.paymentMethods?.stripeSecretKey || ''}
+                                    onChange={(e) =>
+                                        handleNestedInputChange('paymentMethods', 'stripeSecretKey', e.target.value)
+                                    }
+                                />
+                                <p className="mt-1 text-muted-foreground text-sm">
+                                    Your Stripe secret key (keep this secure and never expose it)
+                                </p>
+                            </div>
+                        </div>
+                    )}
+                </CardContent>
+            </Card>
+        </div>
     );
 }
 
@@ -962,103 +1044,47 @@ function GeneralTab({ formData, handleInputChange, errors }) {
 function StoreSettingsSkeleton() {
     return (
         <div className="space-y-4">
-            <div className="flex items-center justify-between">
-                <div>
-                    <Skeleton className="h-8 w-48" />
-                    <Skeleton className="mt-2 h-4 w-64" />
-                </div>
-            </div>
+            <AdminHeader title="Store Settings" description="Manage your store's configuration and preferences" />
 
             <div className="space-y-6">
-                {/* Business Information Card Skeleton */}
-                <div className="rounded-lg border p-6">
-                    <div className="mb-4 flex items-center gap-2">
-                        <Skeleton className="h-5 w-5" />
-                        <Skeleton className="h-6 w-40" />
-                    </div>
-                    <Skeleton className="mb-4 h-4 w-64" />
-                    <div className="grid gap-4">
-                        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                            <Skeleton className="h-10 w-full" />
-                            <Skeleton className="h-10 w-full" />
-                        </div>
-                        <Skeleton className="h-10 w-full" />
-                        <Skeleton className="h-10 w-full" />
-                    </div>
-                </div>
+                <Skeleton className="h-6 w-full" />
 
-                {/* VAT Configuration Card Skeleton */}
-                <div className="rounded-lg border p-6">
-                    <div className="mb-4 flex items-center gap-2">
-                        <Skeleton className="h-5 w-5" />
-                        <Skeleton className="h-6 w-32" />
-                    </div>
-                    <Skeleton className="mb-4 h-4 w-48" />
-                    <div className="grid gap-4">
-                        <Skeleton className="h-10 w-full" />
-                        <div className="rounded-lg border p-4">
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <Skeleton className="mb-2 h-4 w-32" />
-                                    <Skeleton className="h-3 w-48" />
-                                </div>
-                                <Skeleton className="h-6 w-12" />
+                <div className="grid gap-6">
+                    <div className="rounded-lg border p-6">
+                        <Skeleton className="mb-4 h-6 w-40" />
+                        <div className="grid gap-4">
+                            <div className="grid grid-cols-2 gap-4">
+                                <Skeleton className="h-10 w-full" />
+                                <Skeleton className="h-10 w-full" />
                             </div>
-                        </div>
-                        <div className="rounded-lg border p-4">
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <Skeleton className="mb-2 h-4 w-28" />
-                                    <Skeleton className="h-3 w-40" />
-                                </div>
-                                <Skeleton className="h-6 w-12" />
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Payment Methods Card Skeleton */}
-                <div className="rounded-lg border p-6">
-                    <div className="mb-4 flex items-center gap-2">
-                        <Skeleton className="h-5 w-5" />
-                        <Skeleton className="h-6 w-36" />
-                    </div>
-                    <Skeleton className="mb-4 h-4 w-56" />
-                    <div className="grid gap-4">
-                        <div className="rounded-lg border p-4">
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <Skeleton className="mb-2 h-4 w-40" />
-                                    <Skeleton className="h-3 w-32" />
-                                </div>
-                                <Skeleton className="h-6 w-12" />
-                            </div>
-                        </div>
-                        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                             <Skeleton className="h-10 w-full" />
+                            <Skeleton className="h-20 w-full" />
+                        </div>
+                    </div>
+
+                    <div className="rounded-lg border p-6">
+                        <Skeleton className="mb-4 h-6 w-40" />
+                        <div className="grid gap-4">
+                            <div className="grid grid-cols-2 gap-4">
+                                <Skeleton className="h-10 w-full" />
+                                <Skeleton className="h-10 w-full" />
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <Skeleton className="h-10 w-full" />
+                                <Skeleton className="h-10 w-full" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="rounded-lg border p-6">
+                        <Skeleton className="mb-4 h-6 w-40" />
+                        <div className="grid gap-4">
+                            <div className="grid grid-cols-2 gap-4">
+                                <Skeleton className="h-10 w-full" />
+                                <Skeleton className="h-10 w-full" />
+                            </div>
                             <Skeleton className="h-10 w-full" />
                         </div>
-                    </div>
-                </div>
-
-                {/* Shipping Configuration Card Skeleton */}
-                <div className="rounded-lg border p-6">
-                    <div className="mb-4 flex items-center gap-2">
-                        <Skeleton className="h-5 w-5" />
-                        <Skeleton className="h-6 w-44" />
-                    </div>
-                    <Skeleton className="mb-4 h-4 w-52" />
-                    <div className="grid gap-4">
-                        <div className="rounded-lg border p-4">
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <Skeleton className="mb-2 h-4 w-24" />
-                                    <Skeleton className="h-3 w-36" />
-                                </div>
-                                <Skeleton className="h-6 w-12" />
-                            </div>
-                        </div>
-                        <Skeleton className="h-10 w-full" />
                     </div>
                 </div>
 

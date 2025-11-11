@@ -8,14 +8,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { CountryDropdown } from '@/components/ui/country-dropdown';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { PhoneInput } from '@/components/ui/phone-input';
-import { ScrollArea } from '@/components/ui/scroll-area';
+import { PhoneInput } from '@/components/ui/phone-input'; 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { create, getAll, update } from '@/lib/client/query';
+import AdminHeader from '../../components/AdminHeader';
 
 // Function to get available languages from locale folder
 const getAvailableLanguages = async () => {
@@ -338,15 +338,9 @@ export default function SystemSettingsPage() {
         return <SystemSettingsSkeleton />;
     }
 
-    return (
-        <ScrollArea className="h-[calc(100vh-80px)]">
+    return ( 
             <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                    <div>
-                        <h1 className="font-bold text-3xl">System Settings</h1>
-                        <p className="text-muted-foreground">Configure your application settings</p>
-                    </div>
-                </div>
+                 <AdminHeader title="System Settings" description="Configure your application settings" />
 
                 <div className="relative">
                     <Form {...form}>
@@ -471,8 +465,7 @@ export default function SystemSettingsPage() {
                         </div>
                     )}
                 </div>
-            </div>
-        </ScrollArea>
+            </div> 
     );
 }
 
@@ -1775,18 +1768,14 @@ function MultiLanguageSelector({ languages, value, onChange, disabled, defaultLa
 
 // Skeleton Loading Component
 function SystemSettingsSkeleton() {
-    return (
-        <ScrollArea className="h-[calc(100vh-80px)]">
+    return ( 
             <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                    <div>
-                        <h1 className="font-bold text-3xl">System Settings</h1>
-                        <p className="text-muted-foreground">Configure your application settings</p>
-                    </div>
-                </div>
+                
+                <AdminHeader title="System Settings" description="Configure your application settings" />
+
 
                 <div className="space-y-6">
-                    <Skeleton className="h-10 w-full" />
+                    <Skeleton className="h-6 w-full" />
 
                     <div className="grid gap-6">
                         <div className="rounded-lg border p-6">
@@ -1820,7 +1809,6 @@ function SystemSettingsSkeleton() {
                         <Skeleton className="h-10 w-32" />
                     </div>
                 </div>
-            </div>
-        </ScrollArea>
+            </div> 
     );
 }

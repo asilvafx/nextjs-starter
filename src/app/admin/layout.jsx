@@ -37,7 +37,7 @@ export default function AdminLayout({ children }) {
     if (status === 'loading') {
         return (
             <div className="flex h-screen w-screen items-center justify-center">
-                <LoadingPage message="Administration panel..." />
+                <LoadingPage message="Loading administration..." />
             </div>
         );
     }
