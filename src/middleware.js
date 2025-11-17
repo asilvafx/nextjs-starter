@@ -170,18 +170,45 @@ export default auth(async (req) => {
 
         // If user is logged in and accessing protected route, check role-based access
         if (session?.user && requiresAuth) {
-            // Use dynamic roles if available, fallback to static roles
-            const roleAccess =
-                Object.keys(dynamicRoleRouteAccess).length > 0 ? dynamicRoleRouteAccess : roleRouteAccess;
+            // Special handling for admin/* routes - only admin role can access
+            if (pathname.startsWith('/admin')) {
+                const userRole = session.user.role?.toLowerCase();
+                
+                // Check if user has admin role
+                if (userRole !== 'admin') {
+                    // If user is not admin, check if they have specific route permissions in their role
+                    let hasAdminAccess = false;
+                    
+                    if (Object.keys(dynamicRoleRouteAccess).length > 0 && userRole) {
+                        const userRoutes = dynamicRoleRouteAccess[userRole] || [];
+                        hasAdminAccess = userRoutes.some(route => 
+                            pathname === route || pathname.startsWith(`${route}/`)
+                        );
+                    }
+                    
+                    if (!hasAdminAccess) {
+                        // Redirect non-admin users to their appropriate dashboard
+                        if (userRole === 'user') {
+                            return NextResponse.redirect(new URL('/account', req.url));
+                        } else {
+                            return NextResponse.redirect(new URL('/account', req.url));
+                        }
+                    }
+                }
+            } else {
+                // For non-admin routes, use the existing role checking logic
+                const roleAccess =
+                    Object.keys(dynamicRoleRouteAccess).length > 0 ? dynamicRoleRouteAccess : roleRouteAccess;
 
-            const hasAccess = checkDynamicRouteAccess(session.user.role, pathname, roleAccess);
+                const hasAccess = checkDynamicRouteAccess(session.user.role, pathname, roleAccess);
 
-            if (!hasAccess) {
-                // Redirect to appropriate page based on role
-                if (session.user.role === 'user') {
-                    return NextResponse.redirect(new URL('/dashboard', req.url));
-                } else {
-                    return NextResponse.redirect(new URL('/admin/dashboard', req.url));
+                if (!hasAccess) {
+                    // Redirect to appropriate page based on role
+                    if (session.user.role === 'user') {
+                        return NextResponse.redirect(new URL('/account', req.url));
+                    } else {
+                        return NextResponse.redirect(new URL('/account', req.url));
+                    }
                 }
             }
         }
@@ -200,13 +227,21 @@ export default auth(async (req) => {
         }
 
         if (session?.user && requiresAuth) {
-            const hasAccess = checkRouteAccess(session.user.role, pathname);
+            // Special handling for admin/* routes in fallback mode
+            if (pathname.startsWith('/admin')) {
+                const userRole = session.user.role?.toLowerCase();
+                if (userRole !== 'admin') {
+                    return NextResponse.redirect(new URL('/account', req.url));
+                }
+            } else {
+                const hasAccess = checkRouteAccess(session.user.role, pathname);
 
-            if (!hasAccess) {
-                if (session.user.role === 'user') {
-                    return NextResponse.redirect(new URL('/dashboard', req.url));
-                } else {
-                    return NextResponse.redirect(new URL('/admin/dashboard', req.url));
+                if (!hasAccess) {
+                    if (session.user.role === 'user') {
+                        return NextResponse.redirect(new URL('/account', req.url));
+                    } else {
+                        return NextResponse.redirect(new URL('/account', req.url));
+                    }
                 }
             }
         }

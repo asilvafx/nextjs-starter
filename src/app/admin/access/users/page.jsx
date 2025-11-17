@@ -32,7 +32,6 @@ import {
     DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
-import { AdminPagination } from '@/components/ui/pagination.jsx';
 import { PhoneInput } from '@/components/ui/phone-input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -117,24 +116,10 @@ export default function UsersPage() {
         try {
             hasFetchedUsers.current = true;
             setLoading(true);
-            const response = await getAllUsers({
-                page: currentPage,
-                limit: 10
-            });
+            const response = await getAllUsers(); // Remove pagination to get all users 
             if (response.success) {
                 setUsers(response.data);
-                setAllUsers((prev) => {
-                    const newUsers = [...prev];
-                    response.data.forEach((user) => {
-                        const index = newUsers.findIndex((u) => u.id === user.id);
-                        if (index !== -1) {
-                            newUsers[index] = user;
-                        } else {
-                            newUsers.push(user);
-                        }
-                    });
-                    return newUsers;
-                });
+                setAllUsers(response.data); // Directly set all users since we're fetching all data
             }
         } catch (error) {
             console.error('Error fetching users:', error);
@@ -145,6 +130,19 @@ export default function UsersPage() {
         }
     };
 
+    // Function to refresh users data from database
+    const refreshUsers = async () => {
+        try {
+            const response = await getAllUsers();
+            if (response.success) {
+                setAllUsers(response.data);
+                setUsers(response.data);
+            }
+        } catch (error) {
+            console.error('Error refreshing users:', error);
+        }
+    };
+
     useEffect(() => {
         if (status !== 'loading' && currentUser?.id && !hasFetchedRoles.current) {
             fetchRoles();
@@ -152,10 +150,10 @@ export default function UsersPage() {
     }, [currentUser?.id, status]);
 
     useEffect(() => {
-        if (!hasFetchedUsers.current || currentPage !== 1) {
+        if (!hasFetchedUsers.current) {
             fetchUsers();
         }
-    }, [currentPage]);
+    }, []); // Remove currentPage dependency since we're fetching all users
 
     // Sorting function
     const handleSort = (key) => {
@@ -289,7 +287,8 @@ export default function UsersPage() {
                     };
                 }
 
-                const result = await updateUser(editUser.id, userData);
+                const userIdentifier = editUser.id || editUser.email;
+                const result = await updateUser(userIdentifier, userData);
                 
                 if (!result.success) {
                     throw new Error(result.error || 'Failed to update user');
@@ -311,11 +310,24 @@ export default function UsersPage() {
                     });
                 }
 
-                // Update local state
-                setAllUsers((prev) => prev.map((user) => (user.id === editUser.id ? { ...user, ...userData } : user)));
-                setUsers((prev) => prev.map((user) => (user.id === editUser.id ? { ...user, ...userData } : user)));
+                // Update local state - use email as fallback identifier
+                const updatedUserData = { ...editUser, ...userData };
+                setAllUsers((prev) => prev.map((user) => 
+                    (user.id && user.id === (editUser.id || editUser.email)) || 
+                    (user.email === editUser.email) 
+                        ? updatedUserData 
+                        : user
+                ));
+                setUsers((prev) => prev.map((user) => 
+                    (user.id && user.id === (editUser.id || editUser.email)) || 
+                    (user.email === editUser.email) 
+                        ? updatedUserData 
+                        : user
+                ));
 
                 toast.success('User updated successfully');
+                // Also refresh data from database to ensure consistency
+                await refreshUsers();
             } else {
                 // New user creation
                 const salt = await fetch('/auth/api/crypto').then((r) => r.text());
@@ -387,6 +399,8 @@ export default function UsersPage() {
                 setAllUsers((prev) => [...prev, newUser]);
                 setUsers((prev) => [...prev, newUser]);
                 toast.success('User created successfully');
+                // Also refresh data from database to ensure consistency
+                await refreshUsers();
             }
 
             setIsOpen(false);
@@ -420,17 +434,25 @@ export default function UsersPage() {
         if (!userToDelete) return;
         setIsDeleting(true);
         try {
-            const result = await deleteUser(userToDelete.id);
+            const userIdentifier = userToDelete.id || userToDelete.email;
+            const result = await deleteUser(userIdentifier);
             
             if (!result.success) {
                 throw new Error(result.error || 'Failed to delete user');
             }
             
             toast.success('User deleted successfully');
-            setAllUsers((prev) => prev.filter((user) => user.id !== userToDelete.id));
-            setUsers((prev) => prev.filter((user) => user.id !== userToDelete.id));
+            // Update state - use email as fallback identifier
+            setAllUsers((prev) => prev.filter((user) => 
+                !((user.id && user.id === userIdentifier) || user.email === userToDelete.email)
+            ));
+            setUsers((prev) => prev.filter((user) => 
+                !((user.id && user.id === userIdentifier) || user.email === userToDelete.email)
+            ));
             setDeleteConfirmOpen(false);
             setUserToDelete(null);
+            // Also refresh data from database to ensure consistency
+            await refreshUsers();
         } catch (error) {
             toast.error(error.message || 'Failed to delete user');
         } finally {
@@ -584,21 +606,6 @@ export default function UsersPage() {
                     </Table>
                 )}
             </div>
-
-            {/* Pagination */}
-            {!loading && users.length > 0 && (
-                <AdminPagination
-                    currentPage={currentPage}
-                    totalItems={allUsers.length}
-                    itemsPerPage={10}
-                    onPageChange={(page) => {
-                        setCurrentPage(page);
-                        fetchUsers();
-                    }}
-                    loading={loading}
-                    itemLabel="users"
-                />
-            )}
 
             {/* Create / Edit User Dialog */}
             <Dialog open={isOpen} onOpenChange={setIsOpen}>

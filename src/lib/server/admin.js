@@ -352,18 +352,30 @@ export async function createUser(userData) {
 
 /**
  * Update a user utility function
- * @param {string} userId - ID of the user to update
+ * @param {string} userIdentifier - Email of the user to update
  * @param {Object} userData - User data to update
  * @returns {Promise<Object>} Updated user data
  */
-export async function updateUser(userId, userData) {
+export async function updateUser(userIdentifier, userData) {
     try {
+        // First, find the user key using getItemKey function with email
+        const userKey = await DBService.getItemKey('email', userIdentifier, 'users');
+        if (!userKey) {
+            return {
+                success: false,
+                error: 'User not found',
+                message: `User with email '${userIdentifier}' does not exist`
+            };
+        }
+
         const updateData = {
             ...userData,
             updatedAt: new Date().toISOString()
         };
 
-        const result = await DBService.update(userId, updateData, 'users');
+        console.log('Updating user with key:', userKey, 'data:', updateData);
+        const result = await DBService.update(userKey, updateData, 'users');
+        console.log('Update result:', result);
 
         return {
             success: true,
@@ -381,12 +393,24 @@ export async function updateUser(userId, userData) {
 
 /**
  * Delete a user utility function
- * @param {string} userId - ID of the user to delete
+ * @param {string} userIdentifier - Email of the user to delete
  * @returns {Promise<Object>} Delete result
  */
-export async function deleteUser(userId) {
+export async function deleteUser(userIdentifier) {
     try {
-        const result = await DBService.delete(userId, 'users');
+        // First, find the user key using getItemKey function with email
+        const userKey = await DBService.getItemKey('email', userIdentifier, 'users');
+        if (!userKey) {
+            return {
+                success: false,
+                error: 'User not found',
+                message: `User with email '${userIdentifier}' does not exist`
+            };
+        }
+
+        console.log('Deleting user with key:', userKey);
+        const result = await DBService.delete(userKey, 'users');
+        console.log('Delete result:', result);
 
         return {
             success: true,
@@ -398,6 +422,158 @@ export async function deleteUser(userId) {
             success: false,
             error: 'Failed to delete user',
             message: error.message
+        };
+    }
+}
+
+// ROLE MANAGEMENT UTILITY FUNCTIONS (NOT SERVER ACTIONS)
+// These functions can be imported directly into client components
+
+/**
+ * Create a new role utility function
+ * @param {Object} roleData - Role data to create
+ * @returns {Promise<Object>} Created role data
+ */
+export async function createRole(roleData) {
+    try {
+        const timeNow = new Date().toISOString();
+        const newRole = {
+            ...roleData,
+            id: roleData.id || Date.now().toString(),
+            createdAt: timeNow,
+            updatedAt: timeNow
+        };
+
+        const result = await DBService.create(newRole, 'roles');
+
+        return {
+            success: true,
+            data: result
+        };
+    } catch (error) {
+        console.error('Error creating role:', error);
+        return {
+            success: false,
+            error: 'Failed to create role',
+            message: error.message
+        };
+    }
+}
+
+/**
+ * Update a role utility function
+ * @param {string} roleId - Id of the role to update
+ * @param {Object} roleData - Role data to update
+ * @returns {Promise<Object>} Updated role data
+ */
+export async function updateRole(roleId, roleData) {
+    try {
+        // First, find the role key using getItemKey function
+        const roleKey = await DBService.getItemKey('id', roleId, 'roles');
+        if (!roleKey) {
+            return {
+                success: false,
+                error: 'Role not found',
+                message: `Role with id '${roleId}' does not exist`
+            };
+        }
+
+        const updateData = {
+            ...roleData,
+            updatedAt: new Date().toISOString()
+        };
+
+        console.log('Updating role with key:', roleKey, 'data:', updateData);
+        const result = await DBService.update(roleKey, updateData, 'roles');
+        console.log('Role update result:', result);
+
+        return {
+            success: true,
+            data: result
+        };
+    } catch (error) {
+        console.error('Error updating role:', error);
+        return {
+            success: false,
+            error: 'Failed to update role',
+            message: error.message
+        };
+    }
+}
+
+/**
+ * Delete a role utility function
+ * @param {string} roleId - ID of the role to delete
+ * @returns {Promise<Object>} Delete result
+ */
+export async function deleteRole(roleId) {
+    try {
+        // First, find the role key using getItemKey function
+        const roleKey = await DBService.getItemKey('id', roleId, 'roles');
+        if (!roleKey) {
+            return {
+                success: false,
+                error: 'Role not found',
+                message: `Role with id '${roleId}' does not exist`
+            };
+        }
+
+        console.log('Deleting role with key:', roleKey);
+        const result = await DBService.delete(roleKey, 'roles');
+        console.log('Role delete result:', result);
+
+        return {
+            success: true,
+            data: result
+        };
+    } catch (error) {
+        console.error('Error deleting role:', error);
+        return {
+            success: false,
+            error: 'Failed to delete role',
+            message: error.message
+        };
+    }
+}
+
+/**
+ * Get user role utility function
+ * @param {string} userId - ID of the user to get role for
+ * @returns {Promise<Object>} User role data
+ */
+export async function getUserRole(userId) {
+    try {
+        const user = await DBService.read(userId, 'users');
+        if (!user) {
+            return {
+                success: false,
+                error: 'User not found',
+                data: null
+            };
+        }
+
+        const userRole = user.role || 'user'; // Default to 'user' role
+        
+        // Get the full role details
+        const roles = await DBService.readAll('roles');
+        const rolesArray = Array.isArray(roles) ? roles : Object.values(roles || {});
+        const roleDetails = rolesArray.find(role => role.title?.toLowerCase() === userRole.toLowerCase());
+
+        return {
+            success: true,
+            data: {
+                role: userRole,
+                routes: roleDetails?.routes || [],
+                roleDetails: roleDetails
+            }
+        };
+    } catch (error) {
+        console.error('Error fetching user role:', error);
+        return {
+            success: false,
+            error: 'Failed to fetch user role',
+            message: error.message,
+            data: null
         };
     }
 }

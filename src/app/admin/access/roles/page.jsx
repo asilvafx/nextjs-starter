@@ -42,26 +42,30 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Textarea } from '@/components/ui/textarea';
 import { useAuth } from '@/hooks/useAuth';
-import { create, getAll, remove, update } from '@/lib/client/query';
+import { getAllRoles, createRole, updateRole, deleteRole } from '@/lib/server/admin';
 
 // Default roles to be created if roles collection is empty
 const defaultRoles = [
     {
+        id: 'admin-role-001',
         title: 'Admin',
         description: 'Full system access with all permissions',
         routes: ['/admin', '/admin/*', '/dashboard', '/dashboard/*', '/account', '/account/*']
     },
     {
+        id: 'editor-role-002',
         title: 'Editor',
         description: 'Content management and editing permissions',
         routes: ['/admin/dashboard', '/admin/store', '/admin/store/*', '/account', '/account/*']
     },
     {
+        id: 'moderator-role-003',
         title: 'Moderator',
         description: 'User and content moderation permissions',
         routes: ['/admin/access', '/admin/access/users', '/admin/dashboard', '/account', '/account/*']
     },
     {
+        id: 'user-role-004',
         title: 'User',
         description: 'Basic user access with limited permissions',
         routes: ['/account', '/account/*', '/dashboard']
@@ -127,30 +131,17 @@ export default function RolesPage() {
         try {
             hasFetchedRoles.current = true;
             setLoading(true);
-            const res = await getAll('roles', { 
-                limit: 0
-            });
+            const response = await getAllRoles(); 
 
             // Ensure data is an array
-            const rolesArray = Array.isArray(res.data) ? res.data : [];
+            const rolesArray = Array.isArray(response.data) ? response.data : [];
 
             // If no roles exist, create default roles
             if (rolesArray.length === 0) {
                 await createDefaultRoles();
             } else {
                 setRoles(rolesArray);
-                setAllRoles((prev) => {
-                    const newRoles = [...prev];
-                    rolesArray.forEach((role) => {
-                        const index = newRoles.findIndex((r) => r.id === role.id);
-                        if (index !== -1) {
-                            newRoles[index] = role;
-                        } else {
-                            newRoles.push(role);
-                        }
-                    });
-                    return newRoles;
-                });
+                setAllRoles(rolesArray); // Directly set all roles since we're fetching all data
             }
         } catch (error) {
             console.error('Error fetching roles:', error);
@@ -172,15 +163,14 @@ export default function RolesPage() {
             isCreatingDefaultRoles.current = true;
             const createdRoles = [];
             for (const roleData of defaultRoles) {
-                const role = await create(
-                    {
-                        ...roleData,
-                        created_at: new Date().toISOString(),
-                        created_by: currentUser?.id || 'system'
-                    },
-                    'roles'
-                );
-                createdRoles.push(role);
+                const response = await createRole({
+                    ...roleData,
+                    created_at: new Date().toISOString(),
+                    created_by: currentUser?.id || 'system'
+                });
+                if (response.success) {
+                    createdRoles.push(response.data);
+                }
             }
 
             setRoles(createdRoles);
@@ -195,6 +185,20 @@ export default function RolesPage() {
             isCreatingDefaultRoles.current = false;
         } finally {
             isCreatingDefaultRoles.current = false;
+        }
+    };
+
+    // Function to refresh roles data from database
+    const refreshRoles = async () => {
+        try {
+            const response = await getAllRoles();
+            if (response.success) {
+                const rolesArray = Array.isArray(response.data) ? response.data : [];
+                setAllRoles(rolesArray);
+                setRoles(rolesArray);
+            }
+        } catch (error) {
+            console.error('Error refreshing roles:', error);
         }
     };
 
@@ -281,48 +285,71 @@ export default function RolesPage() {
 
             if (editRole) {
                 // Update existing role
-                result = await update(
-                    editRole.id,
-                    {
+                const response = await updateRole(editRole.id, {
+                    title: formData.title.trim(),
+                    description: formData.description.trim(),
+                    routes: formData.routes,
+                    updated_at: new Date().toISOString(),
+                    updated_by: currentUser?.id
+                });
+
+                if (response.success) {
+                    // Update the role in both states with merged data
+                    const rolesArray = Array.isArray(allRoles) ? allRoles : [];
+                    const updatedRoleData = { 
+                        ...editRole, 
                         title: formData.title.trim(),
                         description: formData.description.trim(),
                         routes: formData.routes,
                         updated_at: new Date().toISOString(),
                         updated_by: currentUser?.id
-                    },
-                    'roles'
-                );
+                    };
+                    const updatedRoles = rolesArray.map((role) =>
+                        role.title === editRole.title ? updatedRoleData : role
+                    );
 
-                // Update the role in both states
-                const rolesArray = Array.isArray(allRoles) ? allRoles : [];
-                const updatedRoles = rolesArray.map((role) =>
-                    role.id === editRole.id ? { ...role, ...result, id: editRole.id } : role
-                );
+                    setRoles(updatedRoles);
+                    setAllRoles(updatedRoles);
 
-                setRoles(updatedRoles);
-                setAllRoles(updatedRoles);
-
-                toast.success('Role updated successfully');
+                    toast.success('Role updated successfully');
+                    // Also refresh data from database to ensure consistency
+                    await refreshRoles();
+                } else {
+                    throw new Error(response.error || 'Failed to update role');
+                }
             } else {
                 // Create new role
-                result = await create(
-                    {
+                const response = await createRole({
+                    id: Date.now().toString(), // Generate unique ID for new role
+                    title: formData.title.trim(),
+                    description: formData.description.trim(),
+                    routes: formData.routes,
+                    created_at: new Date().toISOString(),
+                    created_by: currentUser?.id
+                });
+
+                if (response.success) {
+                    // Add the new role to both states
+                    const rolesArray = Array.isArray(allRoles) ? allRoles : [];
+                    const newRoleData = {
+                        id: Date.now().toString(), // Ensure ID is included in state
                         title: formData.title.trim(),
                         description: formData.description.trim(),
                         routes: formData.routes,
                         created_at: new Date().toISOString(),
-                        created_by: currentUser?.id
-                    },
-                    'roles'
-                );
+                        created_by: currentUser?.id,
+                        ...response.data // Include any additional data from the database response
+                    };
+                    const newRoles = [...rolesArray, newRoleData];
+                    setRoles(newRoles);
+                    setAllRoles(newRoles);
 
-                // Add the new role to both states
-                const rolesArray = Array.isArray(allRoles) ? allRoles : [];
-                const newRoles = [...rolesArray, result];
-                setRoles(newRoles);
-                setAllRoles(newRoles);
-
-                toast.success('Role created successfully');
+                    toast.success('Role created successfully');
+                    // Also refresh data from database to ensure consistency
+                    await refreshRoles();
+                } else {
+                    throw new Error(response.error || 'Failed to create role');
+                }
             }
 
             // Clear middleware cache to ensure updated routes are applied
@@ -363,20 +390,26 @@ export default function RolesPage() {
         if (!roleToDelete) return;
 
         try {
-            await remove(roleToDelete.id, 'roles');
+            const response = await deleteRole(roleToDelete.id); 
 
-            // Remove the role from both states
-            const rolesArray = Array.isArray(allRoles) ? allRoles : [];
-            const filteredRoles = rolesArray.filter((role) => role.id !== roleToDelete.id);
-            setRoles(filteredRoles);
-            setAllRoles(filteredRoles);
+            if (response.success) {
+                // Remove the role from both states
+                const rolesArray = Array.isArray(allRoles) ? allRoles : [];
+                const filteredRoles = rolesArray.filter((role) => role.title !== roleToDelete.title);
+                setRoles(filteredRoles);
+                setAllRoles(filteredRoles);
 
-            // Clear middleware cache to ensure deleted roles are no longer applied
-            await clearMiddlewareCache();
+                // Clear middleware cache to ensure deleted roles are no longer applied
+                await clearMiddlewareCache();
 
-            toast.success('Role deleted successfully');
-            setDeleteConfirmOpen(false);
-            setRoleToDelete(null);
+                toast.success('Role deleted successfully');
+                setDeleteConfirmOpen(false);
+                setRoleToDelete(null);
+                // Also refresh data from database to ensure consistency  
+                await refreshRoles();
+            } else {
+                throw new Error(response.error || 'Failed to delete role');
+            }
         } catch (error) {
             console.error('Error deleting role:', error);
             toast.error('Failed to delete role');
@@ -525,8 +558,8 @@ export default function RolesPage() {
                             </TableHeader>
                             <TableBody>
                                 {Array.isArray(roles) &&
-                                    roles.map((role) => (
-                                        <TableRow key={role.id} className="hover:bg-muted/50">
+                                    roles.map((role, index) => (
+                                        <TableRow key={role.id || role.title || `role-${index}`} className="hover:bg-muted/50">
                                             <TableCell data-label="Role" className="font-medium">
                                                 <div className="flex items-center justify-end sm:justify-start gap-2">
                                                     <Shield
@@ -607,10 +640,7 @@ export default function RolesPage() {
                 <Dialog open={isOpen} onOpenChange={setIsOpen}>
                     <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
                         <DialogHeader>
-                            <DialogTitle className="flex items-center gap-2">
-                                <Shield className="h-5 w-5" />
-                                {editRole ? 'Edit Role' : 'Create New Role'}
-                            </DialogTitle>
+                            <DialogTitle>{editRole ? 'Edit Role' : 'Create Role'}</DialogTitle>
                             <DialogDescription>
                                 {editRole
                                     ? 'Update the role information and permissions'
@@ -737,10 +767,7 @@ export default function RolesPage() {
                 <Dialog open={isViewOpen} onOpenChange={setIsViewOpen}>
                     <DialogContent className="max-w-2xl">
                         <DialogHeader>
-                            <DialogTitle className="flex items-center gap-2">
-                                <Shield className="h-5 w-5" />
-                                Role Details
-                            </DialogTitle>
+                            <DialogTitle>Role Details</DialogTitle>
                         </DialogHeader>
 
                         {viewRole && (
@@ -810,10 +837,7 @@ export default function RolesPage() {
                 <Dialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
                     <DialogContent>
                         <DialogHeader>
-                            <DialogTitle className="flex items-center gap-2 text-destructive">
-                                <Trash className="h-5 w-5" />
-                                Delete Role
-                            </DialogTitle>
+                            <DialogTitle>Delete Role</DialogTitle>
                             <DialogDescription>
                                 Are you sure you want to delete the role "{roleToDelete?.title}"? This action cannot be
                                 undone.
