@@ -37,7 +37,7 @@ import { PhoneInput } from '@/components/ui/phone-input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useAuth } from '@/hooks/useAuth';
-import { create, getAll, remove, update } from '@/lib/client/query';
+import { getAllUsers, getAllRoles, createUser, updateUser, deleteUser } from '@/lib/server/admin';
 
 const initialFormData = {
     displayName: '',
@@ -86,7 +86,7 @@ export default function UsersPage() {
         try {
             hasFetchedRoles.current = true;
             setRolesLoading(true);
-            const response = await getAll('roles');
+            const response = await getAllRoles();
 
             // Ensure data is an array and extract role titles
             const rolesArray = Array.isArray(response.data) ? response.data : [];
@@ -117,7 +117,7 @@ export default function UsersPage() {
         try {
             hasFetchedUsers.current = true;
             setLoading(true);
-            const response = await getAll('users', {
+            const response = await getAllUsers({
                 page: currentPage,
                 limit: 10
             });
@@ -289,7 +289,11 @@ export default function UsersPage() {
                     };
                 }
 
-                await update(editUser.id, userData, 'users');
+                const result = await updateUser(editUser.id, userData);
+                
+                if (!result.success) {
+                    throw new Error(result.error || 'Failed to update user');
+                }
 
                 if (formData.sendEmail && formData.changePassword) {
                     // Send password change notification email
@@ -357,7 +361,13 @@ export default function UsersPage() {
                     console.error('Web3 setup error:', web3Error);
                 }
 
-                const newUser = await create(userData, 'users');
+                const result = await createUser(userData);
+                
+                if (!result.success) {
+                    throw new Error(result.error || 'Failed to create user');
+                }
+                
+                const newUser = result.data;
 
                 if (formData.sendEmail) {
                     // Send welcome email with login details
@@ -410,7 +420,12 @@ export default function UsersPage() {
         if (!userToDelete) return;
         setIsDeleting(true);
         try {
-            await remove(userToDelete.id, 'users');
+            const result = await deleteUser(userToDelete.id);
+            
+            if (!result.success) {
+                throw new Error(result.error || 'Failed to delete user');
+            }
+            
             toast.success('User deleted successfully');
             setAllUsers((prev) => prev.filter((user) => user.id !== userToDelete.id));
             setUsers((prev) => prev.filter((user) => user.id !== userToDelete.id));
@@ -507,8 +522,8 @@ export default function UsersPage() {
                                     </TableCell>
                                 </TableRow>
                             ) : (
-                                users.map((user) => (
-                                    <TableRow key={user.id}>
+                                users.map((user, index) => (
+                                    <TableRow key={user.id || `user-${index}`}>
                                         <TableCell data-label="Name" className="capitalize">
                                             {user.displayName} {user.email === currentUser?.email ?? '(You)'}
                                         </TableCell>

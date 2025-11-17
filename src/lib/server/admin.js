@@ -256,3 +256,148 @@ export async function updateStoreSettings(settingsData) {
         };
     }
 }
+
+// USER MANAGEMENT UTILITY FUNCTIONS (NOT SERVER ACTIONS)
+// These functions can be imported directly into client components
+
+/**
+ * Get all users utility function
+ * @param {Object} params - Query parameters (page, limit, etc.)
+ * @returns {Promise<Object>} Users data
+ */
+export async function getAllUsers(params = {}) {
+    try {
+        const users = await DBService.readAll('users');
+        const usersArray = Array.isArray(users) ? users : Object.values(users || {});
+
+        // Apply pagination if specified
+        let filteredUsers = usersArray;
+        if (params.page && params.limit) {
+            const page = parseInt(params.page, 10);
+            const limit = parseInt(params.limit, 10);
+            const offset = (page - 1) * limit;
+            filteredUsers = usersArray.slice(offset, offset + limit);
+        }
+
+        return {
+            success: true,
+            data: filteredUsers,
+            total: usersArray.length
+        };
+    } catch (error) {
+        console.error('Error fetching users:', error);
+        return {
+            success: false,
+            error: 'Failed to fetch users',
+            message: error.message,
+            data: []
+        };
+    }
+}
+
+/**
+ * Get all roles utility function
+ * @returns {Promise<Object>} Roles data
+ */
+export async function getAllRoles() {
+    try {
+        const roles = await DBService.readAll('roles');
+        const rolesArray = Array.isArray(roles) ? roles : Object.values(roles || {});
+
+        return {
+            success: true,
+            data: rolesArray
+        };
+    } catch (error) {
+        console.error('Error fetching roles:', error);
+        return {
+            success: false,
+            error: 'Failed to fetch roles',
+            message: error.message,
+            data: []
+        };
+    }
+}
+
+/**
+ * Create a new user utility function
+ * @param {Object} userData - User data to create
+ * @returns {Promise<Object>} Created user data
+ */
+export async function createUser(userData) {
+    try {
+        const timeNow = new Date().toISOString();
+        const newUser = {
+            ...userData,
+            id: userData.id || Date.now().toString(),
+            createdAt: timeNow,
+            updatedAt: timeNow
+        };
+
+        const result = await DBService.create(newUser, 'users');
+
+        return {
+            success: true,
+            data: result
+        };
+    } catch (error) {
+        console.error('Error creating user:', error);
+        return {
+            success: false,
+            error: 'Failed to create user',
+            message: error.message
+        };
+    }
+}
+
+/**
+ * Update a user utility function
+ * @param {string} userId - ID of the user to update
+ * @param {Object} userData - User data to update
+ * @returns {Promise<Object>} Updated user data
+ */
+export async function updateUser(userId, userData) {
+    try {
+        const updateData = {
+            ...userData,
+            updatedAt: new Date().toISOString()
+        };
+
+        const result = await DBService.update(userId, updateData, 'users');
+
+        return {
+            success: true,
+            data: result
+        };
+    } catch (error) {
+        console.error('Error updating user:', error);
+        return {
+            success: false,
+            error: 'Failed to update user',
+            message: error.message
+        };
+    }
+}
+
+/**
+ * Delete a user utility function
+ * @param {string} userId - ID of the user to delete
+ * @returns {Promise<Object>} Delete result
+ */
+export async function deleteUser(userId) {
+    try {
+        const result = await DBService.delete(userId, 'users');
+
+        return {
+            success: true,
+            data: result
+        };
+    } catch (error) {
+        console.error('Error deleting user:', error);
+        return {
+            success: false,
+            error: 'Failed to delete user',
+            message: error.message
+        };
+    }
+}
