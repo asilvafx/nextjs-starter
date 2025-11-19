@@ -281,7 +281,7 @@ function ServerInfoTab({ serverInfo, loading, onRefresh, onClearCache, formatByt
                     <CardDescription>Clear cached data to improve performance</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                    <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
                         <Button
                             variant="outline"
                             onClick={() => onClearCache('revalidate-path')}
@@ -308,6 +308,20 @@ function ServerInfoTab({ serverInfo, loading, onRefresh, onClearCache, formatByt
                             )}
                             <span>Revalidate Tags</span>
                             <span className="text-muted-foreground text-xs">Clear tagged cache</span>
+                        </Button>
+
+                        <Button
+                            variant="outline"
+                            onClick={() => onClearCache('clear-settings-cache')}
+                            disabled={loading.cache}
+                            className="h-20 flex-col gap-2">
+                            {loading.cache ? (
+                                <RefreshCw className="h-5 w-5 animate-spin" />
+                            ) : (
+                                <RefreshCw className="h-5 w-5" />
+                            )}
+                            <span>Clear Settings Cache</span>
+                            <span className="text-muted-foreground text-xs">site_settings & store_settings</span>
                         </Button>
                     </div>
                 </CardContent>

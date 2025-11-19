@@ -7,6 +7,12 @@ import { hasLocale } from 'next-intl';
 import { getRequestConfig } from 'next-intl/server';
 import { COOKIE_NAME, defaultLocale, locales } from './config';
 import { getBundledTranslations } from './_messages';
+import { getSiteSettings } from '@/lib/server/admin';
+
+// Cache site settings to prevent multiple fetches per request
+let siteSettingsCache = null;
+let cacheTimestamp = null;
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
 // Load and merge translation JSON files from the locale folder
 async function loadTranslations(locale) {
@@ -66,6 +72,32 @@ function mergeWithFallback(current, fallback) {
     return result;
 }
 
+// Get site settings with caching to prevent multiple requests
+async function getCachedSiteSettings() {
+    const now = Date.now();
+    
+    // Return cached data if still valid
+    if (siteSettingsCache && cacheTimestamp && (now - cacheTimestamp) < CACHE_DURATION) {
+        // Remove console.log to stop spam - only log when fetching fresh data
+        return siteSettingsCache;
+    }
+    
+    try {
+        console.log('Fetching fresh site settings for locale detection');
+        const result = await getSiteSettings();
+        
+        if (result?.success && result.data) {
+            siteSettingsCache = result.data;
+            cacheTimestamp = now;
+            return siteSettingsCache;
+        }
+    } catch (error) {
+        console.error('Error fetching site settings for locale:', error);
+    }
+    
+    return null;
+}
+
 export default getRequestConfig(async () => {
     // Determine locale server-side without relying on URL segments.
     // Priority: cookie -> site settings -> configured default
@@ -79,23 +111,44 @@ export default getRequestConfig(async () => {
         candidate = null;
     }
 
-    // Validate candidate; if not valid try site settings
-    if (!hasLocale(locales, candidate)) {
-        try {
-            const res = await fetch(
-                `${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/api/query/public/site_settings`
-            );
-            const result = await res.json();
-            if (result?.success && Array.isArray(result.data) && result.data.length > 0) {
-                const siteSettings = result.data[0];
-                const siteLang = siteSettings.language;
-                if (siteLang && hasLocale(locales, siteLang)) {
-                    candidate = siteLang;
-                }
-            }
-        } catch (_err) {
-            // ignore
+    // Early return if we have a valid locale from cookie - no need to check site settings
+    if (hasLocale(locales, candidate)) {
+        const locale = candidate;
+        
+        // Load messages
+        const currentMessages = await loadTranslations(locale);
+        let messages = currentMessages;
+
+        if (locale !== (defaultLocale || 'en')) {
+            const fallbackMessages = await loadTranslations(defaultLocale || 'en');
+            messages = mergeWithFallback(currentMessages, fallbackMessages);
         }
+
+        return {
+            locale,
+            messages,
+            onError: (error) => {
+                if (error && error.code === 'MISSING_MESSAGE') return;
+                console.error('Translation error:', error);
+            },
+            getMessageFallback: ({ namespace, key, error }) => {
+                const keyPath = namespace ? `${namespace}.${key}` : key;
+                if (process.env.NODE_ENV === 'development') {
+                    console.warn(`Missing translation: ${keyPath} (${error?.code})`);
+                }
+                return keyPath;
+            }
+        };
+    }
+
+    // Only check site settings if cookie doesn't have valid locale
+    try {
+        const siteSettings = await getCachedSiteSettings();
+        if (siteSettings?.language && hasLocale(locales, siteSettings.language)) {
+            candidate = siteSettings.language;
+        }
+    } catch (_err) {
+        // ignore
     }
 
     const locale = hasLocale(locales, candidate) ? candidate : defaultLocale || 'en';

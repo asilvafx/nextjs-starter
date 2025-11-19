@@ -3,6 +3,7 @@
 import { revalidatePath, revalidateTag } from 'next/cache';
 import { NextResponse } from 'next/server';
 import { withAdminAuth } from '@/lib/server/auth.js';
+import { clearSettingsCache } from '@/lib/server/admin.js';
 
 async function handlePost(request) {
     try {
@@ -62,10 +63,19 @@ async function handlePost(request) {
                 }
                 break;
 
+            case 'clear-settings-cache':
+                try {
+                    await clearSettingsCache();
+                    results.cleared.push('Settings cache cleared (site_settings and store_settings)');
+                } catch (error) {
+                    results.errors.push(`Settings cache: ${error.message}`);
+                }
+                break;
+
             default:
                 return NextResponse.json(
                     {
-                        error: 'Invalid action. Supported actions: revalidate-path, revalidate-tag, clear-temp, clear-logs, clear-all'
+                        error: 'Invalid action. Supported actions: revalidate-path, revalidate-tag, clear-settings-cache'
                     },
                     { status: 400 }
                 );

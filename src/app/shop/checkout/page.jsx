@@ -69,7 +69,7 @@ const Checkout = () => {
             const subtotalExclVat = cartTotal / (1 + vatRate);
             const vatAmount = cartTotal - subtotalExclVat;
             return {
-                subtotal: subtotalExclVat,
+                subtotal: cartTotal, // Show actual item prices as subtotal
                 vatAmount: vatAmount,
                 total: cartTotal
             };
@@ -77,7 +77,7 @@ const Checkout = () => {
             // VAT needs to be added at checkout if configured
             const vatAmount = storeSettings.applyVatAtCheckout ? cartTotal * vatRate : 0;
             return {
-                subtotal: cartTotal,
+                subtotal: cartTotal, // Show actual item prices as subtotal
                 vatAmount: vatAmount,
                 total: cartTotal + vatAmount
             };
@@ -85,7 +85,7 @@ const Checkout = () => {
     };
 
     const vatInfo = calculateVatBreakdown();
-    const subTotal = vatInfo.subtotal.toFixed(2);
+    const subTotal = cartTotal.toFixed(2); // Simple sum of all item prices
     const finalShippingCost = calculateShippingCost();
     const totalPrice = Math.max(0, vatInfo.total + finalShippingCost - discountAmount).toFixed(2);
 
@@ -430,10 +430,7 @@ const Checkout = () => {
                                             <span>{t('subtotal')}</span>
                                             <span>
                                                 {storeSettings?.currency === 'USD' ? '$' : '€'}
-                                                {(storeSettings?.vatEnabled && storeSettings?.vatIncludedInPrice
-                                                    ? vatInfo.subtotal
-                                                    : cartTotal
-                                                ).toFixed(2)}
+                                                {cartTotal.toFixed(2)}
                                             </span>
                                         </div>
                                         <div className="flex justify-between text-muted-foreground">

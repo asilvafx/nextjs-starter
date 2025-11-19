@@ -6,7 +6,7 @@ import { motion } from 'framer-motion';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useCart } from 'react-use-cart';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
@@ -14,7 +14,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
-import { getAllPublic } from '@/lib/client/query.js';
+import { getAllCatalog, getAllCategories, getAllCollections, getCachedStoreSettings, getSiteSettings } from '@/lib/server/admin';
 
 function Shop() {
     const t = useTranslations('Shop');
@@ -65,29 +65,31 @@ function Shop() {
     // Fetch all data on component mount
     useEffect(() => {
         loadAllData();
-    }, []);
+    }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-    // Filter items when any filter or items change
-    useEffect(() => {
-        filterItems();
-    }, [filter, categoryFilter, collectionFilter, items]);
-
-    const loadAllData = async () => {
+    const loadAllData = useCallback(async () => {
         try {
             setLoading(true);
             setError(null);
 
-            // Load all data in parallel
-            const [catalogResponse, categoriesResponse, collectionsResponse, storeResponse] = await Promise.all([
-                getAllPublic('catalog'),
-                getAllPublic('categories'),
-                getAllPublic('collections'),
-                getAllPublic('store_settings')
+            // Load all data in parallel using admin functions
+            const [catalogResponse, categoriesResponse, collectionsResponse, storeResponse, siteResponse] = await Promise.all([
+                getAllCatalog(),
+                getAllCategories(),
+                getAllCollections(),
+                getCachedStoreSettings(),
+                getSiteSettings()
             ]);
 
             // Set store settings
             if (storeResponse?.success) {
                 setStoreSettings(storeResponse.data);
+            }
+
+            // Set site settings to state if needed
+            if (siteResponse?.success) {
+                // You can use site settings here if needed
+                console.log('Site settings loaded:', siteResponse.data);
             }
 
             // Set categories
@@ -131,9 +133,9 @@ function Shop() {
         } finally {
             setLoading(false);
         }
-    };
+    }, []);
 
-    const filterItems = () => {
+    const filterItems = useCallback(() => {
         let filtered = items;
 
         // Filter by type (physical/digital/service)
@@ -154,11 +156,18 @@ function Shop() {
         // Only show active items
         filtered = filtered.filter((item) => item.isActive !== false);
 
-    // Exclude services that require an appointment from the shop listing
-    filtered = filtered.filter((item) => !(item.type === 'service' && item.requiresAppointment));
+        // Exclude services that require an appointment from the shop listing
+        filtered = filtered.filter((item) => !(item.type === 'service' && item.requiresAppointment));
 
         setFilteredItems(filtered);
-    };
+    }, [items, filter, categoryFilter, collectionFilter]);
+
+    // Filter items when any filter or items change
+    useEffect(() => {
+        if (items.length > 0) {
+            filterItems();
+        }
+    }, [filterItems]);
 
     const addToCart = (product) => {
         // Ensure the product has required fields for cart
@@ -190,7 +199,7 @@ function Shop() {
                     <div className="space-y-4">
                         <div className="flex flex-wrap gap-2">
                             {[...Array(4)].map((_, i) => (
-                                <Skeleton key={i} className="h-8 w-24" />
+                                <Skeleton key={`filter-${i}`} className="h-8 w-24" />
                             ))}
                         </div>
                         <div className="grid gap-4 md:grid-cols-2">
@@ -200,7 +209,7 @@ function Shop() {
                     </div>
                     <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
                         {[...Array(6)].map((_, i) => (
-                            <Card key={i}>
+                            <Card key={`skeleton-card-${i}`}>
                                 <Skeleton className="h-56 w-full" />
                                 <CardContent className="p-4">
                                     <Skeleton className="mb-2 h-6 w-3/4" />
@@ -328,7 +337,7 @@ function Shop() {
                         <div className="flex flex-wrap items-center gap-2">
                             <span className="text-muted-foreground text-sm">Active filters:</span>
                             {filter !== 'all' && (
-                                <Badge variant="secondary" className="gap-1">
+                                <Badge key="type-filter" variant="secondary" className="gap-1">
                                     Type: {filter}
                                     <Button
                                         variant="ghost"
@@ -340,7 +349,7 @@ function Shop() {
                                 </Badge>
                             )}
                             {categoryFilter !== 'all' && (
-                                <Badge variant="secondary" className="gap-1">
+                                <Badge key="category-filter" variant="secondary" className="gap-1">
                                     Category: {categories.find((c) => c.id === categoryFilter)?.name}
                                     <Button
                                         variant="ghost"
@@ -352,7 +361,7 @@ function Shop() {
                                 </Badge>
                             )}
                             {collectionFilter !== 'all' && (
-                                <Badge variant="secondary" className="gap-1">
+                                <Badge key="collection-filter" variant="secondary" className="gap-1">
                                     Collection: {collections.find((c) => c.id === collectionFilter)?.name}
                                     <Button
                                         variant="ghost"
@@ -364,6 +373,7 @@ function Shop() {
                                 </Badge>
                             )}
                             <Button
+                                key="clear-all-filters"
                                 variant="link"
                                 size="sm"
                                 onClick={() => {

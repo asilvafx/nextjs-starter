@@ -8,6 +8,7 @@ import { useTranslations } from 'next-intl';
 import { useEffect, useState } from 'react';
 import Turnstile from 'react-turnstile';
 import { useCart } from 'react-use-cart';
+import { createOrder, createCustomer } from '@/lib/server/admin';
 import GooglePlacesInput from '@/components/google-places-input';
 import { Button } from '@/components/ui/button';
 import { CountryDropdown } from '@/components/ui/country-dropdown';
@@ -440,41 +441,24 @@ const PaymentForm = ({
                 id: Math.floor(Date.now() / 1000) + '_' + Math.floor(Math.random() * (9999 - 1000 + 1)) + 1000,
                 customer: customerData,
                 items: orderItems,
-                // Fix: Use properly calculated values
-                cartTotal: itemsTotal, // Original cart total before shipping/VAT
                 subtotal: storeSettings?.vatEnabled && storeSettings.vatIncludedInPrice ? subtotalExclVat : itemsTotal,
-                subtotalInclVat: itemsTotal,
                 shippingCost: shippingTotal,
-                shipping: shippingTotal,
-                vatEnabled: storeSettings?.vatEnabled || false,
-                vatPercentage: storeSettings?.vatPercentage || 20,
-                vatAmount: vatAmount,
-                vatIncluded: storeSettings?.vatIncludedInPrice || false,
-                vatIncludedInPrice: storeSettings?.vatIncludedInPrice || false,
                 discountType: appliedCoupon ? appliedCoupon.type : 'fixed',
                 discountValue: appliedCoupon ? appliedCoupon.value : 0,
                 discountAmount: couponDiscount,
-                coupon: appliedCoupon
-                    ? {
-                          id: appliedCoupon.id,
-                          code: appliedCoupon.code,
-                          name: appliedCoupon.name,
-                          type: appliedCoupon.type,
-                          value: appliedCoupon.value
-                      }
-                    : null,
+                taxEnabled: storeSettings?.vatEnabled || false,
+                taxRate: storeSettings?.vatPercentage || 20,
+                taxAmount: vatAmount,
+                taxIncluded: storeSettings?.vatIncludedInPrice || false,
                 total: Math.max(0, finalTotal),
-                amount: Math.max(0, finalTotal), // Alias for total
-                totalItems: items.length,
-                currency: storeSettings?.currency || 'EUR',
                 status: 'pending',
                 paymentStatus: paymentMethod === 'card' ? 'paid' : 'pending',
                 paymentMethod: paymentMethod,
-                method: paymentMethod,
-                shippingMethod: localSelectedShippingMethod,
-                tracking: null,
                 deliveryNotes,
+                shippingNotes: '', 
                 sendEmail: true,
+                appointmentId: null,
+                isServiceAppointment: false,
                 createdAt: new Date().toISOString(),
                 updatedAt: new Date().toISOString()
             };
@@ -548,15 +532,32 @@ const PaymentForm = ({
                 }
             } else {
                 // Handle alternative payment methods (bank transfer, pay on delivery)
-                const response = await fetch('/api/orders', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(orderData)
-                });
-
-                const result = await response.json();
+                
+                // First create customer if needed
+                try {
+                    const customerData = {
+                        firstName: orderData.customer.firstName,
+                        lastName: orderData.customer.lastName,
+                        email: orderData.customer.email,
+                        phone: orderData.customer.phone,
+                        streetAddress: orderData.customer.streetAddress,
+                        apartmentUnit: orderData.customer.apartmentUnit,
+                        city: orderData.customer.city,
+                        state: orderData.customer.state,
+                        zipCode: orderData.customer.zipCode,
+                        country: orderData.customer.country,
+                        countryIso: orderData.customer.countryIso,
+                        createdAt: new Date().toISOString(),
+                        updatedAt: new Date().toISOString()
+                    };
+                    
+                    await createCustomer(customerData);
+                } catch (customerError) {
+                    console.warn('Customer creation failed:', customerError);
+                    // Continue with order creation even if customer creation fails
+                }
+                
+                const result = await createOrder(orderData);
 
                 if (result.success) {
                     // Apply coupon usage if a coupon was used

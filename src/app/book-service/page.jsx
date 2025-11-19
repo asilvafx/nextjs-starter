@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { useCart } from 'react-use-cart';
 import { toast } from 'sonner';
+import { createOrder } from '@/lib/server/admin';
 import ServiceBooking from '@/components/ServiceBooking';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -96,7 +97,19 @@ export default function BookServicePage() {
 
             const orderData = {
                 id: orderId,
-                customer: { firstName: '', lastName: '', email: '', phone: '' },
+                customer: {
+                    firstName: '',
+                    lastName: '',
+                    email: '',
+                    phone: '',
+                    streetAddress: '',
+                    apartmentUnit: '',
+                    city: '',
+                    state: '',
+                    zipCode: '',
+                    country: 'FR',
+                    countryIso: 'FR'
+                },
                 items: [
                     {
                         id: service.id,
@@ -109,24 +122,26 @@ export default function BookServicePage() {
                         appointment: service.appointment || null
                     }
                 ],
-                cartTotal: service.price || 0,
                 subtotal: service.price || 0,
-                subtotalInclVat: service.price || 0,
                 shippingCost: 0,
-                shipping: 0,
-                vatEnabled: storeSettings?.vatEnabled || false,
-                vatPercentage: storeSettings?.vatPercentage || 0,
-                vatAmount: 0,
+                discountType: 'fixed',
+                discountValue: 0,
+                discountAmount: 0,
+                taxEnabled: storeSettings?.vatEnabled || false,
+                taxRate: storeSettings?.vatPercentage || 0,
+                taxAmount: 0,
+                taxIncluded: false,
                 total: service.price || 0,
-                amount: service.price || 0,
-                totalItems: 1,
-                currency: storeSettings?.currency || 'EUR',
                 status: 'pending',
                 paymentStatus: paymentMethod === 'card' ? 'paid' : 'pending',
                 paymentMethod: paymentMethod,
-                method: paymentMethod,
-                shippingMethod: service.deliveryMethod || 'none',
-                createdAt: new Date().toISOString()
+                deliveryNotes: '',
+                shippingNotes: '',
+                sendEmail: true,
+                appointmentId: service.appointment?.id || null,
+                isServiceAppointment: !!service.appointment,
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString()
             };
 
             // Store locally so success page can read it
@@ -134,14 +149,9 @@ export default function BookServicePage() {
 
             // Create order record on server for non-card methods
             if (paymentMethod !== 'card') {
-                const res = await fetch('/api/orders', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(orderData)
-                });
-                const json = await res.json();
+                const result = await createOrder(orderData);
 
-                if (!json?.success) {
+                if (!result?.success) {
                     toast.error('Failed to create order');
                     return;
                 }

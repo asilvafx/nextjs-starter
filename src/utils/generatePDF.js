@@ -231,29 +231,27 @@ export const generatePDF = async (order, storeSettings = null) => {
     doc.line(120, itemsStartY, 190, itemsStartY);
     itemsStartY += 12;
 
-    // Calculate costs
-    const subtotal = calculatedSubtotal > 0 ? calculatedSubtotal : parseFloat(order.subtotal || order.amount || 0);
-    const shippingCost = parseFloat(order.shippingCost || order.shipping || 0);
+    // Calculate costs - use exact values from database order record
+    const subtotal = parseFloat(order.subtotal || 0);
+    const shippingCost = parseFloat(order.shipping || 0);
     const discountAmount = parseFloat(order.discountAmount || 0);
-    const taxAmount = parseFloat(order.taxAmount || 0);
-    const totalAmount = parseFloat(order.total || order.amount || subtotal + shippingCost + taxAmount - discountAmount);
+    const vatAmount = parseFloat(order.vatAmount || 0);
+    const totalAmount = parseFloat(order.amount || 0);
 
     doc.setFontSize(10);
     doc.setFont(undefined, 'normal');
 
-    // Show subtotal (excluding tax if tax is included in prices)
-    const displaySubtotal = order.taxEnabled && order.taxIncluded && taxAmount > 0 ? subtotal - taxAmount : subtotal;
-    const subtotalLabel = order.taxEnabled && order.taxIncluded ? 'Sous-total (HT):' : 'Sous-total:';
-
-    doc.text(subtotalLabel, 130, itemsStartY);
-    doc.text(formatCurrency(displaySubtotal), 165, itemsStartY);
+    // Show subtotal (simple total of item prices)
+    doc.text('Sous-total:', 130, itemsStartY);
+    doc.text(formatCurrency(subtotal), 165, itemsStartY);
     itemsStartY += 8;
 
-    // Show tax if enabled
-    if (order.taxEnabled && taxAmount > 0) {
-        const taxRate = order.taxRate || settings.vatPercentage || 20;
-        doc.text(`TVA (${taxRate}%):`, 130, itemsStartY);
-        doc.text(formatCurrency(taxAmount), 165, itemsStartY);
+    // Show VAT if enabled and amount > 0
+    if (order.vatAmount && vatAmount > 0) {
+        const vatRate = order.vatPercentage || 20;
+        const vatLabel = order.vatIncluded ? `TVA (${vatRate}%) incluse:` : `TVA (${vatRate}%):`;
+        doc.text(vatLabel, 130, itemsStartY);
+        doc.text(formatCurrency(vatAmount), 165, itemsStartY);
         itemsStartY += 8;
     }
 

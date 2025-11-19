@@ -51,8 +51,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { TableSkeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { create, remove, revalidate, update } from '@/lib/client/query';
-import { getAllCatalog, getAllCustomers, getAllOrders, getStoreSettings } from '@/lib/server/admin';
+import { getAllCatalog, getAllCustomers, getAllOrders, getStoreSettings, createOrder, updateOrder, deleteOrder, createCustomer, updateCustomer } from '@/lib/server/admin';
 import { generatePDF } from '@/utils/generatePDF';
 
 const ORDER_STATUS = [
@@ -293,7 +292,6 @@ export default function OrdersPage() {
                 try {
                     // Only auto-refresh if there's no current error
                     if (!fetchError) {
-                        await revalidate('orders');
                         await fetchOrders();
                     }
                 } catch (error) {
@@ -463,7 +461,7 @@ export default function OrdersPage() {
                         createdAt: existingCustomer.createdAt
                     };
 
-                    const _customerResponse = await update(existingCustomer.id, updatedCustomerData, 'customers');
+                    const _customerResponse = await updateCustomer(existingCustomer.id, updatedCustomerData);
                     orderData.email = existingCustomer.email;
                 } else {
                     // Create new customer
@@ -495,9 +493,9 @@ export default function OrdersPage() {
                         createdAt: new Date().toISOString()
                     };
 
-                    const customerResponse = await create(customerData, 'customers');
+                    const customerResponse = await createCustomer(customerData);
 
-                    if (!customerResponse.id) {
+                    if (!customerResponse.success || !customerResponse.data) {
                         throw new Error('Failed to create customer');
                     }
 
@@ -513,9 +511,9 @@ export default function OrdersPage() {
             }
 
             // Create order in database
-            const response = await create(orderData, 'orders');
+            const response = await createOrder(orderData);
 
-            if (!response.id) {
+            if (!response.success || !response.data) {
                 throw new Error('Failed to create order');
             }
 
@@ -595,9 +593,9 @@ export default function OrdersPage() {
             }
 
             // Update order status and tracking
-            const updateResponse = await update(orderId, updateData, 'orders');
+            const updateResponse = await updateOrder(orderId, updateData);
 
-            if (!updateResponse.id) {
+            if (!updateResponse.success || !updateResponse.data) {
                 throw new Error('Failed to update order status in database');
             }
 
@@ -716,7 +714,7 @@ export default function OrdersPage() {
 
         try {
             setIsDeleting(true);
-            const response = await remove(orderToDelete.id, 'orders');
+            const response = await deleteOrder(orderToDelete.id);
 
             if (response?.success) {
                 toast.success('Order deleted successfully');
@@ -1199,10 +1197,9 @@ export default function OrdersPage() {
                                                                                                 };
 
                                                                                                 const response =
-                                                                                                    await update(
+                                                                                                    await updateOrder(
                                                                                                         selectedOrder.id,
-                                                                                                        updateData,
-                                                                                                        'orders'
+                                                                                                        updateData
                                                                                                     );
 
                                                                                                 if (
@@ -1429,13 +1426,12 @@ export default function OrdersPage() {
                                                                                                 };
 
                                                                                                 const updateResponse =
-                                                                                                    await update(
+                                                                                                    await updateOrder(
                                                                                                         selectedOrder.id,
-                                                                                                        updateData,
-                                                                                                        'orders'
+                                                                                                        updateData
                                                                                                     );
 
-                                                                                                if (updateResponse) {
+                                                                                                if (updateResponse.success) {
                                                                                                     toast.success(
                                                                                                         'Payment details updated successfully'
                                                                                                     );
@@ -1943,13 +1939,12 @@ export default function OrdersPage() {
                                                                                                 }
 
                                                                                                 const updateResponse =
-                                                                                                    await update(
+                                                                                                    await updateOrder(
                                                                                                         selectedOrder.id,
-                                                                                                        updateData,
-                                                                                                        'orders'
+                                                                                                        updateData
                                                                                                     );
 
-                                                                                                if (updateResponse) {
+                                                                                                if (updateResponse.success) {
                                                                                                     // Send email notification if requested
                                                                                                     if (
                                                                                                         editStatusData.sendEmail

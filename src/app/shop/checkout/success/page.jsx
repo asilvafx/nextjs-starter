@@ -13,6 +13,7 @@ import { useCart } from 'react-use-cart';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { generatePDF } from '@/utils/generatePDF.js';
+import { getOrderById } from '@/lib/server/admin.js';
 
 const PaymentSuccess = () => {
     const t = useTranslations('Checkout');
@@ -45,97 +46,75 @@ const PaymentSuccess = () => {
                 }
 
                 let actualOrderId = orderId;
-                let orderData = null;
 
-                // Always try to get order data from localStorage first
-                const storedOrderData = localStorage.getItem('orderData');
-                if (storedOrderData) {
+                // For Stripe payments, decode base64 order ID
+                if (paymentMethod === 'card') {
                     try {
-                        orderData = JSON.parse(storedOrderData);
-
-                        // For Stripe payments, decode base64 order ID
-                        if (paymentMethod === 'card') {
-                            try {
-                                actualOrderId = atob(orderId);
-                            } catch (_e) {
-                                actualOrderId = orderId;
-                            }
-                        }
-
-                        // Verify the order ID matches (for Stripe payments) or just use the data (for other methods)
-                        if (paymentMethod === 'card' && orderData.id !== actualOrderId) {
-                            console.warn('Order ID mismatch in localStorage for card payment');
-                            orderData = null;
-                        }
-                    } catch (e) {
-                        console.error('Failed to parse order data from localStorage:', e);
-                        orderData = null;
+                        actualOrderId = atob(orderId);
+                    } catch (_e) {
+                        actualOrderId = orderId;
                     }
                 }
 
-                if (!orderData) {
-                    console.error('Order data not found in localStorage for ID:', actualOrderId);
+                console.log('Fetching order from database with ID:', actualOrderId);
+
+                // Fetch order directly from database using admin.js
+                const orderResult = await getOrderById(actualOrderId);
+                
+                if (!orderResult.success || !orderResult.data) {
+                    console.error('Order not found in database:', actualOrderId);
                     setError(t('orderDataNotFound'));
                     setLoading(false);
                     return;
                 }
 
-                // Normalize items and appointment info so both shop orders and service orders render correctly
-                const rawItems = typeof orderData.items === 'string' ? JSON.parse(orderData.items) : orderData.items || [];
-                const items = rawItems.map((it) => {
-                    // Normalize appointment info: some flows store appointment as fields on the item
-                    const appointmentFromFields =
-                        it.appointment ||
-                        (it.appointmentDate || it.appointmentTime
-                            ? {
-                                  date: it.appointmentDate || it.appointment?.date || it.startDate || '',
-                                  time: it.appointmentTime || it.appointment?.time || it.startTime || ''
-                              }
-                            : null);
+                const orderData = orderResult.data;
+                console.log('Retrieved order from database:', orderData);
 
-                    // Ensure deliveryMethod may come from item or top-level order
-                    const deliveryMethod = it.deliveryMethod || orderData.deliveryMethod || it.shippingMethod || it.method || null;
+                // Parse items and customer data if they are stored as strings
+                const rawItems = typeof orderData.items === 'string' ? JSON.parse(orderData.items) : orderData.items || [];
+                const customerData = typeof orderData.customer === 'string' ? JSON.parse(orderData.customer) : orderData.customer || {};
+                const shippingAddress = typeof orderData.shippingAddress === 'string' ? JSON.parse(orderData.shippingAddress) : orderData.shippingAddress || {};
+
+                // Normalize items for display
+                const items = rawItems.map((item) => {
+                    const appointmentFromFields = item.appointment ||
+                        (item.appointmentDate || item.appointmentTime ? {
+                            date: item.appointmentDate || item.appointment?.date || item.startDate || '',
+                            time: item.appointmentTime || item.appointment?.time || item.startTime || ''
+                        } : null);
+
+                    const deliveryMethod = item.deliveryMethod || orderData.deliveryMethod || item.shippingMethod || item.method || null;
 
                     return {
-                        ...it,
+                        ...item,
                         appointment: appointmentFromFields,
                         deliveryMethod
                     };
                 });
 
+                // Use actual order data values from database (no recalculation)
                 const orderDetailsData = {
                     orderId: orderData.id || actualOrderId,
-                    paymentIntentId: orderData.tx,
-                    paymentMethod: paymentMethod || orderData.paymentMethod || orderData.method,
-                    email: orderData.customer?.email || orderData.cst_email,
-                    customerName: orderData.customer?.firstName
-                        ? `${orderData.customer.firstName} ${orderData.customer.lastName}`
+                    paymentIntentId: orderData.paymentIntentId || orderData.tx,
+                    paymentMethod: orderData.paymentMethod || paymentMethod,
+                    email: customerData.email || orderData.cst_email,
+                    customerName: customerData.firstName 
+                        ? `${customerData.firstName} ${customerData.lastName}`
                         : orderData.cst_name,
                     items,
-                    // Fix totals calculation - use actual order totals, not recalculated ones
-                    total: orderData.total || orderData.amount,
-                    subtotal: orderData.subtotal || orderData.cartTotal,
-                    shipping: orderData.shippingCost || orderData.shipping || 0,
-                    vatAmount: orderData.vatAmount || 0,
+                    // Use exact values from database order record
+                    total: parseFloat(orderData.total || 0),
+                    subtotal: parseFloat(orderData.subtotal || 0),
+                    shipping: parseFloat(orderData.shippingCost || orderData.shipping || 0),
+                    vatAmount: parseFloat(orderData.vatAmount || 0),
                     vatPercentage: orderData.vatPercentage || 0,
                     vatIncluded: orderData.vatIncluded || false,
                     vatEnabled: orderData.vatEnabled || false,
-                    discountAmount: orderData.discountAmount || 0,
+                    discountAmount: parseFloat(orderData.discountAmount || 0),
                     totalItems: orderData.totalItems,
                     currency: orderData.currency || 'EUR',
-                    shippingAddress: orderData.customer?.streetAddress
-                        ? {
-                              streetAddress: orderData.customer.streetAddress,
-                              apartmentUnit: orderData.customer.apartmentUnit,
-                              city: orderData.customer.city,
-                              state: orderData.customer.state,
-                              zipCode: orderData.customer.zipCode,
-                              country: orderData.customer.country,
-                              countryIso: orderData.customer.countryIso
-                          }
-                        : typeof orderData.shipping_address === 'string'
-                        ? JSON.parse(orderData.shipping_address)
-                        : orderData.shipping_address,
+                    shippingAddress: shippingAddress,
                     orderDate: orderData.createdAt
                         ? new Date(orderData.createdAt).toLocaleDateString('fr-FR', {
                               weekday: 'long',
@@ -160,11 +139,11 @@ const PaymentSuccess = () => {
 
                 setOrderDetails(orderDetailsData);
 
-                // Clear cart and stored order data AFTER everything is processed
+                // Clear cart and any stored order data
                 emptyCart();
                 localStorage.removeItem('orderData');
             } catch (e) {
-                console.error('Error fetching order:', e);
+                console.error('Error fetching order from database:', e);
                 setError(t('orderRetrievalError'));
             } finally {
                 setLoading(false);
@@ -199,7 +178,7 @@ const PaymentSuccess = () => {
             }
         };
 
-        // Create order object compatible with generatePDF function
+        // Use actual order data from database (no recalculation)
         const orderForPDF = {
             uid: orderDetails.orderId,
             created_at: new Date().toISOString(),
@@ -207,13 +186,14 @@ const PaymentSuccess = () => {
             cst_email: orderDetails.email,
             shipping_address: JSON.stringify(orderDetails.shippingAddress || {}),
             items: JSON.stringify(orderDetails.items || []),
-            amount: parseFloat(orderDetails.total || 0).toFixed(2),
-            subtotal: parseFloat(orderDetails.subtotal || 0).toFixed(2),
-            shipping: parseFloat(orderDetails.shipping || 0).toFixed(2),
-            vatAmount: parseFloat(orderDetails.vatAmount || 0).toFixed(2),
-            vatPercentage: orderDetails.vatPercentage || 0,
-            vatIncluded: orderDetails.vatIncluded || false,
-            discountAmount: parseFloat(orderDetails.discountAmount || 0).toFixed(2),
+            // Use exact values from the database order record
+            amount: orderDetails.total.toFixed(2),
+            subtotal: orderDetails.subtotal.toFixed(2),
+            shipping: orderDetails.shipping.toFixed(2),
+            vatAmount: orderDetails.vatAmount.toFixed(2),
+            vatPercentage: orderDetails.vatPercentage,
+            vatIncluded: orderDetails.vatIncluded,
+            discountAmount: orderDetails.discountAmount.toFixed(2),
             currency: orderDetails.currency?.toLowerCase() || 'eur',
             method: formatPaymentMethod(orderDetails.paymentMethod),
             status: 'Confirmé'
