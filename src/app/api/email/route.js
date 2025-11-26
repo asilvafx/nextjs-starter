@@ -6,11 +6,39 @@ import OrderConfirmationTemplate from '@/emails/OrderConfirmationTemplate';
 import UserCreatedTemplate from '@/emails/UserCreatedTemplate';
 import UserUpdatedTemplate from '@/emails/UserUpdatedTemplate';
 import EmailService from '@/lib/server/email';
+import { getSiteSettings } from '@/lib/server/admin';
 
 export async function POST(request) {
     try {
         const body = await request.json();
         const { type, email, name, password, changes } = body;
+
+        // Load site settings for email configuration
+        const siteSettingsResult = await getSiteSettings();
+        let siteSettings = {};
+        
+        if (siteSettingsResult.success) {
+            siteSettings = siteSettingsResult.data;
+        } else {
+            console.warn('Failed to load site settings, using defaults');
+        }
+
+        // Check if email service is enabled
+        if (siteSettings.emailEnabled === false) {
+            return NextResponse.json(
+                { success: false, error: 'Email service is disabled' },
+                { status: 400 }
+            );
+        }
+
+        // Get email configuration from site settings with fallbacks
+        const emailConfig = {
+            senderName: siteSettings.emailSenderName || 'Your App Name',
+            senderEmail: siteSettings.emailSenderEmail || process.env.SMTP_USER || 'noreply@yourdomain.com',
+            supportEmail: siteSettings.emailSupportEmail || process.env.SUPPORT_EMAIL || 'support@yourdomain.com',
+            companyName: siteSettings.siteName || siteSettings.emailSenderName || 'Your Company',
+            baseUrl: siteSettings.siteUrl || process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+        };
 
         switch (type) {
             case 'user_created':
@@ -18,7 +46,13 @@ export async function POST(request) {
                     userDisplayName: name,
                     email,
                     password,
-                    loginUrl: `${process.env.NEXTAUTH_URL}/auth/login`
+                    loginUrl: `${emailConfig.baseUrl}/auth/login`,
+                    companyName: emailConfig.companyName,
+                    supportEmail: emailConfig.supportEmail
+                }, {
+                    from: emailConfig.senderEmail,
+                    replyTo: emailConfig.supportEmail,
+                    senderName: emailConfig.senderName
                 });
                 break;
 
@@ -26,7 +60,13 @@ export async function POST(request) {
                 await EmailService.sendEmail(email, 'Your Account Has Been Updated', UserUpdatedTemplate, {
                     userDisplayName: name,
                     changes,
-                    loginUrl: `${process.env.NEXTAUTH_URL}/auth/login`
+                    loginUrl: `${emailConfig.baseUrl}/auth/login`,
+                    companyName: emailConfig.companyName,
+                    supportEmail: emailConfig.supportEmail
+                }, {
+                    from: emailConfig.senderEmail,
+                    replyTo: emailConfig.supportEmail,
+                    senderName: emailConfig.senderName
                 });
                 break;
 
@@ -86,21 +126,19 @@ export async function POST(request) {
                     throw new Error('At least one recipient is required');
                 }
 
-                const baseUrl = process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
                 let successCount = 0;
                 let failureCount = 0;
+                const errors = [];
 
-                // Get sender information
-                const finalSenderName =
-                    senderName ||
-                    ((await EmailService.getEmailName) ? await EmailService.getEmailName() : 'Your App Name');
-                const finalSenderEmail = senderEmail || process.env.SMTP_USER || 'noreply@yourdomain.com';
+                // Use configured sender information with fallbacks
+                const finalSenderName = senderName || emailConfig.senderName;
+                const finalSenderEmail = senderEmail || emailConfig.senderEmail;
 
                 // Send newsletter to each recipient
                 for (const recipient of allRecipients) {
                     try {
-                        const unsubscribeUrl = `${baseUrl}/newsletter/unsubscribe?email=${encodeURIComponent(recipient.email)}&id=${recipient.id}`;
-                        const webVersionUrl = `${baseUrl}/newsletter/campaign/${campaign.id}`;
+                        const unsubscribeUrl = `${emailConfig.baseUrl}/newsletter/unsubscribe?email=${encodeURIComponent(recipient.email)}&id=${recipient.id}`;
+                        const webVersionUrl = `${emailConfig.baseUrl}/newsletter/campaign/${campaign.id}`;
 
                         await EmailService.sendEmail(
                             recipient.email,
@@ -108,21 +146,19 @@ export async function POST(request) {
                             NewsletterTemplate,
                             {
                                 subject: campaign.subject,
-                                content:
-                                    campaign.content ||
-                                    campaign.previewText ||
-                                    'Thank you for subscribing to our newsletter.',
+                                content: campaign.content || campaign.previewText || 'Thank you for subscribing to our newsletter.',
                                 previewText: campaign.previewText || campaign.subject || '',
                                 subscriberName: recipient.name || null,
-                                companyName: finalSenderName,
+                                companyName: emailConfig.companyName,
                                 senderName: finalSenderName,
                                 senderEmail: finalSenderEmail,
                                 unsubscribeUrl,
-                                webVersionUrl
+                                webVersionUrl,
+                                supportEmail: emailConfig.supportEmail
                             },
                             {
                                 from: finalSenderEmail,
-                                replyTo: finalSenderEmail,
+                                replyTo: emailConfig.supportEmail,
                                 senderName: finalSenderName
                             }
                         );
@@ -133,6 +169,10 @@ export async function POST(request) {
                     } catch (error) {
                         console.error(`Failed to send newsletter to ${recipient.email}:`, error);
                         failureCount++;
+                        errors.push({
+                            recipient: recipient.email,
+                            error: error.message
+                        });
                     }
                 }
 
@@ -143,32 +183,23 @@ export async function POST(request) {
                     data: {
                         sent: successCount,
                         failed: failureCount,
-                        total: allRecipients.length
+                        total: allRecipients.length,
+                        errors: errors.slice(0, 5) // Limit errors in response
                     }
                 });
             }
 
             case 'newsletter_test': {
                 // Handle newsletter test sending (single recipient)
-                const {
-                    campaign: testCampaign,
-                    testEmail,
-                    testName,
-                    senderName: testSenderName,
-                    senderEmail: testSenderEmail
-                } = body;
+                const { campaign: testCampaign, testEmail, testName, senderName: testSenderName, senderEmail: testSenderEmail } = body;
 
                 if (!testCampaign || !testEmail) {
                     throw new Error('Campaign and test email are required');
                 }
 
-                const baseUrl2 = process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
-
-                // Get sender information for test
-                const testFinalSenderName =
-                    testSenderName ||
-                    ((await EmailService.getEmailName) ? await EmailService.getEmailName() : 'Your App Name');
-                const testFinalSenderEmail = testSenderEmail || process.env.SMTP_USER || 'noreply@yourdomain.com';
+                // Use configured sender information with fallbacks
+                const testFinalSenderName = testSenderName || emailConfig.senderName;
+                const testFinalSenderEmail = testSenderEmail || emailConfig.senderEmail;
 
                 await EmailService.sendEmail(
                     testEmail,
@@ -176,21 +207,19 @@ export async function POST(request) {
                     NewsletterTemplate,
                     {
                         subject: testCampaign.subject,
-                        content:
-                            testCampaign.content ||
-                            testCampaign.previewText ||
-                            'Thank you for subscribing to our newsletter.',
+                        content: testCampaign.content || testCampaign.previewText || 'Thank you for subscribing to our newsletter.',
                         previewText: testCampaign.previewText || testCampaign.subject || '',
                         subscriberName: testName || 'Test User',
-                        companyName: testFinalSenderName,
+                        companyName: emailConfig.companyName,
                         senderName: testFinalSenderName,
                         senderEmail: testFinalSenderEmail,
-                        unsubscribeUrl: `${baseUrl2}/newsletter/unsubscribe`,
-                        webVersionUrl: `${baseUrl2}/newsletter/campaign/${testCampaign.id}`
+                        unsubscribeUrl: `${emailConfig.baseUrl}/newsletter/unsubscribe`,
+                        webVersionUrl: `${emailConfig.baseUrl}/newsletter/campaign/${testCampaign.id}`,
+                        supportEmail: emailConfig.supportEmail
                     },
                     {
                         from: testFinalSenderEmail,
-                        replyTo: testFinalSenderEmail,
+                        replyTo: emailConfig.supportEmail,
                         senderName: testFinalSenderName
                     }
                 );
@@ -237,9 +266,13 @@ export async function POST(request) {
                     orderDate: formattedOrderDate,
                     products: formattedProducts,
                     deliveryAddress: deliveryAddress,
-                    orderSummaryUrl: `${process.env.NEXTAUTH_URL}/orders/${orderOrderId}`,
-                    companyName: (await EmailService.getEmailName) ? await EmailService.getEmailName() : 'Your Store',
-                    supportEmail: process.env.SUPPORT_EMAIL || 'support@yourstore.com'
+                    orderSummaryUrl: `${emailConfig.baseUrl}/orders/${orderOrderId}`,
+                    companyName: emailConfig.companyName,
+                    supportEmail: emailConfig.supportEmail
+                }, {
+                    from: emailConfig.senderEmail,
+                    replyTo: emailConfig.supportEmail,
+                    senderName: emailConfig.senderName
                 });
                 break;
             }
@@ -251,6 +284,26 @@ export async function POST(request) {
         return NextResponse.json({ success: true });
     } catch (error) {
         console.error('Email sending error:', error);
-        return NextResponse.json({ error: 'Failed to send email' });
+        
+        // Handle specific email provider errors
+        if (error.code) {
+            const errorMessage = error.message || 'Email service error';
+            return NextResponse.json(
+                { 
+                    success: false, 
+                    error: errorMessage,
+                    code: error.code
+                },
+                { status: 400 }
+            );
+        }
+
+        return NextResponse.json(
+            { 
+                success: false, 
+                error: error.message || 'Failed to send email'
+            },
+            { status: 500 }
+        );
     }
 }

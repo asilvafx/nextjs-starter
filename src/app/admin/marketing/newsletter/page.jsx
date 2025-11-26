@@ -1,6 +1,6 @@
 'use client';
 
-import { BarChart3, Edit, Eye, Mail, Plus, Send, Trash2, TrendingUp, Users } from 'lucide-react';
+import { BarChart3, Edit, Eye, Mail, MessageSquare, Phone, Plus, Send, Trash2, TrendingUp, Users } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
@@ -17,529 +17,508 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
-import { create, getAll, remove, update } from '@/lib/client/query';
+import { Checkbox } from '@/components/ui/checkbox';
+import { PhoneInput } from '@/components/ui/phone-input';
+import { 
+    getAllCampaigns, 
+    createCampaign, 
+    updateCampaign, 
+    deleteCampaign,
+    getAllSubscribers,
+    getAllTemplates,
+    createTemplate,
+    updateTemplate,
+    deleteTemplate,
+    getCampaignAnalytics
+} from '@/lib/server/admin';
 
 export default function NewsletterPage() {
     const [selectedTab, setSelectedTab] = useState('campaigns');
     const [campaigns, setCampaigns] = useState([]);
     const [subscribers, setSubscribers] = useState([]);
     const [templates, setTemplates] = useState([]);
+    const [analytics, setAnalytics] = useState({});
     const [isLoading, setIsLoading] = useState(true);
+    const [pagination, setPagination] = useState({
+        campaigns: { page: 1, limit: 10, total: 0 },
+        subscribers: { page: 1, limit: 10, total: 0 },
+        templates: { page: 1, limit: 10, total: 0 }
+    });
+
+    // Campaign states
     const [isCreatingCampaign, setIsCreatingCampaign] = useState(false);
     const [isEditingCampaign, setIsEditingCampaign] = useState(false);
     const [isSendingCampaign, setIsSendingCampaign] = useState(false);
-    const [isPreviewingCampaign, setIsPreviewingCampaign] = useState(false);
-    const [isPreviewingTemplate, setIsPreviewingTemplate] = useState(false);
     const [selectedCampaign, setSelectedCampaign] = useState(null);
-    const [selectedTemplate, setSelectedTemplate] = useState(null);
     const [newCampaign, setNewCampaign] = useState({
         subject: '',
         content: '',
-        previewText: ''
+        previewText: '',
+        type: 'email', // 'email' or 'sms'
+        status: 'draft'
     });
+
+    // SMS states
+    const [isSendingSMS, setIsSendingSMS] = useState(false);
+    const [newSMSCampaign, setNewSMSCampaign] = useState({
+        subject: '',
+        message: '',
+        type: 'sms',
+        status: 'draft'
+    });
+
+    // Send configuration
     const [sendConfig, setSendConfig] = useState({
         selectedSubscribers: [],
         selectAll: true,
-        manualRecipients: []
+        manualRecipients: [],
+        testEmail: '',
+        testPhone: '',
+        testName: ''
     });
 
-    // Fetch data from database
-    const fetchData = async () => {
+    // Template states
+    const [isCreatingTemplate, setIsCreatingTemplate] = useState(false);
+    const [isEditingTemplate, setIsEditingTemplate] = useState(false);
+    const [selectedTemplate, setSelectedTemplate] = useState(null);
+    const [newTemplate, setNewTemplate] = useState({
+        name: '',
+        description: '',
+        content: '',
+        category: 'email',
+        thumbnail: '📧'
+    });
+
+    // Fetch campaigns with pagination
+    const fetchCampaigns = async (page = 1) => {
         try {
-            setIsLoading(true);
-            const [campaignResponse, subscriberResponse, templateResponse] = await Promise.all([
-                getAll('newsletter_campaigns'),
-                getAll('newsletter_subscribers'),
-                getAll('newsletter_templates')
-            ]);
-
-            setCampaigns(campaignResponse?.success ? campaignResponse.data : []);
-            setSubscribers(subscriberResponse?.success ? subscriberResponse.data : []);
-            setTemplates(templateResponse?.success ? templateResponse.data : []);
-
-            // Create default templates if none exist
-            if (!templateResponse?.success || templateResponse.data.length === 0) {
-                await createDefaultTemplates();
+            const result = await getAllCampaigns(page, 10);
+            if (result.success) {
+                setCampaigns(result.data);
+                setPagination(prev => ({
+                    ...prev,
+                    campaigns: { 
+                        page, 
+                        limit: 10, 
+                        total: result.total || 0 
+                    }
+                }));
             }
         } catch (error) {
-            console.error('Error fetching newsletter data:', error);
-            toast.error('Failed to load newsletter data');
-        } finally {
-            setIsLoading(false);
+            console.error('Error fetching campaigns:', error);
+            toast.error('Failed to load campaigns');
         }
     };
 
-    const createDefaultTemplates = async () => {
-        const defaultTemplates = [
-            {
-                name: 'Welcome Newsletter',
-                description: 'Welcome new subscribers to your newsletter',
-                thumbnail: '📧',
-                category: 'onboarding',
-                content: `
-          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #ffffff;">
-            <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 40px 20px; text-align: center;">
-              <h1 style="color: #ffffff; margin: 0; font-size: 28px; font-weight: bold;">Welcome to Our Newsletter!</h1>
-              <p style="color: #ffffff; margin: 10px 0 0 0; font-size: 16px; opacity: 0.9;">Thank you for joining our community</p>
-            </div>
-            
-            <div style="padding: 40px 20px;">
-              <h2 style="color: #333333; font-size: 24px; margin: 0 0 20px 0;">Welcome Aboard! 🎉</h2>
-              
-              <p style="color: #666666; font-size: 16px; line-height: 1.6; margin: 0 0 20px 0;">
-                We're thrilled to have you as part of our community! You've just joined thousands of subscribers who stay updated with our latest news, insights, and exclusive content.
-              </p>
-              
-              <div style="background-color: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
-                <h3 style="color: #333333; font-size: 18px; margin: 0 0 15px 0;">What to expect:</h3>
-                <ul style="color: #666666; font-size: 14px; line-height: 1.6; margin: 0; padding-left: 20px;">
-                  <li>Weekly updates on industry trends</li>
-                  <li>Exclusive content and insights</li>
-                  <li>Special offers and promotions</li>
-                  <li>Community highlights and stories</li>
-                </ul>
-              </div>
-              
-              <div style="text-align: center; margin: 30px 0;">
-                <a href="#" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #ffffff; text-decoration: none; padding: 12px 30px; border-radius: 6px; font-weight: bold; display: inline-block;">
-                  Get Started
-                </a>
-              </div>
-              
-              <p style="color: #666666; font-size: 14px; line-height: 1.6; margin: 20px 0 0 0;">
-                If you have any questions, feel free to reply to this email. We're here to help!
-              </p>
-            </div>
-            
-            <div style="background-color: #f8f9fa; padding: 20px; text-align: center; border-top: 1px solid #e9ecef;">
-              <p style="color: #999999; font-size: 12px; margin: 0;">
-                Follow us on social media for daily updates and behind-the-scenes content.
-              </p>
-            </div>
-          </div>
-        `,
-                createdAt: new Date().toISOString()
-            },
-            {
-                name: 'Product Update',
-                description: 'Share product updates and new features',
-                thumbnail: '🚀',
-                category: 'promotional',
-                content: `
-          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #ffffff;">
-            <div style="background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%); padding: 40px 20px; text-align: center;">
-              <h1 style="color: #ffffff; margin: 0; font-size: 28px; font-weight: bold;">🚀 New Product Updates</h1>
-              <p style="color: #ffffff; margin: 10px 0 0 0; font-size: 16px; opacity: 0.9;">Exciting new features and improvements</p>
-            </div>
-            
-            <div style="padding: 40px 20px;">
-              <h2 style="color: #333333; font-size: 24px; margin: 0 0 20px 0;">What's New This Month</h2>
-              
-              <div style="border-left: 4px solid #ff6b6b; padding-left: 20px; margin: 20px 0;">
-                <h3 style="color: #ff6b6b; font-size: 18px; margin: 0 0 10px 0;">✨ Enhanced Dashboard</h3>
-                <p style="color: #666666; font-size: 16px; line-height: 1.6; margin: 0;">
-                  We've completely redesigned our dashboard to give you better insights and faster access to your most important data.
-                </p>
-              </div>
-              
-              <div style="border-left: 4px solid #ff6b6b; padding-left: 20px; margin: 20px 0;">
-                <h3 style="color: #ff6b6b; font-size: 18px; margin: 0 0 10px 0;">⚡ Performance Improvements</h3>
-                <p style="color: #666666; font-size: 16px; line-height: 1.6; margin: 0;">
-                  Our latest update includes significant performance improvements, making everything 40% faster than before.
-                </p>
-              </div>
-              
-              <div style="border-left: 4px solid #ff6b6b; padding-left: 20px; margin: 20px 0;">
-                <h3 style="color: #ff6b6b; font-size: 18px; margin: 0 0 10px 0;">🔒 Advanced Security</h3>
-                <p style="color: #666666; font-size: 16px; line-height: 1.6; margin: 0;">
-                  New security features including two-factor authentication and advanced encryption protocols.
-                </p>
-              </div>
-              
-              <div style="background-color: #fff5f5; padding: 20px; border-radius: 8px; margin: 30px 0; border: 1px solid #fed7d7;">
-                <h3 style="color: #e53e3e; font-size: 18px; margin: 0 0 15px 0;">🎯 Coming Soon</h3>
-                <p style="color: #666666; font-size: 14px; line-height: 1.6; margin: 0;">
-                  Stay tuned for our upcoming mobile app launch and AI-powered analytics features coming next month!
-                </p>
-              </div>
-              
-              <div style="text-align: center; margin: 30px 0;">
-                <a href="#" style="background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%); color: #ffffff; text-decoration: none; padding: 12px 30px; border-radius: 6px; font-weight: bold; display: inline-block;">
-                  Try New Features
-                </a>
-              </div>
-            </div>
-            
-            <div style="background-color: #f8f9fa; padding: 20px; text-align: center; border-top: 1px solid #e9ecef;">
-              <p style="color: #999999; font-size: 12px; margin: 0;">
-                Have feedback on our updates? Reply to this email - we'd love to hear from you!
-              </p>
-            </div>
-          </div>
-        `,
-                createdAt: new Date().toISOString()
-            },
-            {
-                name: 'Monthly Digest',
-                description: 'Regular monthly newsletter template',
-                thumbnail: '📰',
-                category: 'newsletter',
-                content: `
-          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #ffffff;">
-            <div style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); padding: 40px 20px; text-align: center;">
-              <h1 style="color: #ffffff; margin: 0; font-size: 28px; font-weight: bold;">📰 Monthly Digest</h1>
-              <p style="color: #ffffff; margin: 10px 0 0 0; font-size: 16px; opacity: 0.9;">${new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' })} Edition</p>
-            </div>
-            
-            <div style="padding: 40px 20px;">
-              <h2 style="color: #333333; font-size: 24px; margin: 0 0 20px 0;">This Month's Highlights</h2>
-              
-              <div style="display: flex; margin: 20px 0;">
-                <div style="background-color: #4facfe; width: 60px; height: 60px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-right: 15px; flex-shrink: 0;">
-                  <span style="color: #ffffff; font-size: 24px;">📈</span>
-                </div>
-                <div style="flex: 1;">
-                  <h3 style="color: #333333; font-size: 18px; margin: 0 0 10px 0;">Growth & Analytics</h3>
-                  <p style="color: #666666; font-size: 14px; line-height: 1.6; margin: 0;">
-                    This month we saw a 25% increase in user engagement and launched three new features based on your feedback.
-                  </p>
-                </div>
-              </div>
-              
-              <div style="display: flex; margin: 20px 0;">
-                <div style="background-color: #4facfe; width: 60px; height: 60px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-right: 15px; flex-shrink: 0;">
-                  <span style="color: #ffffff; font-size: 24px;">🎯</span>
-                </div>
-                <div style="flex: 1;">
-                  <h3 style="color: #333333; font-size: 18px; margin: 0 0 10px 0;">Community Spotlight</h3>
-                  <p style="color: #666666; font-size: 14px; line-height: 1.6; margin: 0;">
-                    Meet Sarah Johnson, who increased her productivity by 300% using our new workflow automation tools.
-                  </p>
-                </div>
-              </div>
-              
-              <div style="display: flex; margin: 20px 0;">
-                <div style="background-color: #4facfe; width: 60px; height: 60px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-right: 15px; flex-shrink: 0;">
-                  <span style="color: #ffffff; font-size: 24px;">💡</span>
-                </div>
-                <div style="flex: 1;">
-                  <h3 style="color: #333333; font-size: 18px; margin: 0 0 10px 0;">Industry Insights</h3>
-                  <p style="color: #666666; font-size: 14px; line-height: 1.6; margin: 0;">
-                    The latest trends in automation and AI, plus expert predictions for the upcoming quarter.
-                  </p>
-                </div>
-              </div>
-              
-              <div style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); padding: 20px; border-radius: 8px; margin: 30px 0; text-align: center;">
-                <h3 style="color: #ffffff; font-size: 18px; margin: 0 0 15px 0;">🎉 Special Offer</h3>
-                <p style="color: #ffffff; font-size: 14px; line-height: 1.6; margin: 0 0 15px 0;">
-                  Get 20% off our premium features this month. Limited time offer for newsletter subscribers only!
-                </p>
-                <a href="#" style="background-color: #ffffff; color: #f5576c; text-decoration: none; padding: 10px 25px; border-radius: 6px; font-weight: bold; display: inline-block;">
-                  Claim Offer
-                </a>
-              </div>
-              
-              <div style="border-top: 2px solid #e9ecef; padding-top: 20px; margin-top: 30px;">
-                <h3 style="color: #333333; font-size: 18px; margin: 0 0 15px 0;">📚 Recommended Reading</h3>
-                <ul style="color: #666666; font-size: 14px; line-height: 1.8; margin: 0; padding-left: 20px;">
-                  <li><a href="#" style="color: #4facfe; text-decoration: none;">The Future of Remote Work: Trends for 2024</a></li>
-                  <li><a href="#" style="color: #4facfe; text-decoration: none;">Automation Best Practices: A Complete Guide</a></li>
-                  <li><a href="#" style="color: #4facfe; text-decoration: none;">Building Productive Teams in Digital Age</a></li>
-                </ul>
-              </div>
-            </div>
-            
-            <div style="background-color: #f8f9fa; padding: 20px; text-align: center; border-top: 1px solid #e9ecef;">
-              <p style="color: #999999; font-size: 12px; margin: 0 0 10px 0;">
-                Thank you for being part of our community! See you next month.
-              </p>
-              <p style="color: #999999; font-size: 12px; margin: 0;">
-                <a href="#" style="color: #4facfe; text-decoration: none;">Update Preferences</a> | 
-                <a href="#" style="color: #4facfe; text-decoration: none;">View in Browser</a>
-              </p>
-            </div>
-          </div>
-        `,
-                createdAt: new Date().toISOString()
+    // Fetch subscribers with pagination
+    const fetchSubscribers = async (page = 1) => {
+        try {
+            const result = await getAllSubscribers(page, 10);
+            if (result.success) {
+                setSubscribers(result.data);
+                setPagination(prev => ({
+                    ...prev,
+                    subscribers: { 
+                        page, 
+                        limit: 10, 
+                        total: result.total || 0 
+                    }
+                }));
             }
-        ];
+        } catch (error) {
+            console.error('Error fetching subscribers:', error);
+            toast.error('Failed to load subscribers');
+        }
+    };
 
-        for (const template of defaultTemplates) {
-            try {
-                await create(template, 'newsletter_templates');
-            } catch (error) {
-                console.error('Error creating template:', error);
+    // Fetch templates with pagination
+    const fetchTemplates = async (page = 1) => {
+        try {
+            const result = await getAllTemplates(page, 10);
+            if (result.success) {
+                setTemplates(result.data);
+                setPagination(prev => ({
+                    ...prev,
+                    templates: { 
+                        page, 
+                        limit: 10, 
+                        total: result.total || 0 
+                    }
+                }));
             }
+        } catch (error) {
+            console.error('Error fetching templates:', error);
+            toast.error('Failed to load templates');
+        }
+    };
+
+    // Fetch analytics
+    const fetchAnalytics = async () => {
+        try {
+            const result = await getCampaignAnalytics();
+            if (result.success) {
+                setAnalytics(result.data);
+            }
+        } catch (error) {
+            console.error('Error fetching analytics:', error);
+            toast.error('Failed to load analytics');
+        }
+    };
+
+    // Fetch all data
+    const fetchData = async () => {
+        setIsLoading(true);
+        await Promise.all([
+            fetchCampaigns(),
+            fetchSubscribers(),
+            fetchTemplates(),
+            fetchAnalytics()
+        ]);
+        setIsLoading(false);
+    };
+
+    // Create campaign
+    const handleCreateCampaign = async () => {
+        if (!newCampaign.subject.trim()) {
+            toast.error('Subject is required');
+            return;
         }
 
-        // Refresh templates
-        const templateResponse = await getAll('newsletter_templates');
-        setTemplates(templateResponse?.success ? templateResponse.data : []);
+        if (newCampaign.type === 'email' && !newCampaign.content.trim()) {
+            toast.error('Content is required for email campaigns');
+            return;
+        }
+
+        if (newCampaign.type === 'sms' && !newSMSCampaign.message.trim()) {
+            toast.error('Message is required for SMS campaigns');
+            return;
+        }
+
+        try {
+            setIsCreatingCampaign(true);
+            const campaignData = newCampaign.type === 'email' ? newCampaign : {
+                ...newSMSCampaign,
+                subject: newCampaign.subject
+            };
+
+            const result = await createCampaign(campaignData);
+            if (result.success) {
+                toast.success('Campaign created successfully');
+                setNewCampaign({ subject: '', content: '', previewText: '', type: 'email', status: 'draft' });
+                setNewSMSCampaign({ subject: '', message: '', type: 'sms', status: 'draft' });
+                await fetchCampaigns();
+            } else {
+                throw new Error(result.error);
+            }
+        } catch (error) {
+            console.error('Error creating campaign:', error);
+            toast.error(error.message || 'Failed to create campaign');
+        } finally {
+            setIsCreatingCampaign(false);
+        }
+    };
+
+    // Send email campaign
+    const handleSendEmailCampaign = async (campaign) => {
+        if (!campaign) return;
+
+        const recipients = sendConfig.selectAll 
+            ? subscribers.filter(s => s.status === 'active')
+            : subscribers.filter(s => sendConfig.selectedSubscribers.includes(s.id));
+
+        if (recipients.length === 0 && sendConfig.manualRecipients.length === 0) {
+            toast.error('Please select at least one recipient');
+            return;
+        }
+
+        try {
+            setIsSendingCampaign(true);
+            const response = await fetch('/api/email', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    type: 'newsletter',
+                    campaign,
+                    subscribers: recipients,
+                    manualRecipients: sendConfig.manualRecipients
+                })
+            });
+
+            const result = await response.json();
+            if (result.success) {
+                toast.success(`Campaign sent! ${result.data.sent} successful, ${result.data.failed} failed`);
+                
+                // Update campaign status
+                await updateCampaign(campaign.id, { 
+                    status: 'sent',
+                    sentAt: new Date().toISOString(),
+                    sentTo: result.data.total
+                });
+                await fetchCampaigns();
+            } else {
+                throw new Error(result.error);
+            }
+        } catch (error) {
+            console.error('Error sending campaign:', error);
+            toast.error(error.message || 'Failed to send campaign');
+        } finally {
+            setIsSendingCampaign(false);
+        }
+    };
+
+    // Send SMS campaign
+    const handleSendSMSCampaign = async (campaign) => {
+        if (!campaign) return;
+
+        const recipients = sendConfig.selectAll 
+            ? subscribers.filter(s => s.status === 'active' && s.phone)
+            : subscribers.filter(s => sendConfig.selectedSubscribers.includes(s.id) && s.phone);
+
+        if (recipients.length === 0 && sendConfig.manualRecipients.filter(r => r.phone).length === 0) {
+            toast.error('Please select at least one recipient with a phone number');
+            return;
+        }
+
+        try {
+            setIsSendingSMS(true);
+            const response = await fetch('/api/sms', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    type: 'sms_campaign',
+                    campaign,
+                    subscribers: recipients,
+                    manualRecipients: sendConfig.manualRecipients.filter(r => r.phone)
+                })
+            });
+
+            const result = await response.json();
+            if (result.success) {
+                toast.success(`SMS campaign sent! ${result.data.sent} successful, ${result.data.failed} failed`);
+                
+                // Update campaign status
+                await updateCampaign(campaign.id, { 
+                    status: 'sent',
+                    sentAt: new Date().toISOString(),
+                    sentTo: result.data.total
+                });
+                await fetchCampaigns();
+            } else {
+                throw new Error(result.error);
+            }
+        } catch (error) {
+            console.error('Error sending SMS campaign:', error);
+            toast.error(error.message || 'Failed to send SMS campaign');
+        } finally {
+            setIsSendingSMS(false);
+        }
+    };
+
+    // Send test email
+    const handleSendTestEmail = async (campaign) => {
+        if (!sendConfig.testEmail) {
+            toast.error('Test email is required');
+            return;
+        }
+
+        try {
+            const response = await fetch('/api/email', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    type: 'newsletter_test',
+                    campaign,
+                    testEmail: sendConfig.testEmail,
+                    testName: sendConfig.testName
+                })
+            });
+
+            const result = await response.json();
+            if (result.success) {
+                toast.success('Test email sent successfully');
+            } else {
+                throw new Error(result.error);
+            }
+        } catch (error) {
+            console.error('Error sending test email:', error);
+            toast.error(error.message || 'Failed to send test email');
+        }
+    };
+
+    // Send test SMS
+    const handleSendTestSMS = async (campaign) => {
+        if (!sendConfig.testPhone) {
+            toast.error('Test phone number is required');
+            return;
+        }
+
+        try {
+            const response = await fetch('/api/sms', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    type: 'sms_test',
+                    campaign,
+                    testPhone: sendConfig.testPhone,
+                    testName: sendConfig.testName
+                })
+            });
+
+            const result = await response.json();
+            if (result.success) {
+                toast.success('Test SMS sent successfully');
+            } else {
+                throw new Error(result.error);
+            }
+        } catch (error) {
+            console.error('Error sending test SMS:', error);
+            toast.error(error.message || 'Failed to send test SMS');
+        }
+    };
+
+    // Delete campaign
+    const handleDeleteCampaign = async (id) => {
+        try {
+            const result = await deleteCampaign(id);
+            if (result.success) {
+                toast.success('Campaign deleted successfully');
+                await fetchCampaigns();
+            } else {
+                throw new Error(result.error);
+            }
+        } catch (error) {
+            console.error('Error deleting campaign:', error);
+            toast.error(error.message || 'Failed to delete campaign');
+        }
+    };
+
+    // Create template
+    const handleCreateTemplate = async () => {
+        if (!newTemplate.name.trim() || !newTemplate.content.trim()) {
+            toast.error('Template name and content are required');
+            return;
+        }
+
+        try {
+            setIsCreatingTemplate(true);
+            const result = await createTemplate(newTemplate);
+            if (result.success) {
+                toast.success('Template created successfully');
+                setNewTemplate({ name: '', description: '', content: '', category: 'email', thumbnail: '📧' });
+                await fetchTemplates();
+            } else {
+                throw new Error(result.error);
+            }
+        } catch (error) {
+            console.error('Error creating template:', error);
+            toast.error(error.message || 'Failed to create template');
+        } finally {
+            setIsCreatingTemplate(false);
+        }
+    };
+
+    // Delete template
+    const handleDeleteTemplate = async (id) => {
+        try {
+            const result = await deleteTemplate(id);
+            if (result.success) {
+                toast.success('Template deleted successfully');
+                await fetchTemplates();
+            } else {
+                throw new Error(result.error);
+            }
+        } catch (error) {
+            console.error('Error deleting template:', error);
+            toast.error(error.message || 'Failed to delete template');
+        }
+    };
+
+    // Add manual recipient
+    const addManualRecipient = () => {
+        setSendConfig(prev => ({
+            ...prev,
+            manualRecipients: [...prev.manualRecipients, { email: '', phone: '', name: '' }]
+        }));
+    };
+
+    // Remove manual recipient
+    const removeManualRecipient = (index) => {
+        setSendConfig(prev => ({
+            ...prev,
+            manualRecipients: prev.manualRecipients.filter((_, i) => i !== index)
+        }));
+    };
+
+    // Update manual recipient
+    const updateManualRecipient = (index, field, value) => {
+        setSendConfig(prev => ({
+            ...prev,
+            manualRecipients: prev.manualRecipients.map((recipient, i) => 
+                i === index ? { ...recipient, [field]: value } : recipient
+            )
+        }));
+    };
+
+    // Pagination component
+    const PaginationControls = ({ type, onPageChange }) => {
+        const paginationData = pagination[type];
+        const totalPages = Math.ceil(paginationData.total / paginationData.limit);
+
+        if (totalPages <= 1) return null;
+
+        return (
+            <div className="flex items-center justify-between mt-4">
+                <div className="text-sm text-muted-foreground">
+                    Page {paginationData.page} of {totalPages} ({paginationData.total} total)
+                </div>
+                <div className="flex space-x-2">
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={paginationData.page <= 1}
+                        onClick={() => onPageChange(paginationData.page - 1)}
+                    >
+                        Previous
+                    </Button>
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={paginationData.page >= totalPages}
+                        onClick={() => onPageChange(paginationData.page + 1)}
+                    >
+                        Next
+                    </Button>
+                </div>
+            </div>
+        );
     };
 
     useEffect(() => {
         fetchData();
     }, []);
 
-    const statusConfig = {
-        sent: { color: 'bg-green-100 text-green-800', label: 'Sent' },
-        draft: { color: 'bg-gray-100 text-gray-800', label: 'Draft' },
-        scheduled: { color: 'bg-blue-100 text-blue-800', label: 'Scheduled' },
-        sending: { color: 'bg-blue-100 text-blue-800', label: 'Sending' }
-    };
-
-    const handleCreateCampaign = async () => {
-        try {
-            const campaignData = {
-                ...newCampaign,
-                status: 'draft',
-                recipients: 0,
-                openRate: 0,
-                clickRate: 0,
-                createdAt: new Date().toISOString()
-            };
-
-            const response = await create(campaignData, 'newsletter_campaigns');
-            const newCampaignWithId = { ...campaignData, id: response.id || Date.now() };
-
-            // Update state locally instead of refetching
-            setCampaigns((prev) => [newCampaignWithId, ...prev]);
-
-            toast.success('Campaign created successfully');
-            setIsCreatingCampaign(false);
-            setNewCampaign({ subject: '', content: '', previewText: '' });
-        } catch (error) {
-            console.error('Error creating campaign:', error);
-            toast.error('Failed to create campaign');
-        }
-    };
-
-    const handleEditCampaign = async () => {
-        try {
-            const updatedData = {
-                subject: newCampaign.subject,
-                content: newCampaign.content,
-                previewText: newCampaign.previewText,
-                updatedAt: new Date().toISOString()
-            };
-
-            await update(selectedCampaign.id, updatedData, 'newsletter_campaigns');
-
-            // Update state locally
-            setCampaigns((prev) =>
-                prev.map((campaign) =>
-                    campaign.id === selectedCampaign.id ? { ...campaign, ...updatedData } : campaign
-                )
-            );
-
-            toast.success('Campaign updated successfully');
-            setIsEditingCampaign(false);
-            setSelectedCampaign(null);
-            setNewCampaign({ subject: '', content: '', previewText: '' });
-        } catch (error) {
-            console.error('Error updating campaign:', error);
-            toast.error('Failed to update campaign');
-        }
-    };
-
-    const handlePreviewCampaign = (campaign) => {
-        setSelectedCampaign(campaign);
-        setIsPreviewingCampaign(true);
-    };
-
-    const handleEditCampaignClick = (campaign) => {
-        setSelectedCampaign(campaign);
-        setNewCampaign({
-            subject: campaign.subject || '',
-            content: campaign.content || '',
-            previewText: campaign.previewText || ''
-        });
-        setIsEditingCampaign(true);
-    };
-
-    const handleSendCampaignClick = (campaign) => {
-        setSelectedCampaign(campaign);
-        setSendConfig({
-            selectedSubscribers: [],
-            selectAll: true,
-            manualRecipients: []
-        });
-        setIsSendingCampaign(true);
-    };
-
-    const handleTestSend = async () => {
-        try {
-            if (!selectedCampaign) {
-                toast.error('No campaign selected for testing');
-                return;
-            }
-
-            await fetch('/api/email', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    type: 'newsletter_test',
-                    campaign: selectedCampaign
-                })
-            });
-
-            toast.success('Test email sent successfully');
-        } catch (error) {
-            console.error('Error sending test email:', error);
-            toast.error('Failed to send test email');
-        }
-    };
-
-    const handleSendCampaign = async () => {
-        try {
-            if (!selectedCampaign) return;
-
-            // Update campaign status to sending
-            setCampaigns((prev) => prev.map((c) => (c.id === selectedCampaign.id ? { ...c, status: 'sending' } : c)));
-            await update(selectedCampaign.id, { status: 'sending' }, 'newsletter_campaigns');
-
-            // Get subscribers to send to
-            const subscriberList = sendConfig.selectAll
-                ? subscribers.filter((s) => s.status === 'active')
-                : sendConfig.selectedSubscribers;
-
-            // Combine subscribers with manual recipients
-            const allRecipients = [...subscriberList, ...sendConfig.manualRecipients.filter((r) => r.email.trim())];
-
-            if (allRecipients.length === 0) {
-                toast.error('No recipients selected');
-                return;
-            }
-
-            // Send newsletter via API
-            const response = await fetch('/api/email', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    type: 'newsletter',
-                    campaign: selectedCampaign,
-                    subscribers: subscriberList,
-                    manualRecipients: sendConfig.manualRecipients.filter((r) => r.email.trim())
-                })
-            });
-
-            if (response.ok) {
-                const result = await response.json();
-
-                // Update campaign status and stats locally
-                const updatedCampaign = {
-                    status: 'sent',
-                    sentDate: new Date().toISOString(),
-                    recipients: result.data?.sent || allRecipients.length
-                };
-
-                setCampaigns((prev) =>
-                    prev.map((c) => (c.id === selectedCampaign.id ? { ...c, ...updatedCampaign } : c))
-                );
-
-                await update(selectedCampaign.id, updatedCampaign, 'newsletter_campaigns');
-
-                toast.success(`Newsletter sent to ${result.data?.sent || allRecipients.length} recipients`);
-                setIsSendingCampaign(false);
-                setSelectedCampaign(null);
-            } else {
-                throw new Error('Failed to send newsletter');
-            }
-        } catch (error) {
-            console.error('Error sending campaign:', error);
-            toast.error('Failed to send newsletter');
-
-            // Reset status on error
-            if (selectedCampaign) {
-                setCampaigns((prev) => prev.map((c) => (c.id === selectedCampaign.id ? { ...c, status: 'draft' } : c)));
-                await update(selectedCampaign.id, { status: 'draft' }, 'newsletter_campaigns');
-            }
-        }
-    };
-
-    const handleDeleteCampaign = async (campaignId) => {
-        try {
-            await remove(campaignId, 'newsletter_campaigns');
-
-            // Update state locally
-            setCampaigns((prev) => prev.filter((c) => c.id !== campaignId));
-
-            toast.success('Campaign deleted successfully');
-        } catch (error) {
-            console.error('Error deleting campaign:', error);
-            toast.error('Failed to delete campaign');
-        }
-    };
-
-    const addManualRecipient = () => {
-        setSendConfig((prev) => ({
-            ...prev,
-            manualRecipients: [...prev.manualRecipients, { name: '', email: '' }]
-        }));
-    };
-
-    const updateManualRecipient = (index, field, value) => {
-        setSendConfig((prev) => ({
-            ...prev,
-            manualRecipients: prev.manualRecipients.map((recipient, i) =>
-                i === index ? { ...recipient, [field]: value } : recipient
-            )
-        }));
-    };
-
-    const removeManualRecipient = (index) => {
-        setSendConfig((prev) => ({
-            ...prev,
-            manualRecipients: prev.manualRecipients.filter((_, i) => i !== index)
-        }));
-    };
-
-    const handlePreviewTemplate = (template) => {
-        setSelectedTemplate(template);
-        setIsPreviewingTemplate(true);
-    };
-
-    const handleUseTemplate = async (template) => {
-        setNewCampaign({
-            subject: `Newsletter - ${template.name}`,
-            content: template.content,
-            previewText: template.description
-        });
-        setIsCreatingCampaign(true);
-    };
-
-    // Calculate stats
-    const totalSubscribers = subscribers.length;
-    const sentCampaigns = campaigns.filter((c) => c.status === 'sent');
-    const avgOpenRate =
-        sentCampaigns.length > 0
-            ? (sentCampaigns.reduce((sum, c) => sum + (c.openRate || 0), 0) / sentCampaigns.length).toFixed(1)
-            : 0;
-    const avgClickRate =
-        sentCampaigns.length > 0
-            ? (sentCampaigns.reduce((sum, c) => sum + (c.clickRate || 0), 0) / sentCampaigns.length).toFixed(1)
-            : 0;
-
     if (isLoading) {
         return (
             <div className="space-y-6">
                 <div className="flex items-center justify-between">
-                    <div>
-                        <Skeleton className="mb-2 h-8 w-32" />
-                        <Skeleton className="h-4 w-64" />
-                    </div>
-                    <Skeleton className="h-10 w-32" />
+                    <h1 className="text-3xl font-bold tracking-tight">Newsletter & SMS Marketing</h1>
                 </div>
-                <div className="grid grid-cols-1 gap-6 md:grid-cols-4">
-                    {[1, 2, 3, 4].map((i) => (
-                        <Skeleton key={i} className="h-32" />
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                    {[...Array(4)].map((_, i) => (
+                        <Card key={i}>
+                            <CardHeader>
+                                <Skeleton className="h-4 w-24" />
+                            </CardHeader>
+                            <CardContent>
+                                <Skeleton className="h-8 w-16" />
+                            </CardContent>
+                        </Card>
                     ))}
                 </div>
-                <Skeleton className="h-64" />
             </div>
         );
     }
@@ -548,660 +527,710 @@ export default function NewsletterPage() {
         <div className="space-y-6">
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="font-bold text-3xl">Newsletter</h1>
-                    <p className="text-muted-foreground">Create and manage your email campaigns</p>
+                    <h1 className="text-3xl font-bold tracking-tight">Newsletter & SMS Marketing</h1>
+                    <p className="text-muted-foreground">Manage email and SMS campaigns, subscribers, and templates</p>
                 </div>
-                <Dialog open={isCreatingCampaign} onOpenChange={setIsCreatingCampaign}>
-                    <DialogTrigger asChild>
-                        <Button className="flex items-center gap-2">
-                            <Plus className="h-4 w-4" />
-                            New Campaign
-                        </Button>
-                    </DialogTrigger>
-                    <DialogContent className="sm:max-w-[500px]">
-                        <DialogHeader>
-                            <DialogTitle>Create New Campaign</DialogTitle>
-                            <DialogDescription>
-                                Create a new newsletter campaign to send to your subscribers.
-                            </DialogDescription>
-                        </DialogHeader>
-                        <div className="space-y-4">
-                            <div>
-                                <Label htmlFor="subject">Subject Line</Label>
-                                <Input
-                                    id="subject"
-                                    value={newCampaign.subject}
-                                    onChange={(e) => setNewCampaign((prev) => ({ ...prev, subject: e.target.value }))}
-                                    placeholder="Enter email subject"
-                                />
-                            </div>
-                            <div>
-                                <Label htmlFor="previewText">Preview Text</Label>
-                                <Input
-                                    id="previewText"
-                                    value={newCampaign.previewText}
-                                    onChange={(e) =>
-                                        setNewCampaign((prev) => ({ ...prev, previewText: e.target.value }))
-                                    }
-                                    placeholder="Brief description shown in email preview"
-                                />
-                            </div>
-                            <div>
-                                <Label htmlFor="content">Content</Label>
-                                <Textarea
-                                    id="content"
-                                    value={newCampaign.content}
-                                    onChange={(e) => setNewCampaign((prev) => ({ ...prev, content: e.target.value }))}
-                                    placeholder="Newsletter content (HTML supported)"
-                                    rows={6}
-                                />
-                            </div>
-                        </div>
-                        <DialogFooter>
-                            <Button variant="outline" onClick={() => setIsCreatingCampaign(false)}>
-                                Cancel
-                            </Button>
-                            <Button onClick={handleCreateCampaign} disabled={!newCampaign.subject.trim()}>
-                                Create Campaign
-                            </Button>
-                        </DialogFooter>
-                    </DialogContent>
-                </Dialog>
-
-                {/* Edit Campaign Dialog */}
-                <Dialog open={isEditingCampaign} onOpenChange={setIsEditingCampaign}>
-                    <DialogContent className="sm:max-w-[500px]">
-                        <DialogHeader>
-                            <DialogTitle>Edit Campaign</DialogTitle>
-                            <DialogDescription>Update your newsletter campaign details.</DialogDescription>
-                        </DialogHeader>
-                        <div className="space-y-4">
-                            <div>
-                                <Label htmlFor="edit-subject">Subject Line</Label>
-                                <Input
-                                    id="edit-subject"
-                                    value={newCampaign.subject}
-                                    onChange={(e) => setNewCampaign((prev) => ({ ...prev, subject: e.target.value }))}
-                                    placeholder="Enter email subject"
-                                />
-                            </div>
-                            <div>
-                                <Label htmlFor="edit-previewText">Preview Text</Label>
-                                <Input
-                                    id="edit-previewText"
-                                    value={newCampaign.previewText}
-                                    onChange={(e) =>
-                                        setNewCampaign((prev) => ({ ...prev, previewText: e.target.value }))
-                                    }
-                                    placeholder="Brief description shown in email preview"
-                                />
-                            </div>
-                            <div>
-                                <Label htmlFor="edit-content">Content</Label>
-                                <Textarea
-                                    id="edit-content"
-                                    value={newCampaign.content}
-                                    onChange={(e) => setNewCampaign((prev) => ({ ...prev, content: e.target.value }))}
-                                    placeholder="Newsletter content (HTML supported)"
-                                    rows={6}
-                                />
-                            </div>
-                        </div>
-                        <DialogFooter>
-                            <Button
-                                variant="outline"
-                                onClick={() => {
-                                    setIsEditingCampaign(false);
-                                    setSelectedCampaign(null);
-                                    setNewCampaign({ subject: '', content: '', previewText: '' });
-                                }}>
-                                Cancel
-                            </Button>
-                            <Button onClick={handleEditCampaign} disabled={!newCampaign.subject.trim()}>
-                                Update Campaign
-                            </Button>
-                        </DialogFooter>
-                    </DialogContent>
-                </Dialog>
-
-                {/* Preview Template Dialog */}
-                <Dialog open={isPreviewingTemplate} onOpenChange={setIsPreviewingTemplate}>
-                    <DialogContent className="max-h-[80vh] overflow-y-auto sm:max-w-[600px]">
-                        <DialogHeader>
-                            <DialogTitle>Template Preview</DialogTitle>
-                            <DialogDescription>{selectedTemplate?.name || 'Template Preview'}</DialogDescription>
-                        </DialogHeader>
-                        <div className="space-y-4">
-                            <div className="rounded border p-4">
-                                <div className="mb-2 text-muted-foreground text-sm">
-                                    <strong>Template:</strong> {selectedTemplate?.name || 'No name'}
-                                </div>
-                                <div className="mb-2 text-muted-foreground text-sm">
-                                    <strong>Category:</strong> {selectedTemplate?.category || 'No category'}
-                                </div>
-                                <div className="mb-4 text-muted-foreground text-sm">
-                                    <strong>Description:</strong> {selectedTemplate?.description || 'No description'}
-                                </div>
-                                <div className="border-t pt-4">
-                                    <div className="rounded-lg bg-gray-50 p-4">
-                                        <h4 className="mb-3 font-medium text-gray-700 text-sm">Template Preview:</h4>
-                                        <div
-                                            className="overflow-hidden rounded border bg-white shadow-sm"
-                                            style={{
-                                                maxHeight: '400px',
-                                                overflowY: 'auto',
-                                                fontSize: '14px'
-                                            }}
-                                            dangerouslySetInnerHTML={{
-                                                __html: selectedTemplate?.content || 'No content available'
-                                            }}
-                                        />
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <DialogFooter>
-                            <Button variant="outline" onClick={() => setIsPreviewingTemplate(false)}>
-                                Close
-                            </Button>
-                            <Button
-                                onClick={() => {
-                                    setIsPreviewingTemplate(false);
-                                    handleUseTemplate(selectedTemplate);
-                                }}>
-                                Use Template
-                            </Button>
-                        </DialogFooter>
-                    </DialogContent>
-                </Dialog>
-
-                {/* Preview Campaign Dialog */}
-                <Dialog open={isPreviewingCampaign} onOpenChange={setIsPreviewingCampaign}>
-                    <DialogContent className="max-h-[80vh] overflow-y-auto sm:max-w-[600px]">
-                        <DialogHeader>
-                            <DialogTitle>Campaign Preview</DialogTitle>
-                            <DialogDescription>{selectedCampaign?.subject || 'Untitled Campaign'}</DialogDescription>
-                        </DialogHeader>
-                        <div className="space-y-4">
-                            <div className="rounded border p-4">
-                                <div className="mb-2 text-muted-foreground text-sm">
-                                    <strong>Subject:</strong> {selectedCampaign?.subject || 'No subject'}
-                                </div>
-                                <div className="mb-4 text-muted-foreground text-sm">
-                                    <strong>Preview Text:</strong> {selectedCampaign?.previewText || 'No preview text'}
-                                </div>
-                                <div className="border-t pt-4">
-                                    <div
-                                        className="prose prose-sm max-w-none"
-                                        dangerouslySetInnerHTML={{
-                                            __html: selectedCampaign?.content || 'No content available'
-                                        }}
-                                    />
-                                </div>
-                            </div>
-                        </div>
-                        <DialogFooter>
-                            <Button variant="outline" onClick={() => setIsPreviewingCampaign(false)}>
-                                Close
-                            </Button>
-                            <Button
-                                onClick={() => {
-                                    setIsPreviewingCampaign(false);
-                                    handleSendCampaignClick(selectedCampaign);
-                                }}>
-                                Send Campaign
-                            </Button>
-                        </DialogFooter>
-                    </DialogContent>
-                </Dialog>
-
-                {/* Send Campaign Dialog */}
-                <Dialog open={isSendingCampaign} onOpenChange={setIsSendingCampaign}>
-                    <DialogContent className="max-h-[80vh] overflow-y-auto sm:max-w-[700px]">
-                        <DialogHeader>
-                            <DialogTitle>Send Campaign</DialogTitle>
-                            <DialogDescription>
-                                Configure and send "{selectedCampaign?.subject}" to your recipients
-                            </DialogDescription>
-                        </DialogHeader>
-                        <div className="space-y-6">
-                            {/* Recipients Section */}
-                            <div className="space-y-4">
-                                <h3 className="font-semibold text-lg">Subscribers</h3>
-                                <div className="space-y-3">
-                                    <div className="flex items-center space-x-2">
-                                        <input
-                                            type="checkbox"
-                                            id="selectAll"
-                                            checked={sendConfig.selectAll}
-                                            onChange={(e) => {
-                                                setSendConfig((prev) => ({
-                                                    ...prev,
-                                                    selectAll: e.target.checked,
-                                                    selectedSubscribers: e.target.checked
-                                                        ? []
-                                                        : prev.selectedSubscribers
-                                                }));
-                                            }}
-                                            className="rounded"
-                                        />
-                                        <Label htmlFor="selectAll">
-                                            Send to all active subscribers (
-                                            {subscribers.filter((s) => s.status === 'active').length})
-                                        </Label>
-                                    </div>
-
-                                    {!sendConfig.selectAll && (
-                                        <div className="space-y-3">
-                                            <Label htmlFor="subscriberSelect">
-                                                Select Subscribers ({sendConfig.selectedSubscribers.length} selected)
-                                            </Label>
-                                            <select
-                                                id="subscriberSelect"
-                                                multiple
-                                                className="min-h-[200px] w-full rounded-md border p-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                                value={sendConfig.selectedSubscribers.map((s) => s.id)}
-                                                onChange={(e) => {
-                                                    const selectedIds = Array.from(
-                                                        e.target.selectedOptions,
-                                                        (option) => option.value
-                                                    );
-                                                    const selectedSubs = subscribers.filter((s) =>
-                                                        selectedIds.includes(s.id)
-                                                    );
-                                                    setSendConfig((prev) => ({
-                                                        ...prev,
-                                                        selectedSubscribers: selectedSubs
-                                                    }));
-                                                }}>
-                                                {subscribers
-                                                    .filter((s) => s.status === 'active')
-                                                    .map((subscriber) => (
-                                                        <option
-                                                            key={subscriber.id}
-                                                            value={subscriber.id}
-                                                            className="p-2">
-                                                            {subscriber.name || 'Anonymous'} ({subscriber.email})
-                                                        </option>
-                                                    ))}
-                                            </select>
-                                            <p className="text-muted-foreground text-sm">
-                                                Hold Ctrl (Cmd on Mac) to select multiple subscribers
-                                            </p>
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-
-                            {/* Manual Recipients Section */}
-                            <div className="space-y-4">
-                                <div className="flex items-center justify-between">
-                                    <h3 className="font-semibold text-lg">Additional Recipients</h3>
-                                    <Button type="button" variant="outline" size="sm" onClick={addManualRecipient}>
-                                        <Plus className="mr-2 h-4 w-4" />
-                                        Add Recipient
-                                    </Button>
-                                </div>
-
-                                {sendConfig.manualRecipients.length > 0 && (
-                                    <div className="max-h-48 space-y-3 overflow-y-auto rounded border p-3">
-                                        {sendConfig.manualRecipients.map((recipient, index) => (
-                                            <div key={index} className="flex items-center gap-2">
-                                                <Input
-                                                    placeholder="Name (optional)"
-                                                    value={recipient.name}
-                                                    onChange={(e) =>
-                                                        updateManualRecipient(index, 'name', e.target.value)
-                                                    }
-                                                    className="flex-1"
-                                                />
-                                                <Input
-                                                    type="email"
-                                                    placeholder="Email address *"
-                                                    value={recipient.email}
-                                                    onChange={(e) =>
-                                                        updateManualRecipient(index, 'email', e.target.value)
-                                                    }
-                                                    className="flex-1"
-                                                    required
-                                                />
-                                                <Button
-                                                    type="button"
-                                                    variant="outline"
-                                                    size="sm"
-                                                    onClick={() => removeManualRecipient(index)}>
-                                                    <Trash2 className="h-4 w-4" />
-                                                </Button>
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
-
-                                <p className="text-muted-foreground text-sm">
-                                    Add email addresses that are not in your subscriber list. These recipients will
-                                    receive the newsletter but won't be added to your subscriber database.
-                                </p>
-                            </div>
-
-                            {/* Test Send Section */}
-                            <div className="border-t pt-4">
-                                <div className="mb-3 flex items-center justify-between">
-                                    <h4 className="font-semibold">Test Send</h4>
-                                    <Button variant="outline" size="sm" onClick={handleTestSend}>
-                                        Send Test Email
-                                    </Button>
-                                </div>
-                                <p className="text-muted-foreground text-sm">
-                                    Send a test email to the configured test address in your site settings.
-                                </p>
-                            </div>
-
-                            {/* Campaign Summary */}
-                            <div className="rounded bg-accent p-4">
-                                <h4 className="mb-2 font-semibold">Campaign Summary</h4>
-                                <div className="space-y-1 text-sm">
-                                    <div>
-                                        <strong>Subject:</strong> {selectedCampaign?.subject}
-                                    </div>
-                                    <div>
-                                        <strong>Subscribers:</strong>{' '}
-                                        {sendConfig.selectAll
-                                            ? subscribers.filter((s) => s.status === 'active').length
-                                            : sendConfig.selectedSubscribers.length}
-                                    </div>
-                                    <div>
-                                        <strong>Additional Recipients:</strong>{' '}
-                                        {sendConfig.manualRecipients.filter((r) => r.email.trim()).length}
-                                    </div>
-                                    <div>
-                                        <strong>Total Recipients:</strong>{' '}
-                                        {(sendConfig.selectAll
-                                            ? subscribers.filter((s) => s.status === 'active').length
-                                            : sendConfig.selectedSubscribers.length) +
-                                            sendConfig.manualRecipients.filter((r) => r.email.trim()).length}
-                                    </div>
-                                    <div>
-                                        <strong>Status:</strong> Ready to send
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <DialogFooter>
-                            <Button
-                                variant="outline"
-                                onClick={() => {
-                                    setIsSendingCampaign(false);
-                                    setSelectedCampaign(null);
-                                }}>
-                                Cancel
-                            </Button>
-                            <Button
-                                onClick={handleSendCampaign}
-                                disabled={
-                                    !sendConfig.selectAll &&
-                                    sendConfig.selectedSubscribers.length === 0 &&
-                                    sendConfig.manualRecipients.filter((r) => r.email.trim()).length === 0
-                                }>
-                                Send Campaign
-                            </Button>
-                        </DialogFooter>
-                    </DialogContent>
-                </Dialog>
             </div>
 
-            {/* Stats Overview */}
-            <div className="grid grid-cols-1 gap-6 md:grid-cols-4">
+            {/* Analytics Cards */}
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                 <Card>
-                    <CardContent className="p-6">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <p className="text-muted-foreground text-sm">Total Subscribers</p>
-                                <p className="font-bold text-2xl">{totalSubscribers}</p>
-                            </div>
-                            <Users className="h-8 w-8 text-muted-foreground" />
-                        </div>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-sm font-medium">Total Campaigns</CardTitle>
+                        <Mail className="h-4 w-4 text-muted-foreground" />
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-2xl font-bold">{analytics.totalCampaigns || 0}</div>
+                        <p className="text-xs text-muted-foreground">Email & SMS campaigns</p>
                     </CardContent>
                 </Card>
 
                 <Card>
-                    <CardContent className="p-6">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <p className="text-muted-foreground text-sm">Campaigns Sent</p>
-                                <p className="font-bold text-2xl">{sentCampaigns.length}</p>
-                            </div>
-                            <Send className="h-8 w-8 text-muted-foreground" />
-                        </div>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-sm font-medium">Active Subscribers</CardTitle>
+                        <Users className="h-4 w-4 text-muted-foreground" />
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-2xl font-bold">{analytics.activeSubscribers || 0}</div>
+                        <p className="text-xs text-muted-foreground">Subscribed users</p>
                     </CardContent>
                 </Card>
 
                 <Card>
-                    <CardContent className="p-6">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <p className="text-muted-foreground text-sm">Avg. Open Rate</p>
-                                <p className="font-bold text-2xl">{avgOpenRate}%</p>
-                            </div>
-                            <Eye className="h-8 w-8 text-muted-foreground" />
-                        </div>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-sm font-medium">Sent This Month</CardTitle>
+                        <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-2xl font-bold">{analytics.sentThisMonth || 0}</div>
+                        <p className="text-xs text-muted-foreground">Campaigns sent</p>
                     </CardContent>
                 </Card>
 
                 <Card>
-                    <CardContent className="p-6">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <p className="text-muted-foreground text-sm">Avg. Click Rate</p>
-                                <p className="font-bold text-2xl">{avgClickRate}%</p>
-                            </div>
-                            <TrendingUp className="h-8 w-8 text-muted-foreground" />
-                        </div>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-sm font-medium">Open Rate</CardTitle>
+                        <BarChart3 className="h-4 w-4 text-muted-foreground" />
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-2xl font-bold">{analytics.averageOpenRate || '0'}%</div>
+                        <p className="text-xs text-muted-foreground">Average engagement</p>
                     </CardContent>
                 </Card>
             </div>
 
-            <Tabs value={selectedTab} onValueChange={setSelectedTab} className="space-y-6">
-                <TabsList>
-                    <TabsTrigger value="campaigns" className="flex items-center gap-2">
-                        <Mail className="h-4 w-4" />
-                        Campaigns
-                    </TabsTrigger>
-                    <TabsTrigger value="templates" className="flex items-center gap-2">
-                        <Edit className="h-4 w-4" />
-                        Templates
-                    </TabsTrigger>
-                    <TabsTrigger value="analytics" className="flex items-center gap-2">
-                        <BarChart3 className="h-4 w-4" />
-                        Analytics
-                    </TabsTrigger>
+            {/* Main Content Tabs */}
+            <Tabs value={selectedTab} onValueChange={setSelectedTab}>
+                <TabsList className="grid w-full grid-cols-4">
+                    <TabsTrigger value="campaigns">Campaigns</TabsTrigger>
+                    <TabsTrigger value="sms">SMS Campaigns</TabsTrigger>
+                    <TabsTrigger value="subscribers">Subscribers</TabsTrigger>
+                    <TabsTrigger value="templates">Templates</TabsTrigger>
                 </TabsList>
 
-                {/* Campaigns Tab */}
+                {/* Email Campaigns Tab */}
                 <TabsContent value="campaigns" className="space-y-6">
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Email Campaigns</CardTitle>
-                            <CardDescription>Manage your email marketing campaigns</CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="space-y-4">
-                                {campaigns.length === 0 ? (
-                                    <div className="py-12 text-center">
-                                        <Mail className="mx-auto mb-4 h-16 w-16 text-muted-foreground" />
-                                        <h3 className="mb-2 font-medium text-lg">No campaigns yet</h3>
-                                        <p className="mb-4 text-muted-foreground">
-                                            Create your first newsletter campaign to get started
-                                        </p>
-                                        <Button onClick={() => setIsCreatingCampaign(true)}>
-                                            <Plus className="mr-2 h-4 w-4" />
-                                            Create Campaign
-                                        </Button>
+                    <div className="flex items-center justify-between">
+                        <h2 className="text-xl font-semibold">Email Campaigns</h2>
+                        <Dialog>
+                            <DialogTrigger asChild>
+                                <Button>
+                                    <Plus className="h-4 w-4 mr-2" />
+                                    Create Campaign
+                                </Button>
+                            </DialogTrigger>
+                            <DialogContent className="max-w-2xl">
+                                <DialogHeader>
+                                    <DialogTitle>Create Email Campaign</DialogTitle>
+                                    <DialogDescription>
+                                        Create a new email campaign to send to your subscribers
+                                    </DialogDescription>
+                                </DialogHeader>
+                                <div className="space-y-4">
+                                    <div>
+                                        <Label htmlFor="campaign-subject">Subject</Label>
+                                        <Input
+                                            id="campaign-subject"
+                                            value={newCampaign.subject}
+                                            onChange={(e) => setNewCampaign(prev => ({ ...prev, subject: e.target.value }))}
+                                            placeholder="Enter campaign subject"
+                                        />
                                     </div>
-                                ) : (
-                                    campaigns.map((campaign) => (
-                                        <div
-                                            key={campaign.id}
-                                            className="flex items-center gap-4 rounded-lg border p-4">
-                                            <div className="flex-1">
-                                                <div className="mb-2 flex items-center gap-2">
-                                                    <h3 className="font-medium">
-                                                        {campaign.subject || 'Untitled Campaign'}
-                                                    </h3>
-                                                    <Badge
-                                                        className={
-                                                            statusConfig[campaign.status]?.color ||
-                                                            statusConfig.draft.color
-                                                        }>
-                                                        {statusConfig[campaign.status]?.label || 'Draft'}
-                                                    </Badge>
-                                                </div>
-                                                <p className="mb-2 text-muted-foreground text-sm">
-                                                    {campaign.previewText || 'No preview text'}
-                                                </p>
-                                                <div className="flex items-center gap-4 text-muted-foreground text-sm">
-                                                    {campaign.status === 'sent' && (
-                                                        <>
-                                                            <span>{campaign.recipients || 0} recipients</span>
-                                                            <span>{campaign.openRate || 0}% open rate</span>
-                                                            <span>{campaign.clickRate || 0}% click rate</span>
-                                                            <span>
-                                                                Sent:{' '}
-                                                                {campaign.sentDate
-                                                                    ? new Date(campaign.sentDate).toLocaleDateString()
-                                                                    : 'Unknown'}
-                                                            </span>
-                                                        </>
-                                                    )}
-                                                    {campaign.status === 'scheduled' && (
-                                                        <>
-                                                            <span>{campaign.recipients || 0} recipients</span>
-                                                            <span>
-                                                                Scheduled:{' '}
-                                                                {campaign.sentDate
-                                                                    ? new Date(campaign.sentDate).toLocaleDateString()
-                                                                    : 'Unknown'}
-                                                            </span>
-                                                        </>
-                                                    )}
-                                                    {(campaign.status === 'draft' || campaign.status === 'sending') && (
-                                                        <span>
-                                                            {campaign.status === 'sending'
-                                                                ? 'Sending...'
-                                                                : 'Draft saved'}
-                                                            {campaign.createdAt &&
-                                                                ` - ${new Date(campaign.createdAt).toLocaleDateString()}`}
-                                                        </span>
-                                                    )}
-                                                </div>
-                                            </div>
-                                            <div className="flex gap-2">
-                                                <Button
-                                                    variant="outline"
-                                                    size="sm"
-                                                    onClick={() => handlePreviewCampaign(campaign)}
-                                                    title="Preview">
-                                                    <Eye className="h-4 w-4" />
-                                                </Button>
-                                                <Button
-                                                    variant="outline"
-                                                    size="sm"
-                                                    onClick={() => handleEditCampaignClick(campaign)}
-                                                    title="Edit">
-                                                    <Edit className="h-4 w-4" />
-                                                </Button>
-                                                {(campaign.status === 'draft' || campaign.status === 'sent') && (
-                                                    <Button
-                                                        variant="default"
-                                                        size="sm"
-                                                        onClick={() => handleSendCampaignClick(campaign)}
-                                                        disabled={
-                                                            subscribers.filter((s) => s.status === 'active').length ===
-                                                            0
-                                                        }
-                                                        title="Send">
-                                                        <Send className="h-4 w-4" />
-                                                    </Button>
+                                    <div>
+                                        <Label htmlFor="campaign-preview">Preview Text</Label>
+                                        <Input
+                                            id="campaign-preview"
+                                            value={newCampaign.previewText}
+                                            onChange={(e) => setNewCampaign(prev => ({ ...prev, previewText: e.target.value }))}
+                                            placeholder="Preview text shown in email clients"
+                                        />
+                                    </div>
+                                    <div>
+                                        <Label htmlFor="campaign-content">Content</Label>
+                                        <Textarea
+                                            id="campaign-content"
+                                            value={newCampaign.content}
+                                            onChange={(e) => setNewCampaign(prev => ({ ...prev, content: e.target.value }))}
+                                            placeholder="Email content (HTML supported)"
+                                            rows={8}
+                                        />
+                                    </div>
+                                </div>
+                                <DialogFooter>
+                                    <Button 
+                                        onClick={handleCreateCampaign}
+                                        disabled={isCreatingCampaign}
+                                    >
+                                        {isCreatingCampaign ? 'Creating...' : 'Create Campaign'}
+                                    </Button>
+                                </DialogFooter>
+                            </DialogContent>
+                        </Dialog>
+                    </div>
+
+                    <div className="grid gap-4">
+                        {campaigns.filter(c => c.type !== 'sms').map((campaign) => (
+                            <Card key={campaign.id}>
+                                <CardHeader>
+                                    <div className="flex items-center justify-between">
+                                        <CardTitle className="text-lg">{campaign.subject}</CardTitle>
+                                        <div className="flex items-center space-x-2">
+                                            <Badge variant={campaign.status === 'sent' ? 'default' : 'secondary'}>
+                                                {campaign.status}
+                                            </Badge>
+                                            <div className="flex space-x-1">
+                                                <Dialog>
+                                                    <DialogTrigger asChild>
+                                                        <Button variant="ghost" size="sm">
+                                                            <Eye className="h-4 w-4" />
+                                                        </Button>
+                                                    </DialogTrigger>
+                                                    <DialogContent className="max-w-2xl">
+                                                        <DialogHeader>
+                                                            <DialogTitle>Preview Campaign</DialogTitle>
+                                                        </DialogHeader>
+                                                        <div className="space-y-4">
+                                                            <div>
+                                                                <strong>Subject:</strong> {campaign.subject}
+                                                            </div>
+                                                            {campaign.previewText && (
+                                                                <div>
+                                                                    <strong>Preview:</strong> {campaign.previewText}
+                                                                </div>
+                                                            )}
+                                                            <div>
+                                                                <strong>Content:</strong>
+                                                                <div 
+                                                                    className="mt-2 p-4 border rounded bg-gray-50 max-h-96 overflow-y-auto"
+                                                                    dangerouslySetInnerHTML={{ __html: campaign.content }}
+                                                                />
+                                                            </div>
+                                                        </div>
+                                                    </DialogContent>
+                                                </Dialog>
+
+                                                {campaign.status === 'draft' && (
+                                                    <Dialog>
+                                                        <DialogTrigger asChild>
+                                                            <Button variant="ghost" size="sm">
+                                                                <Send className="h-4 w-4" />
+                                                            </Button>
+                                                        </DialogTrigger>
+                                                        <DialogContent className="max-w-2xl">
+                                                            <DialogHeader>
+                                                                <DialogTitle>Send Campaign: {campaign.subject}</DialogTitle>
+                                                                <DialogDescription>
+                                                                    Configure recipients and send your email campaign
+                                                                </DialogDescription>
+                                                            </DialogHeader>
+                                                            
+                                                            <div className="space-y-6">
+                                                                {/* Test Email Section */}
+                                                                <div className="space-y-3">
+                                                                    <h4 className="font-medium">Test Email</h4>
+                                                                    <div className="flex space-x-2">
+                                                                        <Input
+                                                                            placeholder="Test email address"
+                                                                            value={sendConfig.testEmail}
+                                                                            onChange={(e) => setSendConfig(prev => ({ ...prev, testEmail: e.target.value }))}
+                                                                        />
+                                                                        <Input
+                                                                            placeholder="Test name (optional)"
+                                                                            value={sendConfig.testName}
+                                                                            onChange={(e) => setSendConfig(prev => ({ ...prev, testName: e.target.value }))}
+                                                                        />
+                                                                        <Button
+                                                                            variant="outline"
+                                                                            onClick={() => handleSendTestEmail(campaign)}
+                                                                        >
+                                                                            Send Test
+                                                                        </Button>
+                                                                    </div>
+                                                                </div>
+
+                                                                {/* Recipients Section */}
+                                                                <div className="space-y-3">
+                                                                    <h4 className="font-medium">Recipients</h4>
+                                                                    <div className="space-y-2">
+                                                                        <div className="flex items-center space-x-2">
+                                                                            <Checkbox
+                                                                                id="select-all"
+                                                                                checked={sendConfig.selectAll}
+                                                                                onCheckedChange={(checked) => 
+                                                                                    setSendConfig(prev => ({ ...prev, selectAll: checked }))
+                                                                                }
+                                                                            />
+                                                                            <Label htmlFor="select-all">
+                                                                                Send to all active subscribers ({subscribers.filter(s => s.status === 'active').length})
+                                                                            </Label>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+
+                                                                {/* Manual Recipients */}
+                                                                <div className="space-y-3">
+                                                                    <div className="flex items-center justify-between">
+                                                                        <h4 className="font-medium">Additional Recipients</h4>
+                                                                        <Button
+                                                                            type="button"
+                                                                            variant="outline"
+                                                                            size="sm"
+                                                                            onClick={addManualRecipient}
+                                                                        >
+                                                                            <Plus className="h-4 w-4 mr-1" />
+                                                                            Add
+                                                                        </Button>
+                                                                    </div>
+                                                                    {sendConfig.manualRecipients.map((recipient, index) => (
+                                                                        <div key={index} className="flex space-x-2">
+                                                                            <Input
+                                                                                placeholder="Email"
+                                                                                value={recipient.email}
+                                                                                onChange={(e) => updateManualRecipient(index, 'email', e.target.value)}
+                                                                            />
+                                                                            <Input
+                                                                                placeholder="Name (optional)"
+                                                                                value={recipient.name}
+                                                                                onChange={(e) => updateManualRecipient(index, 'name', e.target.value)}
+                                                                            />
+                                                                            <Button
+                                                                                type="button"
+                                                                                variant="ghost"
+                                                                                size="sm"
+                                                                                onClick={() => removeManualRecipient(index)}
+                                                                            >
+                                                                                <Trash2 className="h-4 w-4" />
+                                                                            </Button>
+                                                                        </div>
+                                                                    ))}
+                                                                </div>
+                                                            </div>
+
+                                                            <DialogFooter>
+                                                                <Button
+                                                                    onClick={() => handleSendEmailCampaign(campaign)}
+                                                                    disabled={isSendingCampaign}
+                                                                    className="w-full"
+                                                                >
+                                                                    {isSendingCampaign ? 'Sending...' : 'Send Campaign'}
+                                                                </Button>
+                                                            </DialogFooter>
+                                                        </DialogContent>
+                                                    </Dialog>
                                                 )}
+
                                                 <Button
-                                                    variant="outline"
+                                                    variant="ghost"
                                                     size="sm"
                                                     onClick={() => handleDeleteCampaign(campaign.id)}
-                                                    title="Delete">
+                                                >
                                                     <Trash2 className="h-4 w-4" />
                                                 </Button>
                                             </div>
                                         </div>
-                                    ))
-                                )}
-                            </div>
-                        </CardContent>
-                    </Card>
+                                    </div>
+                                    <CardDescription>
+                                        {campaign.previewText && <div>{campaign.previewText}</div>}
+                                        <div className="text-sm text-muted-foreground mt-1">
+                                            Created: {new Date(campaign.createdAt).toLocaleDateString()}
+                                            {campaign.sentAt && ` • Sent: ${new Date(campaign.sentAt).toLocaleDateString()}`}
+                                            {campaign.sentTo && ` • Recipients: ${campaign.sentTo}`}
+                                        </div>
+                                    </CardDescription>
+                                </CardHeader>
+                            </Card>
+                        ))}
+                    </div>
+
+                    <PaginationControls 
+                        type="campaigns" 
+                        onPageChange={fetchCampaigns} 
+                    />
+                </TabsContent>
+
+                {/* SMS Campaigns Tab */}
+                <TabsContent value="sms" className="space-y-6">
+                    <div className="flex items-center justify-between">
+                        <h2 className="text-xl font-semibold">SMS Campaigns</h2>
+                        <Dialog>
+                            <DialogTrigger asChild>
+                                <Button>
+                                    <Plus className="h-4 w-4 mr-2" />
+                                    Create SMS Campaign
+                                </Button>
+                            </DialogTrigger>
+                            <DialogContent className="max-w-2xl">
+                                <DialogHeader>
+                                    <DialogTitle>Create SMS Campaign</DialogTitle>
+                                    <DialogDescription>
+                                        Create a new SMS campaign to send to your subscribers
+                                    </DialogDescription>
+                                </DialogHeader>
+                                <div className="space-y-4">
+                                    <div>
+                                        <Label htmlFor="sms-subject">Campaign Name</Label>
+                                        <Input
+                                            id="sms-subject"
+                                            value={newCampaign.subject}
+                                            onChange={(e) => setNewCampaign(prev => ({ ...prev, subject: e.target.value, type: 'sms' }))}
+                                            placeholder="Enter campaign name"
+                                        />
+                                    </div>
+                                    <div>
+                                        <Label htmlFor="sms-message">SMS Message</Label>
+                                        <Textarea
+                                            id="sms-message"
+                                            value={newSMSCampaign.message}
+                                            onChange={(e) => setNewSMSCampaign(prev => ({ ...prev, message: e.target.value }))}
+                                            placeholder="SMS message content (160 characters recommended)"
+                                            rows={4}
+                                            maxLength={300}
+                                        />
+                                        <div className="text-sm text-muted-foreground mt-1">
+                                            {newSMSCampaign.message.length}/300 characters
+                                        </div>
+                                    </div>
+                                </div>
+                                <DialogFooter>
+                                    <Button 
+                                        onClick={handleCreateCampaign}
+                                        disabled={isCreatingCampaign}
+                                    >
+                                        {isCreatingCampaign ? 'Creating...' : 'Create SMS Campaign'}
+                                    </Button>
+                                </DialogFooter>
+                            </DialogContent>
+                        </Dialog>
+                    </div>
+
+                    <div className="grid gap-4">
+                        {campaigns.filter(c => c.type === 'sms').map((campaign) => (
+                            <Card key={campaign.id}>
+                                <CardHeader>
+                                    <div className="flex items-center justify-between">
+                                        <CardTitle className="text-lg flex items-center">
+                                            <MessageSquare className="h-5 w-5 mr-2" />
+                                            {campaign.subject}
+                                        </CardTitle>
+                                        <div className="flex items-center space-x-2">
+                                            <Badge variant={campaign.status === 'sent' ? 'default' : 'secondary'}>
+                                                {campaign.status}
+                                            </Badge>
+                                            <div className="flex space-x-1">
+                                                <Dialog>
+                                                    <DialogTrigger asChild>
+                                                        <Button variant="ghost" size="sm">
+                                                            <Eye className="h-4 w-4" />
+                                                        </Button>
+                                                    </DialogTrigger>
+                                                    <DialogContent>
+                                                        <DialogHeader>
+                                                            <DialogTitle>SMS Preview</DialogTitle>
+                                                        </DialogHeader>
+                                                        <div className="space-y-4">
+                                                            <div className="p-4 border rounded bg-gray-50">
+                                                                <div className="text-sm font-medium mb-2">SMS Message:</div>
+                                                                <div className="whitespace-pre-wrap">{campaign.message || campaign.content}</div>
+                                                            </div>
+                                                            <div className="text-sm text-muted-foreground">
+                                                                Characters: {(campaign.message || campaign.content || '').length}
+                                                            </div>
+                                                        </div>
+                                                    </DialogContent>
+                                                </Dialog>
+
+                                                {campaign.status === 'draft' && (
+                                                    <Dialog>
+                                                        <DialogTrigger asChild>
+                                                            <Button variant="ghost" size="sm">
+                                                                <Send className="h-4 w-4" />
+                                                            </Button>
+                                                        </DialogTrigger>
+                                                        <DialogContent className="max-w-2xl">
+                                                            <DialogHeader>
+                                                                <DialogTitle>Send SMS Campaign: {campaign.subject}</DialogTitle>
+                                                                <DialogDescription>
+                                                                    Configure recipients and send your SMS campaign
+                                                                </DialogDescription>
+                                                            </DialogHeader>
+                                                            
+                                                            <div className="space-y-6">
+                                                                {/* Test SMS Section */}
+                                                                <div className="space-y-3">
+                                                                    <h4 className="font-medium">Test SMS</h4>
+                                                                    <div className="flex space-x-2">
+                                                                        <PhoneInput
+                                                                            value={sendConfig.testPhone}
+                                                                            onChange={(value) => setSendConfig(prev => ({ ...prev, testPhone: value }))}
+                                                                            placeholder="Test phone number"
+                                                                        />
+                                                                        <Input
+                                                                            placeholder="Test name (optional)"
+                                                                            value={sendConfig.testName}
+                                                                            onChange={(e) => setSendConfig(prev => ({ ...prev, testName: e.target.value }))}
+                                                                        />
+                                                                        <Button
+                                                                            variant="outline"
+                                                                            onClick={() => handleSendTestSMS(campaign)}
+                                                                        >
+                                                                            Send Test
+                                                                        </Button>
+                                                                    </div>
+                                                                </div>
+
+                                                                {/* Recipients Section */}
+                                                                <div className="space-y-3">
+                                                                    <h4 className="font-medium">Recipients</h4>
+                                                                    <div className="space-y-2">
+                                                                        <div className="flex items-center space-x-2">
+                                                                            <Checkbox
+                                                                                id="select-all-sms"
+                                                                                checked={sendConfig.selectAll}
+                                                                                onCheckedChange={(checked) => 
+                                                                                    setSendConfig(prev => ({ ...prev, selectAll: checked }))
+                                                                                }
+                                                                            />
+                                                                            <Label htmlFor="select-all-sms">
+                                                                                Send to all subscribers with phone numbers 
+                                                                                ({subscribers.filter(s => s.status === 'active' && s.phone).length})
+                                                                            </Label>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+
+                                                                {/* Manual Recipients */}
+                                                                <div className="space-y-3">
+                                                                    <div className="flex items-center justify-between">
+                                                                        <h4 className="font-medium">Additional Recipients</h4>
+                                                                        <Button
+                                                                            type="button"
+                                                                            variant="outline"
+                                                                            size="sm"
+                                                                            onClick={addManualRecipient}
+                                                                        >
+                                                                            <Plus className="h-4 w-4 mr-1" />
+                                                                            Add
+                                                                        </Button>
+                                                                    </div>
+                                                                    {sendConfig.manualRecipients.map((recipient, index) => (
+                                                                        <div key={index} className="flex space-x-2">
+                                                                            <PhoneInput
+                                                                                value={recipient.phone}
+                                                                                onChange={(value) => updateManualRecipient(index, 'phone', value)}
+                                                                                placeholder="Phone number"
+                                                                            />
+                                                                            <Input
+                                                                                placeholder="Name (optional)"
+                                                                                value={recipient.name}
+                                                                                onChange={(e) => updateManualRecipient(index, 'name', e.target.value)}
+                                                                            />
+                                                                            <Button
+                                                                                type="button"
+                                                                                variant="ghost"
+                                                                                size="sm"
+                                                                                onClick={() => removeManualRecipient(index)}
+                                                                            >
+                                                                                <Trash2 className="h-4 w-4" />
+                                                                            </Button>
+                                                                        </div>
+                                                                    ))}
+                                                                </div>
+                                                            </div>
+
+                                                            <DialogFooter>
+                                                                <Button
+                                                                    onClick={() => handleSendSMSCampaign(campaign)}
+                                                                    disabled={isSendingSMS}
+                                                                    className="w-full"
+                                                                >
+                                                                    {isSendingSMS ? 'Sending...' : 'Send SMS Campaign'}
+                                                                </Button>
+                                                            </DialogFooter>
+                                                        </DialogContent>
+                                                    </Dialog>
+                                                )}
+
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    onClick={() => handleDeleteCampaign(campaign.id)}
+                                                >
+                                                    <Trash2 className="h-4 w-4" />
+                                                </Button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <CardDescription>
+                                        <div className="text-sm">
+                                            {campaign.message || campaign.content}
+                                        </div>
+                                        <div className="text-sm text-muted-foreground mt-2">
+                                            Created: {new Date(campaign.createdAt).toLocaleDateString()}
+                                            {campaign.sentAt && ` • Sent: ${new Date(campaign.sentAt).toLocaleDateString()}`}
+                                            {campaign.sentTo && ` • Recipients: ${campaign.sentTo}`}
+                                        </div>
+                                    </CardDescription>
+                                </CardHeader>
+                            </Card>
+                        ))}
+                    </div>
+
+                    <PaginationControls 
+                        type="campaigns" 
+                        onPageChange={fetchCampaigns} 
+                    />
+                </TabsContent>
+
+                {/* Subscribers Tab */}
+                <TabsContent value="subscribers" className="space-y-6">
+                    <div className="flex items-center justify-between">
+                        <h2 className="text-xl font-semibold">Subscribers</h2>
+                        <div className="text-sm text-muted-foreground">
+                            Total: {pagination.subscribers.total} subscribers
+                        </div>
+                    </div>
+
+                    <div className="grid gap-4">
+                        {subscribers.map((subscriber) => (
+                            <Card key={subscriber.id}>
+                                <CardHeader>
+                                    <div className="flex items-center justify-between">
+                                        <div>
+                                            <CardTitle className="text-lg">{subscriber.name || subscriber.email}</CardTitle>
+                                            <CardDescription>
+                                                <div>{subscriber.email}</div>
+                                                {subscriber.phone && <div className="flex items-center mt-1"><Phone className="h-3 w-3 mr-1" />{subscriber.phone}</div>}
+                                            </CardDescription>
+                                        </div>
+                                        <div className="flex items-center space-x-2">
+                                            <Badge variant={subscriber.status === 'active' ? 'default' : 'secondary'}>
+                                                {subscriber.status}
+                                            </Badge>
+                                            <div className="text-sm text-muted-foreground">
+                                                Joined: {new Date(subscriber.createdAt).toLocaleDateString()}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </CardHeader>
+                            </Card>
+                        ))}
+                    </div>
+
+                    <PaginationControls 
+                        type="subscribers" 
+                        onPageChange={fetchSubscribers} 
+                    />
                 </TabsContent>
 
                 {/* Templates Tab */}
                 <TabsContent value="templates" className="space-y-6">
-                    <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-                        {templates.length === 0 ? (
-                            <div className="col-span-full py-12 text-center">
-                                <Edit className="mx-auto mb-4 h-16 w-16 text-muted-foreground" />
-                                <h3 className="mb-2 font-medium text-lg">No templates available</h3>
-                                <p className="text-muted-foreground">
-                                    Templates will be created automatically when you use the system
-                                </p>
-                            </div>
-                        ) : (
-                            templates.map((template) => (
-                                <Card key={template.id} className="cursor-pointer transition-shadow hover:shadow-md">
-                                    <CardHeader>
-                                        <div className="flex items-center gap-2">
-                                            <span className="text-2xl">{template.thumbnail || '📧'}</span>
+                    <div className="flex items-center justify-between">
+                        <h2 className="text-xl font-semibold">Email Templates</h2>
+                        <Dialog>
+                            <DialogTrigger asChild>
+                                <Button>
+                                    <Plus className="h-4 w-4 mr-2" />
+                                    Create Template
+                                </Button>
+                            </DialogTrigger>
+                            <DialogContent className="max-w-2xl">
+                                <DialogHeader>
+                                    <DialogTitle>Create Email Template</DialogTitle>
+                                    <DialogDescription>
+                                        Create a reusable email template for your campaigns
+                                    </DialogDescription>
+                                </DialogHeader>
+                                <div className="space-y-4">
+                                    <div>
+                                        <Label htmlFor="template-name">Template Name</Label>
+                                        <Input
+                                            id="template-name"
+                                            value={newTemplate.name}
+                                            onChange={(e) => setNewTemplate(prev => ({ ...prev, name: e.target.value }))}
+                                            placeholder="Enter template name"
+                                        />
+                                    </div>
+                                    <div>
+                                        <Label htmlFor="template-description">Description</Label>
+                                        <Input
+                                            id="template-description"
+                                            value={newTemplate.description}
+                                            onChange={(e) => setNewTemplate(prev => ({ ...prev, description: e.target.value }))}
+                                            placeholder="Brief description of the template"
+                                        />
+                                    </div>
+                                    <div>
+                                        <Label htmlFor="template-category">Category</Label>
+                                        <Select
+                                            value={newTemplate.category}
+                                            onValueChange={(value) => setNewTemplate(prev => ({ ...prev, category: value }))}
+                                        >
+                                            <SelectTrigger>
+                                                <SelectValue placeholder="Select category" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="email">Email</SelectItem>
+                                                <SelectItem value="promotional">Promotional</SelectItem>
+                                                <SelectItem value="onboarding">Onboarding</SelectItem>
+                                                <SelectItem value="notification">Notification</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                    <div>
+                                        <Label htmlFor="template-content">HTML Content</Label>
+                                        <Textarea
+                                            id="template-content"
+                                            value={newTemplate.content}
+                                            onChange={(e) => setNewTemplate(prev => ({ ...prev, content: e.target.value }))}
+                                            placeholder="Template HTML content"
+                                            rows={8}
+                                        />
+                                    </div>
+                                </div>
+                                <DialogFooter>
+                                    <Button 
+                                        onClick={handleCreateTemplate}
+                                        disabled={isCreatingTemplate}
+                                    >
+                                        {isCreatingTemplate ? 'Creating...' : 'Create Template'}
+                                    </Button>
+                                </DialogFooter>
+                            </DialogContent>
+                        </Dialog>
+                    </div>
+
+                    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                        {templates.map((template) => (
+                            <Card key={template.id}>
+                                <CardHeader>
+                                    <div className="flex items-start justify-between">
+                                        <div className="flex items-center space-x-2">
+                                            <div className="text-2xl">{template.thumbnail}</div>
                                             <div>
                                                 <CardTitle className="text-lg">{template.name}</CardTitle>
-                                                <Badge variant="outline">{template.category}</Badge>
+                                                <CardDescription>{template.description}</CardDescription>
                                             </div>
                                         </div>
-                                    </CardHeader>
-                                    <CardContent>
-                                        <p className="mb-4 text-muted-foreground text-sm">{template.description}</p>
-                                        <div className="flex gap-2">
+                                        <div className="flex space-x-1">
+                                            <Dialog>
+                                                <DialogTrigger asChild>
+                                                    <Button variant="ghost" size="sm">
+                                                        <Eye className="h-4 w-4" />
+                                                    </Button>
+                                                </DialogTrigger>
+                                                <DialogContent className="max-w-2xl">
+                                                    <DialogHeader>
+                                                        <DialogTitle>Template Preview: {template.name}</DialogTitle>
+                                                    </DialogHeader>
+                                                    <div className="space-y-4">
+                                                        <div 
+                                                            className="border rounded bg-gray-50 max-h-96 overflow-y-auto p-4"
+                                                            dangerouslySetInnerHTML={{ __html: template.content }}
+                                                        />
+                                                    </div>
+                                                </DialogContent>
+                                            </Dialog>
                                             <Button
-                                                variant="outline"
+                                                variant="ghost"
                                                 size="sm"
-                                                className="flex-1"
-                                                onClick={() => handlePreviewTemplate(template)}>
-                                                Preview
-                                            </Button>
-                                            <Button
-                                                size="sm"
-                                                className="flex-1"
-                                                onClick={() => handleUseTemplate(template)}>
-                                                Use Template
+                                                onClick={() => handleDeleteTemplate(template.id)}
+                                            >
+                                                <Trash2 className="h-4 w-4" />
                                             </Button>
                                         </div>
-                                    </CardContent>
-                                </Card>
-                            ))
-                        )}
+                                    </div>
+                                    <div className="mt-2">
+                                        <Badge variant="outline">{template.category}</Badge>
+                                    </div>
+                                </CardHeader>
+                            </Card>
+                        ))}
                     </div>
-                </TabsContent>
 
-                {/* Analytics Tab */}
-                <TabsContent value="analytics" className="space-y-6">
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Campaign Performance</CardTitle>
-                            <CardDescription>Detailed analytics for your email campaigns</CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="py-12 text-center">
-                                <BarChart3 className="mx-auto mb-4 h-16 w-16 text-muted-foreground" />
-                                <h3 className="mb-2 font-medium text-lg">Analytics Dashboard</h3>
-                                <p className="text-muted-foreground">
-                                    Detailed analytics charts and reports would be implemented here
-                                </p>
-                            </div>
-                        </CardContent>
-                    </Card>
+                    <PaginationControls 
+                        type="templates" 
+                        onPageChange={fetchTemplates} 
+                    />
                 </TabsContent>
             </Tabs>
         </div>

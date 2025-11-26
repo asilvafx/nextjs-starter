@@ -33,28 +33,71 @@ import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { create, getAll, remove, update } from '@/lib/client/query';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { PhoneInput } from '@/components/ui/phone-input';
+import { Download, Trash2 } from 'lucide-react';
 
 export default function SubscribersPage() {
     const [selectedTab, setSelectedTab] = useState('all');
     const [searchTerm, setSearchTerm] = useState('');
     const [subscribers, setSubscribers] = useState([]);
+    const [allSubscribers, setAllSubscribers] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isAddingSubscriber, setIsAddingSubscriber] = useState(false);
+    const [isDeleting, setIsDeleting] = useState(false);
+    const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+    const [subscriberToDelete, setSubscriberToDelete] = useState(null);
+    const [isExporting, setIsExporting] = useState(false);
+    const [stats, setStats] = useState({});
+    const [currentPage, setCurrentPage] = useState(1);
+    const [pagination, setPagination] = useState({
+        page: 1,
+        limit: 10,
+        total: 0,
+        totalPages: 0,
+        hasNext: false,
+        hasPrev: false
+    });
+    const [sortConfig, setSortConfig] = useState({ 
+        key: 'subscribedDate', 
+        direction: 'desc' 
+    });
     const [newSubscriber, setNewSubscriber] = useState({
         name: '',
         email: '',
-        source: 'manual'
+        phone: '',
+        source: 'manual',
+        tags: []
     });
 
-    // Fetch subscribers from database
-    const fetchSubscribers = async () => {
+    // Fetch subscribers from database with pagination
+    const fetchSubscribers = async (page = currentPage, search = searchTerm, status = selectedTab) => {
         try {
             setIsLoading(true);
-            const response = await getAll('newsletter_subscribers');
+            
+            const params = {
+                page,
+                limit: 10,
+                search: search.trim(),
+                status: status === 'all' ? '' : status,
+                sortBy: sortConfig.key,
+                sortOrder: sortConfig.direction
+            };
 
-            if (response?.success && response.data) {
-                setSubscribers(response.data);
+            const result = await getAll('newsletter_subscribers', params);
+            
+            if (result.success) {
+                setSubscribers(result.data || []);
+                setPagination({
+                    page: result.pagination?.page || 1,
+                    limit: result.pagination?.limit || 10,
+                    total: result.pagination?.total || 0,
+                    totalPages: result.pagination?.totalPages || 0,
+                    hasNext: result.pagination?.hasNext || false,
+                    hasPrev: result.pagination?.hasPrev || false
+                });
             } else {
+                toast.error(result?.error || 'Failed to load subscribers');
                 setSubscribers([]);
             }
         } catch (error) {
@@ -66,58 +109,220 @@ export default function SubscribersPage() {
         }
     };
 
+    // Fetch subscriber statistics
+    const fetchStats = async () => {
+        try {
+            const result = await getAll('newsletter_subscribers', { limit: 10000 });
+            
+            if (result.success) {
+                const allSubs = result.data || [];
+                const stats = {
+                    total: allSubs.length,
+                    active: allSubs.filter(s => s.status === 'active').length,
+                    unsubscribed: allSubs.filter(s => s.status === 'unsubscribed').length,
+                    bounced: allSubs.filter(s => s.status === 'bounced').length,
+                    recentSubscribers: allSubs.filter(s => {
+                        const subDate = new Date(s.subscribedDate);
+                        const weekAgo = new Date();
+                        weekAgo.setDate(weekAgo.getDate() - 7);
+                        return subDate >= weekAgo;
+                    }).length,
+                    churnRate: allSubs.length > 0 ? Math.round((allSubs.filter(s => s.status === 'unsubscribed').length / allSubs.length) * 100) : 0
+                };
+                setStats(stats);
+            } else {
+                console.error('Failed to load stats:', result?.error);
+                setStats({});
+            }
+        } catch (error) {
+            console.error('Error fetching stats:', error);
+            setStats({});
+        }
+    };
+
+    // Fetch all subscribers for filtering (used by tabs)
+    const fetchAllSubscribers = async () => {
+        try {
+            const result = await getAll('newsletter_subscribers', { limit: 10000 });
+            if (result.success) {
+                setAllSubscribers(result.data || []);
+            }
+        } catch (error) {
+            console.error('Error fetching all subscribers:', error);
+        }
+    };
+
     useEffect(() => {
         fetchSubscribers();
+        fetchStats();
+        fetchAllSubscribers();
     }, []);
+
+    // Update data when page changes
+    useEffect(() => {
+        fetchSubscribers(currentPage, searchTerm, selectedTab);
+    }, [currentPage, sortConfig]);
+
+    // Handle tab change
+    const handleTabChange = (newTab) => {
+        setSelectedTab(newTab);
+        setCurrentPage(1);
+        fetchSubscribers(1, searchTerm, newTab);
+    };
+
+    // Handle search
+    const handleSearch = (search) => {
+        setSearchTerm(search);
+        setCurrentPage(1);
+        fetchSubscribers(1, search, selectedTab);
+    };
+
+    // Handle page change
+    const handlePageChange = (page) => {
+        setCurrentPage(page);
+        fetchSubscribers(page, searchTerm, selectedTab);
+    };
 
     const handleAddSubscriber = async () => {
         try {
-            const subscriber = {
+            if (!newSubscriber.email.trim() || !newSubscriber.name.trim()) {
+                toast.error('Name and email are required');
+                return;
+            }
+
+            setIsAddingSubscriber(true);
+            
+            const subscriberData = {
                 ...newSubscriber,
                 status: 'active',
                 subscribedDate: new Date().toISOString(),
                 lastActivity: new Date().toISOString(),
-                tags: [],
-                createdAt: new Date().toISOString()
+                id: `sub_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
             };
-
-            await create(subscriber, 'newsletter_subscribers');
-            toast.success('Subscriber added successfully');
-            setIsAddingSubscriber(false);
-            setNewSubscriber({ name: '', email: '', source: 'manual' });
-            fetchSubscribers();
+            
+            const result = await create(subscriberData, 'newsletter_subscribers');
+            
+            if (result.success) {
+                toast.success('Subscriber added successfully');
+                setNewSubscriber({ 
+                    name: '', 
+                    email: '', 
+                    phone: '', 
+                    source: 'manual', 
+                    tags: [] 
+                });
+                fetchSubscribers();
+                fetchStats();
+                fetchAllSubscribers();
+            } else {
+                toast.error(result.error || 'Failed to add subscriber');
+            }
         } catch (error) {
             console.error('Error adding subscriber:', error);
             toast.error('Failed to add subscriber');
+        } finally {
+            setIsAddingSubscriber(false);
         }
     };
 
     const handleUpdateSubscriberStatus = async (subscriberId, newStatus) => {
         try {
-            await update(
-                subscriberId,
-                {
-                    status: newStatus,
-                    lastActivity: new Date().toISOString()
-                },
-                'newsletter_subscribers'
-            );
-            toast.success('Subscriber updated successfully');
-            fetchSubscribers();
+            const updateData = {
+                status: newStatus,
+                lastActivity: new Date().toISOString()
+            };
+            
+            const result = await update(subscriberId, updateData, 'newsletter_subscribers');
+            
+            if (result.success) {
+                toast.success(`Subscriber ${newStatus === 'active' ? 'reactivated' : newStatus} successfully`);
+                fetchSubscribers();
+                fetchStats();
+                fetchAllSubscribers();
+            } else {
+                toast.error(result.error || 'Failed to update subscriber status');
+            }
         } catch (error) {
-            console.error('Error updating subscriber:', error);
-            toast.error('Failed to update subscriber');
+            console.error('Error updating subscriber status:', error);
+            toast.error('Failed to update subscriber status');
         }
     };
 
-    const handleDeleteSubscriber = async (subscriberId) => {
+    const handleDeleteClick = (subscriber) => {
+        setSubscriberToDelete(subscriber);
+        setDeleteConfirmOpen(true);
+    };
+
+    const handleDeleteSubscriber = async () => {
+        if (!subscriberToDelete) return;
+
         try {
-            await remove(subscriberId, 'newsletter_subscribers');
-            toast.success('Subscriber removed successfully');
-            fetchSubscribers();
+            setIsDeleting(true);
+            const result = await remove(subscriberToDelete.id, 'newsletter_subscribers');
+            
+            if (result.success) {
+                toast.success('Subscriber deleted successfully');
+                fetchSubscribers();
+                fetchStats();
+                fetchAllSubscribers();
+            } else {
+                toast.error(result.error || 'Failed to delete subscriber');
+            }
         } catch (error) {
             console.error('Error deleting subscriber:', error);
-            toast.error('Failed to remove subscriber');
+            toast.error('Failed to delete subscriber');
+        } finally {
+            setIsDeleting(false);
+            setDeleteConfirmOpen(false);
+            setSubscriberToDelete(null);
+        }
+    };
+
+    const handleExport = async () => {
+        try {
+            setIsExporting(true);
+            
+            // Get all subscribers based on current filter
+            let exportData = allSubscribers;
+            
+            // Filter by status if not "all"
+            if (selectedTab !== 'all') {
+                exportData = exportData.filter(sub => sub.status === selectedTab);
+            }
+            
+            // Filter by search term if present
+            if (searchTerm.trim()) {
+                const search = searchTerm.toLowerCase().trim();
+                exportData = exportData.filter(sub => 
+                    (sub.name || '').toLowerCase().includes(search) ||
+                    (sub.email || '').toLowerCase().includes(search) ||
+                    (sub.phone || '').toLowerCase().includes(search)
+                );
+            }
+            
+            const csvContent = [
+                'Name,Email,Phone,Status,Source,Subscribed Date,Last Activity,Tags',
+                ...exportData.map(sub => 
+                    `"${sub.name || ''}","${sub.email || ''}","${sub.phone || ''}","${sub.status || 'active'}","${sub.source || 'manual'}","${sub.subscribedDate || ''}","${sub.lastActivity || ''}","${(sub.tags || []).join('; ')}"`
+                )
+            ].join('\n');
+
+            const blob = new Blob([csvContent], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `subscribers_${selectedTab}_${new Date().toISOString().split('T')[0]}.csv`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(url);
+
+            toast.success(`Exported ${exportData.length} subscribers successfully`);
+        } catch (error) {
+            console.error('Error exporting subscribers:', error);
+            toast.error('Failed to export subscribers');
+        } finally {
+            setIsExporting(false);
         }
     };
 
@@ -135,39 +340,44 @@ export default function SubscribersPage() {
         manual: { label: 'Manual', color: 'bg-gray-100 text-gray-800' }
     };
 
-    // Filter subscribers
-    const filteredSubscribers = subscribers
-        .filter((subscriber) => {
-            if (selectedTab === 'all') return true;
-            return subscriber.status === selectedTab;
-        })
-        .filter((subscriber) => {
-            if (!searchTerm) return true;
-            return (
-                subscriber.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                subscriber.email?.toLowerCase().includes(searchTerm.toLowerCase())
-            );
-        });
-
+    // Calculate subscriber counts from stats for tabs
     const subscriberCounts = {
-        all: subscribers.length,
-        active: subscribers.filter((s) => s.status === 'active').length,
-        unsubscribed: subscribers.filter((s) => s.status === 'unsubscribed').length,
-        bounced: subscribers.filter((s) => s.status === 'bounced').length
+        all: stats.total || 0,
+        active: stats.active || 0,
+        unsubscribed: stats.unsubscribed || 0,
+        bounced: stats.bounced || 0
     };
 
-    // Calculate growth stats
-    const recentSubscribers = subscribers.filter((s) => {
-        const subDate = new Date(s.subscribedDate);
-        const weekAgo = new Date();
-        weekAgo.setDate(weekAgo.getDate() - 7);
-        return subDate >= weekAgo && s.status === 'active';
-    }).length;
+    // Pagination component
+    const PaginationControls = () => {
+        if (pagination.totalPages <= 1) return null;
 
-    const churnRate =
-        subscribers.length > 0
-            ? ((subscribers.filter((s) => s.status === 'unsubscribed').length / subscribers.length) * 100).toFixed(1)
-            : 0;
+        return (
+            <div className="flex items-center justify-between mt-6">
+                <div className="text-sm text-muted-foreground">
+                    Page {pagination.page} of {pagination.totalPages} ({pagination.total} total subscribers)
+                </div>
+                <div className="flex space-x-2">
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={!pagination.hasPrev}
+                        onClick={() => handlePageChange(pagination.page - 1)}
+                    >
+                        Previous
+                    </Button>
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={!pagination.hasNext}
+                        onClick={() => handlePageChange(pagination.page + 1)}
+                    >
+                        Next
+                    </Button>
+                </div>
+            </div>
+        );
+    };
 
     if (isLoading) {
         return (
@@ -200,9 +410,14 @@ export default function SubscribersPage() {
                     <p className="text-muted-foreground">Manage your email newsletter subscribers</p>
                 </div>
                 <div className="flex gap-2">
-                    <Button variant="outline" className="flex items-center gap-2">
-                        <Filter className="h-4 w-4" />
-                        Export
+                    <Button 
+                        variant="outline" 
+                        className="flex items-center gap-2"
+                        onClick={handleExport}
+                        disabled={isExporting}
+                    >
+                        <Download className="h-4 w-4" />
+                        {isExporting ? 'Exporting...' : 'Export'}
                     </Button>
                     <Dialog open={isAddingSubscriber} onOpenChange={setIsAddingSubscriber}>
                         <DialogTrigger asChild>
@@ -240,6 +455,36 @@ export default function SubscribersPage() {
                                         placeholder="subscriber@example.com"
                                     />
                                 </div>
+                                <div>
+                                    <Label htmlFor="phone">Phone Number (Optional)</Label>
+                                    <PhoneInput
+                                        value={newSubscriber.phone}
+                                        onChange={(value) =>
+                                            setNewSubscriber((prev) => ({ ...prev, phone: value }))
+                                        }
+                                        placeholder="Phone number"
+                                    />
+                                </div>
+                                <div>
+                                    <Label htmlFor="source">Source</Label>
+                                    <Select
+                                        value={newSubscriber.source}
+                                        onValueChange={(value) =>
+                                            setNewSubscriber((prev) => ({ ...prev, source: value }))
+                                        }
+                                    >
+                                        <SelectTrigger>
+                                            <SelectValue placeholder="Select source" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="manual">Manual</SelectItem>
+                                            <SelectItem value="website">Website</SelectItem>
+                                            <SelectItem value="social-media">Social Media</SelectItem>
+                                            <SelectItem value="referral">Referral</SelectItem>
+                                            <SelectItem value="email-campaign">Email Campaign</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
                             </div>
                             <DialogFooter>
                                 <Button variant="outline" onClick={() => setIsAddingSubscriber(false)}>
@@ -247,8 +492,9 @@ export default function SubscribersPage() {
                                 </Button>
                                 <Button
                                     onClick={handleAddSubscriber}
-                                    disabled={!newSubscriber.email.trim() || !newSubscriber.name.trim()}>
-                                    Add Subscriber
+                                    disabled={!newSubscriber.email.trim() || !newSubscriber.name.trim() || isAddingSubscriber}
+                                >
+                                    {isAddingSubscriber ? 'Adding...' : 'Add Subscriber'}
                                 </Button>
                             </DialogFooter>
                         </DialogContent>
@@ -287,7 +533,7 @@ export default function SubscribersPage() {
                         <div className="flex items-center justify-between">
                             <div>
                                 <p className="text-muted-foreground text-sm">This Week</p>
-                                <p className="font-bold text-2xl text-blue-600">+{recentSubscribers}</p>
+                                <p className="font-bold text-2xl text-blue-600">+{stats.recentSubscribers || 0}</p>
                             </div>
                             <TrendingUp className="h-8 w-8 text-blue-600" />
                         </div>
@@ -299,7 +545,7 @@ export default function SubscribersPage() {
                         <div className="flex items-center justify-between">
                             <div>
                                 <p className="text-muted-foreground text-sm">Churn Rate</p>
-                                <p className="font-bold text-2xl text-orange-600">{churnRate}%</p>
+                                <p className="font-bold text-2xl text-orange-600">{stats.churnRate || 0}%</p>
                             </div>
                             <TrendingDown className="h-8 w-8 text-orange-600" />
                         </div>
@@ -315,7 +561,7 @@ export default function SubscribersPage() {
                         <Input
                             placeholder="Search subscribers..."
                             value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
+                            onChange={(e) => handleSearch(e.target.value)}
                             className="pl-10"
                         />
                     </div>
@@ -327,7 +573,7 @@ export default function SubscribersPage() {
             </div>
 
             {/* Tabs */}
-            <Tabs value={selectedTab} onValueChange={setSelectedTab} className="space-y-6">
+            <Tabs value={selectedTab} onValueChange={handleTabChange} className="space-y-6">
                 <TabsList>
                     <TabsTrigger value="all" className="flex items-center gap-2">
                         All
@@ -352,13 +598,12 @@ export default function SubscribersPage() {
                         <CardHeader>
                             <CardTitle>Subscribers List</CardTitle>
                             <CardDescription>
-                                {filteredSubscribers.length} subscriber{filteredSubscribers.length !== 1 ? 's' : ''}{' '}
-                                found
+                                {subscribers.length} subscriber{subscribers.length !== 1 ? 's' : ''} found
                             </CardDescription>
                         </CardHeader>
                         <CardContent>
                             <div className="space-y-4">
-                                {filteredSubscribers.length === 0 ? (
+                                {subscribers.length === 0 ? (
                                     <div className="py-12 text-center">
                                         <Users className="mx-auto mb-4 h-16 w-16 text-muted-foreground" />
                                         <h3 className="mb-2 font-medium text-lg">No subscribers found</h3>
@@ -373,7 +618,7 @@ export default function SubscribersPage() {
                                         </Button>
                                     </div>
                                 ) : (
-                                    filteredSubscribers.map((subscriber) => (
+                                    subscribers.map((subscriber) => (
                                         <div
                                             key={subscriber.id}
                                             className="flex items-center gap-4 rounded-lg border p-4 transition-shadow hover:shadow-sm">
@@ -402,6 +647,10 @@ export default function SubscribersPage() {
                                                 </div>
 
                                                 <p className="mb-2 text-muted-foreground text-sm">{subscriber.email}</p>
+                                                
+                                                {subscriber.phone && (
+                                                    <p className="mb-2 text-muted-foreground text-sm">{subscriber.phone}</p>
+                                                )}
 
                                                 <div className="flex items-center gap-4 text-muted-foreground text-xs">
                                                     <div className="flex items-center gap-1">
@@ -447,6 +696,7 @@ export default function SubscribersPage() {
                                                     <Button
                                                         variant="outline"
                                                         size="sm"
+                                                        title="Unsubscribe"
                                                         onClick={() =>
                                                             handleUpdateSubscriberStatus(subscriber.id, 'unsubscribed')
                                                         }>
@@ -457,6 +707,7 @@ export default function SubscribersPage() {
                                                     <Button
                                                         variant="outline"
                                                         size="sm"
+                                                        title="Reactivate"
                                                         onClick={() =>
                                                             handleUpdateSubscriberStatus(subscriber.id, 'active')
                                                         }>
@@ -466,18 +717,47 @@ export default function SubscribersPage() {
                                                 <Button
                                                     variant="outline"
                                                     size="sm"
-                                                    onClick={() => handleDeleteSubscriber(subscriber.id)}>
-                                                    <MoreVertical className="h-4 w-4" />
+                                                    title="Delete subscriber"
+                                                    onClick={() => handleDeleteClick(subscriber)}>
+                                                    <Trash2 className="h-4 w-4" />
                                                 </Button>
                                             </div>
                                         </div>
                                     ))
                                 )}
                             </div>
+
+                            {/* Pagination */}
+                            <PaginationControls />
                         </CardContent>
                     </Card>
                 </TabsContent>
             </Tabs>
+
+            {/* Delete Confirmation Dialog */}
+            <Dialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Delete Subscriber</DialogTitle>
+                        <DialogDescription>
+                            Are you sure you want to delete "{subscriberToDelete?.name || subscriberToDelete?.email}"? 
+                            This action cannot be undone.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setDeleteConfirmOpen(false)}>
+                            Cancel
+                        </Button>
+                        <Button
+                            variant="destructive"
+                            onClick={handleDeleteSubscriber}
+                            disabled={isDeleting}
+                        >
+                            {isDeleting ? 'Deleting...' : 'Delete'}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

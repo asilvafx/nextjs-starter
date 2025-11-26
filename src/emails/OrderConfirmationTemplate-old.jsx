@@ -233,317 +233,214 @@ export const OrderConfirmationTemplate = ({
             </Body>
         </Html>
     );
-};
+                    </Section>
 
-// Enhanced Styles
-const enhancedStyles = {
-    header: {
-        backgroundColor: '#ffffff',
-        padding: '30px 40px 20px',
-        borderBottom: '2px solid #e5e7eb'
-    },
-    headerContent: {
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center'
-    },
-    orderBadge: {
-        backgroundColor: '#10b981',
-        color: '#ffffff',
-        padding: '8px 16px',
-        borderRadius: '20px',
-        fontSize: '14px',
-        fontWeight: 'bold'
-    },
-    orderBadgeText: {
-        margin: '0',
-        color: '#ffffff',
-        fontSize: '14px',
-        fontWeight: 'bold'
-    },
-    mainHeading: {
-        fontSize: '32px',
-        fontWeight: 'bold',
-        color: '#1f2937',
-        margin: '0 0 30px',
-        textAlign: 'center'
-    },
-    greeting: {
-        fontSize: '18px',
-        color: '#374151',
-        margin: '0 0 20px',
-        fontWeight: '500'
-    },
-    confirmationText: {
-        fontSize: '16px',
-        color: '#6b7280',
-        margin: '0 0 30px',
-        lineHeight: '1.6'
-    },
-    orderCard: {
-        backgroundColor: '#f8fafc',
-        border: '1px solid #e2e8f0',
-        borderRadius: '12px',
-        padding: '24px',
-        margin: '20px 0'
-    },
-    orderHeader: {
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: '20px'
-    },
-    orderTitle: {
-        fontSize: '20px',
-        fontWeight: 'bold',
-        color: '#1f2937',
-        margin: '0'
-    },
-    orderId: {
-        fontSize: '16px',
-        color: '#3b82f6',
-        fontWeight: '600',
-        margin: '0'
-    },
-    orderMeta: {
-        display: 'grid',
-        gridTemplateColumns: '1fr 1fr',
-        gap: '20px'
-    },
-    metaLabel: {
-        fontSize: '12px',
-        color: '#6b7280',
-        fontWeight: '500',
-        textTransform: 'uppercase',
-        letterSpacing: '0.5px',
-        margin: '0 0 5px'
-    },
-    metaValue: {
-        fontSize: '14px',
-        color: '#374151',
-        fontWeight: '600',
-        margin: '0'
-    },
-    sectionTitle: {
-        fontSize: '18px',
-        fontWeight: 'bold',
-        color: '#1f2937',
-        margin: '30px 0 15px',
-        borderBottom: '2px solid #e5e7eb',
-        paddingBottom: '5px'
-    },
-    productsSection: {
-        margin: '30px 0'
-    },
-    productRow: {
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'flex-start',
-        padding: '15px 0',
-        borderBottom: '1px solid #f3f4f6'
-    },
-    productInfo: {
-        flex: '1'
-    },
-    productName: {
-        fontSize: '16px',
-        fontWeight: '600',
-        color: '#1f2937',
-        margin: '0 0 5px'
-    },
-    productDetails: {
-        fontSize: '14px',
-        color: '#6b7280',
-        margin: '2px 0'
-    },
-    productPrice: {
-        fontSize: '16px',
-        fontWeight: '600',
-        color: '#1f2937',
-        margin: '0'
-    },
-    totalsSection: {
-        backgroundColor: '#f8fafc',
-        padding: '20px',
-        borderRadius: '8px',
-        margin: '20px 0'
-    },
-    totalRow: {
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        margin: '8px 0'
-    },
-    totalLabel: {
-        fontSize: '14px',
-        color: '#374151',
-        margin: '0'
-    },
-    totalValue: {
-        fontSize: '14px',
-        fontWeight: '500',
-        color: '#1f2937',
-        margin: '0'
-    },
-    discountValue: {
-        fontSize: '14px',
-        fontWeight: '500',
-        color: '#dc2626',
-        margin: '0'
-    },
-    totalDivider: {
-        borderColor: '#d1d5db',
-        margin: '15px 0'
-    },
-    finalTotalRow: {
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginTop: '15px',
-        paddingTop: '15px',
-        borderTop: '2px solid #d1d5db'
-    },
-    finalTotalLabel: {
-        fontSize: '18px',
-        fontWeight: 'bold',
-        color: '#1f2937',
-        margin: '0'
-    },
-    finalTotalValue: {
-        fontSize: '18px',
-        fontWeight: 'bold',
-        color: '#1f2937',
-        margin: '0'
-    },
-    shippingSection: {
-        margin: '30px 0'
-    },
-    addressCard: {
-        backgroundColor: '#f9fafb',
-        padding: '15px',
-        borderRadius: '8px',
-        border: '1px solid #e5e7eb'
-    },
-    addressName: {
-        fontSize: '16px',
-        fontWeight: '600',
-        color: '#1f2937',
-        margin: '0 0 5px'
-    },
-    addressDetails: {
-        fontSize: '14px',
-        color: '#6b7280',
-        margin: '0',
-        lineHeight: '1.5'
-    },
-    paymentSection: {
-        margin: '30px 0'
-    },
-    paymentMethod: {
-        fontSize: '14px',
-        color: '#374151',
-        backgroundColor: '#f9fafb',
-        padding: '10px 15px',
-        borderRadius: '6px',
-        border: '1px solid #e5e7eb',
-        margin: '10px 0'
-    },
-    bankDetailsCard: {
-        backgroundColor: '#fef3c7',
-        border: '1px solid #f59e0b',
-        borderRadius: '8px',
-        padding: '15px',
-        margin: '15px 0'
-    },
-    bankDetailsTitle: {
-        fontSize: '14px',
-        fontWeight: 'bold',
-        color: '#92400e',
-        margin: '0 0 10px'
-    },
-    bankDetails: {
-        display: 'grid',
-        gap: '5px'
-    },
-    bankDetailRow: {
-        display: 'flex',
-        justifyContent: 'space-between'
-    },
-    bankDetailLabel: {
-        fontSize: '12px',
-        color: '#92400e',
-        fontWeight: '500',
-        margin: '0'
-    },
-    bankDetailValue: {
-        fontSize: '12px',
-        color: '#92400e',
-        fontWeight: '600',
-        margin: '0'
-    },
-    trackingSection: {
-        margin: '30px 0'
-    },
-    trackingNumber: {
-        fontSize: '16px',
-        color: '#1f2937',
-        backgroundColor: '#ecfdf5',
-        padding: '12px',
-        borderRadius: '6px',
-        border: '1px solid #10b981',
-        fontWeight: '600',
-        margin: '10px 0'
-    },
-    actionSection: {
-        textAlign: 'center',
-        margin: '40px 0'
-    },
-    primaryButton: {
-        backgroundColor: '#3b82f6',
-        color: '#ffffff',
-        padding: '12px 24px',
-        borderRadius: '6px',
-        textDecoration: 'none',
-        fontWeight: '600',
-        fontSize: '14px',
-        display: 'inline-block',
-        margin: '0 10px 10px'
-    },
-    secondaryButton: {
-        backgroundColor: '#ffffff',
-        color: '#3b82f6',
-        padding: '12px 24px',
-        borderRadius: '6px',
-        textDecoration: 'none',
-        fontWeight: '600',
-        fontSize: '14px',
-        display: 'inline-block',
-        border: '1px solid #3b82f6',
-        margin: '0 10px 10px'
-    },
-    footer: {
-        backgroundColor: '#f9fafb',
-        padding: '30px 20px',
-        textAlign: 'center',
-        marginTop: '40px',
-        borderTop: '1px solid #e5e7eb'
-    },
-    footerText: {
-        fontSize: '14px',
-        color: '#6b7280',
-        margin: '10px 0',
-        lineHeight: '1.5'
-    },
-    footerLink: {
-        color: '#3b82f6',
-        textDecoration: 'none'
-    },
-    footerCompany: {
-        fontSize: '12px',
-        color: '#9ca3af',
-        margin: '20px 0 0',
-        lineHeight: '1.4'
-    }
+                    {/* Heading */}
+                    <Heading style={emailStyles.heading}>Bonjour {userDisplayName},</Heading>
+
+                    {/* Main Message */}
+                    <Text style={emailStyles.paragraph}>
+                        Merci pour ta commande chez nous, ça nous fait super plaisir ! 🙏 On a bien reçu ton paiement,
+                        et ton colis va être préparé avec amour dans les prochaines 24 à 48h.
+                    </Text>
+
+                    {/* Divider */}
+                    <Section style={emailStyles.dividerSection}>
+                        <div style={emailStyles.divider}>⸻</div>
+                    </Section>
+
+                    {/* Order Summary */}
+                    <Section style={emailStyles.featuresSection}>
+                        <Text style={emailStyles.featuresTitle}>🧾 Voici le résumé de ta commande :</Text>
+
+                        <div style={emailStyles.orderDetailItem}>
+                            • <strong>Numéro de commande :</strong> {orderId}
+                        </div>
+                        <div style={emailStyles.orderDetailItem}>
+                            • <strong>Commandé le :</strong> {orderDate}
+                        </div>
+                        <div style={emailStyles.orderDetailItem}>
+                            • <strong>Adresse de livraison :</strong>
+                            <br />
+                            &nbsp;&nbsp;{deliveryAddress.name}
+                            <br />
+                            &nbsp;&nbsp;{deliveryAddress.address}
+                        </div>
+
+                        <div style={emailStyles.productsSection}>
+                            <div style={emailStyles.productsSectionTitle}>
+                                <strong>Produits :</strong>
+                            </div>
+                            {products.map((product, index) => (
+                                <div key={index} style={emailStyles.orderDetailItem}>
+                                    • {product.name} {product.size ? `– ${product.size}` : ''} – {product.quantity}x{' '}
+                                    {product.price ? `(${product.price}€ chacun)` : ''}
+                                </div>
+                            ))}
+                        </div>
+
+                        {/* Pricing Details */}
+                        {(subtotal > 0 || total > 0) && (
+                            <div style={emailStyles.pricingSection}>
+                                <div style={emailStyles.productsSectionTitle}>
+                                    <strong>Récapitulatif des prix :</strong>
+                                </div>
+
+                                {subtotal > 0 && (
+                                    <div style={emailStyles.orderDetailItem}>
+                                        • {taxEnabled && taxIncluded ? 'Sous-total (HT)' : 'Sous-total'} :{' '}
+                                        {(taxEnabled && taxIncluded && taxAmount > 0
+                                            ? Number(subtotal) - Number(taxAmount)
+                                            : Number(subtotal)
+                                        ).toFixed(2)}
+                                        €
+                                    </div>
+                                )}
+
+                                {taxEnabled && taxAmount > 0 && (
+                                    <div style={emailStyles.orderDetailItem}>
+                                        • TVA ({taxRate}%) : {Number(taxAmount).toFixed(2)}€
+                                    </div>
+                                )}
+
+                                {shippingCost > 0 && (
+                                    <div style={emailStyles.orderDetailItem}>
+                                        • Frais de port : {Number(shippingCost).toFixed(2)}€
+                                    </div>
+                                )}
+
+                                {discountAmount > 0 && (
+                                    <div style={emailStyles.orderDetailItem}>
+                                        • Remise : -{Number(discountAmount).toFixed(2)}€
+                                    </div>
+                                )}
+
+                                <div
+                                    style={{
+                                        ...emailStyles.orderDetailItem,
+                                        fontWeight: 'bold',
+                                        borderTop: '1px solid #e0e0e0',
+                                        paddingTop: '8px',
+                                        marginTop: '8px'
+                                    }}>
+                                    • <strong>Total : {Number(total).toFixed(2)}€</strong>
+                                </div>
+                            </div>
+                        )}
+                    </Section>
+
+                    {/* Bank Transfer Details */}
+                    {paymentMethod === 'bank_transfer' && bankTransferDetails && (
+                        <>
+                            \n {/* Divider */}
+                            <Section style={emailStyles.dividerSection}>
+                                <div style={emailStyles.divider}>⸻</div>
+                            </Section>
+                            <Section style={emailStyles.featuresSection}>
+                                <Text style={emailStyles.featuresTitle}>🏦 Détails pour le virement bancaire :</Text>
+
+                                <div style={emailStyles.productsSection}>
+                                    {bankTransferDetails.bankName && (
+                                        <div style={emailStyles.orderDetailItem}>
+                                            • <strong>Banque :</strong> {bankTransferDetails.bankName}
+                                        </div>
+                                    )}
+                                    {bankTransferDetails.accountHolder && (
+                                        <div style={emailStyles.orderDetailItem}>
+                                            • <strong>Titulaire du compte :</strong> {bankTransferDetails.accountHolder}
+                                        </div>
+                                    )}
+                                    {bankTransferDetails.iban && (
+                                        <div style={emailStyles.orderDetailItem}>
+                                            • <strong>IBAN :</strong> {bankTransferDetails.iban}
+                                        </div>
+                                    )}
+                                    {bankTransferDetails.bic && (
+                                        <div style={emailStyles.orderDetailItem}>
+                                            • <strong>BIC :</strong> {bankTransferDetails.bic}
+                                        </div>
+                                    )}
+                                    <div style={emailStyles.orderDetailItem}>
+                                        • <strong>Référence :</strong> {orderId}
+                                    </div>
+                                    <div style={emailStyles.orderDetailItem}>
+                                        • <strong>Montant à virer :</strong> {Number(total).toFixed(2)}€
+                                    </div>
+                                    {bankTransferDetails.additionalInstructions && (
+                                        <div
+                                            style={{
+                                                ...emailStyles.orderDetailItem,
+                                                fontStyle: 'italic',
+                                                marginTop: '12px'
+                                            }}>
+                                            ℹ️ <strong>Instructions :</strong>{' '}
+                                            {bankTransferDetails.additionalInstructions}
+                                        </div>
+                                    )}
+                                </div>
+
+                                <Text style={emailStyles.paragraph}>
+                                    <strong>Important :</strong> N'oublie pas d'indiquer le numéro de commande{' '}
+                                    <strong>{orderId}</strong> en référence de ton virement. Ta commande sera traitée
+                                    dès réception du paiement.
+                                </Text>
+                            </Section>
+                        </>
+                    )}
+
+                    {/* Divider */}
+                    <Section style={emailStyles.dividerSection}>
+                        <div style={emailStyles.divider}>⸻</div>
+                    </Section>
+
+                    {/* Shipping Info */}
+                    <Section style={emailStyles.shippingSection}>
+                        <Text style={emailStyles.featuresTitle}>📦 Et maintenant ?</Text>
+
+                        <Text style={emailStyles.paragraph}>
+                            Dès que ton colis sera prêt, tu recevras un mail avec le suivi pour savoir où il se trouve.
+                            Livraison prévue sous 2 à 6 jours ouvrés (selon l'adresse).
+                        </Text>
+                    </Section>
+
+                    {/* CTA Button */}
+                    <Section style={emailStyles.buttonSection}>
+                        <Button style={emailStyles.button} href={orderSummaryUrl}>
+                            Voir ma commande
+                        </Button>
+                    </Section>
+
+                    {/* Divider */}
+                    <Section style={emailStyles.dividerSection}>
+                        <div style={emailStyles.divider}>⸻</div>
+                    </Section>
+
+                    {/* Support Section */}
+                    <Section style={emailStyles.questionSection}>
+                        <Text style={emailStyles.featuresTitle}>Une question, un doute ?</Text>
+
+                        <Text style={emailStyles.paragraph}>
+                            Tu peux nous écrire à{' '}
+                            <Link href={`mailto:${supportEmail}`} style={emailStyles.link}>
+                                {supportEmail}
+                            </Link>
+                            , ou répondre directement à ce mail. On répond toujours avec le sourire (et souvent très
+                            vite !).
+                        </Text>
+                    </Section>
+
+                    {/* Footer */}
+                    <Section style={emailStyles.footer}>
+                        <Text style={emailStyles.footerText}>
+                            Encore merci pour ta confiance,
+                            <br />À très bientôt 💛<br />
+                            {companyName}
+                        </Text>
+                    </Section>
+                </Container>
+            </Body>
+        </Html>
+    );
 };
 
 export default OrderConfirmationTemplate;

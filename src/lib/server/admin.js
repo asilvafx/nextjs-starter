@@ -3201,3 +3201,906 @@ export async function createOrderTask(orderId, taskData) {
         };
     }
 }
+
+// NEWSLETTER AND SMS CAMPAIGN MANAGEMENT UTILITY FUNCTIONS
+// These functions handle campaigns, subscribers, templates for both email and SMS
+
+/**
+ * Get all campaigns utility function with pagination support
+ * @param {Object} params - Query parameters (page, limit, search, type, etc.)
+ * @returns {Promise<Object>} Campaigns data with pagination info
+ */
+export async function getAllCampaigns(params = {}) {
+    try {
+        const { page = 1, limit = 10, search = '', type = 'all', status = 'all' } = params;
+        
+        const result = await DBService.readAll('campaigns');
+        if (!result) {
+            return {
+                success: true,
+                data: [],
+                pagination: {
+                    currentPage: page,
+                    totalItems: 0,
+                    totalPages: 0,
+                    hasNext: false,
+                    hasPrev: false
+                }
+            };
+        }
+
+        let campaigns = [];
+        if (Array.isArray(result)) {
+            campaigns = result;
+        } else if (typeof result === 'object') {
+            campaigns = Object.entries(result).map(([id, campaign]) => ({
+                id,
+                ...campaign
+            }));
+        }
+
+        // Filter campaigns
+        let filteredCampaigns = campaigns.filter(campaign => {
+            const matchesSearch = !search || 
+                campaign.subject?.toLowerCase().includes(search.toLowerCase()) ||
+                campaign.content?.toLowerCase().includes(search.toLowerCase());
+            
+            const matchesType = type === 'all' || campaign.type === type;
+            const matchesStatus = status === 'all' || campaign.status === status;
+            
+            return matchesSearch && matchesType && matchesStatus;
+        });
+
+        // Sort by created date (newest first)
+        filteredCampaigns.sort((a, b) => {
+            const dateA = new Date(a.createdAt || 0);
+            const dateB = new Date(b.createdAt || 0);
+            return dateB - dateA;
+        });
+
+        // Pagination
+        const totalItems = filteredCampaigns.length;
+        const totalPages = Math.ceil(totalItems / limit);
+        const startIndex = (page - 1) * limit;
+        const endIndex = startIndex + limit;
+        const paginatedCampaigns = filteredCampaigns.slice(startIndex, endIndex);
+
+        return {
+            success: true,
+            data: paginatedCampaigns,
+            pagination: {
+                currentPage: page,
+                totalItems,
+                totalPages,
+                hasNext: endIndex < totalItems,
+                hasPrev: page > 1
+            }
+        };
+    } catch (error) {
+        console.error('Error fetching campaigns:', error);
+        return {
+            success: false,
+            error: 'Failed to fetch campaigns',
+            message: error.message
+        };
+    }
+}
+
+/**
+ * Create a new campaign utility function
+ * @param {Object} campaignData - Campaign data to create
+ * @returns {Promise<Object>} Created campaign data
+ */
+export async function createCampaign(campaignData) {
+    try {
+        const campaign = {
+            ...campaignData,
+            id: `campaign_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+            status: campaignData.status || 'draft',
+            type: campaignData.type || 'email',
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            sentAt: null,
+            openRate: 0,
+            clickRate: 0,
+            recipientCount: 0
+        };
+
+        const result = await DBService.create(campaign, 'campaigns');
+        if (!result) {
+            throw new Error('Failed to create campaign');
+        }
+
+        return {
+            success: true,
+            data: campaign,
+            message: 'Campaign created successfully'
+        };
+    } catch (error) {
+        console.error('Error creating campaign:', error);
+        return {
+            success: false,
+            error: 'Failed to create campaign',
+            message: error.message
+        };
+    }
+}
+
+/**
+ * Update a campaign utility function
+ * @param {string} campaignId - ID of the campaign to update
+ * @param {Object} campaignData - Campaign data to update
+ * @returns {Promise<Object>} Updated campaign data
+ */
+export async function updateCampaign(campaignId, campaignData) {
+    try {
+        const existingCampaign = await DBService.read(campaignId, 'campaigns');
+        if (!existingCampaign) {
+            throw new Error('Campaign not found');
+        }
+
+        const updatedCampaign = {
+            ...existingCampaign,
+            ...campaignData,
+            updatedAt: new Date().toISOString()
+        };
+
+        const result = await DBService.update(campaignId, updatedCampaign, 'campaigns');
+        if (!result) {
+            throw new Error('Failed to update campaign');
+        }
+
+        return {
+            success: true,
+            data: updatedCampaign,
+            message: 'Campaign updated successfully'
+        };
+    } catch (error) {
+        console.error('Error updating campaign:', error);
+        return {
+            success: false,
+            error: 'Failed to update campaign',
+            message: error.message
+        };
+    }
+}
+
+/**
+ * Delete a campaign utility function
+ * @param {string} campaignId - ID of the campaign to delete
+ * @returns {Promise<Object>} Delete result
+ */
+export async function deleteCampaign(campaignId) {
+    try {
+        const result = await DBService.delete(campaignId, 'campaigns');
+        if (!result) {
+            throw new Error('Failed to delete campaign');
+        }
+
+        return {
+            success: true,
+            message: 'Campaign deleted successfully'
+        };
+    } catch (error) {
+        console.error('Error deleting campaign:', error);
+        return {
+            success: false,
+            error: 'Failed to delete campaign',
+            message: error.message
+        };
+    }
+}
+
+/**
+ * Get all subscribers utility function with pagination support
+ * @param {Object} params - Query parameters (page, limit, search, status, etc.)
+ * @returns {Promise<Object>} Subscribers data with pagination info
+ */
+export async function getAllSubscribers(params = {}) {
+    try {
+        const { page = 1, limit = 10, search = '', status = 'all' } = params;
+        
+        const result = await DBService.readAll('newsletter_subscribers');
+        if (!result) {
+            return {
+                success: true,
+                data: [],
+                pagination: {
+                    currentPage: page,
+                    totalItems: 0,
+                    totalPages: 0,
+                    hasNext: false,
+                    hasPrev: false
+                }
+            };
+        }
+
+        let subscribers = [];
+        if (Array.isArray(result)) {
+            subscribers = result;
+        } else if (typeof result === 'object') {
+            subscribers = Object.entries(result).map(([id, subscriber]) => ({
+                id,
+                ...subscriber
+            }));
+        }
+
+        // Filter subscribers
+        let filteredSubscribers = subscribers.filter(subscriber => {
+            const matchesSearch = !search || 
+                subscriber.email?.toLowerCase().includes(search.toLowerCase()) ||
+                subscriber.name?.toLowerCase().includes(search.toLowerCase());
+            
+            const matchesStatus = status === 'all' || subscriber.status === status;
+            
+            return matchesSearch && matchesStatus;
+        });
+
+        // Sort by created date (newest first)
+        filteredSubscribers.sort((a, b) => {
+            const dateA = new Date(a.createdAt || 0);
+            const dateB = new Date(b.createdAt || 0);
+            return dateB - dateA;
+        });
+
+        // Pagination
+        const totalItems = filteredSubscribers.length;
+        const totalPages = Math.ceil(totalItems / limit);
+        const startIndex = (page - 1) * limit;
+        const endIndex = startIndex + limit;
+        const paginatedSubscribers = filteredSubscribers.slice(startIndex, endIndex);
+
+        return {
+            success: true,
+            data: paginatedSubscribers,
+            pagination: {
+                currentPage: page,
+                totalItems,
+                totalPages,
+                hasNext: endIndex < totalItems,
+                hasPrev: page > 1
+            }
+        };
+    } catch (error) {
+        console.error('Error fetching subscribers:', error);
+        return {
+            success: false,
+            error: 'Failed to fetch subscribers',
+            message: error.message
+        };
+    }
+}
+
+/**
+ * Get all templates utility function with pagination support
+ * @param {Object} params - Query parameters (page, limit, search, type, etc.)
+ * @returns {Promise<Object>} Templates data with pagination info
+ */
+export async function getAllTemplates(params = {}) {
+    try {
+        const { page = 1, limit = 10, search = '', type = 'all' } = params;
+        
+        const result = await DBService.readAll('campaign_templates');
+        if (!result) {
+            return {
+                success: true,
+                data: [],
+                pagination: {
+                    currentPage: page,
+                    totalItems: 0,
+                    totalPages: 0,
+                    hasNext: false,
+                    hasPrev: false
+                }
+            };
+        }
+
+        let templates = [];
+        if (Array.isArray(result)) {
+            templates = result;
+        } else if (typeof result === 'object') {
+            templates = Object.entries(result).map(([id, template]) => ({
+                id,
+                ...template
+            }));
+        }
+
+        // Filter templates
+        let filteredTemplates = templates.filter(template => {
+            const matchesSearch = !search || 
+                template.name?.toLowerCase().includes(search.toLowerCase()) ||
+                template.description?.toLowerCase().includes(search.toLowerCase());
+            
+            const matchesType = type === 'all' || template.type === type;
+            
+            return matchesSearch && matchesType;
+        });
+
+        // Sort by created date (newest first)
+        filteredTemplates.sort((a, b) => {
+            const dateA = new Date(a.createdAt || 0);
+            const dateB = new Date(b.createdAt || 0);
+            return dateB - dateA;
+        });
+
+        // Pagination
+        const totalItems = filteredTemplates.length;
+        const totalPages = Math.ceil(totalItems / limit);
+        const startIndex = (page - 1) * limit;
+        const endIndex = startIndex + limit;
+        const paginatedTemplates = filteredTemplates.slice(startIndex, endIndex);
+
+        return {
+            success: true,
+            data: paginatedTemplates,
+            pagination: {
+                currentPage: page,
+                totalItems,
+                totalPages,
+                hasNext: endIndex < totalItems,
+                hasPrev: page > 1
+            }
+        };
+    } catch (error) {
+        console.error('Error fetching templates:', error);
+        return {
+            success: false,
+            error: 'Failed to fetch templates',
+            message: error.message
+        };
+    }
+}
+
+/**
+ * Create a new template utility function
+ * @param {Object} templateData - Template data to create
+ * @returns {Promise<Object>} Created template data
+ */
+export async function createTemplate(templateData) {
+    try {
+        const template = {
+            ...templateData,
+            id: `template_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+            type: templateData.type || 'email',
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+        };
+
+        const result = await DBService.create(template, 'campaign_templates');
+        if (!result) {
+            throw new Error('Failed to create template');
+        }
+
+        return {
+            success: true,
+            data: template,
+            message: 'Template created successfully'
+        };
+    } catch (error) {
+        console.error('Error creating template:', error);
+        return {
+            success: false,
+            error: 'Failed to create template',
+            message: error.message
+        };
+    }
+}
+
+/**
+ * Update a template utility function
+ * @param {string} templateId - ID of the template to update
+ * @param {Object} templateData - Template data to update
+ * @returns {Promise<Object>} Updated template data
+ */
+export async function updateTemplate(templateId, templateData) {
+    try {
+        const existingTemplate = await DBService.read(templateId, 'campaign_templates');
+        if (!existingTemplate) {
+            throw new Error('Template not found');
+        }
+
+        const updatedTemplate = {
+            ...existingTemplate,
+            ...templateData,
+            updatedAt: new Date().toISOString()
+        };
+
+        const result = await DBService.update(templateId, updatedTemplate, 'campaign_templates');
+        if (!result) {
+            throw new Error('Failed to update template');
+        }
+
+        return {
+            success: true,
+            data: updatedTemplate,
+            message: 'Template updated successfully'
+        };
+    } catch (error) {
+        console.error('Error updating template:', error);
+        return {
+            success: false,
+            error: 'Failed to update template',
+            message: error.message
+        };
+    }
+}
+
+/**
+ * Delete a template utility function
+ * @param {string} templateId - ID of the template to delete
+ * @returns {Promise<Object>} Delete result
+ */
+export async function deleteTemplate(templateId) {
+    try {
+        const result = await DBService.delete(templateId, 'campaign_templates');
+        if (!result) {
+            throw new Error('Failed to delete template');
+        }
+
+        return {
+            success: true,
+            message: 'Template deleted successfully'
+        };
+    } catch (error) {
+        console.error('Error deleting template:', error);
+        return {
+            success: false,
+            error: 'Failed to delete template',
+            message: error.message
+        };
+    }
+}
+
+/**
+ * Get campaign analytics utility function
+ * @param {Object} params - Query parameters (campaignId, type, dateRange)
+ * @returns {Promise<Object>} Analytics data
+ */
+export async function getCampaignAnalytics(params = {}) {
+    try {
+        const { type = 'all', dateRange = 30 } = params;
+        
+        const campaignsResult = await DBService.readAll('campaigns');
+        let campaigns = [];
+        
+        if (Array.isArray(campaignsResult)) {
+            campaigns = campaignsResult;
+        } else if (typeof campaignsResult === 'object') {
+            campaigns = Object.values(campaignsResult);
+        }
+
+        // Filter by type and date range
+        const cutoffDate = new Date();
+        cutoffDate.setDate(cutoffDate.getDate() - dateRange);
+
+        const filteredCampaigns = campaigns.filter(campaign => {
+            const matchesType = type === 'all' || campaign.type === type;
+            const withinDateRange = new Date(campaign.createdAt || 0) >= cutoffDate;
+            
+            return matchesType && withinDateRange && campaign.status === 'sent';
+        });
+
+        const totalCampaigns = filteredCampaigns.length;
+        const totalRecipients = filteredCampaigns.reduce((sum, c) => sum + (c.recipientCount || 0), 0);
+        const avgOpenRate = totalCampaigns > 0 ? 
+            (filteredCampaigns.reduce((sum, c) => sum + (c.openRate || 0), 0) / totalCampaigns).toFixed(1) : 0;
+        const avgClickRate = totalCampaigns > 0 ? 
+            (filteredCampaigns.reduce((sum, c) => sum + (c.clickRate || 0), 0) / totalCampaigns).toFixed(1) : 0;
+
+        return {
+            success: true,
+            data: {
+                totalCampaigns,
+                totalRecipients,
+                avgOpenRate: parseFloat(avgOpenRate),
+                avgClickRate: parseFloat(avgClickRate),
+                campaigns: filteredCampaigns
+            }
+        };
+    } catch (error) {
+        console.error('Error fetching analytics:', error);
+        return {
+            success: false,
+            error: 'Failed to fetch analytics',
+            message: error.message
+        };
+    }
+}
+
+// SUBSCRIBERS MANAGEMENT UTILITY FUNCTIONS (NOT SERVER ACTIONS)
+// These functions can be imported directly into client components
+
+/**
+ * Get all subscribers utility function with pagination support
+ * @param {Object} params - Query parameters (page, limit, search, status, source, etc.)
+ * @returns {Promise<Object>} Subscribers data with pagination info
+ */
+export async function getAllNewsletterSubscribers(params = {}) {
+    try {
+        const {
+            page = 1,
+            limit = 10,
+            search = '',
+            status = '',
+            source = '',
+            sortBy = 'subscribedDate',
+            sortOrder = 'desc'
+        } = params;
+
+        // Get all subscribers from database
+        const result = await DBService.readAll('newsletter_subscribers');
+        if (!result.success) {
+            throw new Error(result.error || 'Failed to fetch subscribers');
+        }
+
+        let subscribers = result.data || [];
+
+        // Apply filters
+        if (search.trim()) {
+            const searchLower = search.toLowerCase().trim();
+            subscribers = subscribers.filter(subscriber => 
+                subscriber.name?.toLowerCase().includes(searchLower) ||
+                subscriber.email?.toLowerCase().includes(searchLower) ||
+                subscriber.tags?.some(tag => tag.toLowerCase().includes(searchLower))
+            );
+        }
+
+        if (status) {
+            subscribers = subscribers.filter(subscriber => subscriber.status === status);
+        }
+
+        if (source) {
+            subscribers = subscribers.filter(subscriber => subscriber.source === source);
+        }
+
+        // Sort subscribers
+        subscribers.sort((a, b) => {
+            let aValue = a[sortBy];
+            let bValue = b[sortBy];
+
+            // Handle date sorting
+            if (sortBy === 'subscribedDate' || sortBy === 'lastActivity') {
+                aValue = new Date(aValue || 0);
+                bValue = new Date(bValue || 0);
+            }
+
+            // Handle string sorting
+            if (typeof aValue === 'string' && typeof bValue === 'string') {
+                aValue = aValue.toLowerCase();
+                bValue = bValue.toLowerCase();
+            }
+
+            if (aValue < bValue) return sortOrder === 'asc' ? -1 : 1;
+            if (aValue > bValue) return sortOrder === 'asc' ? 1 : -1;
+            return 0;
+        });
+
+        // Calculate pagination
+        const totalItems = subscribers.length;
+        const totalPages = Math.ceil(totalItems / limit);
+        const offset = (page - 1) * limit;
+        const paginatedSubscribers = subscribers.slice(offset, offset + limit);
+
+        return {
+            success: true,
+            data: paginatedSubscribers,
+            pagination: {
+                page: parseInt(page),
+                limit: parseInt(limit),
+                total: totalItems,
+                totalPages,
+                hasNext: page < totalPages,
+                hasPrev: page > 1
+            }
+        };
+    } catch (error) {
+        console.error('Error fetching subscribers:', error);
+        return {
+            success: false,
+            error: 'Failed to fetch subscribers',
+            message: error.message
+        };
+    }
+}
+
+/**
+ * Create a new subscriber utility function
+ * @param {Object} subscriberData - Subscriber data to create
+ * @returns {Promise<Object>} Created subscriber data
+ */
+export async function createNewsletterSubscriber(subscriberData) {
+    try {
+        const subscriber = {
+            id: `sub_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+            name: subscriberData.name || '',
+            email: subscriberData.email,
+            phone: subscriberData.phone || '',
+            status: subscriberData.status || 'active',
+            source: subscriberData.source || 'manual',
+            tags: subscriberData.tags || [],
+            subscribedDate: subscriberData.subscribedDate || new Date().toISOString(),
+            lastActivity: subscriberData.lastActivity || null,
+            preferences: subscriberData.preferences || {},
+            metadata: subscriberData.metadata || {},
+            ...subscriberData
+        };
+
+        const result = await DBService.create(subscriber, 'newsletter_subscribers');
+        if (!result.success) {
+            throw new Error(result.error || 'Failed to create subscriber');
+        }
+
+        return {
+            success: true,
+            data: result.data
+        };
+    } catch (error) {
+        console.error('Error creating subscriber:', error);
+        return {
+            success: false,
+            error: 'Failed to create subscriber',
+            message: error.message
+        };
+    }
+}
+
+/**
+ * Update a subscriber utility function
+ * @param {string} subscriberId - ID of the subscriber to update
+ * @param {Object} subscriberData - Subscriber data to update
+ * @returns {Promise<Object>} Updated subscriber data
+ */
+export async function updateNewsletterSubscriber(subscriberId, subscriberData) {
+    try {
+        const updateData = {
+            ...subscriberData,
+            updatedAt: new Date().toISOString()
+        };
+
+        const result = await DBService.update(subscriberId, updateData, 'newsletter_subscribers');
+        if (!result.success) {
+            throw new Error(result.error || 'Failed to update subscriber');
+        }
+
+        return {
+            success: true,
+            data: result.data
+        };
+    } catch (error) {
+        console.error('Error updating subscriber:', error);
+        return {
+            success: false,
+            error: 'Failed to update subscriber',
+            message: error.message
+        };
+    }
+}
+
+/**
+ * Delete a subscriber utility function
+ * @param {string} subscriberId - ID of the subscriber to delete
+ * @returns {Promise<Object>} Delete result
+ */
+export async function deleteNewsletterSubscriber(subscriberId) {
+    try {
+        const result = await DBService.remove(subscriberId, 'newsletter_subscribers');
+        if (!result.success) {
+            throw new Error(result.error || 'Failed to delete subscriber');
+        }
+
+        return {
+            success: true,
+            message: 'Subscriber deleted successfully'
+        };
+    } catch (error) {
+        console.error('Error deleting subscriber:', error);
+        return {
+            success: false,
+            error: 'Failed to delete subscriber',
+            message: error.message
+        };
+    }
+}
+
+/**
+ * Get subscriber by email utility function
+ * @param {string} email - Email of the subscriber to find
+ * @returns {Promise<Object>} Subscriber data
+ */
+export async function getSubscriberByEmail(email) {
+    try {
+        const result = await DBService.getItemByKey('email', email, 'newsletter_subscribers');
+        if (!result.success) {
+            return {
+                success: false,
+                error: 'Subscriber not found'
+            };
+        }
+
+        return {
+            success: true,
+            data: result.data
+        };
+    } catch (error) {
+        console.error('Error finding subscriber:', error);
+        return {
+            success: false,
+            error: 'Failed to find subscriber',
+            message: error.message
+        };
+    }
+}
+
+/**
+ * Update subscriber status utility function
+ * @param {string} subscriberId - ID of the subscriber
+ * @param {string} status - New status (active, unsubscribed, bounced)
+ * @returns {Promise<Object>} Update result
+ */
+export async function updateSubscriberStatus(subscriberId, status) {
+    try {
+        const updateData = {
+            status,
+            statusUpdatedAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+        };
+
+        // Add unsubscribe date if status is unsubscribed
+        if (status === 'unsubscribed') {
+            updateData.unsubscribedDate = new Date().toISOString();
+        }
+
+        const result = await DBService.update(subscriberId, updateData, 'newsletter_subscribers');
+        if (!result.success) {
+            throw new Error(result.error || 'Failed to update subscriber status');
+        }
+
+        return {
+            success: true,
+            data: result.data
+        };
+    } catch (error) {
+        console.error('Error updating subscriber status:', error);
+        return {
+            success: false,
+            error: 'Failed to update subscriber status',
+            message: error.message
+        };
+    }
+}
+
+/**
+ * Get subscriber statistics utility function
+ * @returns {Promise<Object>} Subscriber statistics
+ */
+export async function getSubscriberStats() {
+    try {
+        const result = await DBService.readAll('newsletter_subscribers');
+        if (!result.success) {
+            throw new Error(result.error || 'Failed to fetch subscribers');
+        }
+
+        const subscribers = result.data || [];
+        
+        // Calculate stats
+        const total = subscribers.length;
+        const active = subscribers.filter(s => s.status === 'active').length;
+        const unsubscribed = subscribers.filter(s => s.status === 'unsubscribed').length;
+        const bounced = subscribers.filter(s => s.status === 'bounced').length;
+
+        // Calculate growth (subscribers in last 7 days)
+        const weekAgo = new Date();
+        weekAgo.setDate(weekAgo.getDate() - 7);
+        const recentSubscribers = subscribers.filter(s => {
+            const subDate = new Date(s.subscribedDate);
+            return subDate >= weekAgo && s.status === 'active';
+        }).length;
+
+        // Calculate churn rate
+        const churnRate = total > 0 ? ((unsubscribed / total) * 100).toFixed(1) : 0;
+
+        // Group by source
+        const bySource = subscribers.reduce((acc, subscriber) => {
+            const source = subscriber.source || 'unknown';
+            acc[source] = (acc[source] || 0) + 1;
+            return acc;
+        }, {});
+
+        return {
+            success: true,
+            data: {
+                total,
+                active,
+                unsubscribed,
+                bounced,
+                recentSubscribers,
+                churnRate: parseFloat(churnRate),
+                bySource
+            }
+        };
+    } catch (error) {
+        console.error('Error fetching subscriber stats:', error);
+        return {
+            success: false,
+            error: 'Failed to fetch subscriber stats',
+            message: error.message
+        };
+    }
+}
+
+/**
+ * Bulk update subscribers utility function
+ * @param {Array} subscriberIds - Array of subscriber IDs
+ * @param {Object} updateData - Data to update
+ * @returns {Promise<Object>} Update result
+ */
+export async function bulkUpdateSubscribers(subscriberIds, updateData) {
+    try {
+        const results = [];
+        
+        for (const subscriberId of subscriberIds) {
+            const result = await updateNewsletterSubscriber(subscriberId, updateData);
+            results.push(result);
+        }
+
+        const successCount = results.filter(r => r.success).length;
+        const failureCount = results.length - successCount;
+
+        return {
+            success: true,
+            data: {
+                total: results.length,
+                successful: successCount,
+                failed: failureCount
+            }
+        };
+    } catch (error) {
+        console.error('Error bulk updating subscribers:', error);
+        return {
+            success: false,
+            error: 'Failed to bulk update subscribers',
+            message: error.message
+        };
+    }
+}
+
+/**
+ * Export subscribers utility function
+ * @param {Object} filters - Export filters
+ * @returns {Promise<Object>} Export data
+ */
+export async function exportSubscribers(filters = {}) {
+    try {
+        const result = await getAllNewsletterSubscribers({ ...filters, limit: 10000 });
+        if (!result.success) {
+            throw new Error(result.error || 'Failed to fetch subscribers for export');
+        }
+
+        const subscribers = result.data || [];
+        
+        // Format data for export
+        const exportData = subscribers.map(subscriber => ({
+            name: subscriber.name || '',
+            email: subscriber.email,
+            phone: subscriber.phone || '',
+            status: subscriber.status,
+            source: subscriber.source,
+            subscribedDate: subscriber.subscribedDate,
+            lastActivity: subscriber.lastActivity || '',
+            tags: Array.isArray(subscriber.tags) ? subscriber.tags.join(', ') : ''
+        }));
+
+        return {
+            success: true,
+            data: exportData,
+            total: exportData.length
+        };
+    } catch (error) {
+        console.error('Error exporting subscribers:', error);
+        return {
+            success: false,
+            error: 'Failed to export subscribers',
+            message: error.message
+        };
+    }
+}
