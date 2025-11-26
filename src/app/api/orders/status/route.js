@@ -10,7 +10,7 @@ import {
 import { triggerOrderStatusChangeNotification } from '@/lib/server/notificationTriggers.js';
 import { withAuth } from '@/lib/server/auth.js';
 
-async function POST(request) {
+async function handlePost(request) {
     try {
         const { orderId, newStatus, userId, customerEmail } = await request.json();
 
@@ -75,4 +75,4 @@ async function POST(request) {
 }
 
 // Export the route handlers with authentication
-export { withAuth(POST) as POST };
+export const POST = withAuth(handlePost);

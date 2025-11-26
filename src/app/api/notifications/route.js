@@ -11,7 +11,7 @@ import {
 } from '@/lib/server/admin.js';
 import { withAuth } from '@/lib/server/auth.js';
 
-async function POST(request) {
+async function handlePost(request) {
     try {
         const { type, data } = await request.json();
 
@@ -116,4 +116,4 @@ async function POST(request) {
 }
 
 // Export the route handlers with authentication
-export { withAuth(POST) as POST };
+export const POST = withAuth(handlePost);
