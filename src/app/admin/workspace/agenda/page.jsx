@@ -12,7 +12,18 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
-import { getAll, update } from '@/lib/client/query';
+import { 
+    getAllAppointments, 
+    getAllAgenda, 
+    getAllScheduleItems, 
+    getAllTasks, 
+    getAllOrders, 
+    getAllCatalog,
+    updateAppointment,
+    updateOrder,
+    createOrderTask,
+    createTask
+} from '@/lib/server/admin.js';
 
 export default function AgendaPage() {
     const [selectedDate, _setSelectedDate] = useState(new Date());
@@ -44,12 +55,10 @@ export default function AgendaPage() {
 
             // Fetch appointments with proper error handling
             try {
-                const appointmentsResponse = await getAll('appointments');
+                const appointmentsResponse = await getAllAppointments();
 
                 if (appointmentsResponse?.success && Array.isArray(appointmentsResponse.data)) {
                     setAppointments(appointmentsResponse.data);
-                } else if (Array.isArray(appointmentsResponse)) {
-                    setAppointments(appointmentsResponse);
                 } else {
                     console.warn('No appointments data found or invalid format');
                     setAppointments([]);
@@ -61,11 +70,9 @@ export default function AgendaPage() {
 
             // Fetch orders (including service bookings)
             try {
-                const ordersResponse = await getAll('orders');
+                const ordersResponse = await getAllOrders();
                 if (ordersResponse?.success && Array.isArray(ordersResponse.data)) {
                     setOrders(ordersResponse.data);
-                } else if (Array.isArray(ordersResponse)) {
-                    setOrders(ordersResponse);
                 } else {
                     setOrders([]);
                 }
@@ -76,11 +83,9 @@ export default function AgendaPage() {
 
             // Fetch catalog items (services)
             try {
-                const catalogResponse = await getAll('catalog_items');
+                const catalogResponse = await getAllCatalog();
                 if (catalogResponse?.success && Array.isArray(catalogResponse.data)) {
                     setCatalog(catalogResponse.data);
-                } else if (Array.isArray(catalogResponse)) {
-                    setCatalog(catalogResponse);
                 } else {
                     setCatalog([]);
                 }
@@ -91,11 +96,9 @@ export default function AgendaPage() {
 
             // Try to fetch other data with individual error handling
             try {
-                const agendaResponse = await getAll('agenda_items');
+                const agendaResponse = await getAllAgenda();
                 if (agendaResponse?.success && Array.isArray(agendaResponse.data)) {
                     setAgendaItems(agendaResponse.data);
-                } else if (Array.isArray(agendaResponse)) {
-                    setAgendaItems(agendaResponse);
                 } else {
                     setAgendaItems([]);
                 }
@@ -105,11 +108,9 @@ export default function AgendaPage() {
             }
 
             try {
-                const scheduleResponse = await getAll('schedule_items');
+                const scheduleResponse = await getAllScheduleItems();
                 if (scheduleResponse?.success && Array.isArray(scheduleResponse.data)) {
                     setScheduleItems(scheduleResponse.data);
-                } else if (Array.isArray(scheduleResponse)) {
-                    setScheduleItems(scheduleResponse);
                 } else {
                     setScheduleItems([]);
                 }
@@ -119,11 +120,9 @@ export default function AgendaPage() {
             }
 
             try {
-                const tasksResponse = await getAll('tasks');
+                const tasksResponse = await getAllTasks();
                 if (tasksResponse?.success && Array.isArray(tasksResponse.data)) {
                     setTasks(tasksResponse.data);
-                } else if (Array.isArray(tasksResponse)) {
-                    setTasks(tasksResponse);
                 } else {
                     setTasks([]);
                 }
@@ -154,34 +153,91 @@ export default function AgendaPage() {
         return orders.find((order) => order.id === orderId) || {};
     };
 
-    // Create enriched appointments with service and order data
-    const enrichedAppointments = appointments.map((apt) => {
-        const serviceDetails = getServiceDetails(apt.serviceId);
-        const orderDetails = getOrderDetails(apt.orderId);
+    // Create enriched appointments with service and order data + include service orders requiring appointments
+    const enrichedAppointments = [
+        // Regular appointments from appointments collection
+        ...appointments.map((apt) => {
+            const serviceDetails = getServiceDetails(apt.serviceId);
+            const orderDetails = getOrderDetails(apt.orderId);
 
-        return {
-            ...apt,
-            // Service details from catalog
-            serviceType: serviceDetails.serviceType || 'standard',
-            deliveryMethod: serviceDetails.deliveryMethod || 'in-person',
-            maxParticipants: serviceDetails.maxParticipants || 1,
-            serviceIncludes: serviceDetails.serviceIncludes || '',
-            serviceNotes: serviceDetails.serviceNotes || '',
-            prerequisites: serviceDetails.prerequisites || '',
-            // Order details
-            orderStatus: orderDetails.status || 'pending',
-            paymentStatus: orderDetails.paymentStatus || 'pending',
-            paymentMethod: orderDetails.paymentMethod || '',
-            orderTotal: orderDetails.total || apt.price || 0,
-            customerDetails: {
-                ...orderDetails.customer,
-                name:
-                    apt.customerName || `${orderDetails.customer?.firstName} ${orderDetails.customer?.lastName}` || '',
-                email: apt.customerEmail || orderDetails.customer?.email || '',
-                phone: apt.customerPhone || orderDetails.customer?.phone || ''
-            }
-        };
-    });
+            return {
+                ...apt,
+                source: 'appointment',
+                // Service details from catalog
+                serviceType: serviceDetails.serviceType || 'standard',
+                deliveryMethod: serviceDetails.deliveryMethod || 'in-person',
+                maxParticipants: serviceDetails.maxParticipants || 1,
+                serviceIncludes: serviceDetails.serviceIncludes || '',
+                serviceNotes: serviceDetails.serviceNotes || '',
+                prerequisites: serviceDetails.prerequisites || '',
+                // Order details
+                orderStatus: orderDetails.status || 'pending',
+                paymentStatus: orderDetails.paymentStatus || 'pending',
+                paymentMethod: orderDetails.paymentMethod || '',
+                orderTotal: orderDetails.total || apt.price || 0,
+                customerDetails: {
+                    ...orderDetails.customer,
+                    name:
+                        apt.customerName || `${orderDetails.customer?.firstName} ${orderDetails.customer?.lastName}` || '',
+                    email: apt.customerEmail || orderDetails.customer?.email || '',
+                    phone: apt.customerPhone || orderDetails.customer?.phone || ''
+                }
+            };
+        }),
+        // Service orders that require appointments from orders collection
+        ...orders
+            .filter((order) => {
+                // Filter orders that have services requiring appointments
+                return order.items && order.items.some((item) => {
+                    const service = catalog.find((cat) => cat.id === item.productId);
+                    return service && service.requiresAppointment === true;
+                });
+            })
+            .map((order) => {
+                // Create appointment entries for each service item requiring appointment
+                return order.items
+                    .filter((item) => {
+                        const service = catalog.find((cat) => cat.id === item.productId);
+                        return service && service.requiresAppointment === true;
+                    })
+                    .map((item) => {
+                        const service = catalog.find((cat) => cat.id === item.productId);
+                        
+                        return {
+                            id: `order-${order.id}-${item.productId}`,
+                            source: 'order',
+                            title: `Service: ${service?.name || 'Unknown Service'}`,
+                            description: service?.description || '',
+                            date: order.appointmentDate || order.createdAt?.split('T')[0] || new Date().toISOString().split('T')[0],
+                            time: order.appointmentTime || '09:00',
+                            duration: service?.duration || 60,
+                            status: order.appointmentStatus || 'scheduled',
+                            serviceId: service?.id,
+                            orderId: order.id,
+                            price: item.price || service?.price || 0,
+                            // Service details from catalog
+                            serviceType: service?.serviceType || 'standard',
+                            deliveryMethod: service?.deliveryMethod || 'in-person',
+                            maxParticipants: service?.maxParticipants || 1,
+                            serviceIncludes: service?.serviceIncludes || '',
+                            serviceNotes: service?.serviceNotes || '',
+                            prerequisites: service?.prerequisites || '',
+                            // Order details
+                            orderStatus: order.status || 'pending',
+                            paymentStatus: order.paymentStatus || 'pending',
+                            paymentMethod: order.paymentMethod || '',
+                            orderTotal: order.total || 0,
+                            customerDetails: {
+                                ...order.customer,
+                                name: `${order.customer?.firstName || ''} ${order.customer?.lastName || ''}`.trim() || order.customer?.email || 'Unknown Customer',
+                                email: order.customer?.email || '',
+                                phone: order.customer?.phone || ''
+                            }
+                        };
+                    });
+            })
+            .flat() // Flatten the array since we're mapping over items within orders
+    ];
 
     useEffect(() => {
         fetchAllData();
@@ -219,21 +275,74 @@ export default function AgendaPage() {
         setIsOrderDetailsOpen(true);
     };
 
-    const handleUpdateAppointmentStatus = async (appointmentId, newStatus) => {
+    // Create a task related to a service order
+    const handleCreateOrderTask = async (orderId, appointment) => {
         try {
-            const appointmentToUpdate = appointments.find((apt) => apt.id === appointmentId);
-            if (!appointmentToUpdate) return;
+            const service = getServiceDetails(appointment.serviceId);
+            const order = getOrderDetails(orderId);
 
-            const updatedAppointment = {
-                ...appointmentToUpdate,
-                status: newStatus,
-                updatedAt: new Date().toISOString()
+            const taskData = {
+                title: `Service Preparation: ${service.name || 'Service'}`,
+                description: `Prepare for service appointment with ${order.customer?.firstName || 'Customer'} ${order.customer?.lastName || ''}\n\nService: ${service.name || 'Service'}\nDate: ${appointment.date}\nTime: ${appointment.time}\n\nService includes: ${service.serviceIncludes || 'Standard service'}\nPrerequisites: ${service.prerequisites || 'None'}`,
+                status: 'pending',
+                priority: 'high',
+                dueDate: appointment.date,
+                assignedTo: 'Service Team',
+                type: 'service-preparation',
+                orderId: orderId,
+                appointmentId: appointment.id
             };
 
-            const response = await update(appointmentId, updatedAppointment, 'appointments');
-            if (response?.success) {
-                // Also update the corresponding order status
-                if (appointmentToUpdate.orderId) {
+            const result = await createOrderTask(orderId, taskData);
+            if (result.success) {
+                toast.success('Service preparation task created successfully');
+                fetchAllData();
+            } else {
+                toast.error('Failed to create service task');
+            }
+        } catch (error) {
+            console.error('Error creating order task:', error);
+            toast.error('Failed to create service task');
+        }
+    };
+
+    // Create a general task from agenda
+    const handleCreateGeneralTask = async (title, description, dueDate) => {
+        try {
+            const taskData = {
+                title: title || 'New Task',
+                description: description || 'Task created from agenda',
+                status: 'pending',
+                priority: 'medium',
+                dueDate: dueDate || new Date().toISOString().split('T')[0],
+                assignedTo: 'Team',
+                type: 'general'
+            };
+
+            const result = await createTask(taskData);
+            if (result.success) {
+                toast.success('Task created successfully');
+                fetchAllData();
+            } else {
+                toast.error('Failed to create task');
+            }
+        } catch (error) {
+            console.error('Error creating task:', error);
+            toast.error('Failed to create task');
+        }
+    };
+
+    const handleUpdateAppointmentStatus = async (appointmentId, newStatus) => {
+        try {
+            // Check if this is an order-based appointment or regular appointment
+            const isOrderAppointment = appointmentId.startsWith('order-');
+            
+            if (isOrderAppointment) {
+                // For order-based appointments, update the order's appointment status
+                const [, orderId] = appointmentId.split('-');
+                const orderToUpdate = orders.find((order) => order.id === orderId);
+                
+                if (orderToUpdate) {
                     const orderStatus =
                         newStatus === 'completed'
                             ? 'completed'
@@ -241,13 +350,51 @@ export default function AgendaPage() {
                               ? 'cancelled'
                               : 'processing';
 
-                    await update(appointmentToUpdate.orderId, { status: orderStatus }, 'orders');
-                }
+                    const updatedOrderData = {
+                        ...orderToUpdate,
+                        appointmentStatus: newStatus,
+                        status: orderStatus,
+                        updatedAt: new Date().toISOString()
+                    };
 
-                toast.success('Appointment status updated');
-                fetchAllData();
+                    const response = await updateOrder(orderId, updatedOrderData);
+                    if (response?.success) {
+                        toast.success('Service appointment status updated');
+                        fetchAllData();
+                    } else {
+                        toast.error('Failed to update service appointment');
+                    }
+                }
             } else {
-                toast.error('Failed to update appointment');
+                // For regular appointments, update the appointment record
+                const appointmentToUpdate = appointments.find((apt) => apt.id === appointmentId);
+                if (!appointmentToUpdate) return;
+
+                const updatedAppointmentData = {
+                    ...appointmentToUpdate,
+                    status: newStatus,
+                    updatedAt: new Date().toISOString()
+                };
+
+                const response = await updateAppointment(appointmentId, updatedAppointmentData);
+                if (response?.success) {
+                    // Also update the corresponding order status if linked
+                    if (appointmentToUpdate.orderId) {
+                        const orderStatus =
+                            newStatus === 'completed'
+                                ? 'completed'
+                                : newStatus === 'cancelled'
+                                  ? 'cancelled'
+                                  : 'processing';
+
+                        await updateOrder(appointmentToUpdate.orderId, { status: orderStatus });
+                    }
+
+                    toast.success('Appointment status updated');
+                    fetchAllData();
+                } else {
+                    toast.error('Failed to update appointment');
+                }
             }
         } catch (error) {
             console.error('Error updating appointment:', error);
@@ -628,7 +775,22 @@ export default function AgendaPage() {
                 {/* Enhanced Overview with Task Count */}
                 <Card>
                     <CardHeader>
-                        <CardTitle>Today's Overview</CardTitle>
+                        <CardTitle className="flex items-center justify-between">
+                            Today's Overview
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                    const today = new Date().toISOString().split('T')[0];
+                                    handleCreateGeneralTask(
+                                        'New Task',
+                                        'Task created from agenda overview',
+                                        today
+                                    );
+                                }}>
+                                + Add Task
+                            </Button>
+                        </CardTitle>
                         <CardDescription>
                             Synchronized agenda, schedule, and {todaysTasks.length} due tasks
                         </CardDescription>
@@ -832,6 +994,15 @@ export default function AgendaPage() {
                             <div className="flex justify-end space-x-2">
                                 <Button variant="outline" onClick={() => setIsOrderDetailsOpen(false)}>
                                     Close
+                                </Button>
+                                <Button
+                                    variant="outline"
+                                    onClick={() => {
+                                        if (selectedOrder?.appointment && selectedOrder?.id) {
+                                            handleCreateOrderTask(selectedOrder.id, selectedOrder.appointment);
+                                        }
+                                    }}>
+                                    Create Service Task
                                 </Button>
                                 <Button
                                     onClick={() => {

@@ -14,7 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
-import { getAll } from '@/lib/client/query';
+import { getAllAttributes } from '@/lib/server/admin';
 
 const ITEM_TYPES = [
     { value: 'physical', label: 'Physical Product' },
@@ -51,7 +51,16 @@ export function CatalogItemForm({
     uploadingImages = false,
     uploadProgress = 0
 }) {
-    const [customAttributes, setCustomAttributes] = useState(formData.customAttributes || [{ name: '', value: '' }]);
+    const [customAttributes, setCustomAttributes] = useState(() => {
+        // Initialize custom attributes with multi-language support
+        const attrs = formData.customAttributes || [{ name: '', nameML: {}, value: '', valueML: {} }];
+        return attrs.map(attr => ({
+            name: attr.name || '',
+            nameML: attr.nameML || {},
+            value: attr.value || '',
+            valueML: attr.valueML || {}
+        }));
+    });
     const [availableAttributes, setAvailableAttributes] = useState([]);
     const [unlimitedStock, setUnlimitedStock] = useState(formData.stock === -1);
     const [currentLanguage, setCurrentLanguage] = useState(defaultLanguage);
@@ -59,7 +68,7 @@ export function CatalogItemForm({
     useEffect(() => {
         const fetchAttributes = async () => {
             try {
-                const response = await getAll('attributes');
+                const response = await getAllAttributes();
                 if (response.success) {
                     setAvailableAttributes(response.data.filter((attr) => attr.isActive));
                 }
@@ -70,8 +79,28 @@ export function CatalogItemForm({
         fetchAttributes();
     }, []);
 
+    // Sync customAttributes when formData changes (for edit mode)
+    useEffect(() => {
+        if (formData.customAttributes) {
+            setCustomAttributes(formData.customAttributes.map(attr => ({
+                name: attr.name || '',
+                nameML: attr.nameML || {},
+                value: attr.value || '',
+                valueML: attr.valueML || {}
+            })));
+        }
+    }, [formData.customAttributes]);
+
     const addAttribute = () => {
-        setCustomAttributes([...customAttributes, { name: '', value: '' }]);
+        setCustomAttributes([
+            ...customAttributes, 
+            { 
+                name: '', 
+                nameML: {}, 
+                value: '',
+                valueML: {}
+            }
+        ]);
     };
 
     const removeAttribute = (index) => {
@@ -87,6 +116,36 @@ export function CatalogItemForm({
             ...formData,
             customAttributes: newAttributes.filter((attr) => attr.name && attr.value)
         });
+    };
+
+    // Multi-language helper functions for attributes
+    const updateAttributeMultiLanguageField = (attrIndex, fieldName, langCode, value) => {
+        const newAttributes = [...customAttributes];
+        const mlField = `${fieldName}ML`;
+        
+        if (!newAttributes[attrIndex][mlField]) {
+            newAttributes[attrIndex][mlField] = {};
+        }
+        
+        newAttributes[attrIndex][mlField][langCode] = value;
+        
+        // Update the main field with default language value for backwards compatibility
+        if (langCode === defaultLanguage) {
+            newAttributes[attrIndex][fieldName] = value;
+        }
+        
+        setCustomAttributes(newAttributes);
+        setFormData({
+            ...formData,
+            customAttributes: newAttributes.filter((attr) => attr.name && attr.value)
+        });
+    };
+
+    const getAttributeMultiLanguageValue = (attrIndex, fieldName, langCode) => {
+        if (!customAttributes[attrIndex]) return '';
+        const mlField = `${fieldName}ML`;
+        return customAttributes[attrIndex][mlField]?.[langCode] || 
+               (langCode === defaultLanguage ? customAttributes[attrIndex][fieldName] : '') || '';
     };
 
     const handleImageUploadLocal = async (event) => {
@@ -1569,7 +1628,9 @@ export function CatalogItemForm({
                                                         );
                                                         return (
                                                             <div key={attr.id} className="space-y-2">
-                                                                <Label className="text-sm">{attr.name}</Label>
+                                                                <Label className="text-sm">
+                                                                    {attr.nameML?.[defaultLanguage] || attr.name}
+                                                                </Label>
                                                                 {attr.type === 'select' ? (
                                                                     <Select
                                                                         value={existingAttr?.value || ''}
@@ -1696,6 +1757,26 @@ export function CatalogItemForm({
                                         {/* Custom Attributes */}
                                         <div>
                                             <Label className="font-medium text-sm">Custom Attributes</Label>
+                                            
+                                            {/* Language Selector for Attributes */}
+                                            <div className="mt-2 mb-4 flex items-center justify-between">
+                                                <Label className="text-sm text-muted-foreground">Attribute Language</Label>
+                                                <div className="flex gap-1">
+                                                    {availableLanguages.map((lang) => (
+                                                        <Button
+                                                            key={lang}
+                                                            type="button"
+                                                            variant={currentLanguage === lang ? 'default' : 'outline'}
+                                                            size="sm"
+                                                            onClick={() => setCurrentLanguage(lang)}
+                                                            className="h-7 px-2 text-xs">
+                                                            {lang.toUpperCase()}
+                                                            {lang === defaultLanguage && <span className="ml-1">★</span>}
+                                                        </Button>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                            
                                             {customAttributes.filter(
                                                 (attr) => !availableAttributes.some((aa) => aa.name === attr.name)
                                             ).length > 0 && (
@@ -1710,39 +1791,75 @@ export function CatalogItemForm({
                                                             return (
                                                                 <div
                                                                     key={actualIndex}
-                                                                    className="grid grid-cols-1 gap-2 md:grid-cols-2">
-                                                                    <Input
-                                                                        value={attr.name}
-                                                                        onChange={(e) =>
-                                                                            updateAttribute(
-                                                                                actualIndex,
-                                                                                'name',
-                                                                                e.target.value
-                                                                            )
-                                                                        }
-                                                                        placeholder="Attribute name"
-                                                                    />
-                                                                    <div className="flex gap-2">
-                                                                        <Input
-                                                                            value={attr.value}
-                                                                            onChange={(e) =>
-                                                                                updateAttribute(
-                                                                                    actualIndex,
-                                                                                    'value',
-                                                                                    e.target.value
-                                                                                )
-                                                                            }
-                                                                            placeholder="Attribute value"
-                                                                        />
-                                                                        <Button
-                                                                            type="button"
-                                                                            variant="outline"
-                                                                            size="icon"
-                                                                            onClick={() =>
-                                                                                removeAttribute(actualIndex)
-                                                                            }>
-                                                                            <X className="h-4 w-4" />
-                                                                        </Button>
+                                                                    className="space-y-2 rounded-lg border p-3">
+                                                                    <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+                                                                        <div className="space-y-1">
+                                                                            <Label className="text-xs text-muted-foreground">
+                                                                                Attribute name ({currentLanguage.toUpperCase()})
+                                                                            </Label>
+                                                                            <Input
+                                                                                value={getAttributeMultiLanguageValue(
+                                                                                    actualIndex, 
+                                                                                    'name', 
+                                                                                    currentLanguage
+                                                                                )}
+                                                                                onChange={(e) =>
+                                                                                    updateAttributeMultiLanguageField(
+                                                                                        actualIndex,
+                                                                                        'name',
+                                                                                        currentLanguage,
+                                                                                        e.target.value
+                                                                                    )
+                                                                                }
+                                                                                placeholder={`Enter attribute name (${currentLanguage.toUpperCase()})`}
+                                                                                required={currentLanguage === defaultLanguage}
+                                                                            />
+                                                                            {currentLanguage !== defaultLanguage && (
+                                                                                <p className="text-muted-foreground text-xs">
+                                                                                    Translation for {currentLanguage.toUpperCase()}. Leave empty to use default language.
+                                                                                </p>
+                                                                            )}
+                                                                        </div>
+                                                                        <div className="flex gap-2">
+                                                                            <div className="flex-1 space-y-1">
+                                                                                <Label className="text-xs text-muted-foreground">
+                                                                                    Attribute value ({currentLanguage.toUpperCase()})
+                                                                                </Label>
+                                                                                <Input
+                                                                                    value={getAttributeMultiLanguageValue(
+                                                                                        actualIndex, 
+                                                                                        'value', 
+                                                                                        currentLanguage
+                                                                                    )}
+                                                                                    onChange={(e) =>
+                                                                                        updateAttributeMultiLanguageField(
+                                                                                            actualIndex,
+                                                                                            'value',
+                                                                                            currentLanguage,
+                                                                                            e.target.value
+                                                                                        )
+                                                                                    }
+                                                                                    placeholder={`Enter attribute value (${currentLanguage.toUpperCase()})`}
+                                                                                    required={currentLanguage === defaultLanguage}
+                                                                                />
+                                                                                {currentLanguage !== defaultLanguage && (
+                                                                                    <p className="text-muted-foreground text-xs">
+                                                                                        Translation for {currentLanguage.toUpperCase()}. Leave empty to use default language.
+                                                                                    </p>
+                                                                                )}
+                                                                            </div>
+                                                                            <div className="flex items-end">
+                                                                                <Button
+                                                                                    type="button"
+                                                                                    variant="outline"
+                                                                                    size="icon"
+                                                                                    onClick={() =>
+                                                                                        removeAttribute(actualIndex)
+                                                                                    }>
+                                                                                    <X className="h-4 w-4" />
+                                                                                </Button>
+                                                                            </div>
+                                                                        </div>
                                                                     </div>
                                                                 </div>
                                                             );
@@ -1754,6 +1871,7 @@ export function CatalogItemForm({
                                                 variant="outline"
                                                 onClick={addAttribute}
                                                 className="mt-2">
+                                                <Plus className="mr-2 h-4 w-4" />
                                                 Add Custom Attribute
                                             </Button>
                                         </div>
@@ -1782,7 +1900,7 @@ export function CatalogItemForm({
                                                 onClick={() => setCurrentLanguage(lang)}
                                                 className="h-8 px-3 text-sm">
                                                 {lang.toUpperCase()}
-                                                {lang === defaultLanguage && <span className="ml-1">\u2605</span>}
+                                                {lang === defaultLanguage && <span className="ml-1">★</span>}
                                             </Button>
                                         ))}
                                     </div>

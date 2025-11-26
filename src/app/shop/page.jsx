@@ -5,7 +5,7 @@
 import { motion } from 'framer-motion';
 import Image from 'next/image';
 import Link from 'next/link';
-import { useTranslations } from 'next-intl';
+import { useTranslations, useLocale } from 'next-intl';
 import { useCallback, useEffect, useState } from 'react';
 import { useCart } from 'react-use-cart';
 import { toast } from 'sonner';
@@ -18,6 +18,7 @@ import { getAllCatalog, getAllCategories, getAllCollections, getCachedStoreSetti
 
 function Shop() {
     const t = useTranslations('Shop');
+    const locale = useLocale();
     const { addItem, cartTotal, totalItems } = useCart();
 
     // State management
@@ -60,6 +61,23 @@ function Shop() {
             amount: vatAmount,
             included: storeSettings.vatIncludedInPrice
         };
+    };
+
+    // Helper function to get localized attribute value
+    const getLocalizedAttributeValue = (attribute, locale) => {
+        if (!attribute) return '';
+        
+        // For name - check nameML first, fallback to name
+        if (attribute.nameML) {
+            return attribute.nameML[locale] || attribute.nameML['en'] || attribute.name || '';
+        }
+        
+        // For value - check valueML first, fallback to value
+        if (attribute.valueML) {
+            return attribute.valueML[locale] || attribute.valueML['en'] || attribute.value || '';
+        }
+        
+        return attribute.name || attribute.value || '';
     };
 
     // Fetch all data on component mount
@@ -301,8 +319,8 @@ function Shop() {
                                     </SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value="all">All Categories</SelectItem>
-                                        {categories.map((category) => (
-                                            <SelectItem key={category.id} value={category.id}>
+                                        {categories.map((category, index) => (
+                                            <SelectItem key={index} value={category.id}>
                                                 {category.name}
                                             </SelectItem>
                                         ))}
@@ -321,8 +339,8 @@ function Shop() {
                                     </SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value="all">All Collections</SelectItem>
-                                        {collections.map((collection) => (
-                                            <SelectItem key={collection.id} value={collection.id}>
+                                        {collections.map((collection, index) => (
+                                            <SelectItem key={index} value={collection.id}>
                                                 {collection.name}
                                             </SelectItem>
                                         ))}
@@ -350,7 +368,10 @@ function Shop() {
                             )}
                             {categoryFilter !== 'all' && (
                                 <Badge key="category-filter" variant="secondary" className="gap-1">
-                                    Category: {categories.find((c) => c.id === categoryFilter)?.name}
+                                    Category: {(() => {
+                                        const category = categories.find((c) => c.id === categoryFilter);
+                                        return category?.nameML?.[locale] || category?.nameML?.['en'] || category?.name || '';
+                                    })()}
                                     <Button
                                         variant="ghost"
                                         size="sm"
@@ -362,7 +383,10 @@ function Shop() {
                             )}
                             {collectionFilter !== 'all' && (
                                 <Badge key="collection-filter" variant="secondary" className="gap-1">
-                                    Collection: {collections.find((c) => c.id === collectionFilter)?.name}
+                                    Collection: {(() => {
+                                        const collection = collections.find((c) => c.id === collectionFilter);
+                                        return collection?.nameML?.[locale] || collection?.nameML?.['en'] || collection?.name || '';
+                                    })()}
                                     <Button
                                         variant="ghost"
                                         size="sm"
@@ -392,7 +416,7 @@ function Shop() {
                 <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
                     {filteredItems.map((item, index) => (
                         <motion.div
-                            key={item.id}
+                            key={index}
                             initial={{ opacity: 0, y: 20 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ duration: 0.3, delay: index * 0.1 }}
@@ -451,15 +475,46 @@ function Shop() {
                                     <h2 className="mb-2 font-semibold text-lg">{item.name}</h2>
                                     <p className="mb-3 flex-grow text-muted-foreground text-sm">{item.description}</p>
 
-                                    {/* Category and Stock info */}
+                                    {/* Category, Stock info, and Attributes */}
                                     <div className="mb-2 space-y-1 text-muted-foreground text-xs">
                                         {item.categoryId && categories.find((c) => c.id === item.categoryId) && (
-                                            <p>Category: {categories.find((c) => c.id === item.categoryId)?.name}</p>
+                                            <p>Category: {(() => {
+                                                const category = categories.find((c) => c.id === item.categoryId);
+                                                return category?.nameML?.[locale] || category?.nameML?.['en'] || category?.name || '';
+                                            })()}</p>
                                         )}
                                         {item.type === 'physical' && (
                                             <p>Stock: {item.stock === -1 ? 'Unlimited' : `${item.stock} available`}</p>
                                         )}
                                         {item.sku && <p>SKU: {item.sku}</p>}
+                                        
+                                        {/* Custom Attributes */}
+                                        {item.customAttributes && item.customAttributes.length > 0 && (
+                                            <div className="pt-1 space-y-1">
+                                                {item.customAttributes
+                                                    .filter((attr) => attr.name && attr.value) // Only show attributes with both name and value
+                                                    .slice(0, 3) // Limit to 3 attributes to avoid cluttering
+                                                    .map((attribute, attrIndex) => (
+                                                        <p key={`${item.id}-attr-${attrIndex}`} className="text-xs">
+                                                            <span className="font-medium">
+                                                                {getLocalizedAttributeValue({ 
+                                                                    nameML: attribute.nameML, 
+                                                                    name: attribute.name 
+                                                                }, locale)}:
+                                                            </span>
+                                                            <span className="ml-1">
+                                                                {getLocalizedAttributeValue({ 
+                                                                    valueML: attribute.valueML, 
+                                                                    value: attribute.value 
+                                                                }, locale)}
+                                                            </span>
+                                                        </p>
+                                                    ))}
+                                                {item.customAttributes.filter((attr) => attr.name && attr.value).length > 3 && (
+                                                    <p className="text-xs italic">+{item.customAttributes.filter((attr) => attr.name && attr.value).length - 3} more attributes</p>
+                                                )}
+                                            </div>
+                                        )}
                                     </div>
 
                                     <div className="flex items-center justify-between pt-2">

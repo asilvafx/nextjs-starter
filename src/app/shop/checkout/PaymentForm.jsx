@@ -8,7 +8,7 @@ import { useTranslations } from 'next-intl';
 import { useEffect, useState } from 'react';
 import Turnstile from 'react-turnstile';
 import { useCart } from 'react-use-cart';
-import { createOrder, createCustomer } from '@/lib/server/admin';
+import { createOrder, createOrUpdateCustomerFromOrder } from '@/lib/server/admin';
 import GooglePlacesInput from '@/components/google-places-input';
 import { Button } from '@/components/ui/button';
 import { CountryDropdown } from '@/components/ui/country-dropdown';
@@ -533,28 +533,13 @@ const PaymentForm = ({
             } else {
                 // Handle alternative payment methods (bank transfer, pay on delivery)
                 
-                // First create customer if needed
+                // First create/update customer if needed
                 try {
-                    const customerData = {
-                        firstName: orderData.customer.firstName,
-                        lastName: orderData.customer.lastName,
-                        email: orderData.customer.email,
-                        phone: orderData.customer.phone,
-                        streetAddress: orderData.customer.streetAddress,
-                        apartmentUnit: orderData.customer.apartmentUnit,
-                        city: orderData.customer.city,
-                        state: orderData.customer.state,
-                        zipCode: orderData.customer.zipCode,
-                        country: orderData.customer.country,
-                        countryIso: orderData.customer.countryIso,
-                        createdAt: new Date().toISOString(),
-                        updatedAt: new Date().toISOString()
-                    };
-                    
-                    await createCustomer(customerData);
+                    const customerResult = await createOrUpdateCustomerFromOrder(orderData.customer);
+                    console.log('Customer operation result:', customerResult);
                 } catch (customerError) {
-                    console.warn('Customer creation failed:', customerError);
-                    // Continue with order creation even if customer creation fails
+                    console.warn('Customer creation/update failed:', customerError);
+                    // Continue with order creation even if customer operation fails
                 }
                 
                 const result = await createOrder(orderData);

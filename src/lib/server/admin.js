@@ -91,17 +91,76 @@ export async function getDashboardStats() {
 
 /**
  * Get all orders
- * Server-side function to fetch all orders
- * @returns {Promise<Object>} Orders data
+ * Server-side function to fetch all orders with pagination support
+ * @param {Object} params - Query parameters (page, limit, search, statusFilter, etc.)
+ * @returns {Promise<Object>} Orders data with pagination info
  */
-export async function getAllOrders() {
+export async function getAllOrders(params = {}) {
     try {
-        const orders = await DBService.readAll('orders');
-        const ordersArray = Array.isArray(orders) ? orders : Object.values(orders || {});
+        const { page = 1, limit = 10, search = '', statusFilter = 'all' } = params;
+        
+        const allOrders = await DBService.readAll('orders');
+        
+        if (!allOrders || Object.keys(allOrders).length === 0) {
+            return {
+                success: true,
+                data: [],
+                pagination: {
+                    totalItems: 0,
+                    currentPage: 1,
+                    totalPages: 0,
+                    hasNext: false,
+                    hasPrev: false
+                }
+            };
+        }
+
+        // Convert object to array
+        let ordersArray = Array.isArray(allOrders) ? allOrders : Object.entries(allOrders).map(([key, value]) => ({
+            id: key,
+            ...value
+        }));
+
+        // Apply search filter
+        if (search) {
+            const searchLower = search.toLowerCase();
+            ordersArray = ordersArray.filter(order => 
+                (order.customer?.email && order.customer.email.toLowerCase().includes(searchLower)) ||
+                (order.customer?.firstName && order.customer.firstName.toLowerCase().includes(searchLower)) ||
+                (order.customer?.lastName && order.customer.lastName.toLowerCase().includes(searchLower)) ||
+                (order.id && order.id.toLowerCase().includes(searchLower))
+            );
+        }
+
+        // Apply status filter
+        if (statusFilter !== 'all') {
+            ordersArray = ordersArray.filter(order => order.status === statusFilter);
+        }
+
+        // Sort by creation date (newest first)
+        ordersArray.sort((a, b) => {
+            const aDate = new Date(a.createdAt || a.id);
+            const bDate = new Date(b.createdAt || b.id);
+            return bDate - aDate;
+        });
+
+        // Calculate pagination
+        const totalItems = ordersArray.length;
+        const totalPages = Math.ceil(totalItems / limit);
+        const startIndex = (page - 1) * limit;
+        const endIndex = startIndex + limit;
+        const paginatedOrders = ordersArray.slice(startIndex, endIndex);
 
         return {
             success: true,
-            data: ordersArray
+            data: paginatedOrders,
+            pagination: {
+                totalItems,
+                currentPage: page,
+                totalPages,
+                hasNext: page < totalPages,
+                hasPrev: page > 1
+            }
         };
     } catch (error) {
         console.error('Error fetching orders:', error);
@@ -109,24 +168,85 @@ export async function getAllOrders() {
             success: false,
             error: 'Failed to fetch orders',
             message: error.message,
-            data: []
+            data: [],
+            pagination: {
+                totalItems: 0,
+                currentPage: 1,
+                totalPages: 0,
+                hasNext: false,
+                hasPrev: false
+            }
         };
     }
 }
 
 /**
  * Get all customers
- * Server-side function to fetch all customers
- * @returns {Promise<Object>} Customers data
+ * Server-side function to fetch all customers with pagination support
+ * @param {Object} params - Query parameters (page, limit, search, etc.)
+ * @returns {Promise<Object>} Customers data with pagination info
  */
-export async function getAllCustomers() {
+export async function getAllCustomers(params = {}) {
     try {
-        const customers = await DBService.readAll('customers');
-        const customersArray = Array.isArray(customers) ? customers : Object.values(customers || {});
+        const { page = 1, limit = 10, search = '' } = params;
+        
+        const allCustomers = await DBService.readAll('customers');
+        
+        if (!allCustomers || Object.keys(allCustomers).length === 0) {
+            return {
+                success: true,
+                data: [],
+                pagination: {
+                    totalItems: 0,
+                    currentPage: 1,
+                    totalPages: 0,
+                    hasNext: false,
+                    hasPrev: false
+                }
+            };
+        }
+
+        // Convert object to array
+        let customersArray = Array.isArray(allCustomers) ? allCustomers : Object.entries(allCustomers).map(([key, value]) => ({
+            id: key,
+            ...value
+        }));
+
+        // Apply search filter
+        if (search) {
+            const searchLower = search.toLowerCase();
+            customersArray = customersArray.filter(customer => 
+                (customer.firstName && customer.firstName.toLowerCase().includes(searchLower)) ||
+                (customer.lastName && customer.lastName.toLowerCase().includes(searchLower)) ||
+                (customer.email && customer.email.toLowerCase().includes(searchLower)) ||
+                (customer.phone && customer.phone.toLowerCase().includes(searchLower))
+            );
+        }
+
+        // Sort by creation date (newest first)
+        customersArray.sort((a, b) => {
+            const aDate = new Date(a.createdAt || a.id);
+            const bDate = new Date(b.createdAt || b.id);
+            return bDate - aDate;
+        });
+
+        // Calculate pagination
+        const totalItems = customersArray.length;
+        const totalPages = Math.ceil(totalItems / limit);
+        const startIndex = (page - 1) * limit;
+        const endIndex = startIndex + limit;
+        const paginatedCustomers = customersArray.slice(startIndex, endIndex);
 
         return {
             success: true,
-            data: customersArray
+            data: paginatedCustomers,
+            pagination: {
+                totalItems,
+                currentPage: page,
+                totalPages,
+                hasNext: page < totalPages,
+                hasPrev: page > 1
+            }
         };
     } catch (error) {
         console.error('Error fetching customers:', error);
@@ -134,24 +254,89 @@ export async function getAllCustomers() {
             success: false,
             error: 'Failed to fetch customers',
             message: error.message,
-            data: []
+            data: [],
+            pagination: {
+                totalItems: 0,
+                currentPage: 1,
+                totalPages: 0,
+                hasNext: false,
+                hasPrev: false
+            }
         };
     }
 }
 
 /**
  * Get all catalog items
- * Server-side function to fetch all catalog products
- * @returns {Promise<Object>} Catalog data
+ * Server-side function to fetch all catalog products with pagination support
+ * @param {Object} params - Query parameters (page, limit, search, categoryId, etc.)
+ * @returns {Promise<Object>} Catalog data with pagination info
  */
-export async function getAllCatalog() {
+export async function getAllCatalog(params = {}) {
     try {
-        const catalog = await DBService.readAll('catalog');
-        const catalogArray = Array.isArray(catalog) ? catalog : Object.values(catalog || {});
+        const { page = 1, limit = 10, search = '', categoryId = '' } = params;
+        
+        const allCatalog = await DBService.readAll('catalog');
+        
+        if (!allCatalog || Object.keys(allCatalog).length === 0) {
+            return {
+                success: true,
+                data: [],
+                pagination: {
+                    totalItems: 0,
+                    currentPage: 1,
+                    totalPages: 0,
+                    hasNext: false,
+                    hasPrev: false
+                }
+            };
+        }
+
+        // Convert object to array
+        let catalogArray = Array.isArray(allCatalog) ? allCatalog : Object.entries(allCatalog).map(([key, value]) => ({
+            id: key,
+            ...value
+        }));
+
+        // Apply search filter
+        if (search) {
+            const searchLower = search.toLowerCase();
+            catalogArray = catalogArray.filter(item => 
+                (item.name && item.name.toLowerCase().includes(searchLower)) ||
+                (item.description && item.description.toLowerCase().includes(searchLower)) ||
+                (item.sku && item.sku.toLowerCase().includes(searchLower))
+            );
+        }
+
+        // Apply category filter
+        if (categoryId) {
+            catalogArray = catalogArray.filter(item => item.categoryId === categoryId);
+        }
+
+        // Sort by creation date (newest first)
+        catalogArray.sort((a, b) => {
+            const aDate = new Date(a.createdAt || a.id);
+            const bDate = new Date(b.createdAt || b.id);
+            return bDate - aDate;
+        });
+
+        // Calculate pagination
+        const totalItems = catalogArray.length;
+        const totalPages = Math.ceil(totalItems / limit);
+        const startIndex = (page - 1) * limit;
+        const endIndex = startIndex + limit;
+        const paginatedCatalog = catalogArray.slice(startIndex, endIndex);
 
         return {
             success: true,
-            data: catalogArray
+            data: paginatedCatalog,
+            pagination: {
+                totalItems,
+                currentPage: page,
+                totalPages,
+                hasNext: page < totalPages,
+                hasPrev: page > 1
+            }
         };
     } catch (error) {
         console.error('Error fetching catalog:', error);
@@ -159,24 +344,83 @@ export async function getAllCatalog() {
             success: false,
             error: 'Failed to fetch catalog',
             message: error.message,
-            data: []
+            data: [],
+            pagination: {
+                totalItems: 0,
+                currentPage: 1,
+                totalPages: 0,
+                hasNext: false,
+                hasPrev: false
+            }
         };
     }
 }
 
 /**
  * Get all categories
- * Server-side function to fetch all categories
- * @returns {Promise<Object>} Categories data
+ * Server-side function to fetch all categories with pagination support
+ * @param {Object} params - Query parameters (page, limit, search, etc.)
+ * @returns {Promise<Object>} Categories data with pagination info
  */
-export async function getAllCategories() {
+export async function getAllCategories(params = {}) {
     try {
-        const categories = await DBService.readAll('categories');
-        const categoriesArray = Array.isArray(categories) ? categories : Object.values(categories || {});
+        const { page = 1, limit = 10, search = '' } = params;
+        
+        const allCategories = await DBService.readAll('categories');
+        
+        if (!allCategories || Object.keys(allCategories).length === 0) {
+            return {
+                success: true,
+                data: [],
+                pagination: {
+                    totalItems: 0,
+                    currentPage: 1,
+                    totalPages: 0,
+                    hasNext: false,
+                    hasPrev: false
+                }
+            };
+        }
+
+        // Convert object to array
+        let categoriesArray = Array.isArray(allCategories) ? allCategories : Object.entries(allCategories).map(([key, value]) => ({
+            id: key,
+            ...value
+        }));
+
+        // Apply search filter
+        if (search) {
+            const searchLower = search.toLowerCase();
+            categoriesArray = categoriesArray.filter(category => 
+                (category.name && category.name.toLowerCase().includes(searchLower)) ||
+                (category.description && category.description.toLowerCase().includes(searchLower))
+            );
+        }
+
+        // Sort by creation date (newest first)
+        categoriesArray.sort((a, b) => {
+            const aDate = new Date(a.createdAt || a.id);
+            const bDate = new Date(b.createdAt || b.id);
+            return bDate - aDate;
+        });
+
+        // Calculate pagination
+        const totalItems = categoriesArray.length;
+        const totalPages = Math.ceil(totalItems / limit);
+        const startIndex = (page - 1) * limit;
+        const endIndex = startIndex + limit;
+        const paginatedCategories = categoriesArray.slice(startIndex, endIndex);
 
         return {
             success: true,
-            data: categoriesArray
+            data: paginatedCategories,
+            pagination: {
+                totalItems,
+                currentPage: page,
+                totalPages,
+                hasNext: page < totalPages,
+                hasPrev: page > 1
+            }
         };
     } catch (error) {
         console.error('Error fetching categories:', error);
@@ -184,7 +428,14 @@ export async function getAllCategories() {
             success: false,
             error: 'Failed to fetch categories',
             message: error.message,
-            data: []
+            data: [],
+            pagination: {
+                totalItems: 0,
+                currentPage: 1,
+                totalPages: 0,
+                hasNext: false,
+                hasPrev: false
+            }
         };
     }
 }
@@ -192,16 +443,66 @@ export async function getAllCategories() {
 /**
  * Get all collections
  * Server-side function to fetch all collections
- * @returns {Promise<Object>} Collections data
+ * @param {Object} params - Query parameters
+ * @param {number} params.page - Page number (default: 1)
+ * @param {number} params.limit - Items per page (default: 50)
+ * @param {string} params.search - Search query
+ * @returns {Promise<Object>} Collections data with pagination
  */
-export async function getAllCollections() {
+export async function getAllCollections(params = {}) {
     try {
-        const collections = await DBService.readAll('collections');
+        const { page = 1, limit = 50, search = '' } = params;
+        
+        let collections = await DBService.readAll('collections');
         const collectionsArray = Array.isArray(collections) ? collections : Object.values(collections || {});
+
+        // Apply search filter
+        let filteredCollections = collectionsArray;
+        if (search && search.trim()) {
+            const searchLower = search.toLowerCase().trim();
+            filteredCollections = collectionsArray.filter(collection => {
+                // Search in name, slug, and description
+                const nameMatch = collection.name?.toLowerCase().includes(searchLower) || false;
+                const slugMatch = collection.slug?.toLowerCase().includes(searchLower) || false;
+                const descMatch = collection.description?.toLowerCase().includes(searchLower) || false;
+                
+                // Search in multi-language fields
+                const nameMLMatch = collection.nameML ? Object.values(collection.nameML).some(name => 
+                    name?.toLowerCase().includes(searchLower)
+                ) : false;
+                const descMLMatch = collection.descriptionML ? Object.values(collection.descriptionML).some(desc => 
+                    desc?.toLowerCase().includes(searchLower)
+                ) : false;
+                
+                return nameMatch || slugMatch || descMatch || nameMLMatch || descMLMatch;
+            });
+        }
+
+        // Sort by creation date (newest first)
+        filteredCollections.sort((a, b) => {
+            const dateA = new Date(a.createdAt || 0);
+            const dateB = new Date(b.createdAt || 0);
+            return dateB - dateA;
+        });
+
+        // Calculate pagination
+        const totalItems = filteredCollections.length;
+        const totalPages = Math.ceil(totalItems / limit);
+        const startIndex = (page - 1) * limit;
+        const endIndex = startIndex + limit;
+        const paginatedCollections = filteredCollections.slice(startIndex, endIndex);
 
         return {
             success: true,
-            data: collectionsArray
+            data: paginatedCollections,
+            pagination: {
+                currentPage: page,
+                totalPages,
+                totalItems,
+                itemsPerPage: limit,
+                hasNextPage: page < totalPages,
+                hasPrevPage: page > 1
+            }
         };
     } catch (error) {
         console.error('Error fetching collections:', error);
@@ -209,7 +510,15 @@ export async function getAllCollections() {
             success: false,
             error: 'Failed to fetch collections',
             message: error.message,
-            data: []
+            data: [],
+            pagination: {
+                currentPage: 1,
+                totalPages: 0,
+                totalItems: 0,
+                itemsPerPage: limit || 50,
+                hasNextPage: false,
+                hasPrevPage: false
+            }
         };
     }
 }
@@ -703,6 +1012,137 @@ export async function updateCustomer(customerId, customerData) {
     }
 }
 
+/**
+ * Delete a customer utility function
+ * @param {string} customerId - ID of the customer to delete
+ * @returns {Promise<Object>} Delete result
+ */
+export async function deleteCustomer(customerId) {
+    try {
+        // First, find the customer key using getItemKey function
+        const customerKey = await DBService.getItemKey('id', customerId, 'customers');
+        if (!customerKey) {
+            return {
+                success: false,
+                error: 'Customer not found',
+                message: `Customer with id '${customerId}' does not exist`
+            };
+        }
+
+        console.log('Deleting customer with key:', customerKey);
+        const result = await DBService.delete(customerKey, 'customers');
+        console.log('Customer delete result:', result);
+
+        return {
+            success: true,
+            data: result
+        };
+    } catch (error) {
+        console.error('Error deleting customer:', error);
+        return {
+            success: false,
+            error: 'Failed to delete customer',
+            message: error.message
+        };
+    }
+}
+
+/**
+ * Create or update customer from order data
+ * Checks if customer exists by email, creates new if not, updates if data is different
+ * @param {Object} orderCustomerData - Customer data from order
+ * @returns {Promise<Object>} Operation result
+ */
+export async function createOrUpdateCustomerFromOrder(orderCustomerData) {
+    try {
+        if (!orderCustomerData || !orderCustomerData.email) {
+            return {
+                success: false,
+                error: 'Missing customer email',
+                message: 'Customer email is required'
+            };
+        }
+
+        // Check if customer exists by email
+        const existingCustomer = await DBService.getItemByKey('email', orderCustomerData.email, 'customers');
+        
+        // Prepare customer data in the format expected by customers table
+        const customerData = {
+            firstName: orderCustomerData.firstName || '',
+            lastName: orderCustomerData.lastName || '',
+            email: orderCustomerData.email,
+            phone: orderCustomerData.phone || '',
+            streetAddress: orderCustomerData.streetAddress || '',
+            apartmentUnit: orderCustomerData.apartmentUnit || '',
+            city: orderCustomerData.city || '',
+            state: orderCustomerData.state || '',
+            zipCode: orderCustomerData.zipCode || '',
+            country: orderCustomerData.country || '',
+            countryIso: orderCustomerData.countryIso || ''
+        };
+
+        if (existingCustomer) {
+            // Customer exists, check if we need to update any information
+            let needsUpdate = false;
+            const fieldsToCheck = ['firstName', 'lastName', 'phone', 'streetAddress', 'apartmentUnit', 'city', 'state', 'zipCode', 'country', 'countryIso'];
+            
+            for (const field of fieldsToCheck) {
+                // Update if new data exists and is different from existing data
+                if (customerData[field] && customerData[field] !== (existingCustomer[field] || '')) {
+                    needsUpdate = true;
+                    break;
+                }
+            }
+
+            if (needsUpdate) {
+                // Update existing customer with new information
+                const updateResult = await updateCustomer(existingCustomer.id, {
+                    ...existingCustomer,
+                    ...customerData,
+                    updatedAt: new Date().toISOString()
+                });
+                
+                return {
+                    success: true,
+                    action: 'updated',
+                    data: updateResult.data,
+                    message: 'Customer information updated'
+                };
+            } else {
+                // No update needed
+                return {
+                    success: true,
+                    action: 'no_change',
+                    data: existingCustomer,
+                    message: 'Customer already exists with same information'
+                };
+            }
+        } else {
+            // Customer doesn't exist, create new one
+            const createResult = await createCustomer({
+                ...customerData,
+                id: Date.now().toString(),
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString()
+            });
+            
+            return {
+                success: true,
+                action: 'created',
+                data: createResult.data,
+                message: 'New customer created'
+            };
+        }
+    } catch (error) {
+        console.error('Error in createOrUpdateCustomerFromOrder:', error);
+        return {
+            success: false,
+            error: 'Failed to create/update customer',
+            message: error.message
+        };
+    }
+}
+
 // ORDER MANAGEMENT UTILITY FUNCTIONS (NOT SERVER ACTIONS)
 // These functions can be imported directly into client components
 
@@ -990,6 +1430,1774 @@ export async function getAllSettings() {
                 site: {},
                 store: {}
             }
+        };
+    }
+}
+
+// APPOINTMENT MANAGEMENT UTILITY FUNCTIONS (NOT SERVER ACTIONS)
+// These functions can be imported directly into client components
+
+/**
+ * Get all appointments utility function
+ * @returns {Promise<Object>} Appointments data
+ */
+export async function getAllAppointments() {
+    try {
+        const appointments = await DBService.readAll('appointments');
+        const appointmentsArray = Array.isArray(appointments) ? appointments : Object.values(appointments || {});
+
+        return {
+            success: true,
+            data: appointmentsArray
+        };
+    } catch (error) {
+        console.error('Error fetching appointments:', error);
+        return {
+            success: false,
+            error: 'Failed to fetch appointments',
+            message: error.message,
+            data: []
+        };
+    }
+}
+
+/**
+ * Create a new appointment utility function
+ * @param {Object} appointmentData - Appointment data to create
+ * @returns {Promise<Object>} Created appointment data
+ */
+export async function createAppointment(appointmentData) {
+    try {
+        const newAppointment = {
+            ...appointmentData,
+            id: appointmentData.id || `appointment-${Date.now()}`,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+        };
+
+        await DBService.create(newAppointment, 'appointments');
+        return {
+            success: true,
+            data: newAppointment
+        };
+    } catch (error) {
+        console.error('Error creating appointment:', error);
+        return {
+            success: false,
+            error: 'Failed to create appointment',
+            message: error.message
+        };
+    }
+}
+
+/**
+ * Update an appointment utility function
+ * @param {string} appointmentId - ID of the appointment to update
+ * @param {Object} appointmentData - Appointment data to update
+ * @returns {Promise<Object>} Updated appointment data
+ */
+export async function updateAppointment(appointmentId, appointmentData) {
+    try {
+        const updatedData = {
+            ...appointmentData,
+            updatedAt: new Date().toISOString()
+        };
+
+        // Check if appointment exists
+        const existingAppointment = await DBService.getItemByKey('id', appointmentId, 'appointments');
+        if (!existingAppointment) {
+            return {
+                success: false,
+                error: 'Appointment not found'
+            };
+        }
+
+        await DBService.update(appointmentId, updatedData, 'appointments');
+        
+        return {
+            success: true,
+            data: { ...existingAppointment, ...updatedData }
+        };
+    } catch (error) {
+        console.error('Error updating appointment:', error);
+        return {
+            success: false,
+            error: 'Failed to update appointment',
+            message: error.message
+        };
+    }
+}
+
+/**
+ * Delete an appointment utility function
+ * @param {string} appointmentId - ID of the appointment to delete
+ * @returns {Promise<Object>} Delete result
+ */
+export async function deleteAppointment(appointmentId) {
+    try {
+        await DBService.delete(appointmentId, 'appointments');
+        
+        return {
+            success: true,
+            message: 'Appointment deleted successfully'
+        };
+    } catch (error) {
+        console.error('Error deleting appointment:', error);
+        return {
+            success: false,
+            error: 'Failed to delete appointment',
+            message: error.message
+        };
+    }
+}
+
+// CATALOG MANAGEMENT UTILITY FUNCTIONS (NOT SERVER ACTIONS)
+// These functions can be imported directly into client components
+
+/**
+ * Create a new catalog item utility function
+ * @param {Object} catalogData - Catalog item data to create
+ * @returns {Promise<Object>} Created catalog item data
+ */
+export async function createCatalogItem(catalogData) {
+    try {
+        const newCatalogItem = {
+            ...catalogData,
+            id: catalogData.id || `catalog-${Date.now()}`,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+        };
+
+        await DBService.create(newCatalogItem, 'catalog');
+        return {
+            success: true,
+            data: newCatalogItem
+        };
+    } catch (error) {
+        console.error('Error creating catalog item:', error);
+        return {
+            success: false,
+            error: 'Failed to create catalog item',
+            message: error.message
+        };
+    }
+}
+
+/**
+ * Update a catalog item utility function
+ * @param {string} catalogId - ID of the catalog item to update
+ * @param {Object} catalogData - Catalog item data to update
+ * @returns {Promise<Object>} Updated catalog item data
+ */
+export async function updateCatalogItem(catalogId, catalogData) {
+    try {
+        const updatedData = {
+            ...catalogData,
+            updatedAt: new Date().toISOString()
+        };
+
+        // Check if catalog item exists
+        const existingItem = await DBService.getItemByKey('id', catalogId, 'catalog');
+        if (!existingItem) {
+            return {
+                success: false,
+                error: 'Catalog item not found'
+            };
+        }
+
+        await DBService.update(catalogId, updatedData, 'catalog');
+        
+        return {
+            success: true,
+            data: { ...existingItem, ...updatedData }
+        };
+    } catch (error) {
+        console.error('Error updating catalog item:', error);
+        return {
+            success: false,
+            error: 'Failed to update catalog item',
+            message: error.message
+        };
+    }
+}
+
+/**
+ * Delete a catalog item utility function
+ * @param {string} catalogId - ID of the catalog item to delete
+ * @returns {Promise<Object>} Delete result
+ */
+export async function deleteCatalogItem(catalogId) {
+    try {
+        await DBService.delete(catalogId, 'catalog');
+        
+        return {
+            success: true,
+            message: 'Catalog item deleted successfully'
+        };
+    } catch (error) {
+        console.error('Error deleting catalog item:', error);
+        return {
+            success: false,
+            error: 'Failed to delete catalog item',
+            message: error.message
+        };
+    }
+}
+
+// ATTRIBUTES MANAGEMENT UTILITY FUNCTIONS (NOT SERVER ACTIONS)
+// These functions can be imported directly into client components
+
+/**
+ * Get all attributes utility function with pagination support
+ * @param {Object} params - Query parameters (page, limit, search, etc.)
+ * @returns {Promise<Object>} Attributes data with pagination info
+ */
+export async function getAllAttributes(params = {}) {
+    try {
+        const { page = 1, limit = 10, search = '' } = params;
+        
+        const allAttributes = await DBService.readAll('attributes');
+        
+        if (!allAttributes || Object.keys(allAttributes).length === 0) {
+            return {
+                success: true,
+                data: [],
+                pagination: {
+                    totalItems: 0,
+                    currentPage: 1,
+                    totalPages: 0,
+                    hasNext: false,
+                    hasPrev: false
+                }
+            };
+        }
+
+        // Convert object to array
+        let attributesArray = Array.isArray(allAttributes) ? allAttributes : Object.entries(allAttributes).map(([key, value]) => ({
+            id: key,
+            ...value
+        }));
+
+        // Apply search filter
+        if (search) {
+            const searchLower = search.toLowerCase();
+            attributesArray = attributesArray.filter(attribute => 
+                (attribute.name && attribute.name.toLowerCase().includes(searchLower)) ||
+                (attribute.description && attribute.description.toLowerCase().includes(searchLower)) ||
+                (attribute.type && attribute.type.toLowerCase().includes(searchLower))
+            );
+        }
+
+        // Sort by creation date (newest first)
+        attributesArray.sort((a, b) => {
+            const aDate = new Date(a.createdAt || a.id);
+            const bDate = new Date(b.createdAt || b.id);
+            return bDate - aDate;
+        });
+
+        // Calculate pagination
+        const totalItems = attributesArray.length;
+        const totalPages = Math.ceil(totalItems / limit);
+        const startIndex = (page - 1) * limit;
+        const endIndex = startIndex + limit;
+        const paginatedAttributes = attributesArray.slice(startIndex, endIndex);
+
+        return {
+            success: true,
+            data: paginatedAttributes,
+            pagination: {
+                totalItems,
+                currentPage: page,
+                totalPages,
+                hasNext: page < totalPages,
+                hasPrev: page > 1
+            }
+        };
+    } catch (error) {
+        console.error('Error fetching attributes:', error);
+        return {
+            success: false,
+            error: 'Failed to fetch attributes',
+            message: error.message,
+            data: [],
+            pagination: {
+                totalItems: 0,
+                currentPage: 1,
+                totalPages: 0,
+                hasNext: false,
+                hasPrev: false
+            }
+        };
+    }
+}
+
+/**
+ * Create a new attribute utility function
+ * @param {Object} attributeData - Attribute data to create
+ * @returns {Promise<Object>} Created attribute data
+ */
+export async function createAttribute(attributeData) {
+    try {
+        const newAttribute = {
+            ...attributeData,
+            id: attributeData.id || `attribute-${Date.now()}`,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+        };
+
+        await DBService.create(newAttribute, 'attributes');
+        return {
+            success: true,
+            data: newAttribute
+        };
+    } catch (error) {
+        console.error('Error creating attribute:', error);
+        return {
+            success: false,
+            error: 'Failed to create attribute',
+            message: error.message
+        };
+    }
+}
+
+/**
+ * Update an attribute utility function
+ * @param {string} attributeId - ID of the attribute to update
+ * @param {Object} attributeData - Attribute data to update
+ * @returns {Promise<Object>} Updated attribute data
+ */
+export async function updateAttribute(attributeId, attributeData) {
+    try {
+        const updatedData = {
+            ...attributeData,
+            updatedAt: new Date().toISOString()
+        };
+
+        // Check if attribute exists
+        const existingAttribute = await DBService.getItemByKey('id', attributeId, 'attributes');
+        if (!existingAttribute) {
+            return {
+                success: false,
+                error: 'Attribute not found'
+            };
+        }
+
+        await DBService.update(attributeId, updatedData, 'attributes');
+        
+        return {
+            success: true,
+            data: { ...existingAttribute, ...updatedData }
+        };
+    } catch (error) {
+        console.error('Error updating attribute:', error);
+        return {
+            success: false,
+            error: 'Failed to update attribute',
+            message: error.message
+        };
+    }
+}
+
+/**
+ * Delete an attribute utility function
+ * @param {string} attributeId - ID of the attribute to delete
+ * @returns {Promise<Object>} Delete result
+ */
+export async function deleteAttribute(attributeId) {
+    try {
+        const result = await DBService.delete(attributeId, 'attributes');
+        if (result?.success) {
+            return { success: true, data: result };
+        } else {
+            return { success: false, error: 'Failed to delete attribute' };
+        }
+    } catch (error) {
+        console.error('Error deleting attribute:', error);
+        return { success: false, error: error.message || 'Unknown error occurred' };
+    }
+}
+
+// CATEGORIES MANAGEMENT UTILITY FUNCTIONS (NOT SERVER ACTIONS)
+// These functions can be imported directly into client components
+
+/**
+ * Create a new category utility function
+ * @param {Object} categoryData - Category data to create
+ * @returns {Promise<Object>} Created category data
+ */
+export async function createCategory(categoryData) {
+    try {
+        const result = await DBService.create(categoryData, 'categories');
+        if (result?.success) {
+            return { success: true, data: result.data };
+        } else {
+            return { success: false, error: 'Failed to create category' };
+        }
+    } catch (error) {
+        console.error('Error creating category:', error);
+        return { success: false, error: error.message || 'Unknown error occurred' };
+    }
+}
+
+/**
+ * Update a category utility function
+ * @param {string} categoryId - ID of the category to update
+ * @param {Object} categoryData - Category data to update
+ * @returns {Promise<Object>} Updated category data
+ */
+export async function updateCategory(categoryId, categoryData) {
+    try {
+        const result = await DBService.update(categoryId, categoryData, 'categories');
+        if (result?.success) {
+            return { success: true, data: result.data };
+        } else {
+            return { success: false, error: 'Failed to update category' };
+        }
+    } catch (error) {
+        console.error('Error updating category:', error);
+        return { success: false, error: error.message || 'Unknown error occurred' };
+    }
+}
+
+/**
+ * Delete a category utility function
+ * @param {string} categoryId - ID of the category to delete
+ * @returns {Promise<Object>} Delete result
+ */
+export async function deleteCategory(categoryId) {
+    try {
+        const result = await DBService.delete(categoryId, 'categories');
+        if (result?.success) {
+            return { success: true, data: result };
+        } else {
+            return { success: false, error: 'Failed to delete category' };
+        }
+    } catch (error) {
+        console.error('Error deleting category:', error);
+        return { success: false, error: error.message || 'Unknown error occurred' };
+    }
+}
+
+// GALLERY MEDIA MANAGEMENT UTILITY FUNCTIONS (NOT SERVER ACTIONS)
+// These functions can be imported directly into client components
+
+/**
+ * Get all gallery media utility function
+ * @param {Object} params - Query parameters (page, limit, search, etc.)
+ * @returns {Promise<Object>} Gallery media data
+ */
+export async function getAllGalleryMedia(params = {}) {
+    try {
+        const { page = 1, limit = 10, search = '' } = params;
+        const allMedia = await DBService.readAll('gallery');
+        
+        if (!allMedia || Object.keys(allMedia).length === 0) {
+            return {
+                success: true,
+                data: [],
+                pagination: {
+                    totalItems: 0,
+                    currentPage: 1,
+                    totalPages: 0,
+                    hasNext: false,
+                    hasPrev: false
+                }
+            };
+        }
+
+        // Convert object to array and filter by search if provided
+        let mediaArray = Object.entries(allMedia).map(([key, value]) => ({
+            id: key,
+            ...value
+        }));
+
+        // Apply search filter
+        if (search) {
+            const searchLower = search.toLowerCase();
+            mediaArray = mediaArray.filter(item => 
+                (item.alt && item.alt.toLowerCase().includes(searchLower)) ||
+                (item.url && item.url.toLowerCase().includes(searchLower))
+            );
+        }
+
+        // Sort by creation date or featured status
+        mediaArray.sort((a, b) => {
+            if (a.featured && !b.featured) return -1;
+            if (!a.featured && b.featured) return 1;
+            
+            const aDate = new Date(a.createdAt || a.id);
+            const bDate = new Date(b.createdAt || b.id);
+            return bDate - aDate;
+        });
+
+        // Calculate pagination
+        const totalItems = mediaArray.length;
+        const totalPages = Math.ceil(totalItems / limit);
+        const startIndex = (page - 1) * limit;
+        const endIndex = startIndex + limit;
+        const paginatedMedia = mediaArray.slice(startIndex, endIndex);
+
+        return {
+            success: true,
+            data: paginatedMedia,
+            pagination: {
+                totalItems,
+                currentPage: page,
+                totalPages,
+                hasNext: page < totalPages,
+                hasPrev: page > 1
+            }
+        };
+    } catch (error) {
+        console.error('Error fetching gallery media:', error);
+        return { 
+            success: false, 
+            error: error.message,
+            data: [],
+            pagination: {
+                totalItems: 0,
+                currentPage: 1,
+                totalPages: 0,
+                hasNext: false,
+                hasPrev: false
+            }
+        };
+    }
+}
+
+/**
+ * Create a new gallery media item utility function
+ * @param {Object} mediaData - Gallery media data to create
+ * @returns {Promise<Object>} Created gallery media data
+ */
+export async function createGalleryMedia(mediaData) {
+    try {
+        const mediaWithTimestamp = {
+            ...mediaData,
+            createdAt: new Date().toISOString(),
+            featured: mediaData.featured || false
+        };
+        
+        const result = await DBService.create(mediaWithTimestamp, 'gallery');
+        return { success: true, data: result };
+    } catch (error) {
+        console.error('Error creating gallery media:', error);
+        return { success: false, error: error.message };
+    }
+}
+
+/**
+ * Update a gallery media item utility function
+ * @param {string} mediaId - ID of the media item to update
+ * @param {Object} mediaData - Media data to update
+ * @returns {Promise<Object>} Updated media data
+ */
+export async function updateGalleryMedia(mediaId, mediaData) {
+    try {
+        const updateData = {
+            ...mediaData,
+            updatedAt: new Date().toISOString()
+        };
+        
+        const result = await DBService.update(mediaId, updateData, 'gallery');
+        return { success: true, data: result };
+    } catch (error) {
+        console.error('Error updating gallery media:', error);
+        return { success: false, error: error.message };
+    }
+}
+
+/**
+ * Delete a gallery media item utility function
+ * @param {string} mediaId - ID of the media item to delete
+ * @returns {Promise<Object>} Delete result
+ */
+export async function deleteGalleryMedia(mediaId) {
+    try {
+        const result = await DBService.delete(mediaId, 'gallery');
+        return { success: true, data: result };
+    } catch (error) {
+        console.error('Error deleting gallery media:', error);
+        return { success: false, error: error.message };
+    }
+}
+
+// COLLECTIONS MANAGEMENT UTILITY FUNCTIONS (NOT SERVER ACTIONS)
+// These functions can be imported directly into client components
+
+/**
+ * Create a new collection utility function
+ * @param {Object} collectionData - Collection data to create
+ * @returns {Promise<Object>} Created collection data
+ */
+export async function createCollection(collectionData) {
+    try {
+        const result = await DBService.create(collectionData, 'collections');
+        if (result?.success) {
+            return { success: true, data: result.data };
+        } else {
+            return { success: false, error: 'Failed to create collection' };
+        }
+    } catch (error) {
+        console.error('Error creating collection:', error);
+        return { success: false, error: error.message || 'Unknown error occurred' };
+    }
+}
+
+/**
+ * Update a collection utility function
+ * @param {string} collectionId - ID of the collection to update
+ * @param {Object} collectionData - Collection data to update
+ * @returns {Promise<Object>} Updated collection data
+ */
+export async function updateCollection(collectionId, collectionData) {
+    try {
+        const result = await DBService.update(collectionId, collectionData, 'collections');
+        if (result?.success) {
+            return { success: true, data: result.data };
+        } else {
+            return { success: false, error: 'Failed to update collection' };
+        }
+    } catch (error) {
+        console.error('Error updating collection:', error);
+        return { success: false, error: error.message || 'Unknown error occurred' };
+    }
+}
+
+/**
+ * Delete a collection utility function
+ * @param {string} collectionId - ID of the collection to delete
+ * @returns {Promise<Object>} Delete result
+ */
+export async function deleteCollection(collectionId) {
+    try {
+        const result = await DBService.delete(collectionId, 'collections');
+        if (result?.success) {
+            return { success: true, data: result };
+        } else {
+            return { success: false, error: 'Failed to delete collection' };
+        }
+    } catch (error) {
+        console.error('Error deleting collection:', error);
+        return { success: false, error: error.message || 'Unknown error occurred' };
+    }
+}
+
+// NOTIFICATIONS MANAGEMENT UTILITY FUNCTIONS (NOT SERVER ACTIONS)
+// These functions can be imported directly into client components
+
+/**
+ * Get all notifications utility function
+ * @param {Object} params - Query parameters (userId, unreadOnly, type, etc.)
+ * @returns {Promise<Object>} Notifications data
+ */
+export async function getAllNotifications(params = {}) {
+    try {
+        const { userId = null, unreadOnly = false, type = null, limit = null } = params;
+        
+        const allNotifications = await DBService.readAll('notifications');
+        let notifications = Object.entries(allNotifications || {}).map(([id, notification]) => ({
+            id,
+            ...notification
+        }));
+
+        // Filter by user (null userId means global notifications)
+        if (userId !== undefined) {
+            notifications = notifications.filter(notification => 
+                notification.userId === userId || notification.userId === null
+            );
+        }
+
+        // Filter by read status
+        if (unreadOnly) {
+            notifications = notifications.filter(notification => !notification.isRead);
+        }
+
+        // Filter by type
+        if (type) {
+            notifications = notifications.filter(notification => notification.type === type);
+        }
+
+        // Sort by createdAt (newest first)
+        notifications.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+        // Apply limit
+        if (limit) {
+            notifications = notifications.slice(0, limit);
+        }
+
+        return { success: true, data: notifications };
+    } catch (error) {
+        console.error('Error fetching notifications:', error);
+        return { success: false, error: error.message };
+    }
+}
+
+/**
+ * Create a new notification utility function
+ * @param {Object} notificationData - Notification data to create
+ * @returns {Promise<Object>} Created notification data
+ */
+export async function createNotification(notificationData) {
+    try {
+        const notification = {
+            id: `notification_${Date.now()}_${Math.random().toString(36).substring(7)}`,
+            title: notificationData.title || 'New Notification',
+            message: notificationData.message || '',
+            type: notificationData.type || 'info', // 'order', 'security', 'report', 'maintenance', 'info', 'warning', 'error'
+            priority: notificationData.priority || 'medium', // 'low', 'medium', 'high', 'critical'
+            userId: notificationData.userId || null, // null for global notifications
+            isRead: false,
+            requiresAction: notificationData.requiresAction || false,
+            actionLink: notificationData.actionLink || null,
+            actionText: notificationData.actionText || null,
+            autoMarkRead: notificationData.autoMarkRead || false,
+            relatedId: notificationData.relatedId || null, // Related order ID, user ID, etc.
+            relatedType: notificationData.relatedType || null, // 'order', 'user', 'backup', etc.
+            metadata: notificationData.metadata || {},
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            expiresAt: notificationData.expiresAt || null
+        };
+
+        const result = await DBService.create(notification, 'notifications');
+        return { success: true, data: notification };
+    } catch (error) {
+        console.error('Error creating notification:', error);
+        return { success: false, error: error.message };
+    }
+}
+
+/**
+ * Update a notification utility function
+ * @param {string} notificationId - ID of the notification to update
+ * @param {Object} updateData - Notification data to update
+ * @returns {Promise<Object>} Updated notification data
+ */
+export async function updateNotification(notificationId, updateData) {
+    try {
+        const existingNotification = await DBService.read(notificationId, 'notifications');
+        if (!existingNotification) {
+            return { success: false, error: 'Notification not found' };
+        }
+
+        const updatedNotification = {
+            ...existingNotification,
+            ...updateData,
+            updatedAt: new Date().toISOString()
+        };
+
+        const result = await DBService.update(notificationId, updatedNotification, 'notifications');
+        return { success: true, data: updatedNotification };
+    } catch (error) {
+        console.error('Error updating notification:', error);
+        return { success: false, error: error.message };
+    }
+}
+
+/**
+ * Mark notification as read utility function
+ * @param {string} notificationId - ID of the notification to mark as read
+ * @param {string} userId - ID of the user marking as read (for audit)
+ * @returns {Promise<Object>} Update result
+ */
+export async function markNotificationAsRead(notificationId, userId = null) {
+    try {
+        const existingNotification = await DBService.read(notificationId, 'notifications');
+        if (!existingNotification) {
+            return { success: false, error: 'Notification not found' };
+        }
+
+        const updatedNotification = {
+            ...existingNotification,
+            isRead: true,
+            readAt: new Date().toISOString(),
+            readBy: userId,
+            updatedAt: new Date().toISOString()
+        };
+
+        const result = await DBService.update(notificationId, updatedNotification, 'notifications');
+        return { success: true, data: updatedNotification };
+    } catch (error) {
+        console.error('Error marking notification as read:', error);
+        return { success: false, error: error.message };
+    }
+}
+
+/**
+ * Mark multiple notifications as read utility function
+ * @param {Array} notificationIds - Array of notification IDs to mark as read
+ * @param {string} userId - ID of the user marking as read
+ * @returns {Promise<Object>} Update result
+ */
+export async function markMultipleNotificationsAsRead(notificationIds, userId = null) {
+    try {
+        const results = [];
+        
+        for (const notificationId of notificationIds) {
+            const result = await markNotificationAsRead(notificationId, userId);
+            results.push({ notificationId, ...result });
+        }
+
+        const successCount = results.filter(r => r.success).length;
+        const failCount = results.filter(r => !r.success).length;
+
+        return {
+            success: failCount === 0,
+            data: {
+                total: notificationIds.length,
+                success: successCount,
+                failed: failCount,
+                results
+            }
+        };
+    } catch (error) {
+        console.error('Error marking multiple notifications as read:', error);
+        return { success: false, error: error.message };
+    }
+}
+
+/**
+ * Delete a notification utility function
+ * @param {string} notificationId - ID of the notification to delete
+ * @returns {Promise<Object>} Delete result
+ */
+export async function deleteNotification(notificationId) {
+    try {
+        const result = await DBService.delete(notificationId, 'notifications');
+        return { success: true, data: result };
+    } catch (error) {
+        console.error('Error deleting notification:', error);
+        return { success: false, error: error.message };
+    }
+}
+
+/**
+ * Get unread notifications count utility function
+ * @param {string} userId - ID of the user (null for global notifications)
+ * @returns {Promise<Object>} Unread count data
+ */
+export async function getUnreadNotificationsCount(userId = null) {
+    try {
+        const notificationsResult = await getAllNotifications({ 
+            userId, 
+            unreadOnly: true 
+        });
+        
+        if (!notificationsResult.success) {
+            return { success: false, error: notificationsResult.error };
+        }
+
+        const count = notificationsResult.data.length;
+        return { success: true, data: { count } };
+    } catch (error) {
+        console.error('Error getting unread notifications count:', error);
+        return { success: false, error: error.message };
+    }
+}
+
+/**
+ * Create order notification utility function
+ * @param {Object} orderData - Order data to create notification for
+ * @param {string} orderType - 'online' or 'manual'
+ * @returns {Promise<Object>} Created notification data
+ */
+export async function createOrderNotification(orderData, orderType = 'online') {
+    try {
+        // Only create notifications for online orders
+        if (orderType !== 'online') {
+            return { success: true, data: null, message: 'No notification created for manual order' };
+        }
+
+        const notification = {
+            title: `New Online Order #${orderData.orderNumber || orderData.id}`,
+            message: `A new order has been placed by ${orderData.customerName || orderData.email || 'customer'} for $${orderData.total || '0.00'}`,
+            type: 'order',
+            priority: 'high',
+            userId: null, // Global notification for all admins
+            requiresAction: true,
+            actionLink: `/admin/store/orders?orderId=${orderData.id}`,
+            actionText: 'View Order',
+            autoMarkRead: true, // Will be marked as read when order status changes
+            relatedId: orderData.id,
+            relatedType: 'order',
+            metadata: {
+                orderNumber: orderData.orderNumber,
+                customerEmail: orderData.email,
+                orderTotal: orderData.total,
+                orderStatus: orderData.status || 'pending',
+                orderType: orderType, // Mark as online order
+                createdAt: new Date().toISOString()
+            }
+        };
+
+        return await createNotification(notification);
+    } catch (error) {
+        console.error('Error creating order notification:', error);
+        return { success: false, error: error.message };
+    }
+}
+
+/**
+ * Auto-mark order notifications as read when status changes
+ * @param {string} orderId - ID of the order
+ * @param {string} newStatus - New order status
+ * @param {string} userId - ID of the user who changed the status
+ * @returns {Promise<Object>} Update result
+ */
+export async function autoMarkOrderNotificationsRead(orderId, newStatus, userId) {
+    try {
+        // Get all notifications related to this order
+        const allNotifications = await DBService.readAll('notifications');
+        const orderNotifications = Object.entries(allNotifications || {})
+            .filter(([id, notification]) => 
+                notification.relatedId === orderId && 
+                notification.type === 'order' && 
+                !notification.isRead &&
+                notification.autoMarkRead
+            )
+            .map(([id]) => id);
+
+        if (orderNotifications.length === 0) {
+            return { success: true, data: { marked: 0 } };
+        }
+
+        // Mark notifications as read if status is not 'pending' or 'unconfirmed'
+        if (newStatus !== 'pending' && newStatus !== 'unconfirmed') {
+            const result = await markMultipleNotificationsAsRead(orderNotifications, userId);
+            return result;
+        }
+
+        return { success: true, data: { marked: 0, reason: 'Status still pending/unconfirmed' } };
+    } catch (error) {
+        console.error('Error auto-marking order notifications as read:', error);
+        return { success: false, error: error.message };
+    }
+}
+
+/**
+ * Create system notification utility function
+ * @param {Object} systemData - System notification data
+ * @returns {Promise<Object>} Created notification data
+ */
+export async function createSystemNotification(systemData) {
+    try {
+        const { type, title, message, priority = 'medium', requiresAction = false, actionLink = null, actionText = null } = systemData;
+
+        const notification = {
+            title: title || 'System Notification',
+            message: message || '',
+            type: type || 'maintenance',
+            priority,
+            userId: null, // Global notification
+            requiresAction,
+            actionLink,
+            actionText,
+            autoMarkRead: !requiresAction, // Auto-mark if no action required
+            metadata: {
+                systemType: type,
+                ...systemData.metadata
+            }
+        };
+
+        return await createNotification(notification);
+    } catch (error) {
+        console.error('Error creating system notification:', error);
+        return { success: false, error: error.message };
+    }
+}
+
+/**
+ * Clean up expired notifications utility function
+ * @returns {Promise<Object>} Cleanup result
+ */
+export async function cleanupExpiredNotifications() {
+    try {
+        const allNotifications = await DBService.readAll('notifications');
+        const now = new Date();
+        let deletedCount = 0;
+
+        for (const [id, notification] of Object.entries(allNotifications || {})) {
+            // Delete notifications that have expired
+            if (notification.expiresAt && new Date(notification.expiresAt) < now) {
+                await DBService.delete(id, 'notifications');
+                deletedCount++;
+            }
+            // Delete old read notifications (older than 30 days)
+            else if (notification.isRead && notification.readAt) {
+                const readDate = new Date(notification.readAt);
+                const daysDiff = (now - readDate) / (1000 * 60 * 60 * 24);
+                if (daysDiff > 30) {
+                    await DBService.delete(id, 'notifications');
+                    deletedCount++;
+                }
+            }
+        }
+
+        return { success: true, data: { deletedCount } };
+    } catch (error) {
+        console.error('Error cleaning up expired notifications:', error);
+        return { success: false, error: error.message };
+    }
+}
+
+// NAVIGATION NOTIFICATION BADGE FUNCTIONS (NOT SERVER ACTIONS)
+// These functions provide notification counts for navigation badges
+
+/**
+ * Get notification count for Store Orders
+ * Returns count of unread order notifications (online orders only)
+ * @param {string} userId - ID of the user (null for global notifications)
+ * @returns {Promise<Object>} Order notifications count
+ */
+export async function getStoreOrdersNotificationCount(userId = null) {
+    try {
+        const result = await getAllNotifications({ 
+            userId, 
+            unreadOnly: true,
+            type: 'order'
+        });
+        
+        if (!result.success) {
+            return { success: false, error: result.error };
+        }
+
+        // Filter for online orders only (not manual orders)
+        const onlineOrderNotifications = result.data.filter(notification => 
+            notification.metadata?.orderType !== 'manual' &&
+            notification.relatedType === 'order'
+        );
+
+        return { 
+            success: true, 
+            data: { 
+                count: onlineOrderNotifications.length,
+                notifications: onlineOrderNotifications
+            } 
+        };
+    } catch (error) {
+        console.error('Error getting store orders notification count:', error);
+        return { success: false, error: error.message };
+    }
+}
+
+/**
+ * Get notification count for System (Settings & Maintenance)
+ * Returns count of unread system, security, and maintenance notifications
+ * @param {string} userId - ID of the user (null for global notifications)
+ * @returns {Promise<Object>} System notifications count
+ */
+export async function getSystemNotificationCount(userId = null) {
+    try {
+        const result = await getAllNotifications({ 
+            userId, 
+            unreadOnly: true 
+        });
+        
+        if (!result.success) {
+            return { success: false, error: result.error };
+        }
+
+        // Filter for system-related notifications
+        const systemNotifications = result.data.filter(notification => 
+            ['security', 'maintenance', 'error', 'warning'].includes(notification.type)
+        );
+
+        return { 
+            success: true, 
+            data: { 
+                count: systemNotifications.length,
+                notifications: systemNotifications,
+                breakdown: {
+                    security: systemNotifications.filter(n => n.type === 'security').length,
+                    maintenance: systemNotifications.filter(n => n.type === 'maintenance').length,
+                    errors: systemNotifications.filter(n => n.type === 'error').length,
+                    warnings: systemNotifications.filter(n => n.type === 'warning').length
+                }
+            } 
+        };
+    } catch (error) {
+        console.error('Error getting system notification count:', error);
+        return { success: false, error: error.message };
+    }
+}
+
+/**
+ * Get notification count for Marketing
+ * Returns count of unread marketing and report notifications
+ * @param {string} userId - ID of the user (null for global notifications)
+ * @returns {Promise<Object>} Marketing notifications count
+ */
+export async function getMarketingNotificationCount(userId = null) {
+    try {
+        const result = await getAllNotifications({ 
+            userId, 
+            unreadOnly: true 
+        });
+        
+        if (!result.success) {
+            return { success: false, error: result.error };
+        }
+
+        // Filter for marketing-related notifications
+        const marketingNotifications = result.data.filter(notification => 
+            ['report', 'info'].includes(notification.type) &&
+            (notification.metadata?.reportType || notification.metadata?.campaignType)
+        );
+
+        return { 
+            success: true, 
+            data: { 
+                count: marketingNotifications.length,
+                notifications: marketingNotifications
+            } 
+        };
+    } catch (error) {
+        console.error('Error getting marketing notification count:', error);
+        return { success: false, error: error.message };
+    }
+}
+
+/**
+ * Get all navigation notification counts
+ * Returns counts for all navigation sections with badges
+ * @param {string} userId - ID of the user (null for global notifications)
+ * @returns {Promise<Object>} All navigation notification counts
+ */
+export async function getAllNavigationNotificationCounts(userId = null) {
+    try {
+        const [storeOrders, system, marketing] = await Promise.all([
+            getStoreOrdersNotificationCount(userId),
+            getSystemNotificationCount(userId),
+            getMarketingNotificationCount(userId)
+        ]);
+
+        return {
+            success: true,
+            data: {
+                storeOrders: storeOrders.success ? storeOrders.data.count : 0,
+                system: system.success ? system.data.count : 0,
+                marketing: marketing.success ? marketing.data.count : 0,
+                total: (storeOrders.success ? storeOrders.data.count : 0) +
+                       (system.success ? system.data.count : 0) +
+                       (marketing.success ? marketing.data.count : 0)
+            }
+        };
+    } catch (error) {
+        console.error('Error getting all navigation notification counts:', error);
+        return { success: false, error: error.message };
+    }
+}
+
+/**
+ * Clear order notifications for specific order
+ * Called when order status changes from pending/unconfirmed
+ * @param {string} orderId - ID of the order
+ * @param {string} newStatus - New order status
+ * @param {string} userId - ID of the user who changed the status
+ * @returns {Promise<Object>} Clear result
+ */
+export async function clearOrderNotifications(orderId, newStatus, userId) {
+    try {
+        // Only clear if status is not pending/unconfirmed
+        if (newStatus === 'pending' || newStatus === 'unconfirmed') {
+            return { success: true, data: { cleared: 0, reason: 'Status still pending/unconfirmed' } };
+        }
+
+        const result = await autoMarkOrderNotificationsRead(orderId, newStatus, userId);
+        return result;
+    } catch (error) {
+        console.error('Error clearing order notifications:', error);
+        return { success: false, error: error.message };
+    }
+}
+
+/**
+ * Get navigation notification counts for specific sections
+ * Optimized function for real-time badge updates
+ * @param {Array} sections - Array of section names to get counts for
+ * @param {string} userId - ID of the user (null for global notifications)
+ * @returns {Promise<Object>} Specific section notification counts
+ */
+export async function getNavigationSectionCounts(sections = [], userId = null) {
+    try {
+        const counts = {};
+        
+        for (const section of sections) {
+            switch (section) {
+                case 'store':
+                case 'storeOrders':
+                    const storeResult = await getStoreOrdersNotificationCount(userId);
+                    counts.store = storeResult.success ? storeResult.data.count : 0;
+                    counts.storeOrders = counts.store; // Same count for both
+                    break;
+                    
+                case 'system':
+                    const systemResult = await getSystemNotificationCount(userId);
+                    counts.system = systemResult.success ? systemResult.data.count : 0;
+                    break;
+                    
+                case 'marketing':
+                    const marketingResult = await getMarketingNotificationCount(userId);
+                    counts.marketing = marketingResult.success ? marketingResult.data.count : 0;
+                    break;
+            }
+        }
+
+        return { success: true, data: counts };
+    } catch (error) {
+        console.error('Error getting navigation section counts:', error);
+        return { success: false, error: error.message };
+    }
+}
+
+// COUPONS MANAGEMENT UTILITY FUNCTIONS (NOT SERVER ACTIONS)
+// These functions can be imported directly into client components
+
+/**
+ * Get all coupons utility function with pagination support
+ * @param {Object} params - Query parameters (page, limit, search, filterType, filterStatus, etc.)
+ * @returns {Promise<Object>} Coupons data with pagination info
+ */
+export async function getAllCoupons(params = {}) {
+    try {
+        const { page = 1, limit = 10, search = '', filterType = 'all', filterStatus = 'all' } = params;
+        
+        const allCoupons = await DBService.readAll('coupons');
+        
+        if (!allCoupons || Object.keys(allCoupons).length === 0) {
+            return {
+                success: true,
+                data: [],
+                pagination: {
+                    totalItems: 0,
+                    currentPage: 1,
+                    totalPages: 0,
+                    hasNext: false,
+                    hasPrev: false
+                }
+            };
+        }
+
+        // Convert object to array
+        let couponsArray = Array.isArray(allCoupons) ? allCoupons : Object.entries(allCoupons).map(([key, value]) => ({
+            id: key,
+            ...value
+        }));
+
+        // Apply search filter
+        if (search) {
+            const searchLower = search.toLowerCase();
+            couponsArray = couponsArray.filter(coupon => 
+                (coupon.code && coupon.code.toLowerCase().includes(searchLower)) ||
+                (coupon.name && coupon.name.toLowerCase().includes(searchLower)) ||
+                (coupon.description && coupon.description.toLowerCase().includes(searchLower))
+            );
+        }
+
+        // Apply type filter
+        if (filterType !== 'all') {
+            couponsArray = couponsArray.filter(coupon => coupon.type === filterType);
+        }
+
+        // Apply status filter
+        if (filterStatus !== 'all') {
+            const now = new Date();
+            couponsArray = couponsArray.filter(coupon => {
+                const isExpired = coupon.expiresAt && new Date(coupon.expiresAt) < now;
+                const isUsageLimitReached = coupon.usageType === 'limited' && coupon.usedCount >= coupon.usageLimit;
+                
+                switch (filterStatus) {
+                    case 'active':
+                        return coupon.isActive && !isExpired && !isUsageLimitReached;
+                    case 'expired':
+                        return isExpired;
+                    case 'inactive':
+                        return !coupon.isActive;
+                    case 'used_up':
+                        return isUsageLimitReached;
+                    default:
+                        return true;
+                }
+            });
+        }
+
+        // Sort by creation date (newest first)
+        couponsArray.sort((a, b) => {
+            const aDate = new Date(a.createdAt || a.id);
+            const bDate = new Date(b.createdAt || b.id);
+            return bDate - aDate;
+        });
+
+        // Calculate pagination
+        const totalItems = couponsArray.length;
+        const totalPages = Math.ceil(totalItems / limit);
+        const startIndex = (page - 1) * limit;
+        const endIndex = startIndex + limit;
+        const paginatedCoupons = couponsArray.slice(startIndex, endIndex);
+
+        return {
+            success: true,
+            data: paginatedCoupons,
+            pagination: {
+                totalItems,
+                currentPage: page,
+                totalPages,
+                hasNext: page < totalPages,
+                hasPrev: page > 1
+            }
+        };
+    } catch (error) {
+        console.error('Error fetching coupons:', error);
+        return {
+            success: false,
+            error: 'Failed to fetch coupons',
+            message: error.message,
+            data: [],
+            pagination: {
+                totalItems: 0,
+                currentPage: 1,
+                totalPages: 0,
+                hasNext: false,
+                hasPrev: false
+            }
+        };
+    }
+}
+
+/**
+ * Create a new coupon utility function
+ * @param {Object} couponData - Coupon data to create
+ * @returns {Promise<Object>} Created coupon data
+ */
+export async function createCoupon(couponData) {
+    try {
+        const couponWithTimestamp = {
+            ...couponData,
+            createdAt: new Date().toISOString(),
+            usedCount: 0
+        };
+        
+        const result = await DBService.create(couponWithTimestamp, 'coupons');
+        return { success: true, data: result };
+    } catch (error) {
+        console.error('Error creating coupon:', error);
+        return { success: false, error: error.message };
+    }
+}
+
+/**
+ * Update a coupon utility function
+ * @param {string} couponId - ID of the coupon to update
+ * @param {Object} couponData - Coupon data to update
+ * @returns {Promise<Object>} Updated coupon data
+ */
+export async function updateCoupon(couponId, couponData) {
+    try {
+        const updateData = {
+            ...couponData,
+            updatedAt: new Date().toISOString()
+        };
+        
+        const result = await DBService.update(couponId, updateData, 'coupons');
+        return { success: true, data: result };
+    } catch (error) {
+        console.error('Error updating coupon:', error);
+        return { success: false, error: error.message };
+    }
+}
+
+/**
+ * Delete a coupon utility function
+ * @param {string} couponId - ID of the coupon to delete
+ * @returns {Promise<Object>} Delete result
+ */
+export async function deleteCoupon(couponId) {
+    try {
+        const result = await DBService.delete(couponId, 'coupons');
+        return { success: true, data: result };
+    } catch (error) {
+        console.error('Error deleting coupon:', error);
+        return { success: false, error: error.message };
+    }
+}
+
+// WORKSPACE MANAGEMENT UTILITY FUNCTIONS (NOT SERVER ACTIONS)
+// These functions can be imported directly into client components
+
+/**
+ * Get all agenda items utility function
+ * @returns {Promise<Object>} Agenda items data
+ */
+export async function getAllAgenda() {
+    try {
+        const agendaItems = await DBService.readAll('agenda');
+        const agendaArray = Array.isArray(agendaItems) ? agendaItems : Object.values(agendaItems || {});
+
+        // Sort by date and time
+        agendaArray.sort((a, b) => {
+            const dateCompare = new Date(a.date || 0) - new Date(b.date || 0);
+            if (dateCompare === 0) {
+                return (a.time || '00:00').localeCompare(b.time || '00:00');
+            }
+            return dateCompare;
+        });
+
+        return {
+            success: true,
+            data: agendaArray
+        };
+    } catch (error) {
+        console.error('Error fetching agenda items:', error);
+        return {
+            success: false,
+            error: 'Failed to fetch agenda items',
+            message: error.message,
+            data: []
+        };
+    }
+}
+
+/**
+ * Create a new agenda item utility function
+ * @param {Object} agendaData - Agenda item data to create
+ * @returns {Promise<Object>} Created agenda item data
+ */
+export async function createAgendaItem(agendaData) {
+    try {
+        const agendaItem = {
+            ...agendaData,
+            id: `agenda_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+        };
+
+        await DBService.create(agendaItem, 'agenda');
+        return {
+            success: true,
+            data: agendaItem,
+            message: 'Agenda item created successfully'
+        };
+    } catch (error) {
+        console.error('Error creating agenda item:', error);
+        return {
+            success: false,
+            error: 'Failed to create agenda item',
+            message: error.message
+        };
+    }
+}
+
+/**
+ * Update an agenda item utility function
+ * @param {string} agendaId - ID of the agenda item to update
+ * @param {Object} agendaData - Agenda item data to update
+ * @returns {Promise<Object>} Updated agenda item data
+ */
+export async function updateAgendaItem(agendaId, agendaData) {
+    try {
+        const updatedData = {
+            ...agendaData,
+            updatedAt: new Date().toISOString()
+        };
+
+        await DBService.update(agendaId, updatedData, 'agenda');
+        return {
+            success: true,
+            data: { id: agendaId, ...updatedData },
+            message: 'Agenda item updated successfully'
+        };
+    } catch (error) {
+        console.error('Error updating agenda item:', error);
+        return {
+            success: false,
+            error: 'Failed to update agenda item',
+            message: error.message
+        };
+    }
+}
+
+/**
+ * Delete an agenda item utility function
+ * @param {string} agendaId - ID of the agenda item to delete
+ * @returns {Promise<Object>} Delete result
+ */
+export async function deleteAgendaItem(agendaId) {
+    try {
+        await DBService.delete(agendaId, 'agenda');
+        return {
+            success: true,
+            message: 'Agenda item deleted successfully'
+        };
+    } catch (error) {
+        console.error('Error deleting agenda item:', error);
+        return {
+            success: false,
+            error: 'Failed to delete agenda item',
+            message: error.message
+        };
+    }
+}
+
+/**
+ * Get all schedule items utility function
+ * @returns {Promise<Object>} Schedule items data
+ */
+export async function getAllScheduleItems() {
+    try {
+        const scheduleItems = await DBService.readAll('schedule');
+        const scheduleArray = Array.isArray(scheduleItems) ? scheduleItems : Object.values(scheduleItems || {});
+
+        // Sort by date and startTime
+        scheduleArray.sort((a, b) => {
+            const dateCompare = new Date(a.date || 0) - new Date(b.date || 0);
+            if (dateCompare === 0) {
+                return (a.startTime || '00:00').localeCompare(b.startTime || '00:00');
+            }
+            return dateCompare;
+        });
+
+        return {
+            success: true,
+            data: scheduleArray
+        };
+    } catch (error) {
+        console.error('Error fetching schedule items:', error);
+        return {
+            success: false,
+            error: 'Failed to fetch schedule items',
+            message: error.message,
+            data: []
+        };
+    }
+}
+
+/**
+ * Create a new schedule item utility function
+ * @param {Object} scheduleData - Schedule item data to create
+ * @returns {Promise<Object>} Created schedule item data
+ */
+export async function createScheduleItem(scheduleData) {
+    try {
+        const scheduleItem = {
+            ...scheduleData,
+            id: `schedule_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+        };
+
+        await DBService.create(scheduleItem, 'schedule');
+        return {
+            success: true,
+            data: scheduleItem,
+            message: 'Schedule item created successfully'
+        };
+    } catch (error) {
+        console.error('Error creating schedule item:', error);
+        return {
+            success: false,
+            error: 'Failed to create schedule item',
+            message: error.message
+        };
+    }
+}
+
+/**
+ * Update a schedule item utility function
+ * @param {string} scheduleId - ID of the schedule item to update
+ * @param {Object} scheduleData - Schedule item data to update
+ * @returns {Promise<Object>} Updated schedule item data
+ */
+export async function updateScheduleItem(scheduleId, scheduleData) {
+    try {
+        const updatedData = {
+            ...scheduleData,
+            updatedAt: new Date().toISOString()
+        };
+
+        await DBService.update(scheduleId, updatedData, 'schedule');
+        return {
+            success: true,
+            data: { id: scheduleId, ...updatedData },
+            message: 'Schedule item updated successfully'
+        };
+    } catch (error) {
+        console.error('Error updating schedule item:', error);
+        return {
+            success: false,
+            error: 'Failed to update schedule item',
+            message: error.message
+        };
+    }
+}
+
+/**
+ * Delete a schedule item utility function
+ * @param {string} scheduleId - ID of the schedule item to delete
+ * @returns {Promise<Object>} Delete result
+ */
+export async function deleteScheduleItem(scheduleId) {
+    try {
+        await DBService.delete(scheduleId, 'schedule');
+        return {
+            success: true,
+            message: 'Schedule item deleted successfully'
+        };
+    } catch (error) {
+        console.error('Error deleting schedule item:', error);
+        return {
+            success: false,
+            error: 'Failed to delete schedule item',
+            message: error.message
+        };
+    }
+}
+
+/**
+ * Get all tasks utility function
+ * @returns {Promise<Object>} Tasks data
+ */
+export async function getAllTasks() {
+    try {
+        const tasks = await DBService.readAll('tasks');
+        const tasksArray = Array.isArray(tasks) ? tasks : Object.values(tasks || {});
+
+        // Sort by priority and due date
+        tasksArray.sort((a, b) => {
+            const priorityOrder = { high: 3, medium: 2, low: 1 };
+            const priorityCompare = (priorityOrder[b.priority] || 0) - (priorityOrder[a.priority] || 0);
+            
+            if (priorityCompare === 0) {
+                return new Date(a.dueDate || '9999-12-31') - new Date(b.dueDate || '9999-12-31');
+            }
+            return priorityCompare;
+        });
+
+        return {
+            success: true,
+            data: tasksArray
+        };
+    } catch (error) {
+        console.error('Error fetching tasks:', error);
+        return {
+            success: false,
+            error: 'Failed to fetch tasks',
+            message: error.message,
+            data: []
+        };
+    }
+}
+
+/**
+ * Create a new task utility function
+ * @param {Object} taskData - Task data to create
+ * @returns {Promise<Object>} Created task data
+ */
+export async function createTask(taskData) {
+    try {
+        const task = {
+            ...taskData,
+            id: `task_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+        };
+
+        await DBService.create(task, 'tasks');
+        return {
+            success: true,
+            data: task,
+            message: 'Task created successfully'
+        };
+    } catch (error) {
+        console.error('Error creating task:', error);
+        return {
+            success: false,
+            error: 'Failed to create task',
+            message: error.message
+        };
+    }
+}
+
+/**
+ * Update a task utility function
+ * @param {string} taskId - ID of the task to update
+ * @param {Object} taskData - Task data to update
+ * @returns {Promise<Object>} Updated task data
+ */
+export async function updateTask(taskId, taskData) {
+    try {
+        const updatedData = {
+            ...taskData,
+            updatedAt: new Date().toISOString()
+        };
+
+        await DBService.update(taskId, updatedData, 'tasks');
+        return {
+            success: true,
+            data: { id: taskId, ...updatedData },
+            message: 'Task updated successfully'
+        };
+    } catch (error) {
+        console.error('Error updating task:', error);
+        return {
+            success: false,
+            error: 'Failed to update task',
+            message: error.message
+        };
+    }
+}
+
+/**
+ * Delete a task utility function
+ * @param {string} taskId - ID of the task to delete
+ * @returns {Promise<Object>} Delete result
+ */
+export async function deleteTask(taskId) {
+    try {
+        await DBService.delete(taskId, 'tasks');
+        return {
+            success: true,
+            message: 'Task deleted successfully'
+        };
+    } catch (error) {
+        console.error('Error deleting task:', error);
+        return {
+            success: false,
+            error: 'Failed to delete task',
+            message: error.message
+        };
+    }
+}
+
+/**
+ * Create a task related to an order utility function
+ * @param {string} orderId - ID of the order to associate with the task
+ * @param {Object} taskData - Task data to create
+ * @returns {Promise<Object>} Created task data
+ */
+export async function createOrderTask(orderId, taskData) {
+    try {
+        const task = {
+            ...taskData,
+            id: `task_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+            orderId: orderId,
+            type: 'order-related',
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+        };
+
+        await DBService.create(task, 'tasks');
+        return {
+            success: true,
+            data: task,
+            message: 'Order task created successfully'
+        };
+    } catch (error) {
+        console.error('Error creating order task:', error);
+        return {
+            success: false,
+            error: 'Failed to create order task',
+            message: error.message
         };
     }
 }

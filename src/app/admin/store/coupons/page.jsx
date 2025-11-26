@@ -1,7 +1,7 @@
 'use client';
 
 import { Copy, Edit, Euro, Eye, Globe, Infinity, Percent, Plus, Trash2, Users } from 'lucide-react';
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -9,12 +9,25 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import {
+    Pagination,
+    PaginationContent,
+    PaginationItem,
+    PaginationLink,
+    PaginationNext,
+    PaginationPrevious
+} from '@/components/ui/pagination';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { TableSkeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Textarea } from '@/components/ui/textarea';
-import { create, getAll, remove, update } from '@/lib/client/query.js';
+import { 
+    getAllCoupons, 
+    createCoupon, 
+    updateCoupon, 
+    deleteCoupon 
+} from '@/lib/server/admin';
 
 const couponTypes = [
     { value: 'percentage', label: 'Percentage Discount', icon: Percent },
@@ -56,8 +69,9 @@ export default function CouponsPage() {
     const [search, setSearch] = useState('');
     const [filterType, setFilterType] = useState('all');
     const [filterStatus, setFilterStatus] = useState('all');
-    const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
     const [currentPage, setCurrentPage] = useState(1);
+    const [totalPages, setTotalPages] = useState(1);
+    const [totalItems, setTotalItems] = useState(0);
     const [isOpen, setIsOpen] = useState(false);
     const [isEditOpen, setIsEditOpen] = useState(false);
     const [isViewOpen, setIsViewOpen] = useState(false);
@@ -72,12 +86,21 @@ export default function CouponsPage() {
     const fetchCoupons = async () => {
         try {
             setLoading(true);
-            const data = await getAll('coupons');
+            const result = await getAllCoupons({
+                page: currentPage,
+                limit: itemsPerPage,
+                search: search,
+                filterType: filterType,
+                filterStatus: filterStatus
+            });
 
-            if (Array.isArray(data)) {
-                setCoupons(data);
+            if (result?.success) {
+                setCoupons(result.data || []);
+                setTotalPages(result.pagination.totalPages);
+                setTotalItems(result.pagination.totalItems);
             } else {
                 setCoupons([]);
+                toast.error(result?.error || 'Failed to fetch coupons');
             }
         } catch (error) {
             console.error('Error fetching coupons:', error);
@@ -90,90 +113,11 @@ export default function CouponsPage() {
 
     useEffect(() => {
         fetchCoupons();
-    }, []);
-
-    const handleSort = (key) => {
-        setSortConfig((prev) => ({
-            key,
-            direction: prev.key === key && prev.direction === 'asc' ? 'desc' : 'asc'
-        }));
-    };
-
-    const getFilteredAndSortedCoupons = useCallback(() => {
-        if (!Array.isArray(coupons)) {
-            return [];
-        }
-
-        let filtered = [...coupons];
-
-        // Filter by search
-        if (search) {
-            const searchLower = search.toLowerCase();
-            filtered = filtered.filter((coupon) => {
-                return (
-                    coupon.code?.toLowerCase().includes(searchLower) ||
-                    coupon.name?.toLowerCase().includes(searchLower) ||
-                    coupon.description?.toLowerCase().includes(searchLower) ||
-                    coupon.targetEmail?.toLowerCase().includes(searchLower)
-                );
-            });
-        }
-
-        // Filter by type
-        if (filterType !== 'all') {
-            filtered = filtered.filter((coupon) => coupon.type === filterType);
-        }
-
-        // Filter by status
-        if (filterStatus !== 'all') {
-            const now = new Date();
-            filtered = filtered.filter((coupon) => {
-                if (filterStatus === 'active') {
-                    return coupon.isActive && (!coupon.expiresAt || new Date(coupon.expiresAt) > now);
-                } else if (filterStatus === 'expired') {
-                    return coupon.expiresAt && new Date(coupon.expiresAt) <= now;
-                } else if (filterStatus === 'inactive') {
-                    return !coupon.isActive;
-                }
-                return true;
-            });
-        }
-
-        // Sort
-        if (sortConfig.key) {
-            filtered.sort((a, b) => {
-                let aValue = a[sortConfig.key];
-                let bValue = b[sortConfig.key];
-
-                if (
-                    sortConfig.key === 'createdAt' ||
-                    sortConfig.key === 'updatedAt' ||
-                    sortConfig.key === 'expiresAt'
-                ) {
-                    aValue = new Date(aValue).getTime();
-                    bValue = new Date(bValue).getTime();
-                }
-
-                if (aValue < bValue) {
-                    return sortConfig.direction === 'asc' ? -1 : 1;
-                }
-                if (aValue > bValue) {
-                    return sortConfig.direction === 'asc' ? 1 : -1;
-                }
-                return 0;
-            });
-        }
-
-        return filtered;
-    }, [coupons, search, filterType, filterStatus, sortConfig]);
+    }, [currentPage, search, filterType, filterStatus]);
 
     const getPaginatedCoupons = () => {
-        const filtered = getFilteredAndSortedCoupons();
-        const startIndex = (currentPage - 1) * itemsPerPage;
-        return filtered.slice(startIndex, startIndex + itemsPerPage);
+        return coupons; // The coupons are already paginated from the server
     };
-
-    const totalPages = Math.ceil(getFilteredAndSortedCoupons().length / itemsPerPage);
 
     const formatDate = (date) => {
         return new Date(date).toLocaleDateString('en-US', {
@@ -205,20 +149,20 @@ export default function CouponsPage() {
         try {
             setIsSubmitting(true);
 
-            const couponData = {
+            const result = await createCoupon({
                 ...formData,
                 code: formData.code.toUpperCase(),
                 createdAt: new Date().toISOString(),
                 updatedAt: new Date().toISOString()
-            };
+            });
 
-            const newCoupon = await create(couponData, 'coupons');
-
-            if (newCoupon) {
+            if (result?.success) {
                 toast.success('Coupon created successfully');
-                setCoupons((prev) => [...prev, newCoupon]);
+                fetchCoupons(); // Refresh the list
                 setIsOpen(false);
                 setFormData(initialFormData);
+            } else {
+                toast.error(result?.error || 'Failed to create coupon');
             }
         } catch (error) {
             console.error('Error creating coupon:', error);
@@ -258,19 +202,20 @@ export default function CouponsPage() {
         setIsSubmitting(true);
 
         try {
-            const updatedData = {
+            const result = await updateCoupon(selectedCoupon.id, {
                 ...formData,
                 code: formData.code.toUpperCase(),
                 updatedAt: new Date().toISOString()
-            };
+            });
 
-            const updatedCoupon = await update(selectedCoupon.id, updatedData, 'coupons');
-            if (updatedCoupon) {
+            if (result?.success) {
                 toast.success('Coupon updated successfully!');
                 setFormData(initialFormData);
                 setIsEditOpen(false);
                 setSelectedCoupon(null);
                 await fetchCoupons();
+            } else {
+                toast.error(result?.error || 'Error updating coupon');
             }
         } catch (error) {
             console.error('Error updating coupon:', error);
@@ -288,13 +233,15 @@ export default function CouponsPage() {
 
         setIsDeleting(true);
         try {
-            const result = await remove(selectedCoupon.id, 'coupons');
-            if (result) {
+            const result = await deleteCoupon(selectedCoupon.id);
+            if (result?.success) {
                 toast.success('Coupon deleted successfully!');
                 setIsDeleteOpen(false);
                 setSelectedCoupon(null);
                 setDeleteConfirmText('');
                 await fetchCoupons();
+            } else {
+                toast.error(result?.error || 'Error deleting coupon');
             }
         } catch (error) {
             console.error('Error deleting coupon:', error);
@@ -348,10 +295,16 @@ export default function CouponsPage() {
                             <Input
                                 placeholder="Search coupons..."
                                 value={search}
-                                onChange={(e) => setSearch(e.target.value)}
+                                onChange={(e) => {
+                                    setSearch(e.target.value);
+                                    setCurrentPage(1); // Reset to first page when searching
+                                }}
                                 className="max-w-xs"
                             />
-                            <Select value={filterType} onValueChange={setFilterType}>
+                            <Select value={filterType} onValueChange={(value) => {
+                                setFilterType(value);
+                                setCurrentPage(1); // Reset to first page when filtering
+                            }}>
                                 <SelectTrigger className="w-40">
                                     <SelectValue placeholder="All Types" />
                                 </SelectTrigger>
@@ -361,7 +314,10 @@ export default function CouponsPage() {
                                     <SelectItem value="fixed">Fixed Amount</SelectItem>
                                 </SelectContent>
                             </Select>
-                            <Select value={filterStatus} onValueChange={setFilterStatus}>
+                            <Select value={filterStatus} onValueChange={(value) => {
+                                setFilterStatus(value);
+                                setCurrentPage(1); // Reset to first page when filtering
+                            }}>
                                 <SelectTrigger className="w-40">
                                     <SelectValue placeholder="All Status" />
                                 </SelectTrigger>
@@ -373,6 +329,13 @@ export default function CouponsPage() {
                                 </SelectContent>
                             </Select>
                         </div>
+
+                        {/* Pagination Info */}
+                        {totalItems > 0 && (
+                            <p className="text-sm text-muted-foreground">
+                                Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, totalItems)} of {totalItems} coupons
+                            </p>
+                        )}
 
                         <Dialog open={isOpen} onOpenChange={setIsOpen}>
                             <DialogTrigger asChild>
@@ -645,20 +608,13 @@ export default function CouponsPage() {
                             <Table>
                                 <TableHeader>
                                     <TableRow>
-                                        <TableHead onClick={() => handleSort('code')} className="cursor-pointer">
-                                            Code{' '}
-                                            {sortConfig.key === 'code' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
-                                        </TableHead>
+                                        <TableHead>Code</TableHead>
                                         <TableHead>Name</TableHead>
                                         <TableHead>Type</TableHead>
                                         <TableHead>Value</TableHead>
                                         <TableHead>Usage</TableHead>
                                         <TableHead>Status</TableHead>
-                                        <TableHead onClick={() => handleSort('expiresAt')} className="cursor-pointer">
-                                            Expires{' '}
-                                            {sortConfig.key === 'expiresAt' &&
-                                                (sortConfig.direction === 'asc' ? '↑' : '↓')}
-                                        </TableHead>
+                                        <TableHead>Expires</TableHead>
                                         <TableHead className="text-right">Actions</TableHead>
                                     </TableRow>
                                 </TableHeader>
@@ -759,23 +715,51 @@ export default function CouponsPage() {
                         )}
                     </ScrollArea>
 
+                    {/* Pagination */}
                     {!loading && totalPages > 1 && (
-                        <div className="mt-4 flex justify-center space-x-2">
-                            <Button
-                                variant="outline"
-                                onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
-                                disabled={currentPage === 1}>
-                                Previous
-                            </Button>
-                            <span className="flex items-center px-4">
-                                Page {currentPage} of {totalPages}
-                            </span>
-                            <Button
-                                variant="outline"
-                                onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
-                                disabled={currentPage === totalPages}>
-                                Next
-                            </Button>
+                        <div className="flex justify-center">
+                            <Pagination>
+                                <PaginationContent>
+                                    <PaginationItem>
+                                        <PaginationPrevious 
+                                            href="#"
+                                            onClick={(e) => {
+                                                e.preventDefault();
+                                                if (currentPage > 1) {
+                                                    setCurrentPage(currentPage - 1);
+                                                }
+                                            }}
+                                            className={currentPage === 1 ? 'pointer-events-none opacity-50' : ''}
+                                        />
+                                    </PaginationItem>
+                                    {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                                        <PaginationItem key={page}>
+                                            <PaginationLink
+                                                href="#"
+                                                onClick={(e) => {
+                                                    e.preventDefault();
+                                                    setCurrentPage(page);
+                                                }}
+                                                isActive={currentPage === page}
+                                            >
+                                                {page}
+                                            </PaginationLink>
+                                        </PaginationItem>
+                                    ))}
+                                    <PaginationItem>
+                                        <PaginationNext 
+                                            href="#"
+                                            onClick={(e) => {
+                                                e.preventDefault();
+                                                if (currentPage < totalPages) {
+                                                    setCurrentPage(currentPage + 1);
+                                                }
+                                            }}
+                                            className={currentPage === totalPages ? 'pointer-events-none opacity-50' : ''}
+                                        />
+                                    </PaginationItem>
+                                </PaginationContent>
+                            </Pagination>
                         </div>
                     )}
                 </div>

@@ -3,6 +3,7 @@
 import { NextResponse } from 'next/server';
 import DBService from '@/data/rest.db.js';
 import EmailService from '@/lib/server/email';
+import { createOrUpdateCustomerFromOrder } from '@/lib/server/admin';
 
 export async function GET(_request) {
     try {
@@ -100,24 +101,13 @@ export async function POST(request) {
         // Save order to database
         await DBService.create(finalOrderData, 'orders');
 
-        // Check if customer exists, create if not
+        // Create or update customer using smart function
         try {
-            const existingCustomer = await DBService.getItemByKey('email', orderData.customer.email, 'customers');
-            if (!existingCustomer) {
-                await DBService.create(
-                    {
-                        name: `${orderData.customer.firstName} ${orderData.customer.lastName}`,
-                        email: orderData.customer.email,
-                        phone: orderData.customer.phone,
-                        address: finalOrderData.shipping_address,
-                        createdAt: new Date().toISOString()
-                    },
-                    'customers'
-                );
-            }
+            const customerResult = await createOrUpdateCustomerFromOrder(orderData.customer);
+            console.log('Customer operation result:', customerResult);
         } catch (customerError) {
-            console.warn('Failed to create customer record:', customerError);
-            // Continue with order processing even if customer creation fails
+            console.warn('Failed to create/update customer record:', customerError);
+            // Continue with order processing even if customer operation fails
         }
 
         // Send order confirmation email if enabled

@@ -26,17 +26,33 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import {
+    Pagination,
+    PaginationContent,
+    PaginationItem,
+    PaginationLink,
+    PaginationNext,
+    PaginationPrevious
+} from '@/components/ui/pagination';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { TableSkeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Textarea } from '@/components/ui/textarea';
-import { create, getAll, remove, update } from '@/lib/client/query';
+import { 
+    getAllCategories, 
+    createCategory, 
+    updateCategory, 
+    deleteCategory,
+    getSiteSettings 
+} from '@/lib/server/admin';
 
 const initialFormData = {
     name: '',
+    nameML: {}, // Multi-language names: { en: 'Name', fr: 'Nom' }
     slug: '',
     description: '',
+    descriptionML: {}, // Multi-language descriptions
     parentId: null,
     imageUrl: ''
 };
@@ -51,6 +67,11 @@ const generateSlug = (name) => {
 export default function CategoriesPage() {
     const [categories, setCategories] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [search, setSearch] = useState('');
+    const [currentPage, setCurrentPage] = useState(1);
+    const [totalPages, setTotalPages] = useState(1);
+    const [totalItems, setTotalItems] = useState(0);
+    const itemsPerPage = 10;
     const [isOpen, setIsOpen] = useState(false);
     const [editCategory, setEditCategory] = useState(null);
     const [formData, setFormData] = useState(initialFormData);
@@ -59,16 +80,55 @@ export default function CategoriesPage() {
     const [isDeleting, setIsDeleting] = useState(false);
     const [isUploading, setIsUploading] = useState(false);
     const [uploadProgress, setUploadProgress] = useState(0);
+    const [availableLanguages, setAvailableLanguages] = useState(['en']);
+    const [defaultLanguage, setDefaultLanguage] = useState('en');
+    const [currentLanguage, setCurrentLanguage] = useState('en');
+
+    // Multi-language helper functions
+    const updateMultiLanguageField = (fieldName, langCode, value) => {
+        const mlField = `${fieldName}ML`;
+        setFormData({
+            ...formData,
+            [mlField]: {
+                ...formData[mlField],
+                [langCode]: value
+            },
+            // Update the main field with default language value for backwards compatibility
+            [fieldName]: langCode === defaultLanguage ? value : formData[fieldName]
+        });
+    };
+
+    const getMultiLanguageValue = (fieldName, langCode) => {
+        const mlField = `${fieldName}ML`;
+        return formData[mlField]?.[langCode] || (langCode === defaultLanguage ? formData[fieldName] : '') || '';
+    };
 
     const fetchCategories = async () => {
         try {
             setLoading(true);
-            const response = await getAll('categories');
-            if (response.success) {
-                setCategories(response.data);
+            const [categoriesRes, settingsRes] = await Promise.all([
+                getAllCategories({
+                    page: currentPage,
+                    limit: itemsPerPage,
+                    search: search
+                }),
+                getSiteSettings()
+            ]);
+            
+            if (categoriesRes.success) {
+                setCategories(categoriesRes.data);
+                setTotalPages(categoriesRes.pagination.totalPages);
+                setTotalItems(categoriesRes.pagination.totalItems);
+            }
+            
+            if (settingsRes.success && settingsRes.data) {
+                const settings = settingsRes.data;
+                setAvailableLanguages(settings.availableLanguages || ['en']);
+                setDefaultLanguage(settings.language || 'en');
+                setCurrentLanguage(settings.language || 'en');
             }
         } catch (_error) {
-            toast.error('Failed to fetch categories');
+            toast.error('Failed to fetch data');
         } finally {
             setLoading(false);
         }
@@ -76,7 +136,7 @@ export default function CategoriesPage() {
 
     useEffect(() => {
         fetchCategories();
-    }, []);
+    }, [currentPage, search]);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -93,17 +153,47 @@ export default function CategoriesPage() {
                 }
             }
 
+            // Prepare multi-language name and description with fallback
+            const nameML = { [defaultLanguage]: formData.nameML?.[defaultLanguage] || formData.name };
+            const descriptionML = { [defaultLanguage]: formData.descriptionML?.[defaultLanguage] || formData.description || '' };
+
+            // Add other language values
+            availableLanguages.forEach(lang => {
+                if (lang !== defaultLanguage) {
+                    nameML[lang] = formData.nameML?.[lang] || formData.name;
+                    descriptionML[lang] = formData.descriptionML?.[lang] || formData.description || '';
+                }
+            });
+
+            const processedData = {
+                ...formData,
+                nameML,
+                descriptionML
+            };
+
+            let response;
             if (editCategory) {
-                await update(editCategory.id, formData, 'categories');
-                toast.success('Category updated successfully');
+                response = await updateCategory(editCategory.id, processedData);
+                if (response.success) {
+                    toast.success('Category updated successfully');
+                } else {
+                    toast.error(response.error || 'Failed to update category');
+                }
             } else {
-                await create(formData, 'categories');
-                toast.success('Category created successfully');
+                response = await createCategory(processedData);
+                if (response.success) {
+                    toast.success('Category created successfully');
+                } else {
+                    toast.error(response.error || 'Failed to create category');
+                }
             }
-            setIsOpen(false);
-            setEditCategory(null);
-            setFormData(initialFormData);
-            fetchCategories();
+            
+            if (response.success) {
+                setIsOpen(false);
+                setEditCategory(null);
+                setFormData(initialFormData);
+                fetchCategories();
+            }
         } catch (error) {
             if (error instanceof Error) {
                 toast.error(error.message);
@@ -115,12 +205,19 @@ export default function CategoriesPage() {
 
     const handleEdit = (category) => {
         setEditCategory(category);
+        
+        // Prepare multi-language data with fallback
+        const nameML = category.nameML || { [defaultLanguage]: category.name || '' };
+        const descriptionML = category.descriptionML || { [defaultLanguage]: category.description || '' };
+        
         setFormData({
-            name: category.name,
+            name: nameML[defaultLanguage] || category.name || '',
             slug: category.slug,
-            description: category.description,
+            description: descriptionML[defaultLanguage] || category.description || '',
             parentId: category.parentId,
-            imageUrl: category.imageUrl || ''
+            imageUrl: category.imageUrl || '',
+            nameML,
+            descriptionML
         });
         setIsOpen(true);
     };
@@ -208,11 +305,15 @@ export default function CategoriesPage() {
 
         setIsDeleting(true);
         try {
-            await remove(categoryToDelete.id, 'categories');
-            toast.success('Category deleted successfully');
-            setDeleteDialogOpen(false);
-            setCategoryToDelete(null);
-            fetchCategories();
+            const response = await deleteCategory(categoryToDelete.id);
+            if (response.success) {
+                toast.success('Category deleted successfully');
+                setDeleteDialogOpen(false);
+                setCategoryToDelete(null);
+                fetchCategories();
+            } else {
+                toast.error(response.error || 'Failed to delete category');
+            }
         } catch (error) {
             if (error instanceof Error) {
                 toast.error(error.message);
@@ -245,20 +346,51 @@ export default function CategoriesPage() {
                             <DialogTitle>{editCategory ? 'Edit Category' : 'Add New Category'}</DialogTitle>
                         </DialogHeader>
                         <form onSubmit={handleSubmit} className="space-y-6">
+                            {/* Language Selector */}
+                            {availableLanguages.length > 1 && (
+                                <div className="flex justify-center">
+                                    <div className="inline-flex h-10 items-center justify-center rounded-md bg-muted p-1 text-muted-foreground">
+                                        {availableLanguages.map((lang, index) => (
+                                            <button
+                                                key={`lang-${lang}-${index}`}
+                                                type="button"
+                                                onClick={() => setCurrentLanguage(lang)}
+                                                className={`inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 ${
+                                                    currentLanguage === lang
+                                                        ? 'bg-background text-foreground shadow-sm'
+                                                        : ''
+                                                }`}
+                                            >
+                                                {lang.toUpperCase()}
+                                                {lang === defaultLanguage && (
+                                                    <span className="ml-1 text-xs text-muted-foreground">(default)</span>
+                                                )}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2">
-                                    <Label htmlFor="name">Name *</Label>
+                                    <Label htmlFor="name">
+                                        Name * {availableLanguages.length > 1 && `(${currentLanguage.toUpperCase()})`}
+                                    </Label>
                                     <Input
                                         id="name"
                                         placeholder="Category Name"
-                                        value={formData.name}
+                                        value={getMultiLanguageValue('name', currentLanguage)}
                                         onChange={(e) => {
                                             const name = e.target.value;
-                                            setFormData({
-                                                ...formData,
-                                                name,
-                                                slug: generateSlug(name)
-                                            });
+                                            updateMultiLanguageField('name', currentLanguage, name);
+                                            
+                                            // Update slug only for default language
+                                            if (currentLanguage === defaultLanguage) {
+                                                setFormData(prev => ({
+                                                    ...prev,
+                                                    slug: generateSlug(name)
+                                                }));
+                                            }
                                         }}
                                         required
                                     />
@@ -276,12 +408,17 @@ export default function CategoriesPage() {
                             </div>
 
                             <div className="space-y-2">
-                                <Label htmlFor="description">Description *</Label>
+                                <Label htmlFor="description">
+                                    Description * {availableLanguages.length > 1 && `(${currentLanguage.toUpperCase()})`}
+                                </Label>
                                 <Textarea
                                     id="description"
                                     placeholder="Category description..."
-                                    value={formData.description}
-                                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                                    value={getMultiLanguageValue('description', currentLanguage)}
+                                    onChange={(e) => {
+                                        const description = e.target.value;
+                                        updateMultiLanguageField('description', currentLanguage, description);
+                                    }}
                                     className="min-h-[100px]"
                                     required
                                 />
@@ -304,8 +441,8 @@ export default function CategoriesPage() {
                                         <SelectItem value="none">No Parent Category</SelectItem>
                                         {categories
                                             .filter((c) => c.id !== editCategory?.id)
-                                            .map((category) => (
-                                                <SelectItem key={category.id} value={category.id}>
+                                            .map((category, index) => (
+                                                <SelectItem key={index} value={category.id}>
                                                     {category.name}
                                                 </SelectItem>
                                             ))}
@@ -393,6 +530,25 @@ export default function CategoriesPage() {
                     </DialogContent>
                 </Dialog>
 
+            {/* Search Input */}
+            <div className="flex items-center justify-between">
+                <Input
+                    type="text"
+                    placeholder="Search categories..."
+                    value={search}
+                    onChange={(e) => {
+                        setSearch(e.target.value);
+                        setCurrentPage(1); // Reset to first page when searching
+                    }}
+                    className="max-w-md"
+                />
+                {totalItems > 0 && (
+                    <p className="text-sm text-muted-foreground">
+                        Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, totalItems)} of {totalItems} categories
+                    </p>
+                )}
+            </div>
+
             {loading ? (
                 <TableSkeleton columns={5} rows={5} />
             ) : (
@@ -415,8 +571,8 @@ export default function CategoriesPage() {
                                     </TableCell>
                                 </TableRow>
                             ) : (
-                                categories.map((category) => (
-                                    <TableRow key={category.id}>
+                                categories.map((category, index) => (
+                                    <TableRow key={index}>
                                         <TableCell>
                                             <div className="flex items-center gap-3">
                                                 {category.imageUrl ? (
@@ -431,11 +587,16 @@ export default function CategoriesPage() {
                                                     </div>
                                                 )}
                                                 <div>
-                                                    <div className="font-medium">{category.name}</div>
+                                                    <div className="font-medium">
+                                                        {category.nameML?.[defaultLanguage] || category.name}
+                                                    </div>
                                                     <div className="text-muted-foreground text-sm">
-                                                        {category.description.length > 50
-                                                            ? `${category.description.substring(0, 50)}...`
-                                                            : category.description}
+                                                        {(() => {
+                                                            const description = category.descriptionML?.[defaultLanguage] || category.description || '';
+                                                            return description.length > 50
+                                                                ? `${description.substring(0, 50)}...`
+                                                                : description;
+                                                        })()}
                                                     </div>
                                                 </div>
                                             </div>
@@ -507,6 +668,55 @@ export default function CategoriesPage() {
                     </Table>
                 </ScrollArea>
             )}
+
+            {/* Pagination */}
+            {totalPages > 1 && (
+                <div className="flex justify-center">
+                    <Pagination>
+                        <PaginationContent>
+                            <PaginationItem>
+                                <PaginationPrevious 
+                                    href="#"
+                                    onClick={(e) => {
+                                        e.preventDefault();
+                                        if (currentPage > 1) {
+                                            setCurrentPage(currentPage - 1);
+                                        }
+                                    }}
+                                    className={currentPage === 1 ? 'pointer-events-none opacity-50' : ''}
+                                />
+                            </PaginationItem>
+                            {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                                <PaginationItem key={page}>
+                                    <PaginationLink
+                                        href="#"
+                                        onClick={(e) => {
+                                            e.preventDefault();
+                                            setCurrentPage(page);
+                                        }}
+                                        isActive={currentPage === page}
+                                    >
+                                        {page}
+                                    </PaginationLink>
+                                </PaginationItem>
+                            ))}
+                            <PaginationItem>
+                                <PaginationNext 
+                                    href="#"
+                                    onClick={(e) => {
+                                        e.preventDefault();
+                                        if (currentPage < totalPages) {
+                                            setCurrentPage(currentPage + 1);
+                                        }
+                                    }}
+                                    className={currentPage === totalPages ? 'pointer-events-none opacity-50' : ''}
+                                />
+                            </PaginationItem>
+                        </PaginationContent>
+                    </Pagination>
+                </div>
+            )}
+
             <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
                 <AlertDialogContent>
                     <AlertDialogHeader>

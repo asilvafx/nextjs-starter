@@ -36,7 +36,16 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { TableSkeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { create, getAll, remove, update } from '@/lib/client/query';
+import { 
+    getAllCatalog, 
+    getAllCategories, 
+    getAllCollections, 
+    getCachedStoreSettings, 
+    getSiteSettings,
+    createCatalogItem,
+    updateCatalogItem,
+    deleteCatalogItem
+} from '@/lib/server/admin';
 import { useTableState } from '../hooks/useTableState';
 import { CatalogItemForm } from './CatalogItemForm';
 
@@ -113,28 +122,21 @@ const initialFormData = {
 };
 
 export default function CatalogPage() {
-    const {
-        items: catalog,
-        setItems: setCatalog,
-        loading,
-        setLoading,
-        search,
-        setSearch,
-        currentPage,
-        setCurrentPage,
-        sortConfig,
-        handleSort,
-        getFilteredAndSortedItems,
-        getPaginatedItems,
-        totalPages,
-        filteredItems,
-        paginatedItems
-    } = useTableState();
-
+    const [catalog, setCatalog] = useState([]);
     const [categories, setCategories] = useState([]);
     const [collections, setCollections] = useState([]);
     const [availableLanguages, setAvailableLanguages] = useState(['en']);
     const [defaultLanguage, setDefaultLanguage] = useState('en');
+    const [loading, setLoading] = useState(true);
+    const [search, setSearch] = useState('');
+    const [currentPage, setCurrentPage] = useState(1);
+    const [totalPages, setTotalPages] = useState(1);
+    const [totalItems, setTotalItems] = useState(0);
+    const [sortConfig, setSortConfig] = useState({
+        key: 'createdAt',
+        direction: 'desc'
+    });
+    const itemsPerPage = 10;
     const [isOpen, setIsOpen] = useState(false);
     const [editItem, setEditItem] = useState(null);
     const [formData, setFormData] = useState(initialFormData);
@@ -150,15 +152,21 @@ export default function CatalogPage() {
         try {
             setLoading(true);
             const [catalogRes, categoriesRes, collectionsRes, storeRes, settingsRes] = await Promise.all([
-                getAll('catalog'),
-                getAll('categories'),
-                getAll('collections'),
-                getAll('store_settings'),
-                getAll('site_settings')
+                getAllCatalog({
+                    page: currentPage,
+                    limit: itemsPerPage,
+                    search: search
+                }),
+                getAllCategories(),
+                getAllCollections(),
+                getCachedStoreSettings(),
+                getSiteSettings()
             ]);
 
             if (catalogRes.success) {
                 setCatalog(catalogRes.data);
+                setTotalPages(catalogRes.pagination.totalPages);
+                setTotalItems(catalogRes.pagination.totalItems);
             }
             if (categoriesRes.success) {
                 setCategories(categoriesRes.data);
@@ -180,9 +188,17 @@ export default function CatalogPage() {
             setLoading(false);
         }
     };
+    
     useEffect(() => {
         fetchData();
-    }, []);
+    }, [currentPage, search]);
+
+    const handleSort = (key) => {
+        setSortConfig((current) => ({
+            key,
+            direction: current.key === key && current.direction === 'asc' ? 'desc' : 'asc'
+        }));
+    };
 
     const handleImageUpload = async (files) => {
         if (uploadingImages) {
@@ -277,15 +293,27 @@ export default function CatalogPage() {
             };
 
             if (editItem) {
-                const _updatedItem = await update(editItem.id, processedData, 'catalog');
-                toast.success('Item successfully updated!');
-                setCatalog((prev) =>
-                    prev.map((item) => (item.id === editItem.id ? { ...item, ...processedData } : item))
-                );
+                const updatedItemRes = await updateCatalogItem(editItem.id, processedData);
+                if (updatedItemRes.success) {
+                    toast.success('Item successfully updated!');
+                    setCatalog((prev) =>
+                        prev.map((item) => (item.id === editItem.id ? { ...item, ...processedData } : item))
+                    );
+                } else {
+                    toast.error(updatedItemRes.error || 'Failed to update item');
+                    setIsSubmitting(false);
+                    return;
+                }
             } else {
-                const newItem = await create(processedData, 'catalog');
-                toast.success('Item successfully created!');
-                setCatalog((prev) => [...prev, newItem]);
+                const newItemRes = await createCatalogItem(processedData);
+                if (newItemRes.success) {
+                    toast.success('Item successfully created!');
+                    setCatalog((prev) => [...prev, newItemRes.data]);
+                } else {
+                    toast.error(newItemRes.error || 'Failed to create item');
+                    setIsSubmitting(false);
+                    return;
+                }
             }
 
             setIsOpen(false);
@@ -372,11 +400,15 @@ export default function CatalogPage() {
 
         setIsDeleting(true);
         try {
-            await remove(itemToDelete.id, 'catalog');
-            toast.success('Item deleted successfully');
-            setDeleteDialogOpen(false);
-            setItemToDelete(null);
-            fetchData();
+            const deleteRes = await deleteCatalogItem(itemToDelete.id);
+            if (deleteRes.success) {
+                toast.success('Item deleted successfully');
+                setDeleteDialogOpen(false);
+                setItemToDelete(null);
+                fetchData();
+            } else {
+                toast.error(deleteRes.error || 'Failed to delete item');
+            }
         } catch (error) {
             if (error instanceof Error) {
                 toast.error(error.message);
@@ -496,15 +528,15 @@ export default function CatalogPage() {
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {paginatedItems.length === 0 ? (
+                                    {catalog.length === 0 ? (
                                         <TableRow>
                                             <TableCell colSpan={6} className="text-center">
                                                 No items found
                                             </TableCell>
                                         </TableRow>
                                     ) : (
-                                        paginatedItems.map((item) => (
-                                            <TableRow key={item.id}>
+                                        catalog.map((item, key) => (
+                                            <TableRow key={key}>
                                                 <TableCell>
                                                     {item.images && item.images.length > 0 ? (
                                                         <img
@@ -542,8 +574,10 @@ export default function CatalogPage() {
                                                 </TableCell>
                                                 <TableCell>{formatPrice(item.price)}</TableCell>
                                                 <TableCell>
-                                                    {categories.find((c) => c.id === item.categoryId)?.name ||
-                                                        'Uncategorized'}
+                                                    {(() => {
+                                                        const category = categories.find((c) => c.id === item.categoryId);
+                                                        return category?.nameML?.[defaultLanguage] || category?.name || 'Uncategorized';
+                                                    })()}
                                                 </TableCell>
                                                 <TableCell>
                                                     {item.hasVariants && item.variants?.length > 0 ? (
@@ -692,8 +726,8 @@ export default function CatalogPage() {
 
                         {/* Items count info */}
                         <div className="text-center text-muted-foreground text-sm">
-                            Showing {paginatedItems.length} of {filteredItems.length} items
-                            {search && ` (filtered from ${catalog.length} total)`}
+                            Showing {catalog.length} of {totalItems} items
+                            {totalPages > 1 && ` (Page ${currentPage} of ${totalPages})`}
                         </div>
                     </div>
             )}

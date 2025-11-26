@@ -4,6 +4,13 @@ import { CheckCircle, Copy, Image as ImageIcon, Loader2, Search, Star, Trash2, U
 import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import AdminHeader from '@/app/admin/components/AdminHeader';
+import { 
+    getAllGalleryMedia, 
+    createGalleryMedia, 
+    updateGalleryMedia, 
+    deleteGalleryMedia 
+} from '@/lib/server/admin.js';
+import { upload } from '@/lib/client/query';
 import {
     AlertDialog,
     AlertDialogAction,
@@ -27,7 +34,53 @@ import {
     PaginationPrevious
 } from '@/components/ui/pagination';
 import { Skeleton } from '@/components/ui/skeleton';
-import { create, getAll, remove, update, upload } from '@/lib/client/query';
+
+// Lazy loading image component with animation
+const LazyImage = ({ src, alt, className, onLoad }) => {
+    const [imageLoaded, setImageLoaded] = useState(false);
+    const [imageFailed, setImageFailed] = useState(false);
+
+    const handleImageLoad = () => {
+        setImageLoaded(true);
+        if (onLoad) onLoad();
+    };
+
+    const handleImageError = () => {
+        setImageFailed(true);
+        setImageLoaded(true);
+    };
+
+    return (
+        <div className="relative w-full h-full overflow-hidden">
+            {!imageLoaded && !imageFailed && (
+                <div className="absolute inset-0 flex items-center justify-center bg-muted">
+                    <div className="flex flex-col items-center gap-2">
+                        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                        <div className="text-xs text-muted-foreground">Loading...</div>
+                    </div>
+                </div>
+            )}
+            
+            {imageFailed ? (
+                <div className="absolute inset-0 flex items-center justify-center bg-muted">
+                    <div className="flex flex-col items-center gap-2 text-muted-foreground">
+                        <ImageIcon className="h-8 w-8" />
+                        <div className="text-xs">Failed to load</div>
+                    </div>
+                </div>
+            ) : (
+                <img
+                    src={src}
+                    alt={alt}
+                    className={`${className} ${imageLoaded ? 'opacity-100' : 'opacity-0'} transition-opacity duration-300`}
+                    onLoad={handleImageLoad}
+                    onError={handleImageError}
+                    loading="lazy"
+                />
+            )}
+        </div>
+    );
+};
 
 export default function GalleryPage() {
     const [media, setMedia] = useState([]);
@@ -50,7 +103,7 @@ export default function GalleryPage() {
     const fetchMedia = async (page = 1) => {
         try {
             setLoading(true);
-            const response = await getAll('gallery', {
+            const response = await getAllGalleryMedia({
                 page,
                 limit: itemsPerPage,
                 search: search || ''
@@ -58,15 +111,17 @@ export default function GalleryPage() {
 
             console.log('Fetch response:', response);
 
-            // Handle different response structures and ensure default values
-            if (response?.success && response?.data && response?.data.length > 0) {
-                // If response has data
+            // Handle response from admin function
+            if (response?.success && response?.data) {
                 setMedia(response.data);
-                setTotalPages(Math.ceil(response?.pagination?.totalItems / itemsPerPage));
+                setTotalPages(response.pagination?.totalPages || 1);
             } else {
                 // Set defaults if response is not successful
                 setMedia([]);
                 setTotalPages(1);
+                if (response?.error) {
+                    console.error('Fetch error:', response.error);
+                }
             }
         } catch (error) {
             console.error('Fetch error:', error);
@@ -153,50 +208,57 @@ export default function GalleryPage() {
                     return prev + Math.random() * 20;
                 });
             }, 200);
+            
             const uploadResult = await upload(file);
-            const uploadUrl = uploadResult[0]?.publicUrl;
+            clearInterval(progressInterval);
 
-            if (uploadUrl) {
-                const blobUrl = uploadUrl;
+            if (uploadResult && uploadResult.length > 0) {
+                const uploadUrl = uploadResult[0]?.publicUrl || uploadResult[0]?.url;
 
                 // Create the new image data and add to database
                 const imageData = {
-                    url: blobUrl,
+                    url: uploadUrl,
                     alt: file.name,
                     featured: false
                 };
 
-                const createResponse = await create(imageData, 'gallery');
+                const createResponse = await createGalleryMedia(imageData);
 
-                // Add the new image to the current media state with the actual ID from server
-                const newImage = {
-                    id: createResponse.data?.id || Date.now(),
-                    ...imageData
-                };
+                if (createResponse.success) {
+                    // Add the new image to the current media state with the actual ID from server
+                    const newImage = {
+                        id: createResponse.data?.id || createResponse.data?.key || Date.now(),
+                        ...imageData
+                    };
 
-                setMedia((prevMedia) => [newImage, ...prevMedia]);
+                    setMedia((prevMedia) => [newImage, ...prevMedia]);
 
-                // Complete the progress
-                setUploadProgress(100);
+                    // Complete the progress
+                    setUploadProgress(100);
 
-                // Update total pages if we're adding to a full page
-                if (media.length >= itemsPerPage && currentPage === 1) {
-                    // Only update if we're on the first page to avoid pagination issues
-                    setTotalPages((prevPages) => prevPages);
+                    // Update total pages if we're adding to a full page
+                    if (media.length >= itemsPerPage && currentPage === 1) {
+                        // Only update if we're on the first page to avoid pagination issues
+                        setTotalPages((prevPages) => prevPages);
+                    }
+
+                    toast.success(
+                        <div className="flex items-center gap-2">
+                            <CheckCircle className="h-4 w-4 text-green-500" />
+                            Image uploaded successfully!
+                        </div>
+                    );
+
+                    // Small delay to show success state before closing
+                    setTimeout(() => {
+                        setIsUploadDialogOpen(false);
+                        setUploadProgress(0);
+                    }, 800);
+                } else {
+                    throw new Error(createResponse.error || 'Failed to save image to gallery');
                 }
-
-                toast.success(
-                    <div className="flex items-center gap-2">
-                        <CheckCircle className="h-4 w-4 text-green-500" />
-                        Image uploaded successfully!
-                    </div>
-                );
-
-                // Small delay to show success state before closing
-                setTimeout(() => {
-                    setIsUploadDialogOpen(false);
-                    setUploadProgress(0);
-                }, 800);
+            } else {
+                throw new Error('Upload failed - no file URL returned');
             }
         } catch (error) {
             const errorMessage = error?.message || 'Failed to upload image';
@@ -228,16 +290,21 @@ export default function GalleryPage() {
 
         setIsDeleting(true);
         try {
-            await remove(itemToDelete.id, 'gallery');
+            const result = await deleteGalleryMedia(itemToDelete.id);
+            
+            if (result.success) {
+                // Remove the item from the current media state
+                setMedia((prevMedia) => prevMedia.filter((item) => item.id !== itemToDelete.id));
 
-            // Remove the item from the current media state
-            setMedia((prevMedia) => prevMedia.filter((item) => item.id !== itemToDelete.id));
-
-            toast.success('Image deleted successfully');
-            setDeleteDialogOpen(false);
-            setItemToDelete(null);
-        } catch (_error) {
-            toast.error('Failed to delete image');
+                toast.success('Image deleted successfully');
+                setDeleteDialogOpen(false);
+                setItemToDelete(null);
+            } else {
+                throw new Error(result.error || 'Failed to delete image');
+            }
+        } catch (error) {
+            console.error('Delete error:', error);
+            toast.error(error.message || 'Failed to delete image');
         } finally {
             setIsDeleting(false);
         }
@@ -256,12 +323,18 @@ export default function GalleryPage() {
         setMedia((prevMedia) => prevMedia.map((item) => (item.id === id ? { ...item, featured: !featured } : item)));
 
         try {
-            await update(id, { featured: !featured }, 'gallery');
-            toast.success(featured ? 'Image unfeatured' : 'Image featured');
-        } catch (_error) {
+            const result = await updateGalleryMedia(id, { featured: !featured });
+            
+            if (result.success) {
+                toast.success(featured ? 'Image unfeatured' : 'Image featured');
+            } else {
+                throw new Error(result.error || 'Failed to update image');
+            }
+        } catch (error) {
+            console.error('Update error:', error);
             // Revert the optimistic update on error
             setMedia((prevMedia) => prevMedia.map((item) => (item.id === id ? { ...item, featured: featured } : item)));
-            toast.error('Failed to update image');
+            toast.error(error.message || 'Failed to update image');
         } finally {
             setUpdatingFeatured(null);
         }
@@ -404,7 +477,7 @@ export default function GalleryPage() {
                                 </CardHeader>
                                 <CardContent>
                                     <div className="relative aspect-square overflow-hidden rounded-lg bg-muted">
-                                        <img
+                                        <LazyImage
                                             src={item.url}
                                             alt={item.alt}
                                             className="absolute inset-0 h-full w-full object-cover transition-transform group-hover:scale-105"

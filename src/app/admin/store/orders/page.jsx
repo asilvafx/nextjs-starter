@@ -46,6 +46,14 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import {
+    Pagination,
+    PaginationContent,
+    PaginationItem,
+    PaginationLink,
+    PaginationNext,
+    PaginationPrevious
+} from '@/components/ui/pagination';
 import { PhoneInput } from '@/components/ui/phone-input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { TableSkeleton } from '@/components/ui/skeleton';
@@ -135,8 +143,11 @@ export default function OrdersPage() {
     const [_isUpdateOpen, _setIsUpdateOpen] = useState(false);
     const [formData, setFormData] = useState(initialFormData);
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [_currentPage, _setCurrentPage] = useState(1);
+    const [currentPage, setCurrentPage] = useState(1);
+    const [totalPages, setTotalPages] = useState(1);
+    const [totalItems, setTotalItems] = useState(0);
     const [storeSettings, setStoreSettings] = useState(null);
+    const itemsPerPage = 10;
     const [isStatusDialogOpen, setIsStatusDialogOpen] = useState(false);
     const [statusChangeData, setStatusChangeData] = useState(null);
     const [sendEmailNotification, setSendEmailNotification] = useState(true);
@@ -196,10 +207,18 @@ export default function OrdersPage() {
                 setFetchError(null);
             }
 
-            const response = await getAllOrders();
+            const response = await getAllOrders({
+                page: currentPage,
+                limit: itemsPerPage,
+                search: search,
+                statusFilter: statusFilter
+            });
+            
             if (response.success) {
                 setOrders(response.data);
                 setAllOrders(response.data);
+                setTotalPages(response.pagination.totalPages);
+                setTotalItems(response.pagination.totalItems);
                 setFetchError(null); // Clear any previous errors
             } else {
                 throw new Error(response.error || 'Failed to fetch orders');
@@ -283,7 +302,7 @@ export default function OrdersPage() {
         fetchOrders();
         fetchCustomers();
         fetchCatalog();
-    }, []);
+    }, [currentPage, search, statusFilter]);
 
     // Auto-refresh orders using Next.js revalidation every 60 seconds
     useEffect(() => {
@@ -311,51 +330,8 @@ export default function OrdersPage() {
         };
     }, []);
 
-    // Filter and sort orders
-    const getFilteredAndSortedOrders = useCallback(() => {
-        let filtered = [...allOrders];
-
-        // Apply search filter
-        if (search) {
-            const searchLower = search.toLowerCase();
-            filtered = filtered.filter(
-                (order) =>
-                    order.id.toLowerCase().includes(searchLower) ||
-                    order.customer.name.toLowerCase().includes(searchLower) ||
-                    order.customer.email.toLowerCase().includes(searchLower)
-            );
-        }
-
-        // Apply status filter
-        if (statusFilter !== 'all') {
-            filtered = filtered.filter((order) => order.status === statusFilter);
-        }
-
-        // Apply sorting
-        filtered.sort((a, b) => {
-            let aValue = sortConfig.key.includes('.') ? a.customer.name : a[sortConfig.key];
-            let bValue = sortConfig.key.includes('.') ? b.customer.name : b[sortConfig.key];
-
-            if (typeof aValue === 'string') {
-                aValue = aValue.toLowerCase();
-                bValue = bValue.toLowerCase();
-            }
-
-            if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1;
-            if (aValue > bValue) return sortConfig.direction === 'asc' ? 1 : -1;
-            return 0;
-        });
-
-        return filtered;
-    }, [allOrders, search, statusFilter, sortConfig]);
-
-    // Get filtered and sorted orders
-    const filteredOrders = getFilteredAndSortedOrders();
-
-    // Update orders when filters change
-    useEffect(() => {
-        setOrders(getFilteredAndSortedOrders());
-    }, [search, statusFilter, sortConfig, getFilteredAndSortedOrders]);
+    // Since we're doing pagination server-side, just use the orders from state
+    const filteredOrders = allOrders;
 
     const handleSort = (key) => {
         setSortConfig((current) => ({
@@ -2143,6 +2119,44 @@ export default function OrdersPage() {
                         )}
                     </TableBody>
                 </Table>
+            )}
+
+            {/* Pagination */}
+            {totalPages > 1 && (
+                <div className="flex justify-center mt-6">
+                    <Pagination>
+                        <PaginationContent>
+                            <PaginationItem>
+                                <PaginationPrevious
+                                    onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                                    className={
+                                        currentPage === 1 ? 'pointer-events-none opacity-50' : 'cursor-pointer'
+                                    }
+                                />
+                            </PaginationItem>
+                            {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                                <PaginationItem key={page}>
+                                    <PaginationLink
+                                        onClick={() => setCurrentPage(page)}
+                                        isActive={page === currentPage}
+                                        className="cursor-pointer">
+                                        {page}
+                                    </PaginationLink>
+                                </PaginationItem>
+                            ))}
+                            <PaginationItem>
+                                <PaginationNext
+                                    onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                                    className={
+                                        currentPage === totalPages
+                                            ? 'pointer-events-none opacity-50'
+                                            : 'cursor-pointer'
+                                    }
+                                />
+                            </PaginationItem>
+                        </PaginationContent>
+                    </Pagination>
+                </div>
             )}
 
             {/* Create Order Dialog */}

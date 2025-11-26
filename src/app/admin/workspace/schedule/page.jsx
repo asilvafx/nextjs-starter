@@ -46,6 +46,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
 import { create, getAll, remove, update } from '@/lib/client/query';
+import { 
+    getAllScheduleItems, 
+    createScheduleItem, 
+    updateScheduleItem, 
+    deleteScheduleItem 
+} from '@/lib/server/admin';
 
 export default function SchedulePage() {
     const [selectedView, setSelectedView] = useState('week');
@@ -113,18 +119,11 @@ export default function SchedulePage() {
                 console.warn('Failed to load appointments for schedule:', err.message);
             }
 
-            // Try to fetch schedule items
+            // Fetch schedule items using admin function
             try {
-                const scheduleResponse = await getAll('schedule_items');
-                let scheduleData = [];
+                const scheduleResponse = await getAllScheduleItems();
                 if (scheduleResponse?.success && Array.isArray(scheduleResponse.data)) {
-                    scheduleData = scheduleResponse.data;
-                } else if (Array.isArray(scheduleResponse)) {
-                    scheduleData = scheduleResponse;
-                }
-
-                if (scheduleData.length > 0) {
-                    allItems = [...allItems, ...scheduleData];
+                    allItems = [...allItems, ...scheduleResponse.data];
                 }
             } catch (err) {
                 console.warn('Failed to load schedule items:', err.message);
@@ -202,13 +201,21 @@ export default function SchedulePage() {
             };
 
             if (selectedEvent) {
-                await update(selectedEvent.id, eventData, 'schedule_items');
-                toast.success('Event updated successfully');
-                setIsEditDialogOpen(false);
+                const result = await updateScheduleItem(selectedEvent.id, eventData);
+                if (result.success) {
+                    toast.success('Event updated successfully');
+                    setIsEditDialogOpen(false);
+                } else {
+                    throw new Error(result.error || 'Failed to update event');
+                }
             } else {
-                await create(eventData, 'schedule_items');
-                toast.success('Event created successfully');
-                setIsCreateDialogOpen(false);
+                const result = await createScheduleItem(eventData);
+                if (result.success) {
+                    toast.success('Event created successfully');
+                    setIsCreateDialogOpen(false);
+                } else {
+                    throw new Error(result.error || 'Failed to create event');
+                }
             }
 
             fetchScheduleItems();
@@ -225,11 +232,15 @@ export default function SchedulePage() {
 
         setIsDeleting(true);
         try {
-            await remove(selectedEvent.id, 'schedule_items');
-            toast.success('Event deleted successfully');
-            setIsDeleteDialogOpen(false);
-            setSelectedEvent(null);
-            fetchScheduleItems();
+            const result = await deleteScheduleItem(selectedEvent.id);
+            if (result.success) {
+                toast.success('Event deleted successfully');
+                setIsDeleteDialogOpen(false);
+                setSelectedEvent(null);
+                fetchScheduleItems();
+            } else {
+                throw new Error(result.error || 'Failed to delete event');
+            }
         } catch (error) {
             console.error('Error deleting event:', error);
             toast.error('Failed to delete event');

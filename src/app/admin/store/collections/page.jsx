@@ -27,16 +27,33 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import {
+    Pagination,
+    PaginationContent,
+    PaginationItem,
+    PaginationLink,
+    PaginationNext,
+    PaginationPrevious
+} from '@/components/ui/pagination';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { TableSkeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Textarea } from '@/components/ui/textarea';
-import { create, getAll, remove, update } from '@/lib/client/query';
+import { 
+    getAllCollections, 
+    getAllCatalog,
+    createCollection, 
+    updateCollection, 
+    deleteCollection,
+    getSiteSettings 
+} from '@/lib/server/admin';
 
 const initialFormData = {
     name: '',
+    nameML: {}, // Multi-language names: { en: 'Name', fr: 'Nom' }
     slug: '',
     description: '',
+    descriptionML: {}, // Multi-language descriptions
     imageUrl: '',
     isActive: true,
     products: []
@@ -61,14 +78,62 @@ export default function CollectionsPage() {
     const [isDeleting, setIsDeleting] = useState(false);
     const [isUploading, setIsUploading] = useState(false);
     const [uploadProgress, setUploadProgress] = useState(0);
+    const [availableLanguages, setAvailableLanguages] = useState(['en']);
+    const [defaultLanguage, setDefaultLanguage] = useState('en');
+    const [currentLanguage, setCurrentLanguage] = useState('en');
+
+    // Pagination state
+    const [search, setSearch] = useState('');
+    const [currentPage, setCurrentPage] = useState(1);
+    const [totalPages, setTotalPages] = useState(1);
+    const [totalItems, setTotalItems] = useState(0);
+    const itemsPerPage = 10;
+
+    // Multi-language helper functions
+    const updateMultiLanguageField = (fieldName, langCode, value) => {
+        const mlField = `${fieldName}ML`;
+        setFormData({
+            ...formData,
+            [mlField]: {
+                ...formData[mlField],
+                [langCode]: value
+            },
+            // Update the main field with default language value for backwards compatibility
+            [fieldName]: langCode === defaultLanguage ? value : formData[fieldName]
+        });
+    };
+
+    const getMultiLanguageValue = (fieldName, langCode) => {
+        const mlField = `${fieldName}ML`;
+        return formData[mlField]?.[langCode] || (langCode === defaultLanguage ? formData[fieldName] : '') || '';
+    };
 
     const fetchData = async () => {
         try {
             setLoading(true);
-            const [collectionsRes, catalogRes] = await Promise.all([getAll('collections'), getAll('catalog')]);
+            const [collectionsRes, catalogRes, settingsRes] = await Promise.all([
+                getAllCollections({
+                    page: currentPage,
+                    limit: itemsPerPage,
+                    search: search
+                }), 
+                getAllCatalog(),
+                getSiteSettings()
+            ]);
 
-            if (collectionsRes.success) setCollections(collectionsRes.data);
+            if (collectionsRes.success) {
+                setCollections(collectionsRes.data);
+                setTotalPages(collectionsRes.pagination.totalPages);
+                setTotalItems(collectionsRes.pagination.totalItems);
+            }
             if (catalogRes.success) setProducts(catalogRes.data);
+            
+            if (settingsRes.success && settingsRes.data) {
+                const settings = settingsRes.data;
+                setAvailableLanguages(settings.availableLanguages || ['en']);
+                setDefaultLanguage(settings.language || 'en');
+                setCurrentLanguage(settings.language || 'en');
+            }
         } catch (_error) {
             toast.error('Failed to fetch data');
         } finally {
@@ -78,7 +143,7 @@ export default function CollectionsPage() {
 
     useEffect(() => {
         fetchData();
-    }, []);
+    }, [currentPage, search]);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -96,17 +161,47 @@ export default function CollectionsPage() {
                 }
             }
 
+            // Prepare multi-language name and description with fallback
+            const nameML = { [defaultLanguage]: formData.nameML?.[defaultLanguage] || formData.name };
+            const descriptionML = { [defaultLanguage]: formData.descriptionML?.[defaultLanguage] || formData.description || '' };
+
+            // Add other language values
+            availableLanguages.forEach(lang => {
+                if (lang !== defaultLanguage) {
+                    nameML[lang] = formData.nameML?.[lang] || formData.name;
+                    descriptionML[lang] = formData.descriptionML?.[lang] || formData.description || '';
+                }
+            });
+
+            const processedData = {
+                ...formData,
+                nameML,
+                descriptionML
+            };
+
+            let response;
             if (editCollection) {
-                await update(editCollection.id, formData, 'collections');
-                toast.success('Collection updated successfully');
+                response = await updateCollection(editCollection.id, processedData);
+                if (response.success) {
+                    toast.success('Collection updated successfully');
+                } else {
+                    toast.error(response.error || 'Failed to update collection');
+                }
             } else {
-                await create(formData, 'collections');
-                toast.success('Collection created successfully');
+                response = await createCollection(processedData);
+                if (response.success) {
+                    toast.success('Collection created successfully');
+                } else {
+                    toast.error(response.error || 'Failed to create collection');
+                }
             }
-            setIsOpen(false);
-            setEditCollection(null);
-            setFormData(initialFormData);
-            fetchData();
+            
+            if (response.success) {
+                setIsOpen(false);
+                setEditCollection(null);
+                setFormData(initialFormData);
+                fetchData();
+            }
         } catch (error) {
             if (error instanceof Error) {
                 toast.error(error.message);
@@ -118,13 +213,20 @@ export default function CollectionsPage() {
 
     const handleEdit = (collection) => {
         setEditCollection(collection);
+        
+        // Prepare multi-language data with fallback
+        const nameML = collection.nameML || { [defaultLanguage]: collection.name || '' };
+        const descriptionML = collection.descriptionML || { [defaultLanguage]: collection.description || '' };
+        
         setFormData({
-            name: collection.name,
+            name: nameML[defaultLanguage] || collection.name || '',
             slug: collection.slug,
-            description: collection.description,
+            description: descriptionML[defaultLanguage] || collection.description || '',
             imageUrl: collection.imageUrl || '',
             isActive: collection.isActive,
-            products: collection.products || []
+            products: collection.products || [],
+            nameML,
+            descriptionML
         });
         setIsOpen(true);
     };
@@ -212,11 +314,15 @@ export default function CollectionsPage() {
 
         setIsDeleting(true);
         try {
-            await remove(collectionToDelete.id, 'collections');
-            toast.success('Collection deleted successfully');
-            setDeleteDialogOpen(false);
-            setCollectionToDelete(null);
-            fetchData();
+            const response = await deleteCollection(collectionToDelete.id);
+            if (response.success) {
+                toast.success('Collection deleted successfully');
+                setDeleteDialogOpen(false);
+                setCollectionToDelete(null);
+                fetchData();
+            } else {
+                toast.error(response.error || 'Failed to delete collection');
+            }
         } catch (error) {
             if (error instanceof Error) {
                 toast.error(error.message);
@@ -249,20 +355,51 @@ export default function CollectionsPage() {
                             <DialogTitle>{editCollection ? 'Edit Collection' : 'Add New Collection'}</DialogTitle>
                         </DialogHeader>
                         <form onSubmit={handleSubmit} className="space-y-6">
+                            {/* Language Selector */}
+                            {availableLanguages.length > 1 && (
+                                <div className="flex justify-center">
+                                    <div className="inline-flex h-10 items-center justify-center rounded-md bg-muted p-1 text-muted-foreground">
+                                        {availableLanguages.map((lang, index) => (
+                                            <button
+                                                key={`lang-${lang}-${index}`}
+                                                type="button"
+                                                onClick={() => setCurrentLanguage(lang)}
+                                                className={`inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 ${
+                                                    currentLanguage === lang
+                                                        ? 'bg-background text-foreground shadow-sm'
+                                                        : ''
+                                                }`}
+                                            >
+                                                {lang.toUpperCase()}
+                                                {lang === defaultLanguage && (
+                                                    <span className="ml-1 text-xs text-muted-foreground">(default)</span>
+                                                )}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2">
-                                    <Label htmlFor="name">Name *</Label>
+                                    <Label htmlFor="name">
+                                        Name * {availableLanguages.length > 1 && `(${currentLanguage.toUpperCase()})`}
+                                    </Label>
                                     <Input
                                         id="name"
                                         placeholder="Collection Name"
-                                        value={formData.name}
+                                        value={getMultiLanguageValue('name', currentLanguage)}
                                         onChange={(e) => {
                                             const name = e.target.value;
-                                            setFormData({
-                                                ...formData,
-                                                name,
-                                                slug: generateSlug(name)
-                                            });
+                                            updateMultiLanguageField('name', currentLanguage, name);
+                                            
+                                            // Update slug only for default language
+                                            if (currentLanguage === defaultLanguage) {
+                                                setFormData(prev => ({
+                                                    ...prev,
+                                                    slug: generateSlug(name)
+                                                }));
+                                            }
                                         }}
                                         required
                                     />
@@ -280,12 +417,17 @@ export default function CollectionsPage() {
                             </div>
 
                             <div className="space-y-2">
-                                <Label htmlFor="description">Description *</Label>
+                                <Label htmlFor="description">
+                                    Description * {availableLanguages.length > 1 && `(${currentLanguage.toUpperCase()})`}
+                                </Label>
                                 <Textarea
                                     id="description"
                                     placeholder="Collection description..."
-                                    value={formData.description}
-                                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                                    value={getMultiLanguageValue('description', currentLanguage)}
+                                    onChange={(e) => {
+                                        const description = e.target.value;
+                                        updateMultiLanguageField('description', currentLanguage, description);
+                                    }}
                                     className="min-h-[100px]"
                                     required
                                 />
@@ -368,8 +510,8 @@ export default function CollectionsPage() {
                                 <Label>Items in Collection</Label>
                                 <ScrollArea className="max-h-[200px] rounded-md border p-4">
                                     <div className="space-y-3">
-                                        {products.map((item) => (
-                                            <div key={item.id} className="flex items-center space-x-2">
+                                        {products.map((item, index) => (
+                                            <div key={index} className="flex items-center space-x-2">
                                                 <Checkbox
                                                     id={`item-${item.id}`}
                                                     checked={formData.products.includes(item.id)}
@@ -405,6 +547,25 @@ export default function CollectionsPage() {
                     </DialogContent>
                 </Dialog>
 
+            {/* Search Input */}
+            <div className="flex items-center justify-between">
+                <Input
+                    type="text"
+                    placeholder="Search collections..."
+                    value={search}
+                    onChange={(e) => {
+                        setSearch(e.target.value);
+                        setCurrentPage(1); // Reset to first page when searching
+                    }}
+                    className="max-w-md"
+                />
+                {totalItems > 0 && (
+                    <p className="text-sm text-muted-foreground">
+                        Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, totalItems)} of {totalItems} collections
+                    </p>
+                )}
+            </div>
+
             {loading ? (
                 <TableSkeleton columns={5} rows={5} />
             ) : (
@@ -427,8 +588,8 @@ export default function CollectionsPage() {
                                     </TableCell>
                                 </TableRow>
                             ) : (
-                                collections.map((collection) => (
-                                    <TableRow key={collection.id}>
+                                collections.map((collection, index) => (
+                                    <TableRow key={index}>
                                         <TableCell>
                                             <div className="flex items-center gap-3">
                                                 {collection.imageUrl ? (
@@ -443,11 +604,16 @@ export default function CollectionsPage() {
                                                     </div>
                                                 )}
                                                 <div>
-                                                    <div className="font-medium">{collection.name}</div>
+                                                    <div className="font-medium">
+                                                        {collection.nameML?.[defaultLanguage] || collection.name}
+                                                    </div>
                                                     <div className="text-muted-foreground text-sm">
-                                                        {collection.description.length > 50
-                                                            ? `${collection.description.substring(0, 50)}...`
-                                                            : collection.description}
+                                                        {(() => {
+                                                            const description = collection.descriptionML?.[defaultLanguage] || collection.description || '';
+                                                            return description.length > 50
+                                                                ? `${description.substring(0, 50)}...`
+                                                                : description;
+                                                        })()}
                                                     </div>
                                                 </div>
                                             </div>
@@ -526,6 +692,55 @@ export default function CollectionsPage() {
                     </Table>
                 </ScrollArea>
             )}
+
+            {/* Pagination */}
+            {totalPages > 1 && (
+                <div className="flex justify-center">
+                    <Pagination>
+                        <PaginationContent>
+                            <PaginationItem>
+                                <PaginationPrevious 
+                                    href="#"
+                                    onClick={(e) => {
+                                        e.preventDefault();
+                                        if (currentPage > 1) {
+                                            setCurrentPage(currentPage - 1);
+                                        }
+                                    }}
+                                    className={currentPage === 1 ? 'pointer-events-none opacity-50' : ''}
+                                />
+                            </PaginationItem>
+                            {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                                <PaginationItem key={page}>
+                                    <PaginationLink
+                                        href="#"
+                                        onClick={(e) => {
+                                            e.preventDefault();
+                                            setCurrentPage(page);
+                                        }}
+                                        isActive={currentPage === page}
+                                    >
+                                        {page}
+                                    </PaginationLink>
+                                </PaginationItem>
+                            ))}
+                            <PaginationItem>
+                                <PaginationNext 
+                                    href="#"
+                                    onClick={(e) => {
+                                        e.preventDefault();
+                                        if (currentPage < totalPages) {
+                                            setCurrentPage(currentPage + 1);
+                                        }
+                                    }}
+                                    className={currentPage === totalPages ? 'pointer-events-none opacity-50' : ''}
+                                />
+                            </PaginationItem>
+                        </PaginationContent>
+                    </Pagination>
+                </div>
+            )}
+
             <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
                 <AlertDialogContent>
                     <AlertDialogHeader>

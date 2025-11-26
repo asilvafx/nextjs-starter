@@ -20,18 +20,34 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import {
+    Pagination,
+    PaginationContent,
+    PaginationItem,
+    PaginationLink,
+    PaginationNext,
+    PaginationPrevious
+} from '@/components/ui/pagination';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { TableSkeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Textarea } from '@/components/ui/textarea';
-import { create, getAll, remove, update } from '@/lib/client/query';
+import { 
+    getAllAttributes, 
+    createAttribute, 
+    updateAttribute, 
+    deleteAttribute,
+    getSiteSettings 
+} from '@/lib/server/admin';
 
 const initialFormData = {
     name: '',
+    nameML: {}, // Multi-language names: { en: 'Name', fr: 'Nom' }
     slug: '',
     type: 'text', // text, number, select, color, boolean
     description: '',
+    descriptionML: {}, // Multi-language descriptions
     options: [], // For select type
     isRequired: false,
     isActive: true
@@ -62,44 +78,117 @@ export default function AttributesPage() {
     const [attributeToDelete, setAttributeToDelete] = useState(null);
     const [isDeleting, setIsDeleting] = useState(false);
     const [newOption, setNewOption] = useState('');
+    const [availableLanguages, setAvailableLanguages] = useState(['en']);
+    const [defaultLanguage, setDefaultLanguage] = useState('en');
+    const [currentLanguage, setCurrentLanguage] = useState('en');
 
-    const fetchAttributes = async () => {
+    // Pagination state
+    const [search, setSearch] = useState('');
+    const [currentPage, setCurrentPage] = useState(1);
+    const [totalPages, setTotalPages] = useState(1);
+    const [totalItems, setTotalItems] = useState(0);
+    const itemsPerPage = 10;
+
+    // Multi-language helper functions
+    const updateMultiLanguageField = (fieldName, langCode, value) => {
+        const mlField = `${fieldName}ML`;
+        setFormData({
+            ...formData,
+            [mlField]: {
+                ...formData[mlField],
+                [langCode]: value
+            },
+            // Update the main field with default language value for backwards compatibility
+            [fieldName]: langCode === defaultLanguage ? value : formData[fieldName]
+        });
+    };
+
+    const getMultiLanguageValue = (fieldName, langCode) => {
+        const mlField = `${fieldName}ML`;
+        return formData[mlField]?.[langCode] || (langCode === defaultLanguage ? formData[fieldName] : '') || '';
+    };
+
+    const fetchData = async () => {
         try {
             setLoading(true);
-            const response = await getAll('attributes');
-            if (response.success) {
-                setAttributes(response.data);
+            const [attributesRes, settingsRes] = await Promise.all([
+                getAllAttributes({
+                    page: currentPage,
+                    limit: itemsPerPage,
+                    search: search
+                }),
+                getSiteSettings()
+            ]);
+            
+            if (attributesRes.success) {
+                setAttributes(attributesRes.data);
+                setTotalPages(attributesRes.pagination.totalPages);
+                setTotalItems(attributesRes.pagination.totalItems);
+            }
+            
+            if (settingsRes.success && settingsRes.data) {
+                const settings = settingsRes.data;
+                setAvailableLanguages(settings.availableLanguages || ['en']);
+                setDefaultLanguage(settings.language || 'en');
+                setCurrentLanguage(settings.language || 'en');
             }
         } catch (_error) {
-            toast.error('Failed to fetch attributes');
+            toast.error('Failed to fetch data');
         } finally {
             setLoading(false);
         }
     };
 
     useEffect(() => {
-        fetchAttributes();
-    }, []);
+        fetchData();
+    }, [currentPage, search]);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
         try {
+            // Prepare multi-language name and description with fallback
+            const nameML = { [defaultLanguage]: formData.nameML?.[defaultLanguage] || formData.name };
+            const descriptionML = { [defaultLanguage]: formData.descriptionML?.[defaultLanguage] || formData.description || '' };
+
+            // Add other language values
+            availableLanguages.forEach(lang => {
+                if (lang !== defaultLanguage) {
+                    nameML[lang] = formData.nameML?.[lang] || formData.name;
+                    descriptionML[lang] = formData.descriptionML?.[lang] || formData.description || '';
+                }
+            });
+
             const processedData = {
                 ...formData,
-                options: formData.type === 'select' ? formData.options : []
+                nameML,
+                descriptionML,
+                options: formData.type === 'select' ? formData.options : [],
+                type: formData.type || 'text'
             };
 
+            let response;
             if (editAttribute) {
-                await update(editAttribute.id, processedData, 'attributes');
-                toast.success('Attribute updated successfully');
+                response = await updateAttribute(editAttribute.id, processedData);
+                if (response.success) {
+                    toast.success('Attribute updated successfully');
+                } else {
+                    toast.error(response.error || 'Failed to update attribute');
+                }
             } else {
-                await create(processedData, 'attributes');
-                toast.success('Attribute created successfully');
+                response = await createAttribute(processedData);
+                if (response.success) {
+                    toast.success('Attribute created successfully');
+                } else {
+                    toast.error(response.error || 'Failed to create attribute');
+                }
             }
-            setIsOpen(false);
-            setEditAttribute(null);
-            setFormData(initialFormData);
-            fetchAttributes();
+            
+            if (response.success) {
+                setIsOpen(false);
+                setEditAttribute(null);
+                setFormData(initialFormData);
+                fetchData();
+            }
         } catch (error) {
             if (error instanceof Error) {
                 toast.error(error.message);
@@ -111,14 +200,19 @@ export default function AttributesPage() {
 
     const handleEdit = (attribute) => {
         setEditAttribute(attribute);
+        
+        // Prepare multi-language data with fallback
+        const nameML = attribute.nameML || { [defaultLanguage]: attribute.name || '' };
+        const descriptionML = attribute.descriptionML || { [defaultLanguage]: attribute.description || '' };
+        
         setFormData({
-            name: attribute.name || '',
+            name: nameML[defaultLanguage] || attribute.name || '',
             slug: attribute.slug || '',
             type: attribute.type || 'text',
-            description: attribute.description || '',
+            description: descriptionML[defaultLanguage] || attribute.description || '',
             options: attribute.options || [],
-            isRequired: attribute.isRequired || false,
-            isActive: attribute.isActive !== false
+            nameML,
+            descriptionML
         });
         setIsOpen(true);
     };
@@ -133,11 +227,15 @@ export default function AttributesPage() {
 
         setIsDeleting(true);
         try {
-            await remove(attributeToDelete.id, 'attributes');
-            toast.success('Attribute deleted successfully');
-            setDeleteDialogOpen(false);
-            setAttributeToDelete(null);
-            fetchAttributes();
+            const response = await deleteAttribute(attributeToDelete.id);
+            if (response.success) {
+                toast.success('Attribute deleted successfully');
+                setDeleteDialogOpen(false);
+                setAttributeToDelete(null);
+                fetchData();
+            } else {
+                toast.error(response.error || 'Failed to delete attribute');
+            }
         } catch (error) {
             if (error instanceof Error) {
                 toast.error(error.message);
@@ -204,20 +302,56 @@ export default function AttributesPage() {
                             <DialogTitle>{editAttribute ? 'Edit Attribute' : 'Add New Attribute'}</DialogTitle>
                         </DialogHeader>
                         <form onSubmit={handleSubmit} className="space-y-6">
+                            {/* Language Selector */}
+                            {availableLanguages.length > 1 && (
+                                <div className="flex justify-center">
+                                    <div className="inline-flex h-10 items-center justify-center rounded-md bg-muted p-1 text-muted-foreground">
+                                        {availableLanguages.map((lang, index) => (
+                                            <button
+                                                key={`lang-${lang}-${index}`}
+                                                type="button"
+                                                onClick={() => setCurrentLanguage(lang)}
+                                                className={`inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 ${
+                                                    currentLanguage === lang
+                                                        ? 'bg-background text-foreground shadow-sm'
+                                                        : ''
+                                                }`}
+                                            >
+                                                {lang.toUpperCase()}
+                                                {lang === defaultLanguage && (
+                                                    <span className="ml-1 text-xs text-muted-foreground">(default)</span>
+                                                )}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2">
-                                    <Label htmlFor="name">Name *</Label>
+                                    <Label htmlFor="name">
+                                        Name * {availableLanguages.length > 1 && `(${currentLanguage.toUpperCase()})`}
+                                    </Label>
                                     <Input
                                         id="name"
                                         placeholder="e.g., Color, Size, Material"
-                                        value={formData.name}
+                                        value={getMultiLanguageValue(formData.nameML, currentLanguage, defaultLanguage, formData.name)}
                                         onChange={(e) => {
                                             const name = e.target.value;
-                                            setFormData({
-                                                ...formData,
-                                                name,
-                                                slug: generateSlug(name)
-                                            });
+                                            const updatedFormData = updateMultiLanguageField(
+                                                formData,
+                                                'nameML',
+                                                currentLanguage,
+                                                name
+                                            );
+                                            
+                                            // Update slug only for default language
+                                            if (currentLanguage === defaultLanguage) {
+                                                updatedFormData.name = name;
+                                                updatedFormData.slug = generateSlug(name);
+                                            }
+                                            
+                                            setFormData(updatedFormData);
                                         }}
                                         required
                                     />
@@ -243,8 +377,8 @@ export default function AttributesPage() {
                                         <SelectValue placeholder="Select attribute type" />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        {ATTRIBUTE_TYPES.map((type) => (
-                                            <SelectItem key={type.value} value={type.value}>
+                                        {ATTRIBUTE_TYPES.map((type, index) => (
+                                            <SelectItem key={index} value={type.value}>
                                                 {type.label}
                                             </SelectItem>
                                         ))}
@@ -253,12 +387,29 @@ export default function AttributesPage() {
                             </div>
 
                             <div className="space-y-2">
-                                <Label htmlFor="description">Description</Label>
+                                <Label htmlFor="description">
+                                    Description {availableLanguages.length > 1 && `(${currentLanguage.toUpperCase()})`}
+                                </Label>
                                 <Textarea
                                     id="description"
                                     placeholder="Describe this attribute..."
-                                    value={formData.description}
-                                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                                    value={getMultiLanguageValue(formData.descriptionML, currentLanguage, defaultLanguage, formData.description)}
+                                    onChange={(e) => {
+                                        const description = e.target.value;
+                                        const updatedFormData = updateMultiLanguageField(
+                                            formData,
+                                            'descriptionML',
+                                            currentLanguage,
+                                            description
+                                        );
+                                        
+                                        // Update base description for default language
+                                        if (currentLanguage === defaultLanguage) {
+                                            updatedFormData.description = description;
+                                        }
+                                        
+                                        setFormData(updatedFormData);
+                                    }}
                                     className="min-h-[80px]"
                                 />
                             </div>
@@ -329,6 +480,25 @@ export default function AttributesPage() {
                 </Dialog>
             </div>
 
+            {/* Search Input */}
+            <div className="flex items-center justify-between">
+                <Input
+                    type="text"
+                    placeholder="Search attributes..."
+                    value={search}
+                    onChange={(e) => {
+                        setSearch(e.target.value);
+                        setCurrentPage(1); // Reset to first page when searching
+                    }}
+                    className="max-w-md"
+                />
+                {totalItems > 0 && (
+                    <p className="text-sm text-muted-foreground">
+                        Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, totalItems)} of {totalItems} attributes
+                    </p>
+                )}
+            </div>
+
             {loading ? (
                 <TableSkeleton columns={5} rows={5} />
             ) : (
@@ -353,15 +523,20 @@ export default function AttributesPage() {
                                         </TableCell>
                                     </TableRow>
                                 ) : (
-                                    attributes.map((attribute) => (
-                                        <TableRow key={attribute.id}>
+                                    attributes.map((attribute, index) => (
+                                        <TableRow key={index}>
                                             <TableCell>
                                                 <div>
-                                                    <div className="font-medium">{attribute.name}</div>
+                                                    <div className="font-medium">
+                                                        {attribute.nameML?.[defaultLanguage] || attribute.name}
+                                                    </div>
                                                     <div className="text-muted-foreground text-sm">
-                                                        {attribute.description?.length > 50
-                                                            ? `${attribute.description.substring(0, 50)}...`
-                                                            : attribute.description}
+                                                        {(() => {
+                                                            const description = attribute.descriptionML?.[defaultLanguage] || attribute.description || '';
+                                                            return description.length > 50
+                                                                ? `${description.substring(0, 50)}...`
+                                                                : description;
+                                                        })()}
                                                     </div>
                                                 </div>
                                             </TableCell>
@@ -429,6 +604,54 @@ export default function AttributesPage() {
                             </TableBody>
                         </Table>
                     </ScrollArea>
+                </div>
+            )}
+
+            {/* Pagination */}
+            {totalPages > 1 && (
+                <div className="flex justify-center">
+                    <Pagination>
+                        <PaginationContent>
+                            <PaginationItem>
+                                <PaginationPrevious 
+                                    href="#"
+                                    onClick={(e) => {
+                                        e.preventDefault();
+                                        if (currentPage > 1) {
+                                            setCurrentPage(currentPage - 1);
+                                        }
+                                    }}
+                                    className={currentPage === 1 ? 'pointer-events-none opacity-50' : ''}
+                                />
+                            </PaginationItem>
+                            {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                                <PaginationItem key={page}>
+                                    <PaginationLink
+                                        href="#"
+                                        onClick={(e) => {
+                                            e.preventDefault();
+                                            setCurrentPage(page);
+                                        }}
+                                        isActive={currentPage === page}
+                                    >
+                                        {page}
+                                    </PaginationLink>
+                                </PaginationItem>
+                            ))}
+                            <PaginationItem>
+                                <PaginationNext 
+                                    href="#"
+                                    onClick={(e) => {
+                                        e.preventDefault();
+                                        if (currentPage < totalPages) {
+                                            setCurrentPage(currentPage + 1);
+                                        }
+                                    }}
+                                    className={currentPage === totalPages ? 'pointer-events-none opacity-50' : ''}
+                                />
+                            </PaginationItem>
+                        </PaginationContent>
+                    </Pagination>
                 </div>
             )}
 

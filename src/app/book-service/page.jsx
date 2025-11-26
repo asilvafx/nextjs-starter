@@ -7,12 +7,11 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { useCart } from 'react-use-cart';
 import { toast } from 'sonner';
-import { createOrder } from '@/lib/server/admin';
+import { createOrder, getAllCatalog, getCachedStoreSettings, createOrUpdateCustomerFromOrder } from '@/lib/server/admin';
 import ServiceBooking from '@/components/ServiceBooking';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { getAll } from '@/lib/client/query';
 
 export default function BookServicePage() {
     const [services, setServices] = useState([]);
@@ -27,19 +26,18 @@ export default function BookServicePage() {
     const fetchServices = async () => {
         try {
             setIsLoading(true);
-            const [response, settingsRes] = await Promise.all([getAll('catalog'), getAll('store_settings')]);
+            const [response, settingsRes] = await Promise.all([getAllCatalog(), getCachedStoreSettings()]);
 
             if (response?.success && response.data) {
-                // Only include services that require an appointment
-                const appointmentServices = response.data.filter(
-                    (item) => item.type === 'service' && item.isActive && item.requiresAppointment
+                // Only include items that are services and are active
+                const serviceItems = response.data.filter(
+                    (item) => item.type === 'service' && item.isActive
                 );
-                console.log(response);
-                setServices(appointmentServices);
+                setServices(serviceItems);
             }
 
-            if (settingsRes?.success && Array.isArray(settingsRes.data) && settingsRes.data.length > 0) {
-                setStoreSettings(settingsRes.data[0]);
+            if (settingsRes?.success && settingsRes.data) {
+                setStoreSettings(settingsRes.data);
             }
         } catch (error) {
             console.error('Error fetching services or settings:', error);
@@ -149,6 +147,17 @@ export default function BookServicePage() {
 
             // Create order record on server for non-card methods
             if (paymentMethod !== 'card') {
+                // Create or update customer if we have customer data
+                if (orderData.customer && orderData.customer.email) {
+                    try {
+                        const customerResult = await createOrUpdateCustomerFromOrder(orderData.customer);
+                        console.log('Customer operation result:', customerResult);
+                    } catch (customerError) {
+                        console.warn('Customer creation/update failed:', customerError);
+                        // Continue with order creation even if customer operation fails
+                    }
+                }
+
                 const result = await createOrder(orderData);
 
                 if (!result?.success) {
@@ -248,9 +257,9 @@ export default function BookServicePage() {
         <div className="container mx-auto space-y-6 px-4 py-8">
             {/* Header */}
             <div className="space-y-2 text-center">
-                <h1 className="font-bold text-3xl">Book a Service Appointment</h1>
+                <h1 className="font-bold text-3xl">Book a Service</h1>
                 <p className="text-muted-foreground">
-                    Choose from our available services and schedule your appointment
+                    Choose from our available services
                 </p>
             </div>
 
@@ -261,15 +270,15 @@ export default function BookServicePage() {
                         <div className="text-muted-foreground">
                             <Users className="mx-auto mb-4 h-12 w-12 opacity-50" />
                             <h3 className="mb-2 font-medium text-lg">No Services Available</h3>
-                            <p>There are currently no services that require appointments.</p>
+                            <p>There are currently no active services available for booking.</p>
                         </div>
                     </CardContent>
                 </Card>
             ) : (
                 <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-                    {services.map((service) => (
+                    {services.map((service, index) => (
                         <Card
-                            key={service.id}
+                            key={service.id || `service-${index}`}
                             className="cursor-pointer transition-shadow hover:shadow-lg"
                             onClick={() => setSelectedService(service)}>
                             <CardHeader>
@@ -327,7 +336,7 @@ export default function BookServicePage() {
                                 {service.features && service.features.length > 0 && (
                                     <div className="flex flex-wrap gap-1">
                                         {service.features.slice(0, 3).map((feature, index) => (
-                                            <Badge key={index} variant="outline" className="text-xs">
+                                            <Badge key={`${service.id}-feature-${index}`} variant="outline" className="text-xs">
                                                 {feature}
                                             </Badge>
                                         ))}

@@ -43,9 +43,13 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
-import { create, getAll, remove, update } from '@/lib/client/query';
-
-export default function TasksPage() {
+import { getAll } from '@/lib/client/query';
+import {
+    getAllTasks,
+    createTask,
+    updateTask,
+    deleteTask
+} from '@/lib/server/admin';export default function TasksPage() {
     const [selectedStatus, setSelectedStatus] = useState('all');
     const [selectedPriority, setSelectedPriority] = useState('all');
     const [searchQuery, setSearchQuery] = useState('');
@@ -75,19 +79,11 @@ export default function TasksPage() {
 
             let allTasks = [];
 
-            // Handle tasks with better error handling
+            // Fetch tasks using admin function
             try {
-                const tasksResponse = await getAll('tasks');
-
-                let tasksData = [];
+                const tasksResponse = await getAllTasks();
                 if (tasksResponse?.success && Array.isArray(tasksResponse.data)) {
-                    tasksData = tasksResponse.data;
-                } else if (Array.isArray(tasksResponse)) {
-                    tasksData = tasksResponse;
-                }
-
-                if (tasksData.length > 0) {
-                    allTasks = [...allTasks, ...tasksData];
+                    allTasks = [...allTasks, ...tasksResponse.data];
                 }
             } catch (err) {
                 console.warn('Failed to load tasks:', err.message);
@@ -203,13 +199,21 @@ export default function TasksPage() {
             };
 
             if (selectedTask) {
-                await update(selectedTask.id, taskData, 'tasks');
-                toast.success('Task updated successfully');
-                setIsEditDialogOpen(false);
+                const result = await updateTask(selectedTask.id, taskData);
+                if (result.success) {
+                    toast.success('Task updated successfully');
+                    setIsEditDialogOpen(false);
+                } else {
+                    throw new Error(result.error || 'Failed to update task');
+                }
             } else {
-                await create(taskData, 'tasks');
-                toast.success('Task created successfully');
-                setIsCreateDialogOpen(false);
+                const result = await createTask(taskData);
+                if (result.success) {
+                    toast.success('Task created successfully');
+                    setIsCreateDialogOpen(false);
+                } else {
+                    throw new Error(result.error || 'Failed to create task');
+                }
             }
 
             fetchTasks();
@@ -226,11 +230,15 @@ export default function TasksPage() {
 
         setIsDeleting(true);
         try {
-            await remove(selectedTask.id, 'tasks');
-            toast.success('Task deleted successfully');
-            setIsDeleteDialogOpen(false);
-            setSelectedTask(null);
-            fetchTasks();
+            const result = await deleteTask(selectedTask.id);
+            if (result.success) {
+                toast.success('Task deleted successfully');
+                setIsDeleteDialogOpen(false);
+                setSelectedTask(null);
+                fetchTasks();
+            } else {
+                throw new Error(result.error || 'Failed to delete task');
+            }
         } catch (error) {
             console.error('Error deleting task:', error);
             toast.error('Failed to delete task');
@@ -365,7 +373,7 @@ export default function TasksPage() {
                     const StatusIcon = statusConfig[task.status]?.icon || Clock;
 
                     return (
-                        <Card key={task.id} className="transition-shadow hover:shadow-md">
+                        <Card key={task.id || `task-${task.title}-${task.createdAt}`} className="transition-shadow hover:shadow-md">
                             <CardHeader className="pb-3">
                                 <div className="flex items-start justify-between">
                                     <div className="flex items-center gap-2">
@@ -420,7 +428,7 @@ export default function TasksPage() {
                                 {/* Tags */}
                                 <div className="flex flex-wrap gap-1">
                                     {(task.tags || []).map((tag, index) => (
-                                        <Badge key={`${tag}-${index}`} variant="outline" className="text-xs">
+                                        <Badge key={`${task.id}-tag-${tag}-${index}`} variant="outline" className="text-xs">
                                             {tag}
                                         </Badge>
                                     ))}
