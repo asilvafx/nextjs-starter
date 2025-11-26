@@ -56,7 +56,7 @@ const notificationAPI = {
             return await response.json();
         } catch (error) {
             console.error('Error fetching notifications:', error);
-            return { success: false, error: error.message, data: [] };
+            return { success: false, error: (error as Error).message || 'Unknown error', data: [] };
         }
     },
     
@@ -75,7 +75,7 @@ const notificationAPI = {
             return await response.json();
         } catch (error) {
             console.error('Error marking notification as read:', error);
-            return { success: false, error: error.message };
+            return { success: false, error: (error as Error).message || 'Unknown error' };
         }
     },
     
@@ -94,7 +94,7 @@ const notificationAPI = {
             return await response.json();
         } catch (error) {
             console.error('Error marking notifications as read:', error);
-            return { success: false, error: error.message };
+            return { success: false, error: (error as Error).message || 'Unknown error' };
         }
     },
     
@@ -115,7 +115,7 @@ const notificationAPI = {
             };
         } catch (error) {
             console.error('Error fetching unread count:', error);
-            return { success: false, error: error.message, data: { count: 0 } };
+            return { success: false, error: (error as Error).message || 'Unknown error', data: { count: 0 } };
         }
     }
 };
