@@ -37,7 +37,7 @@ interface Notification {
     metadata: Record<string, any>;
     createdAt: string;
     readAt?: string;
-    readBy?: string;
+    readBy?: string | null;
 }
 
 // Helper functions to interact with notification APIs
@@ -176,7 +176,7 @@ export function NotificationsPopover() {
                 setNotifications(prev => 
                     prev.map(notification =>
                         notification.id === notificationId 
-                            ? { ...notification, isRead: true, readAt: new Date().toISOString(), readBy: user?.email }
+                            ? { ...notification, isRead: true, readAt: new Date().toISOString(), readBy: user?.email || null } as Notification
                             : notification
                     )
                 );
@@ -207,8 +207,8 @@ export function NotificationsPopover() {
                         ...notification,
                         isRead: true,
                         readAt: new Date().toISOString(),
-                        readBy: user?.email
-                    }))
+                        readBy: user?.email || null
+                    } as Notification))
                 );
                 
                 // Reset unread count
