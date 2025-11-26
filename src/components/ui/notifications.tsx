@@ -19,12 +19,6 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils';
-import { 
-    getAllNotifications, 
-    markNotificationAsRead, 
-    markMultipleNotificationsAsRead,
-    getUnreadNotificationsCount 
-} from '@/lib/server/admin.js';
 
 interface Notification {
     id: string;
@@ -46,6 +40,86 @@ interface Notification {
     readBy?: string;
 }
 
+// Helper functions to interact with notification APIs
+const notificationAPI = {
+    async getAll(options: { userId?: string | null; limit?: number } = {}) {
+        try {
+            const params = new URLSearchParams();
+            if (options.limit) params.append('limit', options.limit.toString());
+            
+            const response = await fetch(`/api/query/notifications?${params.toString()}`, {
+                method: 'GET',
+                headers: { 'Content-Type': 'application/json' }
+            });
+            
+            if (!response.ok) throw new Error('Failed to fetch notifications');
+            return await response.json();
+        } catch (error) {
+            console.error('Error fetching notifications:', error);
+            return { success: false, error: error.message, data: [] };
+        }
+    },
+    
+    async markAsRead(notificationId: string, userId?: string | null) {
+        try {
+            const response = await fetch('/api/notifications', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    type: 'mark_as_read',
+                    data: { notificationId, userId }
+                })
+            });
+            
+            if (!response.ok) throw new Error('Failed to mark notification as read');
+            return await response.json();
+        } catch (error) {
+            console.error('Error marking notification as read:', error);
+            return { success: false, error: error.message };
+        }
+    },
+    
+    async markMultipleAsRead(notificationIds: string[], userId?: string | null) {
+        try {
+            const response = await fetch('/api/notifications', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    type: 'mark_multiple_as_read',
+                    data: { notificationIds, userId }
+                })
+            });
+            
+            if (!response.ok) throw new Error('Failed to mark notifications as read');
+            return await response.json();
+        } catch (error) {
+            console.error('Error marking notifications as read:', error);
+            return { success: false, error: error.message };
+        }
+    },
+    
+    async getUnreadCount(userId?: string | null) {
+        try {
+            const response = await fetch(`/api/query/notifications?unread_count=true`, {
+                method: 'GET',
+                headers: { 'Content-Type': 'application/json' }
+            });
+            
+            if (!response.ok) throw new Error('Failed to fetch unread count');
+            const result = await response.json();
+            return { 
+                success: true, 
+                data: { 
+                    count: result.data?.filter((n: any) => !n.isRead).length || 0 
+                } 
+            };
+        } catch (error) {
+            console.error('Error fetching unread count:', error);
+            return { success: false, error: error.message, data: { count: 0 } };
+        }
+    }
+};
+
 export function NotificationsPopover() {
     const { user } = useAuth();
     const [notifications, setNotifications] = React.useState<Notification[]>([]);
@@ -59,16 +133,16 @@ export function NotificationsPopover() {
             setLoading(true);
             
             // Get recent notifications (last 20)
-            const result = await getAllNotifications({ 
+            const result = await notificationAPI.getAll({ 
                 userId: user?.email || null, 
                 limit: 20 
             });
             
             if (result.success) {
-                setNotifications(result.data);
+                setNotifications(result.data || []);
                 
                 // Count unread notifications
-                const unreadResult = await getUnreadNotificationsCount(user?.email || null);
+                const unreadResult = await notificationAPI.getUnreadCount(user?.email || null);
                 if (unreadResult.success) {
                     setUnreadCount(unreadResult.data.count);
                 }
@@ -95,7 +169,7 @@ export function NotificationsPopover() {
     // Mark single notification as read
     const markAsRead = async (notificationId: string) => {
         try {
-            const result = await markNotificationAsRead(notificationId, user?.email || null);
+            const result = await notificationAPI.markAsRead(notificationId, user?.email || null);
             
             if (result.success) {
                 // Update local state
@@ -124,7 +198,7 @@ export function NotificationsPopover() {
             
             if (unreadNotificationIds.length === 0) return;
             
-            const result = await markMultipleNotificationsAsRead(unreadNotificationIds, user?.email || null);
+            const result = await notificationAPI.markMultipleAsRead(unreadNotificationIds, user?.email || null);
             
             if (result.success) {
                 // Update local state
