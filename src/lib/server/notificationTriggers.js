@@ -343,18 +343,3 @@ export async function scheduleRecurringNotifications() {
     
     return { success: true, message: 'Recurring notifications scheduled' };
 }
-
-// Export all trigger functions
-export {
-    triggerNewUserNotification,
-    triggerSecurityAlert,
-    triggerMaintenanceNotification,
-    triggerLowInventoryNotification,
-    triggerPaymentFailureNotification,
-    triggerBackupSuccessNotification,
-    triggerBackupFailureNotification,
-    triggerMonthlyReportNotification,
-    triggerOrderStatusChangeNotification,
-    triggerDiskSpaceWarning,
-    scheduleRecurringNotifications
-};
