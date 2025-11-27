@@ -1,6 +1,6 @@
 'use client';
 
-import { BarChart3, Edit, Eye, Mail, MessageSquare, Phone, Plus, Send, Trash2, TrendingUp, Users } from 'lucide-react';
+import { BarChart3, Edit, Eye, Mail, MessageSquare, Phone, Plus, Send, Trash2, TrendingUp, Users, Inbox } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
@@ -23,6 +23,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { PhoneInput } from '@/components/ui/phone-input';
+import AdminHeader from '@/app/admin/components/AdminHeader';
 import { 
     getAllCampaigns, 
     createCampaign, 
@@ -502,35 +503,15 @@ export default function NewsletterPage() {
     }, []);
 
     if (isLoading) {
-        return (
-            <div className="space-y-6">
-                <div className="flex items-center justify-between">
-                    <h1 className="text-3xl font-bold tracking-tight">Newsletter</h1>
-                </div>
-                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                    {[...Array(4)].map((_, i) => (
-                        <Card key={i}>
-                            <CardHeader>
-                                <Skeleton className="h-4 w-24" />
-                            </CardHeader>
-                            <CardContent>
-                                <Skeleton className="h-8 w-16" />
-                            </CardContent>
-                        </Card>
-                    ))}
-                </div>
-            </div>
-        );
+        return <NewsletterSkeleton />;
     }
 
     return (
         <div className="space-y-6">
-            <div className="flex items-center justify-between">
-                <div>
-                    <h1 className="text-3xl font-bold tracking-tight">Newsletter & SMS Marketing</h1>
-                    <p className="text-muted-foreground">Manage email and SMS campaigns, subscribers, and templates</p>
-                </div>
-            </div>
+            <AdminHeader 
+                title="Newsletter" 
+                description="Manage email and SMS campaigns, subscribers, and templates"
+            />
 
             {/* Analytics Cards */}
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -649,7 +630,74 @@ export default function NewsletterPage() {
                     </div>
 
                     <div className="grid gap-4">
-                        {campaigns.filter(c => c.type !== 'sms').map((campaign) => (
+                        {campaigns.filter(c => c.type !== 'sms').length === 0 ? (
+                            <Card>
+                                <CardContent className="flex items-center justify-center p-12">
+                                    <div className="text-center">
+                                        <Mail className="mx-auto mb-4 h-12 w-12 text-muted-foreground" />
+                                        <h3 className="text-lg font-medium">No email campaigns yet</h3>
+                                        <p className="text-muted-foreground mb-4">
+                                            Create your first email campaign to start engaging with your subscribers
+                                        </p>
+                                        <Dialog>
+                                            <DialogTrigger asChild>
+                                                <Button>
+                                                    <Plus className="h-4 w-4 mr-2" />
+                                                    Create Your First Campaign
+                                                </Button>
+                                            </DialogTrigger>
+                                            <DialogContent className="max-w-2xl">
+                                                <DialogHeader>
+                                                    <DialogTitle>Create Email Campaign</DialogTitle>
+                                                    <DialogDescription>
+                                                        Create a new email campaign to send to your subscribers
+                                                    </DialogDescription>
+                                                </DialogHeader>
+                                                <div className="space-y-4">
+                                                    <div>
+                                                        <Label htmlFor="campaign-subject">Subject</Label>
+                                                        <Input
+                                                            id="campaign-subject"
+                                                            value={newCampaign.subject}
+                                                            onChange={(e) => setNewCampaign(prev => ({ ...prev, subject: e.target.value }))}
+                                                            placeholder="Enter campaign subject"
+                                                        />
+                                                    </div>
+                                                    <div>
+                                                        <Label htmlFor="campaign-preview">Preview Text</Label>
+                                                        <Input
+                                                            id="campaign-preview"
+                                                            value={newCampaign.previewText}
+                                                            onChange={(e) => setNewCampaign(prev => ({ ...prev, previewText: e.target.value }))}
+                                                            placeholder="Preview text shown in email clients"
+                                                        />
+                                                    </div>
+                                                    <div>
+                                                        <Label htmlFor="campaign-content">Content</Label>
+                                                        <Textarea
+                                                            id="campaign-content"
+                                                            value={newCampaign.content}
+                                                            onChange={(e) => setNewCampaign(prev => ({ ...prev, content: e.target.value }))}
+                                                            placeholder="Email content (HTML supported)"
+                                                            rows={8}
+                                                        />
+                                                    </div>
+                                                </div>
+                                                <DialogFooter>
+                                                    <Button 
+                                                        onClick={handleCreateCampaign}
+                                                        disabled={isCreatingCampaign}
+                                                    >
+                                                        {isCreatingCampaign ? 'Creating...' : 'Create Campaign'}
+                                                    </Button>
+                                                </DialogFooter>
+                                            </DialogContent>
+                                        </Dialog>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        ) : (
+                            campaigns.filter(c => c.type !== 'sms').map((campaign) => (
                             <Card key={campaign.id}>
                                 <CardHeader>
                                     <div className="flex items-center justify-between">
@@ -819,7 +867,8 @@ export default function NewsletterPage() {
                                     </CardDescription>
                                 </CardHeader>
                             </Card>
-                        ))}
+                            ))
+                        )}
                     </div>
 
                     <PaginationControls 
@@ -884,7 +933,69 @@ export default function NewsletterPage() {
                     </div>
 
                     <div className="grid gap-4">
-                        {campaigns.filter(c => c.type === 'sms').map((campaign) => (
+                        {campaigns.filter(c => c.type === 'sms').length === 0 ? (
+                            <Card>
+                                <CardContent className="flex items-center justify-center p-12">
+                                    <div className="text-center">
+                                        <MessageSquare className="mx-auto mb-4 h-12 w-12 text-muted-foreground" />
+                                        <h3 className="text-lg font-medium">No SMS campaigns yet</h3>
+                                        <p className="text-muted-foreground mb-4">
+                                            Create your first SMS campaign to reach your subscribers directly
+                                        </p>
+                                        <Dialog>
+                                            <DialogTrigger asChild>
+                                                <Button>
+                                                    <Plus className="h-4 w-4 mr-2" />
+                                                    Create Your First SMS Campaign
+                                                </Button>
+                                            </DialogTrigger>
+                                            <DialogContent className="max-w-2xl">
+                                                <DialogHeader>
+                                                    <DialogTitle>Create SMS Campaign</DialogTitle>
+                                                    <DialogDescription>
+                                                        Create a new SMS campaign to send to your subscribers
+                                                    </DialogDescription>
+                                                </DialogHeader>
+                                                <div className="space-y-4">
+                                                    <div>
+                                                        <Label htmlFor="sms-subject">Campaign Name</Label>
+                                                        <Input
+                                                            id="sms-subject"
+                                                            value={newCampaign.subject}
+                                                            onChange={(e) => setNewCampaign(prev => ({ ...prev, subject: e.target.value, type: 'sms' }))}
+                                                            placeholder="Enter campaign name"
+                                                        />
+                                                    </div>
+                                                    <div>
+                                                        <Label htmlFor="sms-message">SMS Message</Label>
+                                                        <Textarea
+                                                            id="sms-message"
+                                                            value={newSMSCampaign.message}
+                                                            onChange={(e) => setNewSMSCampaign(prev => ({ ...prev, message: e.target.value }))}
+                                                            placeholder="SMS message content (160 characters recommended)"
+                                                            rows={4}
+                                                            maxLength={300}
+                                                        />
+                                                        <div className="text-sm text-muted-foreground mt-1">
+                                                            {newSMSCampaign.message.length}/300 characters
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <DialogFooter>
+                                                    <Button 
+                                                        onClick={handleCreateCampaign}
+                                                        disabled={isCreatingCampaign}
+                                                    >
+                                                        {isCreatingCampaign ? 'Creating...' : 'Create SMS Campaign'}
+                                                    </Button>
+                                                </DialogFooter>
+                                            </DialogContent>
+                                        </Dialog>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        ) : (
+                            campaigns.filter(c => c.type === 'sms').map((campaign) => (
                             <Card key={campaign.id}>
                                 <CardHeader>
                                     <div className="flex items-center justify-between">
@@ -1052,7 +1163,8 @@ export default function NewsletterPage() {
                                     </CardDescription>
                                 </CardHeader>
                             </Card>
-                        ))}
+                            ))
+                        )}
                     </div>
 
                     <PaginationControls 
@@ -1071,7 +1183,24 @@ export default function NewsletterPage() {
                     </div>
 
                     <div className="grid gap-4">
-                        {subscribers.map((subscriber) => (
+                        {subscribers.length === 0 ? (
+                            <Card>
+                                <CardContent className="flex items-center justify-center p-12">
+                                    <div className="text-center">
+                                        <Users className="mx-auto mb-4 h-12 w-12 text-muted-foreground" />
+                                        <h3 className="text-lg font-medium">No subscribers yet</h3>
+                                        <p className="text-muted-foreground mb-4">
+                                            Start building your audience by adding subscribers to your mailing list
+                                        </p>
+                                        <Button variant="outline">
+                                            <Plus className="h-4 w-4 mr-2" />
+                                            Add First Subscriber
+                                        </Button>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        ) : (
+                            subscribers.map((subscriber) => (
                             <Card key={subscriber.id}>
                                 <CardHeader>
                                     <div className="flex items-center justify-between">
@@ -1093,7 +1222,8 @@ export default function NewsletterPage() {
                                     </div>
                                 </CardHeader>
                             </Card>
-                        ))}
+                            ))
+                        )}
                     </div>
 
                     <PaginationControls 
@@ -1180,7 +1310,93 @@ export default function NewsletterPage() {
                     </div>
 
                     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                        {templates.map((template) => (
+                        {templates.length === 0 ? (
+                            <div className="col-span-full">
+                                <Card>
+                                    <CardContent className="flex items-center justify-center p-12">
+                                        <div className="text-center">
+                                            <Inbox className="mx-auto mb-4 h-12 w-12 text-muted-foreground" />
+                                            <h3 className="text-lg font-medium">No email templates yet</h3>
+                                            <p className="text-muted-foreground mb-4">
+                                                Create reusable email templates to streamline your campaign creation process
+                                            </p>
+                                            <Dialog>
+                                                <DialogTrigger asChild>
+                                                    <Button>
+                                                        <Plus className="h-4 w-4 mr-2" />
+                                                        Create Your First Template
+                                                    </Button>
+                                                </DialogTrigger>
+                                                <DialogContent className="max-w-2xl">
+                                                    <DialogHeader>
+                                                        <DialogTitle>Create Email Template</DialogTitle>
+                                                        <DialogDescription>
+                                                            Create a reusable email template for your campaigns
+                                                        </DialogDescription>
+                                                    </DialogHeader>
+                                                    <div className="space-y-4">
+                                                        <div>
+                                                            <Label htmlFor="template-name">Template Name</Label>
+                                                            <Input
+                                                                id="template-name"
+                                                                value={newTemplate.name}
+                                                                onChange={(e) => setNewTemplate(prev => ({ ...prev, name: e.target.value }))}
+                                                                placeholder="Enter template name"
+                                                            />
+                                                        </div>
+                                                        <div>
+                                                            <Label htmlFor="template-description">Description</Label>
+                                                            <Input
+                                                                id="template-description"
+                                                                value={newTemplate.description}
+                                                                onChange={(e) => setNewTemplate(prev => ({ ...prev, description: e.target.value }))}
+                                                                placeholder="Brief description of the template"
+                                                            />
+                                                        </div>
+                                                        <div>
+                                                            <Label htmlFor="template-category">Category</Label>
+                                                            <Select
+                                                                value={newTemplate.category}
+                                                                onValueChange={(value) => setNewTemplate(prev => ({ ...prev, category: value }))}
+                                                            >
+                                                                <SelectTrigger>
+                                                                    <SelectValue placeholder="Select category" />
+                                                                </SelectTrigger>
+                                                                <SelectContent>
+                                                                    <SelectItem value="email">Email</SelectItem>
+                                                                    <SelectItem value="promotional">Promotional</SelectItem>
+                                                                    <SelectItem value="onboarding">Onboarding</SelectItem>
+                                                                    <SelectItem value="notification">Notification</SelectItem>
+                                                                </SelectContent>
+                                                            </Select>
+                                                        </div>
+                                                        <div>
+                                                            <Label htmlFor="template-content">HTML Content</Label>
+                                                            <Textarea
+                                                                id="template-content"
+                                                                value={newTemplate.content}
+                                                                onChange={(e) => setNewTemplate(prev => ({ ...prev, content: e.target.value }))}
+                                                                placeholder="HTML template content"
+                                                                rows={8}
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                    <DialogFooter>
+                                                        <Button 
+                                                            onClick={handleCreateTemplate}
+                                                            disabled={isCreatingTemplate}
+                                                        >
+                                                            {isCreatingTemplate ? 'Creating...' : 'Create Template'}
+                                                        </Button>
+                                                    </DialogFooter>
+                                                </DialogContent>
+                                            </Dialog>
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                            </div>
+                        ) : (
+                            templates.map((template) => (
                             <Card key={template.id}>
                                 <CardHeader>
                                     <div className="flex items-start justify-between">
@@ -1224,7 +1440,8 @@ export default function NewsletterPage() {
                                     </div>
                                 </CardHeader>
                             </Card>
-                        ))}
+                            ))
+                        )}
                     </div>
 
                     <PaginationControls 
@@ -1233,6 +1450,58 @@ export default function NewsletterPage() {
                     />
                 </TabsContent>
             </Tabs>
+        </div>
+    );
+}
+
+// Newsletter Skeleton Component
+function NewsletterSkeleton() {
+    return (
+        <div className="space-y-6">
+            <AdminHeader 
+                title="Newsletter" 
+                description="Manage email and SMS campaigns, subscribers, and templates"
+            />
+            
+            {/* Analytics Cards Skeleton */}
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                {[...Array(4)].map((_, i) => (
+                    <Card key={i}>
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                            <Skeleton className="h-4 w-24" />
+                            <Skeleton className="h-4 w-4" />
+                        </CardHeader>
+                        <CardContent>
+                            <Skeleton className="h-8 w-16 mb-2" />
+                            <Skeleton className="h-3 w-20" />
+                        </CardContent>
+                    </Card>
+                ))}
+            </div>
+            
+            {/* Tabs Skeleton */}
+            <div className="space-y-4">
+                <Skeleton className="h-10 w-full" />
+                <div className="space-y-3">
+                    {[...Array(5)].map((_, i) => (
+                        <Card key={i}>
+                            <CardHeader>
+                                <div className="flex items-center justify-between">
+                                    <div className="space-y-2">
+                                        <Skeleton className="h-5 w-48" />
+                                        <Skeleton className="h-4 w-32" />
+                                    </div>
+                                    <div className="flex items-center space-x-2">
+                                        <Skeleton className="h-5 w-16" />
+                                        <Skeleton className="h-8 w-8" />
+                                        <Skeleton className="h-8 w-8" />
+                                    </div>
+                                </div>
+                            </CardHeader>
+                        </Card>
+                    ))}
+                </div>
+            </div>
         </div>
     );
 }
