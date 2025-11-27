@@ -4104,3 +4104,264 @@ export async function exportSubscribers(filters = {}) {
         };
     }
 }
+
+// BLOCKS MANAGEMENT UTILITY FUNCTIONS (NOT SERVER ACTIONS)
+// These functions can be imported directly into client components
+
+/**
+ * Get all blocks utility function with pagination support
+ * @param {Object} params - Query parameters (page, limit, search, type, status, etc.)
+ * @returns {Promise<Object>} Blocks data with pagination info
+ */
+export async function getAllBlocks(params = {}) {
+    try {
+        const { 
+            page = 1, 
+            limit = 10, 
+            search = '', 
+            type = 'all',
+            status = 'all',
+            sortBy = 'createdAt',
+            sortOrder = 'desc'
+        } = params;
+
+        // Fetch all blocks from database
+        const blocksData = await DBService.readAll('blocks');
+        
+        // Convert to array if needed
+        let blocks = Array.isArray(blocksData) ? blocksData : Object.values(blocksData || {});
+
+        // Apply search filter
+        if (search && search.trim()) {
+            const searchTerm = search.toLowerCase().trim();
+            blocks = blocks.filter(block => {
+                return (
+                    (block.name || '').toLowerCase().includes(searchTerm) ||
+                    (block.description || '').toLowerCase().includes(searchTerm) ||
+                    (block.id || '').toLowerCase().includes(searchTerm)
+                );
+            });
+        }
+
+        // Apply type filter
+        if (type && type !== 'all') {
+            blocks = blocks.filter(block => block.type === type);
+        }
+
+        // Apply status filter
+        if (status && status !== 'all') {
+            const isActive = status === 'active';
+            blocks = blocks.filter(block => block.isActive === isActive);
+        }
+
+        // Sort blocks
+        blocks.sort((a, b) => {
+            const aValue = a[sortBy] || '';
+            const bValue = b[sortBy] || '';
+            
+            if (sortOrder === 'desc') {
+                return aValue > bValue ? -1 : aValue < bValue ? 1 : 0;
+            } else {
+                return aValue < bValue ? -1 : aValue > bValue ? 1 : 0;
+            }
+        });
+
+        // Calculate pagination
+        const total = blocks.length;
+        const totalPages = Math.ceil(total / limit);
+        const offset = (page - 1) * limit;
+        const paginatedBlocks = blocks.slice(offset, offset + limit);
+
+        const pagination = {
+            page: parseInt(page),
+            limit: parseInt(limit),
+            total,
+            totalPages,
+            hasNext: page < totalPages,
+            hasPrev: page > 1
+        };
+
+        return {
+            success: true,
+            data: paginatedBlocks,
+            pagination
+        };
+    } catch (error) {
+        console.error('Error fetching blocks:', error);
+        return {
+            success: false,
+            error: 'Failed to fetch blocks data',
+            data: [],
+            pagination: { page: 1, limit: 10, total: 0, totalPages: 0, hasNext: false, hasPrev: false }
+        };
+    }
+}
+
+/**
+ * Get single block by ID utility function (for frontend use)
+ * @param {string} blockId - ID of the block to get
+ * @returns {Promise<Object>} Block data
+ */
+export async function getBlockById(blockId) {
+    try {
+        const block = await DBService.getItemByKey('id', blockId, 'blocks');
+        
+        if (!block) {
+            return {
+                success: false,
+                error: 'Block not found',
+                data: null
+            };
+        }
+
+        return {
+            success: true,
+            data: block
+        };
+    } catch (error) {
+        console.error('Error fetching block:', error);
+        return {
+            success: false,
+            error: 'Failed to fetch block',
+            data: null
+        };
+    }
+}
+
+/**
+ * Create a new block utility function
+ * @param {Object} blockData - Block data to create
+ * @returns {Promise<Object>} Created block data
+ */
+export async function createBlock(blockData) {
+    try {
+        // Generate unique ID if not provided
+        const blockId = blockData.id || `block_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        
+        // Prepare block data
+        const newBlock = {
+            id: blockId,
+            name: blockData.name || '',
+            description: blockData.description || '',
+            type: blockData.type || 'text',
+            content: blockData.content || '',
+            data: blockData.data || {},
+            settings: blockData.settings || {},
+            isActive: blockData.isActive !== false,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            createdBy: blockData.createdBy || 'admin'
+        };
+
+        // Validate required fields
+        if (!newBlock.name.trim()) {
+            return {
+                success: false,
+                error: 'Block name is required'
+            };
+        }
+
+        // Check for duplicate ID
+        const existingBlock = await DBService.getItemByKey('id', blockId, 'blocks');
+        if (existingBlock) {
+            return {
+                success: false,
+                error: 'Block ID already exists'
+            };
+        }
+
+        const result = await DBService.create(newBlock, 'blocks');
+        
+        return {
+            success: true,
+            data: result
+        };
+    } catch (error) {
+        console.error('Error creating block:', error);
+        return {
+            success: false,
+            error: 'Failed to create block'
+        };
+    }
+}
+
+/**
+ * Update a block utility function
+ * @param {string} blockId - ID of the block to update
+ * @param {Object} blockData - Block data to update
+ * @returns {Promise<Object>} Updated block data
+ */
+export async function updateBlock(blockId, blockData) {
+    try {
+        // Fetch existing block
+        const existingBlock = await DBService.getItemByKey('id', blockId, 'blocks');
+        
+        if (!existingBlock) {
+            return {
+                success: false,
+                error: 'Block not found'
+            };
+        }
+
+        // Prepare update data
+        const updateData = {
+            ...existingBlock,
+            ...blockData,
+            id: blockId, // Ensure ID doesn't change
+            updatedAt: new Date().toISOString()
+        };
+
+        // Validate required fields
+        if (!updateData.name.trim()) {
+            return {
+                success: false,
+                error: 'Block name is required'
+            };
+        }
+
+        const result = await DBService.update(blockId, updateData, 'blocks');
+        
+        return {
+            success: true,
+            data: result
+        };
+    } catch (error) {
+        console.error('Error updating block:', error);
+        return {
+            success: false,
+            error: 'Failed to update block'
+        };
+    }
+}
+
+/**
+ * Delete a block utility function
+ * @param {string} blockId - ID of the block to delete
+ * @returns {Promise<Object>} Delete result
+ */
+export async function deleteBlock(blockId) {
+    try {
+        // Check if block exists
+        const existingBlock = await DBService.getItemByKey('id', blockId, 'blocks');
+        
+        if (!existingBlock) {
+            return {
+                success: false,
+                error: 'Block not found'
+            };
+        }
+
+        await DBService.delete(blockId, 'blocks');
+        
+        return {
+            success: true,
+            message: 'Block deleted successfully'
+        };
+    } catch (error) {
+        console.error('Error deleting block:', error);
+        return {
+            success: false,
+            error: 'Failed to delete block'
+        };
+    }
+}

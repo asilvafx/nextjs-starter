@@ -1,39 +1,99 @@
 'use client';
 
-import { Code, Copy, Edit, Eye, FileText, Layout, Plus, Trash2, Type } from 'lucide-react';
-import { useCallback, useEffect, useState } from 'react';
+import {
+    Code,
+    Copy,
+    Edit,
+    Eye,
+    FileText,
+    Image,
+    Layout,
+    MoreVertical,
+    Plus,
+    Search,
+    Trash2,
+    Type,
+    Video,
+    Youtube,
+    Download
+} from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
+import AdminHeader from '@/app/admin/components/AdminHeader';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+    DialogTrigger
+} from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import RichTextEditor from '@/components/ui/rich-text-editor';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { TableSkeleton } from '@/components/ui/skeleton';
+import { Switch } from '@/components/ui/switch';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { TableSkeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
-import { create, getAll, remove, update } from '@/lib/client/query.js';
+import { getAllBlocks, createBlock, updateBlock, deleteBlock } from '@/lib/server/admin';
 
 const blockTypes = [
-    { value: 'html', label: 'HTML Code', icon: Code },
-    { value: 'text', label: 'Rich Text', icon: Type },
-    { value: 'form', label: 'Form Block', icon: FileText },
-    { value: 'layout', label: 'Layout Block', icon: Layout }
+    { 
+        value: 'text', 
+        label: 'Text Block', 
+        icon: Type, 
+        description: 'Simple text content with basic formatting' 
+    },
+    { 
+        value: 'html', 
+        label: 'HTML Block', 
+        icon: Code, 
+        description: 'Custom HTML code with CSS and JavaScript' 
+    },
+    { 
+        value: 'image', 
+        label: 'Image Block', 
+        icon: Image, 
+        description: 'Display images from URL or uploaded files' 
+    },
+    { 
+        value: 'video', 
+        label: 'Video Block', 
+        icon: Video, 
+        description: 'Embed video files or streaming URLs' 
+    },
+    { 
+        value: 'youtube', 
+        label: 'YouTube Block', 
+        icon: Youtube, 
+        description: 'Embed YouTube videos with iframe' 
+    },
+    { 
+        value: 'form', 
+        label: 'Form Block', 
+        icon: FileText, 
+        description: 'Contact forms and data collection' 
+    },
+    { 
+        value: 'layout', 
+        label: 'Layout Block', 
+        icon: Layout, 
+        description: 'Grid and container layouts' 
+    }
 ];
 
 const initialFormData = {
     name: '',
-    slug: '',
+    description: '',
     type: 'text',
     content: '',
-    description: '',
-    isActive: true,
-    tags: [],
-    customCSS: '',
-    customJS: ''
+    data: {},
+    settings: {},
+    isActive: true
 };
 
 export default function BlocksPage() {
@@ -41,185 +101,122 @@ export default function BlocksPage() {
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');
     const [filterType, setFilterType] = useState('all');
-    const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
+    const [filterStatus, setFilterStatus] = useState('all');
     const [currentPage, setCurrentPage] = useState(1);
-    const [isOpen, setIsOpen] = useState(false);
+    const [pagination, setPagination] = useState({
+        page: 1,
+        limit: 10,
+        total: 0,
+        totalPages: 0,
+        hasNext: false,
+        hasPrev: false
+    });
+
+    // Dialog states
+    const [isCreateOpen, setIsCreateOpen] = useState(false);
     const [isEditOpen, setIsEditOpen] = useState(false);
     const [isViewOpen, setIsViewOpen] = useState(false);
     const [isDeleteOpen, setIsDeleteOpen] = useState(false);
     const [formData, setFormData] = useState(initialFormData);
     const [selectedBlock, setSelectedBlock] = useState(null);
-    const [deleteConfirmText, setDeleteConfirmText] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [isDeleting, setIsDeleting] = useState(false);
-    const [_editMode, setEditMode] = useState(false);
-    const [tagInput, setTagInput] = useState('');
-    const itemsPerPage = 10;
 
-    const fetchBlocks = async () => {
+    // Fetch blocks with pagination
+    const fetchBlocks = async (page = currentPage) => {
         try {
             setLoading(true);
-            const response = await getAll('blocks');
+            const params = {
+                page,
+                limit: 10,
+                search: search.trim(),
+                type: filterType,
+                status: filterStatus,
+                sortBy: 'updatedAt',
+                sortOrder: 'desc'
+            };
 
-            if (response.success && Array.isArray(response.data)) {
-                setBlocks(response.data);
+            const result = await getAllBlocks(params);
+            
+            if (result.success) {
+                setBlocks(result.data || []);
+                setPagination(result.pagination);
             } else {
-                // Fallback to empty array if response doesn't contain valid data
+                toast.error(result.error || 'Failed to load blocks');
                 setBlocks([]);
-                if (response.error) {
-                    toast.error(response.error);
-                }
             }
         } catch (error) {
             console.error('Error fetching blocks:', error);
-            setBlocks([]); // Ensure blocks is always an array
-            toast.error('Failed to fetch blocks');
+            toast.error('Failed to load blocks');
+            setBlocks([]);
         } finally {
             setLoading(false);
         }
     };
 
     useEffect(() => {
-        fetchBlocks();
-    }, []);
+        fetchBlocks(1);
+        setCurrentPage(1);
+    }, [search, filterType, filterStatus]);
 
-    const handleSort = (key) => {
-        setSortConfig((prev) => ({
-            key,
-            direction: prev.key === key && prev.direction === 'asc' ? 'desc' : 'asc'
-        }));
-    };
-
-    const getFilteredAndSortedBlocks = useCallback(() => {
-        // Ensure blocks is always an array
-        if (!Array.isArray(blocks)) {
-            return [];
+    useEffect(() => {
+        if (currentPage !== pagination.page) {
+            fetchBlocks(currentPage);
         }
+    }, [currentPage]);
 
-        let filtered = [...blocks];
-
-        // Filter by search
-        if (search) {
-            const searchLower = search.toLowerCase();
-            filtered = filtered.filter((block) => {
-                return (
-                    block.name?.toLowerCase().includes(searchLower) ||
-                    block.slug?.toLowerCase().includes(searchLower) ||
-                    block.description?.toLowerCase().includes(searchLower) ||
-                    block.tags?.some((tag) => tag.toLowerCase().includes(searchLower))
-                );
-            });
-        }
-
-        // Filter by type
-        if (filterType !== 'all') {
-            filtered = filtered.filter((block) => block.type === filterType);
-        }
-
-        // Sort
-        if (sortConfig.key) {
-            filtered.sort((a, b) => {
-                let aValue = a[sortConfig.key];
-                let bValue = b[sortConfig.key];
-
-                if (sortConfig.key === 'createdAt' || sortConfig.key === 'updatedAt') {
-                    aValue = new Date(aValue).getTime();
-                    bValue = new Date(bValue).getTime();
-                }
-
-                if (aValue < bValue) {
-                    return sortConfig.direction === 'asc' ? -1 : 1;
-                }
-                if (aValue > bValue) {
-                    return sortConfig.direction === 'asc' ? 1 : -1;
-                }
-                return 0;
-            });
-        }
-
-        return filtered;
-    }, [blocks, search, filterType, sortConfig]);
-
-    const getPaginatedBlocks = () => {
-        const filtered = getFilteredAndSortedBlocks();
-        const startIndex = (currentPage - 1) * itemsPerPage;
-        return filtered.slice(startIndex, startIndex + itemsPerPage);
-    };
-
-    const totalPages = Math.ceil(getFilteredAndSortedBlocks().length / itemsPerPage);
-
-    const formatDate = (date) => {
-        return new Date(date).toLocaleDateString('en-US', {
-            year: 'numeric',
-            month: 'short',
-            day: 'numeric'
-        });
-    };
-
-    const generateSlug = (name) => {
-        return name
-            .toLowerCase()
-            .replace(/[^a-z0-9 -]/g, '')
-            .replace(/\s+/g, '-')
-            .replace(/-+/g, '-')
-            .trim('-');
-    };
-
-    const handleInputChange = (e) => {
-        const { name, value, type, checked } = e.target;
-        setFormData((prev) => ({
-            ...prev,
-            [name]: type === 'checkbox' ? checked : value
-        }));
-
-        // Auto-generate slug from name
-        if (name === 'name') {
-            setFormData((prev) => ({
+    // Handle form input changes
+    const handleInputChange = (field, value) => {
+        if (field.includes('.')) {
+            // Handle nested objects like data.videoUrl
+            const [parent, child] = field.split('.');
+            setFormData(prev => ({
                 ...prev,
-                slug: generateSlug(value)
+                [parent]: {
+                    ...prev[parent],
+                    [child]: value
+                }
+            }));
+        } else {
+            setFormData(prev => ({
+                ...prev,
+                [field]: value
             }));
         }
     };
 
-    const handleContentChange = (content) => {
-        setFormData((prev) => ({ ...prev, content }));
+    // Generate block ID from name
+    const generateBlockId = (name) => {
+        const baseId = name.toLowerCase()
+            .replace(/[^a-z0-9\s]/g, '')
+            .replace(/\s+/g, '_')
+            .trim();
+        return `${baseId}_${Date.now()}`;
     };
 
-    const handleAddTag = () => {
-        if (tagInput.trim() && !formData.tags.includes(tagInput.trim())) {
-            setFormData((prev) => ({
-                ...prev,
-                tags: [...prev.tags, tagInput.trim()]
-            }));
-            setTagInput('');
-        }
-    };
-
-    const handleRemoveTag = (tagToRemove) => {
-        setFormData((prev) => ({
-            ...prev,
-            tags: prev.tags.filter((tag) => tag !== tagToRemove)
-        }));
-    };
-
-    const handleSubmit = async (e) => {
-        e.preventDefault();
+    // Handle create block
+    const handleCreate = async () => {
         try {
-            setIsSubmitting(true);
+            if (!formData.name.trim()) {
+                toast.error('Block name is required');
+                return;
+            }
 
+            setIsSubmitting(true);
+            
             const blockData = {
                 ...formData,
-                createdAt: new Date().toISOString(),
-                updatedAt: new Date().toISOString()
+                id: generateBlockId(formData.name)
             };
 
-            const response = await create(blockData, 'blocks');
-
-            if (response.success) {
+            const result = await createBlock(blockData);
+            
+            if (result.success) {
                 toast.success('Block created successfully');
-                setBlocks((prev) => [...prev, response.data]);
-                setIsOpen(false);
+                setIsCreateOpen(false);
                 setFormData(initialFormData);
+                fetchBlocks();
+            } else {
+                toast.error(result.error || 'Failed to create block');
             }
         } catch (error) {
             console.error('Error creating block:', error);
@@ -229,362 +226,551 @@ export default function BlocksPage() {
         }
     };
 
+    // Handle edit block
     const handleEdit = (block) => {
-        setSelectedBlock(block);
         setFormData({
-            ...block,
-            tags: block.tags || [],
-            customCSS: block.customCSS || '',
-            customJS: block.customJS || ''
+            name: block.name || '',
+            description: block.description || '',
+            type: block.type || 'text',
+            content: block.content || '',
+            data: block.data || {},
+            settings: block.settings || {},
+            isActive: block.isActive !== false
         });
-        setEditMode(true);
+        setSelectedBlock(block);
         setIsEditOpen(true);
     };
 
-    const handleView = (block) => {
-        setSelectedBlock(block);
-        setIsViewOpen(true);
-    };
-
-    const handleDelete = (block) => {
-        setSelectedBlock(block);
-        setDeleteConfirmText('');
-        setIsDeleteOpen(true);
-    };
-
-    const handleCopySlug = (slug) => {
-        navigator.clipboard.writeText(slug);
-        toast.success('Slug copied to clipboard!');
-    };
-
-    const handleUpdate = async (e) => {
-        e.preventDefault();
-        setIsSubmitting(true);
-
+    // Handle update block
+    const handleUpdate = async () => {
         try {
-            const updatedData = {
-                ...formData,
-                updatedAt: new Date().toISOString()
-            };
+            if (!formData.name.trim()) {
+                toast.error('Block name is required');
+                return;
+            }
 
-            const response = await update(selectedBlock.id, updatedData, 'blocks');
-            if (response.success) {
-                toast.success('Block updated successfully!');
-                setFormData(initialFormData);
+            setIsSubmitting(true);
+            
+            const result = await updateBlock(selectedBlock.id, formData);
+            
+            if (result.success) {
+                toast.success('Block updated successfully');
                 setIsEditOpen(false);
-                setEditMode(false);
                 setSelectedBlock(null);
-                await fetchBlocks();
+                setFormData(initialFormData);
+                fetchBlocks();
             } else {
-                toast.error(response.error || 'Failed to update block');
+                toast.error(result.error || 'Failed to update block');
             }
         } catch (error) {
             console.error('Error updating block:', error);
-            toast.error('Error updating block');
+            toast.error('Failed to update block');
         } finally {
             setIsSubmitting(false);
         }
     };
 
-    const handleDeleteConfirm = async () => {
-        if (deleteConfirmText !== 'delete') {
-            toast.error('Please type "delete" to confirm');
-            return;
-        }
+    // Handle view block
+    const handleView = (block) => {
+        setSelectedBlock(block);
+        setIsViewOpen(true);
+    };
 
-        setIsDeleting(true);
+    // Handle delete block
+    const handleDelete = (block) => {
+        setSelectedBlock(block);
+        setIsDeleteOpen(true);
+    };
+
+    // Confirm delete
+    const handleDeleteConfirm = async () => {
         try {
-            const response = await remove(selectedBlock.id, 'blocks');
-            if (response.success) {
-                toast.success('Block deleted successfully!');
+            setIsSubmitting(true);
+            
+            const result = await deleteBlock(selectedBlock.id);
+            
+            if (result.success) {
+                toast.success('Block deleted successfully');
                 setIsDeleteOpen(false);
                 setSelectedBlock(null);
-                setDeleteConfirmText('');
-                await fetchBlocks();
+                fetchBlocks();
             } else {
-                toast.error(response.error || 'Failed to delete block');
+                toast.error(result.error || 'Failed to delete block');
             }
         } catch (error) {
             console.error('Error deleting block:', error);
-            toast.error('Error deleting block');
+            toast.error('Failed to delete block');
         } finally {
-            setIsDeleting(false);
+            setIsSubmitting(false);
         }
     };
 
-    const handleCloseDialogs = () => {
-        setIsOpen(false);
-        setIsEditOpen(false);
-        setIsViewOpen(false);
-        setIsDeleteOpen(false);
-        setFormData(initialFormData);
-        setSelectedBlock(null);
-        setEditMode(false);
-        setDeleteConfirmText('');
-        setTagInput('');
+    // Handle copy block ID
+    const handleCopyId = (blockId) => {
+        navigator.clipboard.writeText(blockId);
+        toast.success('Block ID copied to clipboard');
     };
 
-    const getBlockTypeIcon = (type) => {
-        const blockType = blockTypes.find((bt) => bt.value === type);
-        return blockType ? blockType.icon : FileText;
+    // Get block type info
+    const getBlockTypeInfo = (type) => {
+        return blockTypes.find(bt => bt.value === type) || blockTypes[0];
     };
 
-    const getBlockTypeLabel = (type) => {
-        const blockType = blockTypes.find((bt) => bt.value === type);
-        return blockType ? blockType.label : type;
-    };
-
-    return (
-        <div className="space-y-4">
-            <div className="space-y-4">
-                <div className="flex items-center justify-between">
+    // Render block type specific form fields
+    const renderTypeSpecificFields = () => {
+        switch (formData.type) {
+            case 'text':
+                return (
                     <div>
-                        <h2 className="font-semibold text-2xl">Content Blocks</h2>
-                        <p className="text-muted-foreground">Create and manage reusable content blocks</p>
+                        <Label htmlFor="content">Text Content</Label>
+                        <Textarea
+                            id="content"
+                            value={formData.content}
+                            onChange={(e) => handleInputChange('content', e.target.value)}
+                            placeholder="Enter your text content..."
+                            rows={4}
+                        />
                     </div>
-                </div>
+                );
 
-                <div className="flex flex-col space-y-4">
-                    {/* Filters and Search */}
-                    <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
-                        <div className="flex items-center gap-4">
-                            <Input
-                                placeholder="Search blocks..."
-                                value={search}
-                                onChange={(e) => setSearch(e.target.value)}
-                                className="max-w-xs"
+            case 'html':
+                return (
+                    <>
+                        <div>
+                            <Label htmlFor="content">HTML Code</Label>
+                            <Textarea
+                                id="content"
+                                value={formData.content}
+                                onChange={(e) => handleInputChange('content', e.target.value)}
+                                placeholder="<div>Your HTML content...</div>"
+                                rows={6}
+                                className="font-mono"
                             />
-                            <Select value={filterType} onValueChange={setFilterType}>
-                                <SelectTrigger className="w-40">
-                                    <SelectValue placeholder="All Types" />
+                        </div>
+                        <div>
+                            <Label htmlFor="cssCode">CSS Code (Optional)</Label>
+                            <Textarea
+                                id="cssCode"
+                                value={formData.data.css || ''}
+                                onChange={(e) => handleInputChange('data.css', e.target.value)}
+                                placeholder=".your-class { color: #000; }"
+                                rows={3}
+                                className="font-mono"
+                            />
+                        </div>
+                        <div>
+                            <Label htmlFor="jsCode">JavaScript Code (Optional)</Label>
+                            <Textarea
+                                id="jsCode"
+                                value={formData.data.js || ''}
+                                onChange={(e) => handleInputChange('data.js', e.target.value)}
+                                placeholder="console.log('Hello World');"
+                                rows={3}
+                                className="font-mono"
+                            />
+                        </div>
+                    </>
+                );
+
+            case 'image':
+                return (
+                    <>
+                        <div>
+                            <Label htmlFor="imageUrl">Image URL</Label>
+                            <Input
+                                id="imageUrl"
+                                value={formData.data.imageUrl || ''}
+                                onChange={(e) => handleInputChange('data.imageUrl', e.target.value)}
+                                placeholder="https://example.com/image.jpg"
+                            />
+                        </div>
+                        <div>
+                            <Label htmlFor="altText">Alt Text</Label>
+                            <Input
+                                id="altText"
+                                value={formData.data.altText || ''}
+                                onChange={(e) => handleInputChange('data.altText', e.target.value)}
+                                placeholder="Describe the image..."
+                            />
+                        </div>
+                        <div>
+                            <Label htmlFor="caption">Caption (Optional)</Label>
+                            <Input
+                                id="caption"
+                                value={formData.data.caption || ''}
+                                onChange={(e) => handleInputChange('data.caption', e.target.value)}
+                                placeholder="Image caption..."
+                            />
+                        </div>
+                    </>
+                );
+
+            case 'video':
+                return (
+                    <>
+                        <div>
+                            <Label htmlFor="videoUrl">Video URL</Label>
+                            <Input
+                                id="videoUrl"
+                                value={formData.data.videoUrl || ''}
+                                onChange={(e) => handleInputChange('data.videoUrl', e.target.value)}
+                                placeholder="https://example.com/video.mp4"
+                            />
+                        </div>
+                        <div>
+                            <Label htmlFor="posterUrl">Poster Image URL (Optional)</Label>
+                            <Input
+                                id="posterUrl"
+                                value={formData.data.posterUrl || ''}
+                                onChange={(e) => handleInputChange('data.posterUrl', e.target.value)}
+                                placeholder="https://example.com/poster.jpg"
+                            />
+                        </div>
+                        <div className="flex items-center space-x-2">
+                            <Switch
+                                id="autoplay"
+                                checked={formData.data.autoplay || false}
+                                onCheckedChange={(checked) => handleInputChange('data.autoplay', checked)}
+                            />
+                            <Label htmlFor="autoplay">Autoplay</Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                            <Switch
+                                id="controls"
+                                checked={formData.data.controls !== false}
+                                onCheckedChange={(checked) => handleInputChange('data.controls', checked)}
+                            />
+                            <Label htmlFor="controls">Show Controls</Label>
+                        </div>
+                    </>
+                );
+
+            case 'youtube':
+                return (
+                    <>
+                        <div>
+                            <Label htmlFor="youtubeUrl">YouTube Video URL</Label>
+                            <Input
+                                id="youtubeUrl"
+                                value={formData.data.youtubeUrl || ''}
+                                onChange={(e) => handleInputChange('data.youtubeUrl', e.target.value)}
+                                placeholder="https://www.youtube.com/watch?v=VIDEO_ID"
+                            />
+                        </div>
+                        <div>
+                            <Label htmlFor="width">Width (Optional)</Label>
+                            <Input
+                                id="width"
+                                value={formData.data.width || ''}
+                                onChange={(e) => handleInputChange('data.width', e.target.value)}
+                                placeholder="560"
+                            />
+                        </div>
+                        <div>
+                            <Label htmlFor="height">Height (Optional)</Label>
+                            <Input
+                                id="height"
+                                value={formData.data.height || ''}
+                                onChange={(e) => handleInputChange('data.height', e.target.value)}
+                                placeholder="315"
+                            />
+                        </div>
+                        <div className="flex items-center space-x-2">
+                            <Switch
+                                id="autoplay"
+                                checked={formData.data.autoplay || false}
+                                onCheckedChange={(checked) => handleInputChange('data.autoplay', checked)}
+                            />
+                            <Label htmlFor="autoplay">Autoplay</Label>
+                        </div>
+                    </>
+                );
+
+            case 'form':
+                return (
+                    <>
+                        <div>
+                            <Label htmlFor="formTitle">Form Title</Label>
+                            <Input
+                                id="formTitle"
+                                value={formData.data.formTitle || ''}
+                                onChange={(e) => handleInputChange('data.formTitle', e.target.value)}
+                                placeholder="Contact Form"
+                            />
+                        </div>
+                        <div>
+                            <Label htmlFor="submitUrl">Submit URL</Label>
+                            <Input
+                                id="submitUrl"
+                                value={formData.data.submitUrl || ''}
+                                onChange={(e) => handleInputChange('data.submitUrl', e.target.value)}
+                                placeholder="/api/contact"
+                            />
+                        </div>
+                        <div>
+                            <Label htmlFor="fields">Form Fields (JSON)</Label>
+                            <Textarea
+                                id="fields"
+                                value={formData.data.fields || ''}
+                                onChange={(e) => handleInputChange('data.fields', e.target.value)}
+                                placeholder='[{"name": "email", "type": "email", "label": "Email", "required": true}]'
+                                rows={4}
+                                className="font-mono"
+                            />
+                        </div>
+                    </>
+                );
+
+            case 'layout':
+                return (
+                    <>
+                        <div>
+                            <Label htmlFor="layoutType">Layout Type</Label>
+                            <Select
+                                value={formData.data.layoutType || 'container'}
+                                onValueChange={(value) => handleInputChange('data.layoutType', value)}
+                            >
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Select layout type" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="all">All Types</SelectItem>
-                                    {blockTypes.map((type) => (
-                                        <SelectItem key={type.value} value={type.value}>
-                                            {type.label}
-                                        </SelectItem>
-                                    ))}
+                                    <SelectItem value="container">Container</SelectItem>
+                                    <SelectItem value="grid">Grid</SelectItem>
+                                    <SelectItem value="flexbox">Flexbox</SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>
+                        <div>
+                            <Label htmlFor="columns">Columns (for grid)</Label>
+                            <Input
+                                id="columns"
+                                type="number"
+                                value={formData.data.columns || ''}
+                                onChange={(e) => handleInputChange('data.columns', e.target.value)}
+                                placeholder="3"
+                            />
+                        </div>
+                        <div>
+                            <Label htmlFor="gap">Gap Size</Label>
+                            <Input
+                                id="gap"
+                                value={formData.data.gap || ''}
+                                onChange={(e) => handleInputChange('data.gap', e.target.value)}
+                                placeholder="1rem"
+                            />
+                        </div>
+                    </>
+                );
 
-                        <Dialog open={isOpen} onOpenChange={setIsOpen}>
-                            <DialogTrigger asChild>
-                                <Button>
-                                    <Plus className="mr-2 h-4 w-4" />
-                                    Add Block
-                                </Button>
-                            </DialogTrigger>
-                            <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-[800px]">
-                                <DialogHeader>
-                                    <DialogTitle>Create New Block</DialogTitle>
-                                </DialogHeader>
-                                <form onSubmit={handleSubmit} className="space-y-4">
-                                    <div className="grid gap-4 py-4">
-                                        <div className="grid grid-cols-2 gap-4">
-                                            <div className="grid gap-2">
-                                                <Label htmlFor="name">Block Name</Label>
-                                                <Input
-                                                    id="name"
-                                                    name="name"
-                                                    value={formData.name}
-                                                    onChange={handleInputChange}
-                                                    required
-                                                />
-                                            </div>
-                                            <div className="grid gap-2">
-                                                <Label htmlFor="slug">Slug</Label>
-                                                <Input
-                                                    id="slug"
-                                                    name="slug"
-                                                    value={formData.slug}
-                                                    onChange={handleInputChange}
-                                                    required
-                                                />
-                                            </div>
-                                        </div>
+            default:
+                return null;
+        }
+    };
 
-                                        <div className="grid grid-cols-2 gap-4">
-                                            <div className="grid gap-2">
-                                                <Label htmlFor="type">Block Type</Label>
-                                                <Select
-                                                    name="type"
-                                                    value={formData.type}
-                                                    onValueChange={(value) =>
-                                                        setFormData((prev) => ({ ...prev, type: value }))
-                                                    }>
-                                                    <SelectTrigger>
-                                                        <SelectValue />
-                                                    </SelectTrigger>
-                                                    <SelectContent>
-                                                        {blockTypes.map((type) => {
-                                                            const Icon = type.icon;
-                                                            return (
-                                                                <SelectItem key={type.value} value={type.value}>
-                                                                    <div className="flex items-center gap-2">
-                                                                        <Icon className="h-4 w-4" />
-                                                                        {type.label}
-                                                                    </div>
-                                                                </SelectItem>
-                                                            );
-                                                        })}
-                                                    </SelectContent>
-                                                </Select>
-                                            </div>
-                                            <div className="grid gap-2">
-                                                <Label htmlFor="isActive">Status</Label>
-                                                <div className="flex items-center space-x-2">
-                                                    <Checkbox
-                                                        id="isActive"
-                                                        name="isActive"
-                                                        checked={formData.isActive}
-                                                        onCheckedChange={(checked) =>
-                                                            setFormData((prev) => ({ ...prev, isActive: checked }))
-                                                        }
-                                                    />
-                                                    <Label htmlFor="isActive">Active</Label>
-                                                </div>
-                                            </div>
-                                        </div>
+    const formatDate = (date) => {
+        return new Date(date).toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric'
+        });
+    };
 
-                                        <div className="grid gap-2">
-                                            <Label htmlFor="description">Description</Label>
-                                            <Input
-                                                id="description"
-                                                name="description"
-                                                value={formData.description}
-                                                onChange={handleInputChange}
-                                                placeholder="Brief description of this block"
-                                            />
-                                        </div>
+    if (loading) {
+        return (
+            <div className="space-y-6">
+                <AdminHeader title="Content Blocks" description="Create and manage reusable content blocks">
+                    <Button disabled>
+                        <Plus className="mr-2 h-4 w-4" />
+                        Create Block
+                    </Button>
+                </AdminHeader>
+                <TableSkeleton />
+            </div>
+        );
+    }
 
-                                        <div className="grid gap-2">
-                                            <Label htmlFor="content">Content</Label>
-                                            {formData.type === 'html' ? (
-                                                <Textarea
-                                                    id="content"
-                                                    name="content"
-                                                    value={formData.content}
-                                                    onChange={handleInputChange}
-                                                    rows={8}
-                                                    placeholder="Enter HTML code..."
-                                                    className="font-mono"
-                                                />
-                                            ) : (
-                                                <RichTextEditor
-                                                    value={formData.content}
-                                                    onChange={handleContentChange}
-                                                    placeholder="Enter your content..."
-                                                />
-                                            )}
-                                        </div>
+    return (
+        <div className="space-y-6">
+            {/* Header */}
+            <AdminHeader title="Content Blocks" description="Create and manage reusable content blocks">
+                <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+                    <DialogTrigger asChild>
+                        <Button>
+                            <Plus className="mr-2 h-4 w-4" />
+                            Create Block
+                        </Button>
+                    </DialogTrigger>
+                    <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+                        <DialogHeader>
+                            <DialogTitle>Create New Block</DialogTitle>
+                            <DialogDescription>
+                                Create a reusable content block that can be used throughout your site.
+                            </DialogDescription>
+                        </DialogHeader>
+                        <div className="grid gap-4 py-4">
+                            {/* Basic Info */}
+                            <div>
+                                <Label htmlFor="name">Block Name</Label>
+                                <Input
+                                    id="name"
+                                    value={formData.name}
+                                    onChange={(e) => handleInputChange('name', e.target.value)}
+                                    placeholder="Enter block name..."
+                                />
+                            </div>
+                            <div>
+                                <Label htmlFor="description">Description</Label>
+                                <Input
+                                    id="description"
+                                    value={formData.description}
+                                    onChange={(e) => handleInputChange('description', e.target.value)}
+                                    placeholder="Brief description of this block..."
+                                />
+                            </div>
+                            <div>
+                                <Label htmlFor="type">Block Type</Label>
+                                <Select
+                                    value={formData.type}
+                                    onValueChange={(value) => handleInputChange('type', value)}
+                                >
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Select block type" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {blockTypes.map((type) => {
+                                            const Icon = type.icon;
+                                            return (
+                                                <SelectItem key={type.value} value={type.value}>
+                                                    <div className="flex items-center gap-2">
+                                                        <Icon className="h-4 w-4" />
+                                                        <div>
+                                                            <div className="font-medium">{type.label}</div>
+                                                            <div className="text-xs text-muted-foreground">{type.description}</div>
+                                                        </div>
+                                                    </div>
+                                                </SelectItem>
+                                            );
+                                        })}
+                                    </SelectContent>
+                                </Select>
+                            </div>
 
-                                        {/* Tags */}
-                                        <div className="grid gap-2">
-                                            <Label>Tags</Label>
-                                            <div className="flex gap-2">
-                                                <Input
-                                                    value={tagInput}
-                                                    onChange={(e) => setTagInput(e.target.value)}
-                                                    placeholder="Add a tag..."
-                                                    onKeyPress={(e) =>
-                                                        e.key === 'Enter' && (e.preventDefault(), handleAddTag())
-                                                    }
-                                                />
-                                                <Button type="button" onClick={handleAddTag} size="sm">
-                                                    Add
-                                                </Button>
-                                            </div>
-                                            {formData.tags.length > 0 && (
-                                                <div className="mt-2 flex flex-wrap gap-2">
-                                                    {formData.tags.map((tag, index) => (
-                                                        <Badge
-                                                            key={index}
-                                                            variant="secondary"
-                                                            className="cursor-pointer"
-                                                            onClick={() => handleRemoveTag(tag)}>
-                                                            {tag} ×
-                                                        </Badge>
-                                                    ))}
-                                                </div>
-                                            )}
-                                        </div>
+                            {/* Type-specific fields */}
+                            {renderTypeSpecificFields()}
 
-                                        {/* Advanced Options */}
-                                        <div className="grid gap-4 border-t pt-4">
-                                            <div className="grid gap-2">
-                                                <Label htmlFor="customCSS">Custom CSS</Label>
-                                                <Textarea
-                                                    id="customCSS"
-                                                    name="customCSS"
-                                                    value={formData.customCSS}
-                                                    onChange={handleInputChange}
-                                                    rows={4}
-                                                    placeholder="/* Custom CSS for this block */"
-                                                    className="font-mono"
-                                                />
-                                            </div>
-                                            <div className="grid gap-2">
-                                                <Label htmlFor="customJS">Custom JavaScript</Label>
-                                                <Textarea
-                                                    id="customJS"
-                                                    name="customJS"
-                                                    value={formData.customJS}
-                                                    onChange={handleInputChange}
-                                                    rows={4}
-                                                    placeholder="// Custom JavaScript for this block"
-                                                    className="font-mono"
-                                                />
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div className="flex justify-end space-x-2">
-                                        <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>
-                                            Cancel
-                                        </Button>
-                                        <Button type="submit" disabled={isSubmitting}>
-                                            {isSubmitting ? 'Creating...' : 'Create Block'}
-                                        </Button>
-                                    </div>
-                                </form>
-                            </DialogContent>
-                        </Dialog>
+                            {/* Status */}
+                            <div className="flex items-center space-x-2">
+                                <Switch
+                                    id="isActive"
+                                    checked={formData.isActive}
+                                    onCheckedChange={(checked) => handleInputChange('isActive', checked)}
+                                />
+                                <Label htmlFor="isActive">Active (visible to frontend)</Label>
+                            </div>
+                        </div>
+                        <DialogFooter>
+                            <Button variant="outline" onClick={() => setIsCreateOpen(false)}>
+                                Cancel
+                            </Button>
+                            <Button onClick={handleCreate} disabled={isSubmitting}>
+                                {isSubmitting ? 'Creating...' : 'Create Block'}
+                            </Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
+            </AdminHeader>
+
+            {/* Filters */}
+            <Card>
+                <CardHeader>
+                    <CardTitle>Filters</CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <div className="flex gap-4">
+                        <div className="flex-1">
+                            <div className="relative">
+                                <Search className="-translate-y-1/2 absolute top-1/2 left-3 h-4 w-4 transform text-muted-foreground" />
+                                <Input
+                                    placeholder="Search blocks..."
+                                    value={search}
+                                    onChange={(e) => setSearch(e.target.value)}
+                                    className="pl-10"
+                                />
+                            </div>
+                        </div>
+                        <Select value={filterType} onValueChange={setFilterType}>
+                            <SelectTrigger className="w-[180px]">
+                                <SelectValue placeholder="All Types" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">All Types</SelectItem>
+                                {blockTypes.map((type) => (
+                                    <SelectItem key={type.value} value={type.value}>
+                                        {type.label}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                        <Select value={filterStatus} onValueChange={setFilterStatus}>
+                            <SelectTrigger className="w-[180px]">
+                                <SelectValue placeholder="All Status" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">All Status</SelectItem>
+                                <SelectItem value="active">Active</SelectItem>
+                                <SelectItem value="inactive">Inactive</SelectItem>
+                            </SelectContent>
+                        </Select>
                     </div>
+                </CardContent>
+            </Card>
 
-                    <ScrollArea className="h-[calc(100vh-300px)]">
-                        {loading ? (
-                            <TableSkeleton columns={6} rows={5} />
-                        ) : (
+            {/* Blocks Table */}
+            <Card>
+                <CardHeader>
+                    <CardTitle>Blocks ({pagination.total})</CardTitle>
+                    <CardDescription>
+                        Manage your content blocks. Use the Block ID in your frontend components.
+                    </CardDescription>
+                </CardHeader>
+                <CardContent>
+                    {blocks.length === 0 ? (
+                        <div className="py-12 text-center">
+                            <Layout className="mx-auto mb-4 h-16 w-16 text-muted-foreground" />
+                            <h3 className="mb-2 font-medium text-lg">No blocks found</h3>
+                            <p className="mb-4 text-muted-foreground">
+                                Create your first content block to get started.
+                            </p>
+                            <Button onClick={() => setIsCreateOpen(true)}>
+                                <Plus className="mr-2 h-4 w-4" />
+                                Create Block
+                            </Button>
+                        </div>
+                    ) : (
+                        <div className="overflow-x-auto">
                             <Table>
                                 <TableHeader>
                                     <TableRow>
-                                        <TableHead onClick={() => handleSort('name')} className="cursor-pointer">
-                                            Name{' '}
-                                            {sortConfig.key === 'name' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
-                                        </TableHead>
+                                        <TableHead>Name</TableHead>
+                                        <TableHead>ID</TableHead>
                                         <TableHead>Type</TableHead>
-                                        <TableHead>Slug</TableHead>
                                         <TableHead>Status</TableHead>
-                                        <TableHead onClick={() => handleSort('updatedAt')} className="cursor-pointer">
-                                            Updated{' '}
-                                            {sortConfig.key === 'updatedAt' &&
-                                                (sortConfig.direction === 'asc' ? '↑' : '↓')}
-                                        </TableHead>
+                                        <TableHead>Updated</TableHead>
                                         <TableHead className="text-right">Actions</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {getPaginatedBlocks().map((block) => {
-                                        const Icon = getBlockTypeIcon(block.type);
-
+                                    {blocks.map((block) => {
+                                        const typeInfo = getBlockTypeInfo(block.type);
+                                        const Icon = typeInfo.icon;
+                                        
                                         return (
                                             <TableRow key={block.id}>
                                                 <TableCell>
                                                     <div>
                                                         <div className="font-medium">{block.name}</div>
                                                         {block.description && (
-                                                            <div className="text-muted-foreground text-sm">
+                                                            <div className="text-xs text-muted-foreground">
                                                                 {block.description}
                                                             </div>
                                                         )}
@@ -592,53 +778,53 @@ export default function BlocksPage() {
                                                 </TableCell>
                                                 <TableCell>
                                                     <div className="flex items-center gap-2">
-                                                        <Icon className="h-4 w-4" />
-                                                        {getBlockTypeLabel(block.type)}
-                                                    </div>
-                                                </TableCell>
-                                                <TableCell>
-                                                    <div className="flex items-center gap-2">
-                                                        <code className="rounded bg-gray-100 px-2 py-1 text-sm">
-                                                            {block.slug}
+                                                        <code className="rounded bg-muted px-2 py-1 text-sm font-mono">
+                                                            {block.id}
                                                         </code>
                                                         <Button
                                                             variant="ghost"
                                                             size="sm"
-                                                            onClick={() => handleCopySlug(block.slug)}>
+                                                            onClick={() => handleCopyId(block.id)}
+                                                        >
                                                             <Copy className="h-3 w-3" />
                                                         </Button>
                                                     </div>
                                                 </TableCell>
                                                 <TableCell>
-                                                    <Badge variant={block.isActive ? 'default' : 'secondary'}>
+                                                    <div className="flex items-center gap-2">
+                                                        <Icon className="h-4 w-4" />
+                                                        <span>{typeInfo.label}</span>
+                                                    </div>
+                                                </TableCell>
+                                                <TableCell>
+                                                    <Badge variant={block.isActive ? 'success' : 'secondary'}>
                                                         {block.isActive ? 'Active' : 'Inactive'}
                                                     </Badge>
                                                 </TableCell>
-                                                <TableCell>
-                                                    {block.updatedAt ? formatDate(block.updatedAt) : 'N/A'}
+                                                <TableCell className="text-muted-foreground">
+                                                    {formatDate(block.updatedAt)}
                                                 </TableCell>
                                                 <TableCell className="text-right">
                                                     <div className="flex justify-end gap-2">
                                                         <Button
-                                                            variant="outline"
-                                                            size="icon"
+                                                            variant="ghost"
+                                                            size="sm"
                                                             onClick={() => handleView(block)}
-                                                            title="View Block">
+                                                        >
                                                             <Eye className="h-4 w-4" />
                                                         </Button>
                                                         <Button
-                                                            variant="outline"
-                                                            size="icon"
+                                                            variant="ghost"
+                                                            size="sm"
                                                             onClick={() => handleEdit(block)}
-                                                            title="Edit Block">
+                                                        >
                                                             <Edit className="h-4 w-4" />
                                                         </Button>
                                                         <Button
-                                                            variant="outline"
-                                                            size="icon"
+                                                            variant="ghost"
+                                                            size="sm"
                                                             onClick={() => handleDelete(block)}
-                                                            title="Delete Block"
-                                                            className="text-red-600 hover:text-red-700">
+                                                        >
                                                             <Trash2 className="h-4 w-4" />
                                                         </Button>
                                                     </div>
@@ -648,353 +834,189 @@ export default function BlocksPage() {
                                     })}
                                 </TableBody>
                             </Table>
-                        )}
-                    </ScrollArea>
-
-                    {!loading && totalPages > 1 && (
-                        <div className="mt-4 flex justify-center space-x-2">
-                            <Button
-                                variant="outline"
-                                onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
-                                disabled={currentPage === 1}>
-                                Previous
-                            </Button>
-                            <span className="flex items-center px-4">
-                                Page {currentPage} of {totalPages}
-                            </span>
-                            <Button
-                                variant="outline"
-                                onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
-                                disabled={currentPage === totalPages}>
-                                Next
-                            </Button>
                         </div>
                     )}
-                </div>
-            </div>
 
-            {/* Edit Block Dialog */}
+                    {/* Pagination */}
+                    {pagination.totalPages > 1 && (
+                        <div className="mt-4 flex items-center justify-between">
+                            <div className="text-sm text-muted-foreground">
+                                Page {pagination.page} of {pagination.totalPages} ({pagination.total} total blocks)
+                            </div>
+                            <div className="flex space-x-2">
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    disabled={!pagination.hasPrev}
+                                    onClick={() => setCurrentPage(currentPage - 1)}
+                                >
+                                    Previous
+                                </Button>
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    disabled={!pagination.hasNext}
+                                    onClick={() => setCurrentPage(currentPage + 1)}
+                                >
+                                    Next
+                                </Button>
+                            </div>
+                        </div>
+                    )}
+                </CardContent>
+            </Card>
+
+            {/* Edit Dialog */}
             <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
-                <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-[800px]">
+                <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
                     <DialogHeader>
                         <DialogTitle>Edit Block</DialogTitle>
+                        <DialogDescription>
+                            Update the block configuration and content.
+                        </DialogDescription>
                     </DialogHeader>
-                    <form onSubmit={handleUpdate} className="space-y-4">
-                        <div className="grid gap-4 py-4">
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="grid gap-2">
-                                    <Label htmlFor="name">Block Name</Label>
-                                    <Input
-                                        id="name"
-                                        name="name"
-                                        value={formData.name}
-                                        onChange={handleInputChange}
-                                        required
-                                    />
-                                </div>
-                                <div className="grid gap-2">
-                                    <Label htmlFor="slug">Slug</Label>
-                                    <Input
-                                        id="slug"
-                                        name="slug"
-                                        value={formData.slug}
-                                        onChange={handleInputChange}
-                                        required
-                                    />
-                                </div>
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="grid gap-2">
-                                    <Label htmlFor="type">Block Type</Label>
-                                    <Select
-                                        name="type"
-                                        value={formData.type}
-                                        onValueChange={(value) => setFormData((prev) => ({ ...prev, type: value }))}>
-                                        <SelectTrigger>
-                                            <SelectValue />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {blockTypes.map((type) => {
-                                                const Icon = type.icon;
-                                                return (
-                                                    <SelectItem key={type.value} value={type.value}>
-                                                        <div className="flex items-center gap-2">
-                                                            <Icon className="h-4 w-4" />
-                                                            {type.label}
-                                                        </div>
-                                                    </SelectItem>
-                                                );
-                                            })}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                                <div className="grid gap-2">
-                                    <Label htmlFor="isActive">Status</Label>
-                                    <div className="flex items-center space-x-2">
-                                        <Checkbox
-                                            id="isActive"
-                                            name="isActive"
-                                            checked={formData.isActive}
-                                            onCheckedChange={(checked) =>
-                                                setFormData((prev) => ({ ...prev, isActive: checked }))
-                                            }
-                                        />
-                                        <Label htmlFor="isActive">Active</Label>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div className="grid gap-2">
-                                <Label htmlFor="description">Description</Label>
-                                <Input
-                                    id="description"
-                                    name="description"
-                                    value={formData.description}
-                                    onChange={handleInputChange}
-                                    placeholder="Brief description of this block"
-                                />
-                            </div>
-
-                            <div className="grid gap-2">
-                                <Label htmlFor="content">Content</Label>
-                                {formData.type === 'html' ? (
-                                    <Textarea
-                                        id="content"
-                                        name="content"
-                                        value={formData.content}
-                                        onChange={handleInputChange}
-                                        rows={8}
-                                        placeholder="Enter HTML code..."
-                                        className="font-mono"
-                                    />
-                                ) : (
-                                    <RichTextEditor
-                                        value={formData.content}
-                                        onChange={handleContentChange}
-                                        placeholder="Enter your content..."
-                                    />
-                                )}
-                            </div>
-
-                            {/* Tags */}
-                            <div className="grid gap-2">
-                                <Label>Tags</Label>
-                                <div className="flex gap-2">
-                                    <Input
-                                        value={tagInput}
-                                        onChange={(e) => setTagInput(e.target.value)}
-                                        placeholder="Add a tag..."
-                                        onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddTag())}
-                                    />
-                                    <Button type="button" onClick={handleAddTag} size="sm">
-                                        Add
-                                    </Button>
-                                </div>
-                                {formData.tags.length > 0 && (
-                                    <div className="mt-2 flex flex-wrap gap-2">
-                                        {formData.tags.map((tag, index) => (
-                                            <Badge
-                                                key={index}
-                                                variant="secondary"
-                                                className="cursor-pointer"
-                                                onClick={() => handleRemoveTag(tag)}>
-                                                {tag} ×
-                                            </Badge>
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
-
-                            {/* Advanced Options */}
-                            <div className="grid gap-4 border-t pt-4">
-                                <div className="grid gap-2">
-                                    <Label htmlFor="customCSS">Custom CSS</Label>
-                                    <Textarea
-                                        id="customCSS"
-                                        name="customCSS"
-                                        value={formData.customCSS}
-                                        onChange={handleInputChange}
-                                        rows={4}
-                                        placeholder="/* Custom CSS for this block */"
-                                        className="font-mono"
-                                    />
-                                </div>
-                                <div className="grid gap-2">
-                                    <Label htmlFor="customJS">Custom JavaScript</Label>
-                                    <Textarea
-                                        id="customJS"
-                                        name="customJS"
-                                        value={formData.customJS}
-                                        onChange={handleInputChange}
-                                        rows={4}
-                                        placeholder="// Custom JavaScript for this block"
-                                        className="font-mono"
-                                    />
-                                </div>
-                            </div>
+                    <div className="grid gap-4 py-4">
+                        {/* Basic Info */}
+                        <div>
+                            <Label htmlFor="edit-name">Block Name</Label>
+                            <Input
+                                id="edit-name"
+                                value={formData.name}
+                                onChange={(e) => handleInputChange('name', e.target.value)}
+                                placeholder="Enter block name..."
+                            />
                         </div>
-                        <div className="flex justify-end space-x-2">
-                            <Button type="button" variant="outline" onClick={handleCloseDialogs}>
-                                Cancel
-                            </Button>
-                            <Button type="submit" disabled={isSubmitting}>
-                                {isSubmitting ? 'Updating...' : 'Update Block'}
-                            </Button>
+                        <div>
+                            <Label htmlFor="edit-description">Description</Label>
+                            <Input
+                                id="edit-description"
+                                value={formData.description}
+                                onChange={(e) => handleInputChange('description', e.target.value)}
+                                placeholder="Brief description of this block..."
+                            />
                         </div>
-                    </form>
+                        <div>
+                            <Label htmlFor="edit-type">Block Type</Label>
+                            <Select
+                                value={formData.type}
+                                onValueChange={(value) => handleInputChange('type', value)}
+                            >
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Select block type" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {blockTypes.map((type) => {
+                                        const Icon = type.icon;
+                                        return (
+                                            <SelectItem key={type.value} value={type.value}>
+                                                <div className="flex items-center gap-2">
+                                                    <Icon className="h-4 w-4" />
+                                                    <div>
+                                                        <div className="font-medium">{type.label}</div>
+                                                        <div className="text-xs text-muted-foreground">{type.description}</div>
+                                                    </div>
+                                                </div>
+                                            </SelectItem>
+                                        );
+                                    })}
+                                </SelectContent>
+                            </Select>
+                        </div>
+
+                        {/* Type-specific fields */}
+                        {renderTypeSpecificFields()}
+
+                        {/* Status */}
+                        <div className="flex items-center space-x-2">
+                            <Switch
+                                id="edit-isActive"
+                                checked={formData.isActive}
+                                onCheckedChange={(checked) => handleInputChange('isActive', checked)}
+                            />
+                            <Label htmlFor="edit-isActive">Active (visible to frontend)</Label>
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setIsEditOpen(false)}>
+                            Cancel
+                        </Button>
+                        <Button onClick={handleUpdate} disabled={isSubmitting}>
+                            {isSubmitting ? 'Updating...' : 'Update Block'}
+                        </Button>
+                    </DialogFooter>
                 </DialogContent>
             </Dialog>
 
-            {/* View Block Dialog */}
+            {/* View Dialog */}
             <Dialog open={isViewOpen} onOpenChange={setIsViewOpen}>
-                <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-[800px]">
+                <DialogContent className="sm:max-w-[600px]">
                     <DialogHeader>
-                        <DialogTitle>Block Details</DialogTitle>
+                        <DialogTitle>View Block</DialogTitle>
+                        <DialogDescription>
+                            Block details and usage information.
+                        </DialogDescription>
                     </DialogHeader>
                     {selectedBlock && (
-                        <div className="grid gap-4 py-4">
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <Label className="font-medium text-sm">Name</Label>
-                                    <p className="mt-1 text-muted-foreground text-sm">{selectedBlock.name}</p>
-                                </div>
-                                <div>
-                                    <Label className="font-medium text-sm">Slug</Label>
-                                    <div className="mt-1 flex items-center gap-2">
-                                        <code className="rounded bg-gray-100 px-2 py-1 text-sm">
-                                            {selectedBlock.slug}
-                                        </code>
-                                        <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            onClick={() => handleCopySlug(selectedBlock.slug)}>
-                                            <Copy className="h-3 w-3" />
-                                        </Button>
-                                    </div>
+                        <div className="space-y-4">
+                            <div>
+                                <h3 className="font-medium">Block ID</h3>
+                                <div className="flex items-center gap-2">
+                                    <code className="rounded bg-muted px-2 py-1 text-sm font-mono">
+                                        {selectedBlock.id}
+                                    </code>
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => handleCopyId(selectedBlock.id)}
+                                    >
+                                        <Copy className="h-3 w-3" />
+                                    </Button>
                                 </div>
                             </div>
-
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <Label className="font-medium text-sm">Type</Label>
-                                    <div className="mt-1 flex items-center gap-2">
-                                        {(() => {
-                                            const Icon = getBlockTypeIcon(selectedBlock.type);
-                                            return <Icon className="h-4 w-4" />;
-                                        })()}
-                                        <span className="text-muted-foreground text-sm">
-                                            {getBlockTypeLabel(selectedBlock.type)}
-                                        </span>
-                                    </div>
-                                </div>
-                                <div>
-                                    <Label className="font-medium text-sm">Status</Label>
-                                    <div className="mt-1">
-                                        <Badge variant={selectedBlock.isActive ? 'default' : 'secondary'}>
-                                            {selectedBlock.isActive ? 'Active' : 'Inactive'}
-                                        </Badge>
-                                    </div>
-                                </div>
+                            <div>
+                                <h3 className="font-medium">Usage Example</h3>
+                                <code className="block rounded bg-muted p-3 text-sm">
+                                    {`<BlockEl id="${selectedBlock.id}" />`}
+                                </code>
                             </div>
-
+                            <div>
+                                <h3 className="font-medium">Type</h3>
+                                <p>{getBlockTypeInfo(selectedBlock.type).label}</p>
+                            </div>
                             {selectedBlock.description && (
                                 <div>
-                                    <Label className="font-medium text-sm">Description</Label>
-                                    <p className="mt-1 text-muted-foreground text-sm">{selectedBlock.description}</p>
+                                    <h3 className="font-medium">Description</h3>
+                                    <p>{selectedBlock.description}</p>
                                 </div>
                             )}
-
                             <div>
-                                <Label className="font-medium text-sm">Content Preview</Label>
-                                <div className="mt-2 max-h-64 overflow-y-auto rounded-lg border bg-gray-50 p-4">
-                                    {selectedBlock.type === 'html' ? (
-                                        <pre className="whitespace-pre-wrap font-mono text-sm">
-                                            {selectedBlock.content}
-                                        </pre>
-                                    ) : (
-                                        <div
-                                            className="prose prose-sm max-w-none"
-                                            dangerouslySetInnerHTML={{ __html: selectedBlock.content }}
-                                        />
-                                    )}
-                                </div>
-                            </div>
-
-                            {selectedBlock.tags && selectedBlock.tags.length > 0 && (
-                                <div>
-                                    <Label className="font-medium text-sm">Tags</Label>
-                                    <div className="mt-2 flex flex-wrap gap-2">
-                                        {selectedBlock.tags.map((tag, index) => (
-                                            <Badge key={index} variant="outline">
-                                                {tag}
-                                            </Badge>
-                                        ))}
-                                    </div>
-                                </div>
-                            )}
-
-                            <div className="grid grid-cols-2 gap-4 text-sm">
-                                <div>
-                                    <Label className="font-medium text-sm">Created</Label>
-                                    <p className="mt-1 text-muted-foreground">
-                                        {selectedBlock.createdAt ? formatDate(selectedBlock.createdAt) : 'N/A'}
-                                    </p>
-                                </div>
-                                <div>
-                                    <Label className="font-medium text-sm">Last Updated</Label>
-                                    <p className="mt-1 text-muted-foreground">
-                                        {selectedBlock.updatedAt ? formatDate(selectedBlock.updatedAt) : 'N/A'}
-                                    </p>
-                                </div>
+                                <h3 className="font-medium">Status</h3>
+                                <Badge variant={selectedBlock.isActive ? 'success' : 'secondary'}>
+                                    {selectedBlock.isActive ? 'Active' : 'Inactive'}
+                                </Badge>
                             </div>
                         </div>
                     )}
-                    <div className="flex justify-end">
-                        <Button onClick={handleCloseDialogs}>Close</Button>
-                    </div>
                 </DialogContent>
             </Dialog>
 
-            {/* Delete Block Dialog */}
+            {/* Delete Dialog */}
             <Dialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
-                <DialogContent className="sm:max-w-[425px]">
+                <DialogContent>
                     <DialogHeader>
                         <DialogTitle>Delete Block</DialogTitle>
+                        <DialogDescription>
+                            Are you sure you want to delete "{selectedBlock?.name}"? This action cannot be undone.
+                        </DialogDescription>
                     </DialogHeader>
-                    <div className="py-4">
-                        <p className="mb-4 text-muted-foreground text-sm">
-                            Are you sure you want to delete this block? This action cannot be undone.
-                        </p>
-                        {selectedBlock && (
-                            <div className="mb-4 rounded-lg bg-gray-50 p-3">
-                                <p className="font-medium">{selectedBlock.name}</p>
-                                <p className="text-muted-foreground text-sm">
-                                    {getBlockTypeLabel(selectedBlock.type)} • {selectedBlock.slug}
-                                </p>
-                            </div>
-                        )}
-                        <div className="grid gap-2">
-                            <Label htmlFor="deleteConfirm">Type "delete" to confirm</Label>
-                            <Input
-                                id="deleteConfirm"
-                                value={deleteConfirmText}
-                                onChange={(e) => setDeleteConfirmText(e.target.value)}
-                                placeholder="delete"
-                            />
-                        </div>
-                    </div>
-                    <div className="flex justify-end space-x-2">
-                        <Button type="button" variant="outline" onClick={handleCloseDialogs} disabled={isDeleting}>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setIsDeleteOpen(false)}>
                             Cancel
                         </Button>
-                        <Button
-                            onClick={handleDeleteConfirm}
-                            disabled={deleteConfirmText !== 'delete' || isDeleting}
-                            variant="destructive">
-                            {isDeleting ? 'Deleting...' : 'Delete Block'}
+                        <Button variant="destructive" onClick={handleDeleteConfirm} disabled={isSubmitting}>
+                            {isSubmitting ? 'Deleting...' : 'Delete'}
                         </Button>
-                    </div>
+                    </DialogFooter>
                 </DialogContent>
             </Dialog>
         </div>
