@@ -4365,3 +4365,1861 @@ export async function deleteBlock(blockId) {
         };
     }
 }
+
+// AI MANAGEMENT UTILITY FUNCTIONS (NOT SERVER ACTIONS)
+// These functions handle AI settings, models and Replicate integration
+
+/**
+ * Get AI settings utility function
+ * @returns {Promise<Object>} AI settings data
+ */
+export async function getAISettings() {
+    try {
+        const all = await DBService.readAll('ai_settings');
+        if (!all) return { success: true, data: null };
+
+        let record = null;
+        if (Array.isArray(all)) {
+            record = all.length ? all[0] : null;
+        } else if (typeof all === 'object') {
+            const firstKey = Object.keys(all)[0];
+            record = firstKey ? all[firstKey] : null;
+        }
+
+        return {
+            success: true,
+            data: record || null
+        };
+    } catch (error) {
+        console.error('Error fetching AI settings:', error);
+        return {
+            success: false,
+            error: error.message || 'Failed to fetch AI settings'
+        };
+    }
+}
+
+/**
+ * Update or create AI settings utility function
+ * @param {Object} settingsData - AI settings data to save
+ * @returns {Promise<Object>} Save result
+ */
+export async function updateAISettings(settingsData) {
+    try {
+        const payload = {
+            enabled: !!settingsData.enabled,
+            replicateApiKey: settingsData.replicateApiKey || '',
+            updatedAt: new Date().toISOString()
+        };
+
+        // Check for existing record
+        const all = await DBService.readAll('ai_settings');
+        let existingKey = null;
+        if (Array.isArray(all) && all.length) {
+            const first = all[0];
+            existingKey = first.id || first.key || null;
+        } else if (all && typeof all === 'object') {
+            const firstKey = Object.keys(all)[0];
+            if (firstKey) existingKey = firstKey;
+        }
+
+        let result;
+        if (existingKey) {
+            result = await DBService.update(existingKey, payload, 'ai_settings');
+        } else {
+            payload.createdAt = new Date().toISOString();
+            result = await DBService.create(payload, 'ai_settings');
+        }
+
+        return {
+            success: true,
+            data: result
+        };
+    } catch (error) {
+        console.error('Error updating AI settings:', error);
+        return {
+            success: false,
+            error: error.message || 'Failed to update AI settings'
+        };
+    }
+}
+
+/**
+ * Get all AI models utility function
+ * @param {Object} params - Query parameters (enabled filter, etc.)
+ * @returns {Promise<Object>} AI models data
+ */
+export async function getAllAIModels(params = {}) {
+    try {
+        const all = await DBService.readAll('ai_models');
+        if (!all) return { success: true, data: [] };
+
+        let records = [];
+        if (Array.isArray(all)) {
+            records = all;
+        } else if (typeof all === 'object') {
+            records = Object.values(all || {});
+        }
+
+        // Filter enabled models if requested
+        if (params.enabledOnly) {
+            records = records.filter(model => model.enabled === true);
+        }
+
+        // Sort by creation date (newest first)
+        records.sort((a, b) => {
+            const dateA = new Date(a.createdAt || 0);
+            const dateB = new Date(b.createdAt || 0);
+            return dateB - dateA;
+        });
+
+        return {
+            success: true,
+            data: records
+        };
+    } catch (error) {
+        console.error('Error fetching AI models:', error);
+        return {
+            success: false,
+            error: error.message || 'Failed to fetch AI models'
+        };
+    }
+}
+
+/**
+ * Get AI model by ID utility function
+ * @param {string} modelId - ID of the model to get
+ * @returns {Promise<Object>} AI model data
+ */
+export async function getAIModelById(modelId) {
+    try {
+        const result = await DBService.getItemByKey('id', modelId, 'ai_models');
+        if (!result) {
+            return {
+                success: false,
+                error: 'Model not found'
+            };
+        }
+
+        return {
+            success: true,
+            data: result
+        };
+    } catch (error) {
+        console.error('Error fetching AI model:', error);
+        return {
+            success: false,
+            error: error.message || 'Failed to fetch AI model'
+        };
+    }
+}
+
+/**
+ * Create a new AI model utility function
+ * @param {Object} modelData - AI model data to create
+ * @returns {Promise<Object>} Created AI model data
+ */
+export async function createAIModel(modelData) {
+    try {
+        const timeNow = new Date().toISOString();
+        const payload = {
+            id: `ai_model_${Date.now()}`,
+            name: modelData.name || 'Unnamed Model',
+            modelId: modelData.modelId || '',
+            description: modelData.description || '',
+            enabled: modelData.enabled !== false,
+            config: modelData.config || {},
+            provider: 'replicate', // Always use Replicate
+            createdAt: timeNow,
+            updatedAt: timeNow
+        };
+
+        const result = await DBService.create(payload, 'ai_models');
+        return {
+            success: true,
+            data: result
+        };
+    } catch (error) {
+        console.error('Error creating AI model:', error);
+        return {
+            success: false,
+            error: error.message || 'Failed to create AI model'
+        };
+    }
+}
+
+/**
+ * Update an AI model utility function
+ * @param {string} modelId - ID of the model to update
+ * @param {Object} modelData - AI model data to update
+ * @returns {Promise<Object>} Updated AI model data
+ */
+export async function updateAIModel(modelId, modelData) {
+    try {
+        const updateData = {
+            name: modelData.name,
+            modelId: modelData.modelId,
+            description: modelData.description,
+            enabled: modelData.enabled,
+            config: modelData.config || {},
+            updatedAt: new Date().toISOString()
+        };
+
+        // Remove undefined values
+        Object.keys(updateData).forEach(key => {
+            if (updateData[key] === undefined) {
+                delete updateData[key];
+            }
+        });
+
+        const result = await DBService.update(modelId, updateData, 'ai_models');
+        return {
+            success: true,
+            data: result
+        };
+    } catch (error) {
+        console.error('Error updating AI model:', error);
+        return {
+            success: false,
+            error: error.message || 'Failed to update AI model'
+        };
+    }
+}
+
+/**
+ * Delete an AI model utility function
+ * @param {string} modelId - ID of the model to delete
+ * @returns {Promise<Object>} Delete result
+ */
+export async function deleteAIModel(modelId) {
+    try {
+        const result = await DBService.delete(modelId, 'ai_models');
+        return {
+            success: true,
+            data: result
+        };
+    } catch (error) {
+        console.error('Error deleting AI model:', error);
+        return {
+            success: false,
+            error: error.message || 'Failed to delete AI model'
+        };
+    }
+}
+
+/**
+ * Execute AI model utility function
+ * Makes request to Replicate API with the model configuration
+ * @param {string} modelId - ID of the model to execute
+ * @param {Object} params - Parameters for the model execution
+ * @returns {Promise<Object>} Execution result
+ */
+export async function executeAIModel(modelId, params = {}) {
+    try {
+        // Get AI settings to check if enabled and get API key
+        const settingsResult = await getAISettings();
+        if (!settingsResult.success || !settingsResult.data?.enabled) {
+            return {
+                success: false,
+                error: 'AI agent is not enabled'
+            };
+        }
+
+        const apiKey = settingsResult.data.replicateApiKey;
+        if (!apiKey) {
+            return {
+                success: false,
+                error: 'Replicate API key not configured'
+            };
+        }
+
+        // Get the model configuration
+        const modelResult = await getAIModelById(modelId);
+        if (!modelResult.success) {
+            return {
+                success: false,
+                error: 'Model not found'
+            };
+        }
+
+        const model = modelResult.data;
+        if (!model.enabled) {
+            return {
+                success: false,
+                error: 'Model is disabled'
+            };
+        }
+
+        // Merge model config with runtime params
+        const replicateInput = {
+            ...model.config,
+            ...params
+        };
+
+        // Make request to Replicate API
+        const response = await fetch(`https://api.replicate.com/v1/models/${model.modelId}/predictions`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Token ${apiKey}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                input: replicateInput
+            })
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            return {
+                success: false,
+                error: `Replicate API error: ${response.status} ${errorText}`
+            };
+        }
+
+        const result = await response.json();
+        return {
+            success: true,
+            data: result
+        };
+
+    } catch (error) {
+        console.error('Error executing AI model:', error);
+        return {
+            success: false,
+            error: error.message || 'Failed to execute AI model'
+        };
+    }
+}
+
+// ENDPOINTS MANAGEMENT UTILITY FUNCTIONS (NOT SERVER ACTIONS)
+// These functions handle endpoints, API keys, and access control
+
+/**
+ * Initialize default endpoints in database
+ * @returns {Promise<Object>} Initialization result
+ */
+export async function initializeDefaultEndpoints() {
+    try {
+        // Check if endpoints already exist
+        const existingEndpoints = await DBService.readAll('endpoints');
+        const endpointsArray = Array.isArray(existingEndpoints) ? existingEndpoints : Object.values(existingEndpoints || {});
+        
+        // If endpoints already exist, don't reinitialize
+        if (endpointsArray.length > 0) {
+            return {
+                success: true,
+                data: endpointsArray,
+                message: 'Endpoints already initialized'
+            };
+        }
+
+        // Default endpoints based on current implementation
+        const defaultEndpoints = [
+            {
+                id: 'public-query-get',
+                method: 'GET',
+                path: '/api/query/public/[slug]',
+                description: 'Retrieve data from any collection with optional pagination, search, and filtering',
+                status: 'active',
+                authentication: 'none',
+                rateLimit: 100,
+                rateLimitWindow: 3600000, // 1 hour
+                usage: 0,
+                responseFormat: 'JSON',
+                parameters: 'slug (path), id, key, value, page, limit, search (query)',
+                example: '{"success": true, "data": [...], "pagination": {...}}',
+                isDefault: true,
+                permissions: ['READ'],
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString()
+            },
+            {
+                id: 'public-query-post',
+                method: 'POST',
+                path: '/api/query/public/[slug]',
+                description: 'Create new items in any collection',
+                status: 'active',
+                authentication: 'none',
+                rateLimit: 50,
+                rateLimitWindow: 3600000,
+                usage: 0,
+                responseFormat: 'JSON',
+                parameters: 'slug (path), JSON body with item data',
+                example: '{"success": true, "data": {...}, "message": "Record created successfully!"}',
+                isDefault: true,
+                permissions: ['WRITE'],
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString()
+            },
+            {
+                id: 'public-query-put',
+                method: 'PUT',
+                path: '/api/query/public/[slug]',
+                description: 'Update existing items in any collection',
+                status: 'active',
+                authentication: 'none',
+                rateLimit: 50,
+                rateLimitWindow: 3600000,
+                usage: 0,
+                responseFormat: 'JSON',
+                parameters: 'slug (path), JSON body with id and updated data',
+                example: '{"success": true, "data": {...}, "message": "Record updated successfully!"}',
+                isDefault: true,
+                permissions: ['WRITE'],
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString()
+            },
+            {
+                id: 'public-query-delete',
+                method: 'DELETE',
+                path: '/api/query/public/[slug]',
+                description: 'Delete items from any collection',
+                status: 'active',
+                authentication: 'none',
+                rateLimit: 25,
+                rateLimitWindow: 3600000,
+                usage: 0,
+                responseFormat: 'JSON',
+                parameters: 'slug (path), id (query parameter)',
+                example: '{"success": true, "message": "Record deleted successfully!", "data": {"id": "123"}}',
+                isDefault: true,
+                permissions: ['DELETE'],
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString()
+            },
+            {
+                id: 'upload-files',
+                method: 'POST',
+                path: '/api/upload',
+                description: 'Upload files with support for images, documents, and media files',
+                status: 'active',
+                authentication: 'apikey',
+                rateLimit: 20,
+                rateLimitWindow: 3600000,
+                usage: 0,
+                responseFormat: 'JSON',
+                parameters: 'file (multipart/form-data), folder, resize (query)',
+                example: '{"success": true, "data": {"filename": "...", "url": "...", "size": 123456}}',
+                isDefault: true,
+                permissions: ['UPLOAD'],
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString()
+            },
+            {
+                id: 'ai-execute',
+                method: 'POST',
+                path: '/api/ai/execute',
+                description: 'Execute AI model with custom parameters',
+                status: 'active',
+                authentication: 'apikey',
+                rateLimit: 50,
+                rateLimitWindow: 3600000,
+                usage: 0,
+                responseFormat: 'JSON',
+                parameters: 'modelId (body), params (body object)',
+                example: '{"success": true, "data": {...}}',
+                isDefault: true,
+                permissions: ['AI_EXECUTE'],
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString()
+            },
+            {
+                id: 'ai-prediction-status',
+                method: 'GET',
+                path: '/api/ai/prediction/[id]',
+                description: 'Get the status of a Replicate prediction',
+                status: 'active',
+                authentication: 'apikey',
+                rateLimit: 100,
+                rateLimitWindow: 3600000,
+                usage: 0,
+                responseFormat: 'JSON',
+                parameters: 'id (path parameter)',
+                example: '{"success": true, "data": {"status": "succeeded", "output": [...]}}',
+                isDefault: true,
+                permissions: ['AI_EXECUTE'],
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString()
+            }
+        ];
+
+        // Create all default endpoints
+        const createdEndpoints = [];
+        for (const endpoint of defaultEndpoints) {
+            const result = await DBService.create(endpoint, 'endpoints');
+            createdEndpoints.push(result);
+        }
+
+        return {
+            success: true,
+            data: createdEndpoints,
+            message: 'Default endpoints initialized successfully'
+        };
+    } catch (error) {
+        console.error('Error initializing default endpoints:', error);
+        return {
+            success: false,
+            error: error.message || 'Failed to initialize default endpoints'
+        };
+    }
+}
+
+/**
+ * Get all endpoints utility function
+ * @param {Object} params - Query parameters (includeDefault, status, etc.)
+ * @returns {Promise<Object>} Endpoints data
+ */
+export async function getAllEndpoints(params = {}) {
+    try {
+        // Initialize default endpoints if needed
+        await initializeDefaultEndpoints();
+        
+        const all = await DBService.readAll('endpoints');
+        let records = [];
+        if (Array.isArray(all)) {
+            records = all;
+        } else if (typeof all === 'object') {
+            records = Object.values(all || {});
+        }
+
+        // Apply filters
+        if (params.status) {
+            records = records.filter(endpoint => endpoint.status === params.status);
+        }
+
+        if (params.isDefault !== undefined) {
+            records = records.filter(endpoint => endpoint.isDefault === params.isDefault);
+        }
+
+        if (params.method) {
+            records = records.filter(endpoint => endpoint.method === params.method);
+        }
+
+        // Sort by creation date (newest first)
+        records.sort((a, b) => {
+            const dateA = new Date(a.createdAt || 0);
+            const dateB = new Date(b.createdAt || 0);
+            return dateB - dateA;
+        });
+
+        return {
+            success: true,
+            data: records
+        };
+    } catch (error) {
+        console.error('Error fetching endpoints:', error);
+        return {
+            success: false,
+            error: error.message || 'Failed to fetch endpoints'
+        };
+    }
+}
+
+/**
+ * Get endpoint by ID utility function
+ * @param {string} endpointId - ID of the endpoint to get
+ * @returns {Promise<Object>} Endpoint data
+ */
+export async function getEndpointById(endpointId) {
+    try {
+        const result = await DBService.getItemByKey('id', endpointId, 'endpoints');
+        if (!result) {
+            return {
+                success: false,
+                error: 'Endpoint not found'
+            };
+        }
+
+        return {
+            success: true,
+            data: result
+        };
+    } catch (error) {
+        console.error('Error fetching endpoint:', error);
+        return {
+            success: false,
+            error: error.message || 'Failed to fetch endpoint'
+        };
+    }
+}
+
+/**
+ * Create a new custom endpoint utility function
+ * @param {Object} endpointData - Endpoint data to create
+ * @returns {Promise<Object>} Created endpoint data
+ */
+export async function createCustomEndpoint(endpointData) {
+    try {
+        const timeNow = new Date().toISOString();
+        const payload = {
+            id: `custom_endpoint_${Date.now()}`,
+            method: endpointData.method || 'GET',
+            path: endpointData.path || '',
+            description: endpointData.description || '',
+            status: endpointData.status || 'active',
+            authentication: endpointData.authentication || 'apikey',
+            rateLimit: endpointData.rateLimit || 100,
+            rateLimitWindow: endpointData.rateLimitWindow || 3600000,
+            usage: 0,
+            responseFormat: endpointData.responseFormat || 'JSON',
+            parameters: endpointData.parameters || '',
+            example: endpointData.example || '{}',
+            permissions: endpointData.permissions || [],
+            isDefault: false, // Custom endpoints are never default
+            createdAt: timeNow,
+            updatedAt: timeNow
+        };
+
+        const result = await DBService.create(payload, 'endpoints');
+        return {
+            success: true,
+            data: result
+        };
+    } catch (error) {
+        console.error('Error creating custom endpoint:', error);
+        return {
+            success: false,
+            error: error.message || 'Failed to create custom endpoint'
+        };
+    }
+}
+
+/**
+ * Update an endpoint utility function (only for custom endpoints)
+ * @param {string} endpointId - ID of the endpoint to update
+ * @param {Object} endpointData - Endpoint data to update
+ * @returns {Promise<Object>} Updated endpoint data
+ */
+export async function updateCustomEndpoint(endpointId, endpointData) {
+    try {
+        // Get the endpoint first to check if it's a default endpoint
+        const existingEndpoint = await DBService.getItemByKey('id', endpointId, 'endpoints');
+        
+        if (!existingEndpoint) {
+            return {
+                success: false,
+                error: 'Endpoint not found'
+            };
+        }
+
+        if (existingEndpoint.isDefault) {
+            return {
+                success: false,
+                error: 'Default endpoints cannot be modified'
+            };
+        }
+
+        const updateData = {
+            ...endpointData,
+            updatedAt: new Date().toISOString()
+        };
+
+        // Remove undefined values and prevent changing isDefault
+        Object.keys(updateData).forEach(key => {
+            if (updateData[key] === undefined || key === 'isDefault') {
+                delete updateData[key];
+            }
+        });
+
+        const result = await DBService.update(endpointId, updateData, 'endpoints');
+        return {
+            success: true,
+            data: result
+        };
+    } catch (error) {
+        console.error('Error updating endpoint:', error);
+        return {
+            success: false,
+            error: error.message || 'Failed to update endpoint'
+        };
+    }
+}
+
+/**
+ * Delete a custom endpoint utility function (only for custom endpoints)
+ * @param {string} endpointId - ID of the endpoint to delete
+ * @returns {Promise<Object>} Delete result
+ */
+export async function deleteCustomEndpoint(endpointId) {
+    try {
+        // Get the endpoint first to check if it's a default endpoint
+        const existingEndpoint = await DBService.getItemByKey('id', endpointId, 'endpoints');
+        
+        if (!existingEndpoint) {
+            return {
+                success: false,
+                error: 'Endpoint not found'
+            };
+        }
+
+        if (existingEndpoint.isDefault) {
+            return {
+                success: false,
+                error: 'Default endpoints cannot be deleted'
+            };
+        }
+
+        const result = await DBService.delete(endpointId, 'endpoints');
+        return {
+            success: true,
+            data: result
+        };
+    } catch (error) {
+        console.error('Error deleting endpoint:', error);
+        return {
+            success: false,
+            error: error.message || 'Failed to delete endpoint'
+        };
+    }
+}
+
+// API KEYS MANAGEMENT UTILITY FUNCTIONS
+
+/**
+ * Get all API keys utility function
+ * @param {Object} params - Query parameters (status, etc.)
+ * @returns {Promise<Object>} API keys data
+ */
+export async function getAllAPIKeys(params = {}) {
+    try {
+        const all = await DBService.readAll('api_keys');
+        let records = [];
+        if (Array.isArray(all)) {
+            records = all;
+        } else if (typeof all === 'object') {
+            records = Object.values(all || {});
+        }
+
+        // Apply status filter
+        if (params.status) {
+            records = records.filter(key => key.status === params.status);
+        }
+
+        // Sort by creation date (newest first)
+        records.sort((a, b) => {
+            const dateA = new Date(a.createdAt || 0);
+            const dateB = new Date(b.createdAt || 0);
+            return dateB - dateA;
+        });
+
+        return {
+            success: true,
+            data: records
+        };
+    } catch (error) {
+        console.error('Error fetching API keys:', error);
+        return {
+            success: false,
+            error: error.message || 'Failed to fetch API keys'
+        };
+    }
+}
+
+/**
+ * Get API key by key string utility function (for authentication)
+ * @param {string} apiKeyString - The API key string to validate
+ * @returns {Promise<Object>} API key data
+ */
+export async function getAPIKeyByString(apiKeyString) {
+    try {
+        const result = await DBService.getItemByKey('key', apiKeyString, 'api_keys');
+        if (!result) {
+            return {
+                success: false,
+                error: 'API key not found'
+            };
+        }
+
+        // Check if API key is active and not expired
+        if (result.status !== 'active') {
+            return {
+                success: false,
+                error: 'API key is not active'
+            };
+        }
+
+        if (result.expiresAt && new Date(result.expiresAt) < new Date()) {
+            return {
+                success: false,
+                error: 'API key has expired'
+            };
+        }
+
+        return {
+            success: true,
+            data: result
+        };
+    } catch (error) {
+        console.error('Error validating API key:', error);
+        return {
+            success: false,
+            error: error.message || 'Failed to validate API key'
+        };
+    }
+}
+
+/**
+ * Validate API key - alias for getAPIKeyByString for clarity
+ * @param {string} apiKeyString - The API key string to validate
+ * @returns {Promise<Object>} API key validation result
+ */
+export async function validateApiKey(apiKeyString) {
+    return await getAPIKeyByString(apiKeyString);
+}
+
+/**
+ * Create a new API key utility function
+ * @param {Object} apiKeyData - API key data to create
+ * @returns {Promise<Object>} Created API key data
+ */
+export async function createAPIKey(apiKeyData) {
+    try {
+        const timeNow = new Date().toISOString();
+        
+        // Generate API key
+        const timestamp = Date.now().toString(36);
+        const random = Math.random().toString(36).substring(2, 15);
+        const random2 = Math.random().toString(36).substring(2, 15);
+        const apiKey = `pk_live_${timestamp}_${random}_${random2}`;
+
+        const payload = {
+            id: `api_key_${Date.now()}`,
+            name: apiKeyData.name || 'Unnamed API Key',
+            description: apiKeyData.description || '',
+            key: apiKey,
+            keyPreview: `${apiKey.substring(0, 20)}...${apiKey.slice(-4)}`,
+            permissions: apiKeyData.permissions || ['READ'],
+            rateLimit: apiKeyData.rateLimit || 100,
+            rateLimitWindow: apiKeyData.rateLimitWindow || 3600000,
+            status: 'active',
+            usage: 0,
+            lastUsed: null,
+            expiresAt: apiKeyData.expiresAt || null,
+            createdAt: timeNow,
+            updatedAt: timeNow
+        };
+
+        const result = await DBService.create(payload, 'api_keys');
+        return {
+            success: true,
+            data: result
+        };
+    } catch (error) {
+        console.error('Error creating API key:', error);
+        return {
+            success: false,
+            error: error.message || 'Failed to create API key'
+        };
+    }
+}
+
+/**
+ * Update an API key utility function
+ * @param {string} keyId - ID of the API key to update
+ * @param {Object} apiKeyData - API key data to update
+ * @returns {Promise<Object>} Updated API key data
+ */
+export async function updateAPIKey(keyId, apiKeyData) {
+    try {
+        const updateData = {
+            ...apiKeyData,
+            updatedAt: new Date().toISOString()
+        };
+
+        // Remove undefined values and prevent changing the actual key
+        Object.keys(updateData).forEach(key => {
+            if (updateData[key] === undefined || key === 'key') {
+                delete updateData[key];
+            }
+        });
+
+        const result = await DBService.update(keyId, updateData, 'api_keys');
+        return {
+            success: true,
+            data: result
+        };
+    } catch (error) {
+        console.error('Error updating API key:', error);
+        return {
+            success: false,
+            error: error.message || 'Failed to update API key'
+        };
+    }
+}
+
+/**
+ * Delete an API key utility function
+ * @param {string} keyId - ID of the API key to delete
+ * @returns {Promise<Object>} Delete result
+ */
+export async function deleteAPIKey(keyId) {
+    try {
+        const result = await DBService.delete(keyId, 'api_keys');
+        return {
+            success: true,
+            data: result
+        };
+    } catch (error) {
+        console.error('Error deleting API key:', error);
+        return {
+            success: false,
+            error: error.message || 'Failed to delete API key'
+        };
+    }
+}
+
+/**
+ * Increment API key usage utility function
+ * @param {string} apiKeyString - The API key string
+ * @returns {Promise<Object>} Update result
+ */
+export async function incrementAPIKeyUsage(apiKeyString) {
+    try {
+        const apiKeyResult = await getAPIKeyByString(apiKeyString);
+        if (!apiKeyResult.success) {
+            return apiKeyResult;
+        }
+
+        const apiKey = apiKeyResult.data;
+        const updateData = {
+            usage: (apiKey.usage || 0) + 1,
+            lastUsed: new Date().toISOString()
+        };
+
+        const keyId = apiKey.id || apiKey.key;
+        await DBService.update(keyId, updateData, 'api_keys');
+
+        return {
+            success: true,
+            data: { ...apiKey, ...updateData }
+        };
+    } catch (error) {
+        console.error('Error incrementing API key usage:', error);
+        return {
+            success: false,
+            error: error.message || 'Failed to update API key usage'
+        };
+    }
+}
+
+// API SETTINGS MANAGEMENT
+
+/**
+ * Get API settings utility function
+ * @returns {Promise<Object>} API settings data
+ */
+export async function getAPISettings() {
+    try {
+        const all = await DBService.readAll('api_settings');
+        let record = null;
+        
+        if (Array.isArray(all)) {
+            record = all.length ? all[0] : null;
+        } else if (typeof all === 'object') {
+            const firstKey = Object.keys(all)[0];
+            record = firstKey ? all[firstKey] : null;
+        }
+
+        // Return default settings if none exist
+        if (!record) {
+            const defaultSettings = {
+                apiEnabled: true,
+                allowedOrigins: ['*'],
+                rateLimit: {
+                    enabled: true,
+                    defaultLimit: 100,
+                    windowMs: 3600000
+                }
+            };
+            return {
+                success: true,
+                data: defaultSettings
+            };
+        }
+
+        return {
+            success: true,
+            data: record
+        };
+    } catch (error) {
+        console.error('Error fetching API settings:', error);
+        return {
+            success: false,
+            error: error.message || 'Failed to fetch API settings'
+        };
+    }
+}
+
+/**
+ * Update or create API settings utility function
+ * @param {Object} settingsData - API settings data to save
+ * @returns {Promise<Object>} Save result
+ */
+export async function updateAPISettings(settingsData) {
+    try {
+        const payload = {
+            apiEnabled: settingsData.apiEnabled !== false,
+            allowedOrigins: settingsData.allowedOrigins || ['*'],
+            rateLimit: settingsData.rateLimit || {
+                enabled: true,
+                defaultLimit: 100,
+                windowMs: 3600000
+            },
+            updatedAt: new Date().toISOString()
+        };
+
+        // Check for existing record
+        const all = await DBService.readAll('api_settings');
+        let existingKey = null;
+        if (Array.isArray(all) && all.length) {
+            const first = all[0];
+            existingKey = first.id || first.key || null;
+        } else if (all && typeof all === 'object') {
+            const firstKey = Object.keys(all)[0];
+            if (firstKey) existingKey = firstKey;
+        }
+
+        let result;
+        if (existingKey) {
+            result = await DBService.update(existingKey, payload, 'api_settings');
+        } else {
+            payload.createdAt = new Date().toISOString();
+            result = await DBService.create(payload, 'api_settings');
+        }
+
+        return {
+            success: true,
+            data: result
+        };
+    } catch (error) {
+        console.error('Error updating API settings:', error);
+        return {
+            success: false,
+            error: error.message || 'Failed to update API settings'
+        };
+    }
+}
+
+// ENDPOINTS MANAGEMENT SERVER ACTIONS
+
+/**
+ * Get all endpoints server action
+ * @param {Object} params - Query parameters
+ * @returns {Promise<Object>} Endpoints data
+ */
+export async function getAllEndpointsAction(params = {}) {
+    try {
+        const result = await getAllEndpoints(params);
+        return result;
+    } catch (error) {
+        console.error('Error in get all endpoints action:', error);
+        return {
+            success: false,
+            error: error.message || 'Failed to fetch endpoints'
+        };
+    }
+}
+
+/**
+ * Get endpoint by ID server action
+ * @param {string} endpointId - ID of the endpoint to get
+ * @returns {Promise<Object>} Endpoint data
+ */
+export async function getEndpointByIdAction(endpointId) {
+    try {
+        const result = await getEndpointById(endpointId);
+        return result;
+    } catch (error) {
+        console.error('Error in get endpoint action:', error);
+        return {
+            success: false,
+            error: error.message || 'Failed to fetch endpoint'
+        };
+    }
+}
+
+/**
+ * Create custom endpoint server action
+ * @param {Object} endpointData - Endpoint data to create
+ * @returns {Promise<Object>} Created endpoint data
+ */
+export async function createCustomEndpointAction(endpointData) {
+    try {
+        const result = await createCustomEndpoint(endpointData);
+        return result;
+    } catch (error) {
+        console.error('Error in create custom endpoint action:', error);
+        return {
+            success: false,
+            error: error.message || 'Failed to create custom endpoint'
+        };
+    }
+}
+
+/**
+ * Update custom endpoint server action
+ * @param {string} endpointId - ID of the endpoint to update
+ * @param {Object} endpointData - Endpoint data to update
+ * @returns {Promise<Object>} Updated endpoint data
+ */
+export async function updateCustomEndpointAction(endpointId, endpointData) {
+    try {
+        const result = await updateCustomEndpoint(endpointId, endpointData);
+        return result;
+    } catch (error) {
+        console.error('Error in update custom endpoint action:', error);
+        return {
+            success: false,
+            error: error.message || 'Failed to update custom endpoint'
+        };
+    }
+}
+
+/**
+ * Delete custom endpoint server action
+ * @param {string} endpointId - ID of the endpoint to delete
+ * @returns {Promise<Object>} Delete result
+ */
+export async function deleteCustomEndpointAction(endpointId) {
+    try {
+        const result = await deleteCustomEndpoint(endpointId);
+        return result;
+    } catch (error) {
+        console.error('Error in delete custom endpoint action:', error);
+        return {
+            success: false,
+            error: error.message || 'Failed to delete custom endpoint'
+        };
+    }
+}
+
+// API KEYS MANAGEMENT SERVER ACTIONS
+
+/**
+ * Get all API keys server action
+ * @param {Object} params - Query parameters
+ * @returns {Promise<Object>} API keys data
+ */
+export async function getAllAPIKeysAction(params = {}) {
+    try {
+        const result = await getAllAPIKeys(params);
+        return result;
+    } catch (error) {
+        console.error('Error in get all API keys action:', error);
+        return {
+            success: false,
+            error: error.message || 'Failed to fetch API keys'
+        };
+    }
+}
+
+/**
+ * Create API key server action
+ * @param {Object} apiKeyData - API key data to create
+ * @returns {Promise<Object>} Created API key data
+ */
+export async function createAPIKeyAction(apiKeyData) {
+    try {
+        const result = await createAPIKey(apiKeyData);
+        return result;
+    } catch (error) {
+        console.error('Error in create API key action:', error);
+        return {
+            success: false,
+            error: error.message || 'Failed to create API key'
+        };
+    }
+}
+
+/**
+ * Update API key server action
+ * @param {string} keyId - ID of the API key to update
+ * @param {Object} apiKeyData - API key data to update
+ * @returns {Promise<Object>} Updated API key data
+ */
+export async function updateAPIKeyAction(keyId, apiKeyData) {
+    try {
+        const result = await updateAPIKey(keyId, apiKeyData);
+        return result;
+    } catch (error) {
+        console.error('Error in update API key action:', error);
+        return {
+            success: false,
+            error: error.message || 'Failed to update API key'
+        };
+    }
+}
+
+/**
+ * Delete API key server action
+ * @param {string} keyId - ID of the API key to delete
+ * @returns {Promise<Object>} Delete result
+ */
+export async function deleteAPIKeyAction(keyId) {
+    try {
+        const result = await deleteAPIKey(keyId);
+        return result;
+    } catch (error) {
+        console.error('Error in delete API key action:', error);
+        return {
+            success: false,
+            error: error.message || 'Failed to delete API key'
+        };
+    }
+}
+
+// API SETTINGS MANAGEMENT SERVER ACTIONS
+
+/**
+ * Get API settings server action
+ * @returns {Promise<Object>} API settings data
+ */
+export async function getAPISettingsAction() {
+    try {
+        const result = await getAPISettings();
+        return result;
+    } catch (error) {
+        console.error('Error in get API settings action:', error);
+        return {
+            success: false,
+            error: error.message || 'Failed to fetch API settings'
+        };
+    }
+}
+
+/**
+ * Update API settings server action
+ * @param {Object} settingsData - API settings data to save
+ * @returns {Promise<Object>} Save result
+ */
+export async function updateAPISettingsAction(settingsData) {
+    try {
+        const payload = {
+            apiEnabled: settingsData.apiEnabled !== false,
+            allowedOrigins: settingsData.allowedOrigins || ['*'],
+            rateLimit: settingsData.rateLimit || {
+                enabled: true,
+                defaultLimit: 100,
+                windowMs: 3600000
+            },
+            updatedAt: new Date().toISOString()
+        };
+
+        // Check for existing record
+        const all = await DBService.readAll('api_settings');
+        let existingKey = null;
+        if (Array.isArray(all) && all.length) {
+            const first = all[0];
+            existingKey = first.id || first.key || null;
+        } else if (all && typeof all === 'object') {
+            const firstKey = Object.keys(all)[0];
+            if (firstKey) existingKey = firstKey;
+        }
+
+        let result;
+        if (existingKey) {
+            result = await DBService.update(existingKey, payload, 'api_settings');
+        } else {
+            payload.createdAt = new Date().toISOString();
+            result = await DBService.create(payload, 'api_settings');
+        }
+
+        return {
+            success: true,
+            data: result
+        };
+    } catch (error) {
+        console.error('Error updating API settings:', error);
+        return {
+            success: false,
+            error: error.message || 'Failed to update API settings'
+        };
+    }
+}
+
+// CRONJOBS MANAGEMENT UTILITY FUNCTIONS (NOT SERVER ACTIONS)
+// These functions can be imported directly into client components
+
+/**
+ * Get all cronjobs utility function
+ * @param {Object} params - Query parameters (status filter, etc.)
+ * @returns {Promise<Object>} Cronjobs data
+ */
+export async function getAllCronjobs(params = {}) {
+    try {
+        const { statusFilter } = params;
+        
+        const allCronjobs = await DBService.readAll('cronjobs');
+        
+        if (!allCronjobs || Object.keys(allCronjobs).length === 0) {
+            return {
+                success: true,
+                data: [],
+                message: 'No cronjobs found'
+            };
+        }
+
+        // Convert object to array
+        let cronjobsArray = Array.isArray(allCronjobs) ? allCronjobs : Object.entries(allCronjobs).map(([key, value]) => ({
+            id: key,
+            ...value
+        }));
+
+        // Apply status filter
+        if (statusFilter && statusFilter !== 'all') {
+            cronjobsArray = cronjobsArray.filter(job => {
+                if (statusFilter === 'enabled') return job.enabled === true;
+                if (statusFilter === 'disabled') return job.enabled === false;
+                return true;
+            });
+        }
+
+        // Sort by creation date (newest first)
+        cronjobsArray.sort((a, b) => {
+            const dateA = new Date(a.createdAt || 0);
+            const dateB = new Date(b.createdAt || 0);
+            return dateB.getTime() - dateA.getTime();
+        });
+
+        return {
+            success: true,
+            data: cronjobsArray
+        };
+    } catch (error) {
+        console.error('Error fetching cronjobs:', error);
+        return {
+            success: false,
+            error: 'Failed to fetch cronjobs',
+            message: error.message,
+            data: []
+        };
+    }
+}
+
+/**
+ * Create a new cronjob utility function
+ * @param {Object} cronjobData - Cronjob data to create
+ * @returns {Promise<Object>} Created cronjob data
+ */
+export async function createCronjob(cronjobData) {
+    try {
+        const timeNow = new Date().toISOString();
+        const newCronjob = {
+            ...cronjobData,
+            id: cronjobData.id || Date.now().toString(),
+            createdAt: timeNow,
+            updatedAt: timeNow,
+            lastRun: null,
+            lastStatus: null,
+            enabled: cronjobData.enabled !== false // Default to true
+        };
+
+        const result = await DBService.create(newCronjob, 'cronjobs');
+
+        return {
+            success: true,
+            data: result
+        };
+    } catch (error) {
+        console.error('Error creating cronjob:', error);
+        return {
+            success: false,
+            error: 'Failed to create cronjob',
+            message: error.message
+        };
+    }
+}
+
+/**
+ * Update a cronjob utility function
+ * @param {string} cronjobId - ID of the cronjob to update
+ * @param {Object} cronjobData - Cronjob data to update
+ * @returns {Promise<Object>} Updated cronjob data
+ */
+export async function updateCronjob(cronjobId, cronjobData) {
+    try {
+        const updateData = {
+            ...cronjobData,
+            updatedAt: new Date().toISOString()
+        };
+
+        const result = await DBService.update(cronjobId, updateData, 'cronjobs');
+
+        if (!result) {
+            return {
+                success: false,
+                error: 'Cronjob not found'
+            };
+        }
+
+        return {
+            success: true,
+            data: result
+        };
+    } catch (error) {
+        console.error('Error updating cronjob:', error);
+        return {
+            success: false,
+            error: 'Failed to update cronjob',
+            message: error.message
+        };
+    }
+}
+
+/**
+ * Delete a cronjob utility function
+ * @param {string} cronjobId - ID of the cronjob to delete
+ * @returns {Promise<Object>} Delete result
+ */
+export async function deleteCronjob(cronjobId) {
+    try {
+        const result = await DBService.delete(cronjobId, 'cronjobs');
+
+        return {
+            success: true,
+            message: 'Cronjob deleted successfully'
+        };
+    } catch (error) {
+        console.error('Error deleting cronjob:', error);
+        return {
+            success: false,
+            error: 'Failed to delete cronjob',
+            message: error.message
+        };
+    }
+}
+
+/**
+ * Execute cronjobs that are due to run
+ * @returns {Promise<Object>} Execution result
+ */
+export async function executeDueCronjobs() {
+    try {
+        const allCronjobs = await DBService.readAll('cronjobs');
+        
+        if (!allCronjobs || Object.keys(allCronjobs).length === 0) {
+            return {
+                success: true,
+                message: 'No cronjobs to execute',
+                executed: 0
+            };
+        }
+
+        const cronjobsArray = Array.isArray(allCronjobs) ? allCronjobs : Object.entries(allCronjobs).map(([key, value]) => ({
+            id: key,
+            ...value
+        }));
+
+        const now = Date.now();
+        let executed = 0;
+
+        for (const job of cronjobsArray) {
+            if (!job.enabled) continue;
+
+            const lastRun = job.lastRun ? new Date(job.lastRun).getTime() : 0;
+            const intervalMs = (job.intervalMinutes || 60) * 60 * 1000;
+            
+            if (now - lastRun >= intervalMs) {
+                try {
+                    // Execute HTTP cronjob
+                    if (job.type === 'http' && job.config?.url) {
+                        const response = await fetch(job.config.url, {
+                            method: job.config.method || 'GET',
+                            headers: job.config.headers || {},
+                            body: job.config.body ? JSON.stringify(job.config.body) : undefined
+                        });
+
+                        // Update job status
+                        await DBService.update(job.id, {
+                            lastRun: new Date().toISOString(),
+                            lastStatus: response.ok ? 'success' : `error: ${response.status}`,
+                            updatedAt: new Date().toISOString()
+                        }, 'cronjobs');
+
+                        executed++;
+                    }
+                } catch (jobError) {
+                    console.error(`Error executing cronjob ${job.id}:`, jobError);
+                    
+                    // Update job with error status
+                    await DBService.update(job.id, {
+                        lastRun: new Date().toISOString(),
+                        lastStatus: `error: ${jobError.message}`,
+                        updatedAt: new Date().toISOString()
+                    }, 'cronjobs');
+                }
+            }
+        }
+
+        return {
+            success: true,
+            message: `Executed ${executed} cronjobs`,
+            executed
+        };
+    } catch (error) {
+        console.error('Error executing cronjobs:', error);
+        return {
+            success: false,
+            error: 'Failed to execute cronjobs',
+            message: error.message,
+            executed: 0
+        };
+    }
+}
+
+// CRONJOBS MANAGEMENT SERVER ACTIONS
+
+/**
+ * Get all cronjobs server action
+ * @param {Object} params - Query parameters
+ * @returns {Promise<Object>} Cronjobs data
+ */
+export async function getAllCronjobsAction(params = {}) {
+    try {
+        return await getAllCronjobs(params);
+    } catch (error) {
+        console.error('Error in get all cronjobs action:', error);
+        return {
+            success: false,
+            error: error.message || 'Failed to fetch cronjobs'
+        };
+    }
+}
+
+/**
+ * Create cronjob server action
+ * @param {Object} cronjobData - Cronjob data to create
+ * @returns {Promise<Object>} Created cronjob data
+ */
+export async function createCronjobAction(cronjobData) {
+    try {
+        return await createCronjob(cronjobData);
+    } catch (error) {
+        console.error('Error in create cronjob action:', error);
+        return {
+            success: false,
+            error: error.message || 'Failed to create cronjob'
+        };
+    }
+}
+
+/**
+ * Update cronjob server action
+ * @param {string} cronjobId - ID of the cronjob to update
+ * @param {Object} cronjobData - Cronjob data to update
+ * @returns {Promise<Object>} Updated cronjob data
+ */
+export async function updateCronjobAction(cronjobId, cronjobData) {
+    try {
+        return await updateCronjob(cronjobId, cronjobData);
+    } catch (error) {
+        console.error('Error in update cronjob action:', error);
+        return {
+            success: false,
+            error: error.message || 'Failed to update cronjob'
+        };
+    }
+}
+
+/**
+ * Delete cronjob server action
+ * @param {string} cronjobId - ID of the cronjob to delete
+ * @returns {Promise<Object>} Delete result
+ */
+export async function deleteCronjobAction(cronjobId) {
+    try {
+        return await deleteCronjob(cronjobId);
+    } catch (error) {
+        console.error('Error in delete cronjob action:', error);
+        return {
+            success: false,
+            error: error.message || 'Failed to delete cronjob'
+        };
+    }
+}
+
+/**
+ * Execute due cronjobs server action
+ * @returns {Promise<Object>} Execution result
+ */
+export async function executeDueCronjobsAction() {
+    try {
+        return await executeDueCronjobs();
+    } catch (error) {
+        console.error('Error in execute due cronjobs action:', error);
+        return {
+            success: false,
+            error: error.message || 'Failed to execute cronjobs'
+        };
+    }
+}
+
+// SITE SETTINGS MANAGEMENT UTILITY FUNCTIONS (NOT SERVER ACTIONS)
+// These functions handle site settings with sensitive data filtering for public API access
+
+/**
+ * Get all site settings utility function (internal use - includes sensitive data)
+ * @returns {Promise<Object>} Complete site settings data
+ */
+export async function getAllSiteSettings() {
+    try {
+        const allSettings = await DBService.readAll('site_settings');
+        
+        if (!allSettings || Object.keys(allSettings).length === 0) {
+            return {
+                success: true,
+                data: null,
+                message: 'No site settings found'
+            };
+        }
+
+        // Convert object to array and find the main settings record
+        const settingsArray = Array.isArray(allSettings) ? allSettings : Object.entries(allSettings).map(([key, value]) => ({
+            id: key,
+            ...value
+        }));
+
+        // Find the main site settings record
+        const mainSettings = settingsArray.find(s => s.type === 'site' || s.key === 'site' || !s.type) || settingsArray[0];
+
+        return {
+            success: true,
+            data: mainSettings || null
+        };
+    } catch (error) {
+        console.error('Error fetching site settings:', error);
+        return {
+            success: false,
+            error: 'Failed to fetch site settings',
+            message: error.message,
+            data: null
+        };
+    }
+}
+
+/**
+ * Get public site settings utility function (external API - sensitive data filtered)
+ * @returns {Promise<Object>} Filtered site settings data safe for public consumption
+ */
+export async function getPublicSiteSettings() {
+    try {
+        const result = await getAllSiteSettings();
+        
+        if (!result.success || !result.data) {
+            return result;
+        }
+
+        const settings = result.data;
+        
+        // Filter out sensitive data for public API
+        const publicSettings = {
+            siteName: settings.siteName || '',
+            siteEmail: settings.siteEmail || '',
+            sitePhone: settings.sitePhone || '',
+            businessAddress: settings.businessAddress || '',
+            latitude: settings.latitude,
+            longitude: settings.longitude,
+            country: settings.country || '',
+            countryIso: settings.countryIso || '',
+            language: settings.language || 'en',
+            availableLanguages: settings.availableLanguages || ['en'],
+            baseUrl: settings.baseUrl || '',
+            serviceArea: settings.serviceArea || '',
+            serviceRadius: settings.serviceRadius,
+            siteLogo: settings.siteLogo || '',
+            socialNetworks: settings.socialNetworks || [],
+            workingHours: settings.workingHours || [],
+            allowRegistration: settings.allowRegistration !== false,
+            enableFrontend: settings.enableFrontend !== false,
+            // Only include enabled status for integrations, not sensitive keys
+            integrations: {
+                smsEnabled: settings.smsEnabled === true,
+                googleMapsEnabled: settings.googleMapsEnabled === true,
+                turnstileEnabled: settings.turnstileEnabled === true,
+                web3Active: settings.web3Active === true
+            },
+            // Public OAuth provider info (enabled status only)
+            oauthProviders: settings.providers ? Object.keys(settings.providers).filter(provider => 
+                settings.providers[provider]?.enabled === true
+            ) : []
+        };
+
+        return {
+            success: true,
+            data: publicSettings
+        };
+    } catch (error) {
+        console.error('Error fetching public site settings:', error);
+        return {
+            success: false,
+            error: 'Failed to fetch public site settings',
+            message: error.message,
+            data: null
+        };
+    }
+}
+
+/**
+ * Update or create site settings utility function
+ * @param {Object} settingsData - Site settings data to save
+ * @returns {Promise<Object>} Save result
+ */
+export async function updateSiteSettings(settingsData) {
+    try {
+        const timeNow = new Date().toISOString();
+        
+        // Check for existing site settings record
+        const existing = await getAllSiteSettings();
+        let result;
+
+        const payload = {
+            ...settingsData,
+            type: 'site',
+            updatedAt: timeNow
+        };
+
+        if (existing.success && existing.data && existing.data.id) {
+            // Update existing record
+            result = await DBService.update(existing.data.id, payload, 'site_settings');
+        } else {
+            // Create new record
+            payload.createdAt = timeNow;
+            payload.id = payload.id || Date.now().toString();
+            result = await DBService.create(payload, 'site_settings');
+        }
+
+        return {
+            success: true,
+            data: result
+        };
+    } catch (error) {
+        console.error('Error updating site settings:', error);
+        return {
+            success: false,
+            error: 'Failed to update site settings',
+            message: error.message
+        };
+    }
+}
+
+/**
+ * Upload file utility function (for site logo and other file uploads)
+ * @param {FormData} formData - FormData containing files to upload
+ * @returns {Promise<Object>} Upload result with file URLs
+ */
+export async function uploadFiles(formData) {
+    try {
+        // In a real implementation, you would:
+        // 1. Validate file types and sizes
+        // 2. Generate unique filenames
+        // 3. Upload to your preferred storage (Vercel Blob, AWS S3, etc.)
+        // 4. Store file metadata in database
+        
+        const files = formData.getAll('files');
+        const uploadedFiles = [];
+        
+        for (const file of files) {
+            if (file && file.size > 0) {
+                // For now, return a placeholder response
+                // In production, implement actual file upload logic
+                const fileData = {
+                    id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+                    name: file.name,
+                    size: file.size,
+                    type: file.type,
+                    url: `/uploads/${Date.now()}_${file.name}`, // Placeholder URL
+                    uploadedAt: new Date().toISOString()
+                };
+                
+                // Store file metadata in database
+                await DBService.create(fileData, 'uploaded_files');
+                uploadedFiles.push(fileData);
+            }
+        }
+
+        return {
+            success: true,
+            data: {
+                files: uploadedFiles,
+                count: uploadedFiles.length
+            },
+            message: `Successfully uploaded ${uploadedFiles.length} file(s)`
+        };
+    } catch (error) {
+        console.error('Error uploading files:', error);
+        return {
+            success: false,
+            error: 'Failed to upload files',
+            message: error.message,
+            data: { files: [], count: 0 }
+        };
+    }
+}
+
+// SITE SETTINGS MANAGEMENT SERVER ACTIONS
+
+/**
+ * Get all site settings server action
+ * @returns {Promise<Object>} Site settings data
+ */
+export async function getAllSiteSettingsAction() {
+    try {
+        return await getAllSiteSettings();
+    } catch (error) {
+        console.error('Error in get all site settings action:', error);
+        return {
+            success: false,
+            error: error.message || 'Failed to fetch site settings'
+        };
+    }
+}
+
+/**
+ * Get public site settings server action
+ * @returns {Promise<Object>} Filtered site settings data
+ */
+export async function getPublicSiteSettingsAction() {
+    try {
+        return await getPublicSiteSettings();
+    } catch (error) {
+        console.error('Error in get public site settings action:', error);
+        return {
+            success: false,
+            error: error.message || 'Failed to fetch public site settings'
+        };
+    }
+}
+
+/**
+ * Update site settings server action
+ * @param {Object} settingsData - Site settings data to save
+ * @returns {Promise<Object>} Save result
+ */
+export async function updateSiteSettingsAction(settingsData) {
+    try {
+        return await updateSiteSettings(settingsData);
+    } catch (error) {
+        console.error('Error in update site settings action:', error);
+        return {
+            success: false,
+            error: error.message || 'Failed to update site settings'
+        };
+    }
+}
+
+/**
+ * Upload files server action
+ * @param {FormData} formData - FormData containing files to upload
+ * @returns {Promise<Object>} Upload result
+ */
+export async function uploadFilesAction(formData) {
+    try {
+        return await uploadFiles(formData);
+    } catch (error) {
+        console.error('Error in upload files action:', error);
+        return {
+            success: false,
+            error: error.message || 'Failed to upload files'
+        };
+    }
+}

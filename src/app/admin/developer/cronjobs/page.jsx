@@ -9,6 +9,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Switch } from '@/components/ui/switch';
+import {
+    getAllCronjobsAction,
+    createCronjobAction,
+    updateCronjobAction,
+    deleteCronjobAction,
+    executeDueCronjobsAction
+} from '@/lib/server/admin.js';
 
 export default function CronjobsAdminPage() {
     const [jobs, setJobs] = useState([]);
@@ -24,9 +31,12 @@ export default function CronjobsAdminPage() {
     const fetchJobs = async () => {
         setLoading(true);
         try {
-            const res = await fetch('/api/cronjobs');
-            const json = await res.json();
-            if (json?.success) setJobs(Array.isArray(json.data) ? json.data : Object.values(json.data || {}));
+            const result = await getAllCronjobsAction();
+            if (result?.success) {
+                setJobs(result.data || []);
+            } else {
+                toast.error(result?.error || 'Failed to load cronjobs');
+            }
         } catch (err) {
             console.error(err);
             toast.error('Failed to load cronjobs');
@@ -41,14 +51,10 @@ export default function CronjobsAdminPage() {
 
     const createJob = async () => {
         if (!form.name || !form.config.url) return toast.error('Name and URL are required');
+        
         try {
-            const res = await fetch('/api/cronjobs', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(form)
-            });
-            const json = await res.json();
-            if (json?.success) {
+            const result = await createCronjobAction(form);
+            if (result?.success) {
                 toast.success('Cronjob created');
                 setForm({
                     name: '',
@@ -59,7 +65,7 @@ export default function CronjobsAdminPage() {
                 });
                 fetchJobs();
             } else {
-                toast.error('Failed to create');
+                toast.error(result?.error || 'Failed to create cronjob');
             }
         } catch (err) {
             console.error(err);
@@ -69,11 +75,12 @@ export default function CronjobsAdminPage() {
 
     const removeJob = async (id) => {
         try {
-            const res = await fetch(`/api/cronjobs/${id}`, { method: 'DELETE' });
-            const json = await res.json();
-            if (json?.success) {
-                toast.success('Deleted');
+            const result = await deleteCronjobAction(id);
+            if (result?.success) {
+                toast.success('Cronjob deleted');
                 fetchJobs();
+            } else {
+                toast.error(result?.error || 'Failed to delete cronjob');
             }
         } catch (err) {
             console.error(err);
@@ -83,12 +90,14 @@ export default function CronjobsAdminPage() {
 
     const toggleJobEnabled = async (job) => {
         try {
-            await fetch(`/api/cronjobs/${job.id || job.key || job._id}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ enabled: !job.enabled })
+            const result = await updateCronjobAction(job.id || job.key || job._id, { 
+                enabled: !job.enabled 
             });
-            fetchJobs();
+            if (result?.success) {
+                fetchJobs();
+            } else {
+                toast.error(result?.error || 'Failed to update job');
+            }
         } catch (err) {
             console.error(err);
             toast.error('Failed to update job');
@@ -97,13 +106,12 @@ export default function CronjobsAdminPage() {
 
     const runNow = async () => {
         try {
-            const res = await fetch('/api/cronjobs/run', { method: 'POST' });
-            const json = await res.json();
-            if (json?.success) {
-                toast.success('Run triggered');
+            const result = await executeDueCronjobsAction();
+            if (result?.success) {
+                toast.success(result.message || 'Cronjobs executed');
                 fetchJobs();
             } else {
-                toast.error('Run failed');
+                toast.error(result?.error || 'Run failed');
             }
         } catch (err) {
             console.error(err);
@@ -215,27 +223,12 @@ export default function CronjobsAdminPage() {
                                                         </div>
                                                     </div>
                                                     <div className="flex items-center gap-2">
+                                                        <Switch
+                                                            checked={!!job.enabled}
+                                                            onCheckedChange={() => toggleJobEnabled(job)}
+                                                        />
                                                         <Button
-                                                            variant="ghost"
-                                                            onClick={() =>
-                                                                fetch(`/api/cronjobs/${job.id || job.key || job._id}`, {
-                                                                    method: 'PUT',
-                                                                    headers: { 'Content-Type': 'application/json' },
-                                                                    body: JSON.stringify({ enabled: !job.enabled })
-                                                                }).then(() => fetchJobs())
-                                                            }>
-                                                            <span className="sr-only">Toggle</span>
-                                                            <Switch
-                                                                checked={!!job.enabled}
-                                                                onCheckedChange={() => toggleJobEnabled(job)}
-                                                            />
-                                                        </Button>
-                                                        <Button
-                                                            onClick={() =>
-                                                                fetch('/api/cronjobs/run', { method: 'POST' }).then(
-                                                                    () => fetchJobs()
-                                                                )
-                                                            }>
+                                                            onClick={() => runNow()}>
                                                             <Play className="h-4 w-4" />
                                                         </Button>
                                                         <Button

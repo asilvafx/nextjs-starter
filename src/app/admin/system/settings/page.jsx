@@ -1,5 +1,5 @@
 'use client';
-import { Boxes, Building, Key, Locate, Mail, MapPin, Plus, Save, Settings, Shield, Trash2, MessageSquare } from 'lucide-react';
+import { Boxes, Building, Key, Locate, Mail, MapPin, Plus, Save, Settings, Shield, Trash2, MessageSquare, Upload } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useFieldArray, useForm } from 'react-hook-form';
 import { toast } from 'sonner';
@@ -8,13 +8,18 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { CountryDropdown } from '@/components/ui/country-dropdown';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { PhoneInput } from '@/components/ui/phone-input'; 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
-import { create, getAll, update } from '@/lib/client/query';
+import {
+    getAllSiteSettingsAction,
+    updateSiteSettingsAction,
+    uploadFilesAction
+} from '@/lib/server/admin.js';
 import AdminHeader from '../../components/AdminHeader';
 
 // Function to get available languages from locale folder
@@ -85,6 +90,7 @@ export default function SystemSettingsPage() {
             siteEmail: '',
             sitePhone: '',
             businessAddress: '',
+            siteLogo: '',
             latitude: undefined,
             longitude: undefined,
             country: '',
@@ -131,10 +137,10 @@ export default function SystemSettingsPage() {
     const fetchSettings = async () => {
         setIsLoading(true);
         try {
-            const response = await getAll('site_settings');
+            const response = await getAllSiteSettingsAction();
 
-            if (response?.success && response.data?.length > 0) {
-                const settings = response.data[0];
+            if (response?.success && response.data) {
+                const settings = response.data;
                 setSettingsId(settings.id);
 
                 // Reset form with fetched data (including integration settings)
@@ -143,6 +149,7 @@ export default function SystemSettingsPage() {
                     siteEmail: settings.siteEmail || '',
                     sitePhone: settings.sitePhone || '',
                     businessAddress: settings.businessAddress || '',
+                    siteLogo: settings.siteLogo || '',
                     latitude: settings.latitude,
                     longitude: settings.longitude,
                     country: settings.country || '',
@@ -192,6 +199,7 @@ export default function SystemSettingsPage() {
             }
         } catch (error) {
             console.error('Error fetching settings:', error);
+            toast.error('Failed to load settings');
         } finally {
             setIsLoading(false);
         }
@@ -262,13 +270,19 @@ export default function SystemSettingsPage() {
             delete cleanData.web3ChainId;
             delete cleanData.web3NetworkName;
 
-            if (settingsId) {
-                await update(settingsId, cleanData, 'site_settings');
-                toast.success('Settings updated successfully');
+            // Use server action to update settings
+            const result = await updateSiteSettingsAction(cleanData);
+            
+            if (result?.success) {
+                if (!settingsId && result.data?.id) {
+                    setSettingsId(result.data.id);
+                    toast.success('Settings created successfully');
+                } else {
+                    toast.success('Settings updated successfully');
+                }
             } else {
-                const result = await create(cleanData, 'site_settings');
-                setSettingsId(result.id);
-                toast.success('Settings created successfully');
+                toast.error(result?.error || 'Failed to save settings');
+                return;
             }
 
             // Clear Web3 config cache when settings change
@@ -814,6 +828,35 @@ function SecurityTab({ form, isSubmitting }) {
 
 // Site Settings Tab Component
 function SiteSettingsTab({ form, languages, getCurrentLocation, isSubmitting }) {
+    const [logoUpload, setLogoUpload] = useState(null);
+    const [uploading, setUploading] = useState(false);
+
+    const handleLogoUpload = async (event) => {
+        const file = event.target.files?.[0];
+        if (!file) return;
+
+        setUploading(true);
+        try {
+            const formData = new FormData();
+            formData.append('files', file);
+
+            const result = await uploadFilesAction(formData);
+            if (result?.success && result.data?.files?.[0]) {
+                const uploadedFile = result.data.files[0];
+                form.setValue('siteLogo', uploadedFile.url);
+                setLogoUpload(uploadedFile);
+                toast.success('Logo uploaded successfully');
+            } else {
+                toast.error(result?.error || 'Failed to upload logo');
+            }
+        } catch (error) {
+            console.error('Logo upload error:', error);
+            toast.error('Failed to upload logo');
+        } finally {
+            setUploading(false);
+        }
+    };
+
     return (
         <div className="grid gap-6">
             <Card>
@@ -891,6 +934,84 @@ function SiteSettingsTab({ form, languages, getCurrentLocation, isSubmitting }) 
                             </FormItem>
                         )}
                     />
+                </CardContent>
+            </Card>
+
+            <Card>
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                        <Upload className="h-5 w-5" />
+                        Site Logo
+                    </CardTitle>
+                    <CardDescription>Upload your site logo or provide a URL</CardDescription>
+                </CardHeader>
+                <CardContent className="grid gap-4">
+                    <FormField
+                        control={form.control}
+                        name="siteLogo"
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Logo URL</FormLabel>
+                                <FormControl>
+                                    <Input
+                                        placeholder="https://example.com/logo.png"
+                                        disabled={isSubmitting}
+                                        {...field}
+                                    />
+                                </FormControl>
+                                <FormDescription>Enter a direct URL to your logo image</FormDescription>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+
+                    <div className="grid gap-4">
+                        <Label>Or upload a new logo</Label>
+                        <div className="flex items-center gap-4">
+                            <Button
+                                type="button"
+                                variant="outline"
+                                disabled={isSubmitting || uploading}
+                                onClick={() => document.getElementById('logo-upload')?.click()}
+                            >
+                                {uploading ? (
+                                    <>
+                                        <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-b-transparent" />
+                                        Uploading...
+                                    </>
+                                ) : (
+                                    <>
+                                        <Upload className="mr-2 h-4 w-4" />
+                                        Upload Logo
+                                    </>
+                                )}
+                            </Button>
+                            <input
+                                id="logo-upload"
+                                type="file"
+                                accept="image/*"
+                                className="hidden"
+                                onChange={handleLogoUpload}
+                                disabled={isSubmitting || uploading}
+                            />
+                        </div>
+
+                        {form.watch('siteLogo') && (
+                            <div className="mt-4">
+                                <Label>Logo Preview</Label>
+                                <div className="mt-2 rounded-lg border p-4">
+                                    <img
+                                        src={form.watch('siteLogo')}
+                                        alt="Site Logo Preview"
+                                        className="max-h-24 max-w-full object-contain"
+                                        onError={(e) => {
+                                            e.target.style.display = 'none';
+                                        }}
+                                    />
+                                </div>
+                            </div>
+                        )}
+                    </div>
                 </CardContent>
             </Card>
 
