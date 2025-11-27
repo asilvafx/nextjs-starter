@@ -505,7 +505,7 @@ export default function NewsletterPage() {
         return (
             <div className="space-y-6">
                 <div className="flex items-center justify-between">
-                    <h1 className="text-3xl font-bold tracking-tight">Newsletter & SMS Marketing</h1>
+                    <h1 className="text-3xl font-bold tracking-tight">Newsletter</h1>
                 </div>
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                     {[...Array(4)].map((_, i) => (
@@ -581,7 +581,7 @@ export default function NewsletterPage() {
 
             {/* Main Content Tabs */}
             <Tabs value={selectedTab} onValueChange={setSelectedTab}>
-                <TabsList className="grid w-full grid-cols-4">
+                <TabsList>
                     <TabsTrigger value="campaigns">Campaigns</TabsTrigger>
                     <TabsTrigger value="sms">SMS Campaigns</TabsTrigger>
                     <TabsTrigger value="subscribers">Subscribers</TabsTrigger>
