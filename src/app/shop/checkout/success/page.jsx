@@ -30,6 +30,12 @@ const PaymentSuccess = () => {
     // Get order details from URL parameters
     const orderId = searchParams.get('tx') || searchParams.get('order_id');
     const paymentMethod = searchParams.get('payment_method');
+    
+    // EuPago specific parameters
+    const eupagoMethod = searchParams.get('eupago_method'); // 'mb' or 'mbway'
+    const eupagoReference = searchParams.get('reference');
+    const eupagoEntity = searchParams.get('entity');
+    const eupagoAmount = searchParams.get('amount');
 
     useEffect(() => {
         // Prevent multiple executions
@@ -258,6 +264,43 @@ const PaymentSuccess = () => {
                                     </p>
                                 </div>
                             )}
+                            {paymentMethod === 'eupago' && eupagoMethod && (
+                                <div className="mb-4 rounded-lg border border-orange-200 bg-orange-50 p-4">
+                                    {eupagoMethod === 'mbway' ? (
+                                        <div className="text-orange-800">
+                                            <h3 className="font-semibold mb-2">📱 MB WAY Payment</h3>
+                                            <p className="text-sm mb-2">
+                                                Your MB WAY payment request has been sent. Please check your MB WAY app to complete the payment.
+                                            </p>
+                                            <p className="text-sm">
+                                                <strong>Amount:</strong> €{eupagoAmount}
+                                            </p>
+                                        </div>
+                                    ) : eupagoMethod === 'mb' ? (
+                                        <div className="text-orange-800">
+                                            <h3 className="font-semibold mb-3">🏧 Multibanco Payment Instructions</h3>
+                                            <div className="space-y-2 text-sm">
+                                                <p><strong>Entity:</strong> <span className="font-mono bg-white px-2 py-1 rounded">{eupagoEntity}</span></p>
+                                                <p><strong>Reference:</strong> <span className="font-mono bg-white px-2 py-1 rounded">{eupagoReference}</span></p>
+                                                <p><strong>Amount:</strong> €{eupagoAmount}</p>
+                                            </div>
+                                            <div className="mt-3 text-xs space-y-1">
+                                                <p>1. Go to any Multibanco ATM</p>
+                                                <p>2. Select "Payments and Other Services"</p>
+                                                <p>3. Select "Payment of Services"</p>
+                                                <p>4. Enter the Entity and Reference numbers above</p>
+                                                <p>5. Confirm the amount and complete the payment</p>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div className="text-orange-800">
+                                            <p className="text-sm">
+                                                <strong>EuPago Payment:</strong> Please complete your payment using the provided instructions.
+                                            </p>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
                         </>
                     )}
                 </div>
@@ -309,7 +352,9 @@ const PaymentSuccess = () => {
                                               ? `🏦 ${t('bankTransfer')}`
                                               : orderDetails.paymentMethod === 'pay_on_delivery'
                                                 ? `📦 ${t('payOnDelivery')}`
-                                                : orderDetails.paymentMethod}
+                                                : orderDetails.paymentMethod === 'eupago'
+                                                  ? `🏧 ${eupagoMethod === 'mbway' ? 'MB WAY' : 'Multibanco'} (EuPago)`
+                                                  : orderDetails.paymentMethod}
                                     </p>
                                 )}
                             </div>

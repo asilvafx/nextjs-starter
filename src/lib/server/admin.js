@@ -98,9 +98,9 @@ export async function getDashboardStats() {
 export async function getAllOrders(params = {}) {
     try {
         const { page = 1, limit = 10, search = '', statusFilter = 'all' } = params;
-        
+
         const allOrders = await DBService.readAll('orders');
-        
+
         if (!allOrders || Object.keys(allOrders).length === 0) {
             return {
                 success: true,
@@ -116,25 +116,28 @@ export async function getAllOrders(params = {}) {
         }
 
         // Convert object to array
-        let ordersArray = Array.isArray(allOrders) ? allOrders : Object.entries(allOrders).map(([key, value]) => ({
-            id: key,
-            ...value
-        }));
+        let ordersArray = Array.isArray(allOrders)
+            ? allOrders
+            : Object.entries(allOrders).map(([key, value]) => ({
+                  id: key,
+                  ...value
+              }));
 
         // Apply search filter
         if (search) {
             const searchLower = search.toLowerCase();
-            ordersArray = ordersArray.filter(order => 
-                (order.customer?.email && order.customer.email.toLowerCase().includes(searchLower)) ||
-                (order.customer?.firstName && order.customer.firstName.toLowerCase().includes(searchLower)) ||
-                (order.customer?.lastName && order.customer.lastName.toLowerCase().includes(searchLower)) ||
-                (order.id && order.id.toLowerCase().includes(searchLower))
+            ordersArray = ordersArray.filter(
+                (order) =>
+                    order.customer?.email?.toLowerCase().includes(searchLower) ||
+                    order.customer?.firstName?.toLowerCase().includes(searchLower) ||
+                    order.customer?.lastName?.toLowerCase().includes(searchLower) ||
+                    order.id?.toLowerCase().includes(searchLower)
             );
         }
 
         // Apply status filter
         if (statusFilter !== 'all') {
-            ordersArray = ordersArray.filter(order => order.status === statusFilter);
+            ordersArray = ordersArray.filter((order) => order.status === statusFilter);
         }
 
         // Sort by creation date (newest first)
@@ -189,9 +192,9 @@ export async function getAllOrders(params = {}) {
 export async function getAllCustomers(params = {}) {
     try {
         const { page = 1, limit = 10, search = '' } = params;
-        
+
         const allCustomers = await DBService.readAll('customers');
-        
+
         if (!allCustomers || Object.keys(allCustomers).length === 0) {
             return {
                 success: true,
@@ -207,19 +210,22 @@ export async function getAllCustomers(params = {}) {
         }
 
         // Convert object to array
-        let customersArray = Array.isArray(allCustomers) ? allCustomers : Object.entries(allCustomers).map(([key, value]) => ({
-            id: key,
-            ...value
-        }));
+        let customersArray = Array.isArray(allCustomers)
+            ? allCustomers
+            : Object.entries(allCustomers).map(([key, value]) => ({
+                  id: key,
+                  ...value
+              }));
 
         // Apply search filter
         if (search) {
             const searchLower = search.toLowerCase();
-            customersArray = customersArray.filter(customer => 
-                (customer.firstName && customer.firstName.toLowerCase().includes(searchLower)) ||
-                (customer.lastName && customer.lastName.toLowerCase().includes(searchLower)) ||
-                (customer.email && customer.email.toLowerCase().includes(searchLower)) ||
-                (customer.phone && customer.phone.toLowerCase().includes(searchLower))
+            customersArray = customersArray.filter(
+                (customer) =>
+                    customer.firstName?.toLowerCase().includes(searchLower) ||
+                    customer.lastName?.toLowerCase().includes(searchLower) ||
+                    customer.email?.toLowerCase().includes(searchLower) ||
+                    customer.phone?.toLowerCase().includes(searchLower)
             );
         }
 
@@ -275,9 +281,9 @@ export async function getAllCustomers(params = {}) {
 export async function getAllCatalog(params = {}) {
     try {
         const { page = 1, limit = 10, search = '', categoryId = '' } = params;
-        
+
         const allCatalog = await DBService.readAll('catalog');
-        
+
         if (!allCatalog || Object.keys(allCatalog).length === 0) {
             return {
                 success: true,
@@ -293,24 +299,27 @@ export async function getAllCatalog(params = {}) {
         }
 
         // Convert object to array
-        let catalogArray = Array.isArray(allCatalog) ? allCatalog : Object.entries(allCatalog).map(([key, value]) => ({
-            id: key,
-            ...value
-        }));
+        let catalogArray = Array.isArray(allCatalog)
+            ? allCatalog
+            : Object.entries(allCatalog).map(([key, value]) => ({
+                  id: key,
+                  ...value
+              }));
 
         // Apply search filter
         if (search) {
             const searchLower = search.toLowerCase();
-            catalogArray = catalogArray.filter(item => 
-                (item.name && item.name.toLowerCase().includes(searchLower)) ||
-                (item.description && item.description.toLowerCase().includes(searchLower)) ||
-                (item.sku && item.sku.toLowerCase().includes(searchLower))
+            catalogArray = catalogArray.filter(
+                (item) =>
+                    item.name?.toLowerCase().includes(searchLower) ||
+                    item.description?.toLowerCase().includes(searchLower) ||
+                    item.sku?.toLowerCase().includes(searchLower)
             );
         }
 
         // Apply category filter
         if (categoryId) {
-            catalogArray = catalogArray.filter(item => item.categoryId === categoryId);
+            catalogArray = catalogArray.filter((item) => item.categoryId === categoryId);
         }
 
         // Sort by creation date (newest first)
@@ -365,9 +374,9 @@ export async function getAllCatalog(params = {}) {
 export async function getAllCategories(params = {}) {
     try {
         const { page = 1, limit = 10, search = '' } = params;
-        
+
         const allCategories = await DBService.readAll('categories');
-        
+
         if (!allCategories || Object.keys(allCategories).length === 0) {
             return {
                 success: true,
@@ -383,17 +392,20 @@ export async function getAllCategories(params = {}) {
         }
 
         // Convert object to array
-        let categoriesArray = Array.isArray(allCategories) ? allCategories : Object.entries(allCategories).map(([key, value]) => ({
-            id: key,
-            ...value
-        }));
+        let categoriesArray = Array.isArray(allCategories)
+            ? allCategories
+            : Object.entries(allCategories).map(([key, value]) => ({
+                  id: key,
+                  ...value
+              }));
 
         // Apply search filter
         if (search) {
             const searchLower = search.toLowerCase();
-            categoriesArray = categoriesArray.filter(category => 
-                (category.name && category.name.toLowerCase().includes(searchLower)) ||
-                (category.description && category.description.toLowerCase().includes(searchLower))
+            categoriesArray = categoriesArray.filter(
+                (category) =>
+                    category.name?.toLowerCase().includes(searchLower) ||
+                    category.description?.toLowerCase().includes(searchLower)
             );
         }
 
@@ -452,28 +464,28 @@ export async function getAllCategories(params = {}) {
 export async function getAllCollections(params = {}) {
     try {
         const { page = 1, limit = 50, search = '' } = params;
-        
-        let collections = await DBService.readAll('collections');
+
+        const collections = await DBService.readAll('collections');
         const collectionsArray = Array.isArray(collections) ? collections : Object.values(collections || {});
 
         // Apply search filter
         let filteredCollections = collectionsArray;
-        if (search && search.trim()) {
+        if (search?.trim()) {
             const searchLower = search.toLowerCase().trim();
-            filteredCollections = collectionsArray.filter(collection => {
+            filteredCollections = collectionsArray.filter((collection) => {
                 // Search in name, slug, and description
                 const nameMatch = collection.name?.toLowerCase().includes(searchLower) || false;
                 const slugMatch = collection.slug?.toLowerCase().includes(searchLower) || false;
                 const descMatch = collection.description?.toLowerCase().includes(searchLower) || false;
-                
+
                 // Search in multi-language fields
-                const nameMLMatch = collection.nameML ? Object.values(collection.nameML).some(name => 
-                    name?.toLowerCase().includes(searchLower)
-                ) : false;
-                const descMLMatch = collection.descriptionML ? Object.values(collection.descriptionML).some(desc => 
-                    desc?.toLowerCase().includes(searchLower)
-                ) : false;
-                
+                const nameMLMatch = collection.nameML
+                    ? Object.values(collection.nameML).some((name) => name?.toLowerCase().includes(searchLower))
+                    : false;
+                const descMLMatch = collection.descriptionML
+                    ? Object.values(collection.descriptionML).some((desc) => desc?.toLowerCase().includes(searchLower))
+                    : false;
+
                 return nameMatch || slugMatch || descMatch || nameMLMatch || descMLMatch;
             });
         }
@@ -585,7 +597,7 @@ export async function getAllStoreSettings() {
 export async function updateStoreSettings(settingsData) {
     try {
         let result;
-        
+
         if (settingsData.id) {
             // Update existing settings
             result = await DBService.update(settingsData.id, settingsData, 'store_settings');
@@ -912,11 +924,11 @@ export async function getUserRole(userId) {
         }
 
         const userRole = user.role || 'user'; // Default to 'user' role
-        
+
         // Get the full role details
         const roles = await DBService.readAll('roles');
         const rolesArray = Array.isArray(roles) ? roles : Object.values(roles || {});
-        const roleDetails = rolesArray.find(role => role.title?.toLowerCase() === userRole.toLowerCase());
+        const roleDetails = rolesArray.find((role) => role.title?.toLowerCase() === userRole.toLowerCase());
 
         return {
             success: true,
@@ -1065,7 +1077,7 @@ export async function createOrUpdateCustomerFromOrder(orderCustomerData) {
 
         // Check if customer exists by email
         const existingCustomer = await DBService.getItemByKey('email', orderCustomerData.email, 'customers');
-        
+
         // Prepare customer data in the format expected by customers table
         const customerData = {
             firstName: orderCustomerData.firstName || '',
@@ -1084,8 +1096,19 @@ export async function createOrUpdateCustomerFromOrder(orderCustomerData) {
         if (existingCustomer) {
             // Customer exists, check if we need to update any information
             let needsUpdate = false;
-            const fieldsToCheck = ['firstName', 'lastName', 'phone', 'streetAddress', 'apartmentUnit', 'city', 'state', 'zipCode', 'country', 'countryIso'];
-            
+            const fieldsToCheck = [
+                'firstName',
+                'lastName',
+                'phone',
+                'streetAddress',
+                'apartmentUnit',
+                'city',
+                'state',
+                'zipCode',
+                'country',
+                'countryIso'
+            ];
+
             for (const field of fieldsToCheck) {
                 // Update if new data exists and is different from existing data
                 if (customerData[field] && customerData[field] !== (existingCustomer[field] || '')) {
@@ -1101,7 +1124,7 @@ export async function createOrUpdateCustomerFromOrder(orderCustomerData) {
                     ...customerData,
                     updatedAt: new Date().toISOString()
                 });
-                
+
                 return {
                     success: true,
                     action: 'updated',
@@ -1125,7 +1148,7 @@ export async function createOrUpdateCustomerFromOrder(orderCustomerData) {
                 createdAt: new Date().toISOString(),
                 updatedAt: new Date().toISOString()
             });
-            
+
             return {
                 success: true,
                 action: 'created',
@@ -1315,7 +1338,7 @@ export async function clearSettingsCache() {
 function isCacheValid(type) {
     const timestamp = settingsCache[`${type}_timestamp`];
     if (!timestamp) return false;
-    return (Date.now() - timestamp) < CACHE_DURATION;
+    return Date.now() - timestamp < CACHE_DURATION;
 }
 
 /**
@@ -1381,7 +1404,8 @@ export async function getCachedStoreSettings() {
         const settingsArray = Array.isArray(settings) ? settings : Object.values(settings || {});
 
         // Find main store settings or use first entry
-        const storeSettings = settingsArray.find((s) => s.key === 'store' || s.type === 'store') || settingsArray[0] || {};
+        const storeSettings =
+            settingsArray.find((s) => s.key === 'store' || s.type === 'store') || settingsArray[0] || {};
 
         // Update cache
         settingsCache.store_settings = storeSettings;
@@ -1408,10 +1432,7 @@ export async function getCachedStoreSettings() {
  */
 export async function getAllSettings() {
     try {
-        const [siteResult, storeResult] = await Promise.all([
-            getSiteSettings(),
-            getCachedStoreSettings()
-        ]);
+        const [siteResult, storeResult] = await Promise.all([getSiteSettings(), getCachedStoreSettings()]);
 
         return {
             success: true,
@@ -1513,7 +1534,7 @@ export async function updateAppointment(appointmentId, appointmentData) {
         }
 
         await DBService.update(appointmentId, updatedData, 'appointments');
-        
+
         return {
             success: true,
             data: { ...existingAppointment, ...updatedData }
@@ -1536,7 +1557,7 @@ export async function updateAppointment(appointmentId, appointmentData) {
 export async function deleteAppointment(appointmentId) {
     try {
         await DBService.delete(appointmentId, 'appointments');
-        
+
         return {
             success: true,
             message: 'Appointment deleted successfully'
@@ -1606,7 +1627,7 @@ export async function updateCatalogItem(catalogId, catalogData) {
         }
 
         await DBService.update(catalogId, updatedData, 'catalog');
-        
+
         return {
             success: true,
             data: { ...existingItem, ...updatedData }
@@ -1629,7 +1650,7 @@ export async function updateCatalogItem(catalogId, catalogData) {
 export async function deleteCatalogItem(catalogId) {
     try {
         await DBService.delete(catalogId, 'catalog');
-        
+
         return {
             success: true,
             message: 'Catalog item deleted successfully'
@@ -1655,9 +1676,9 @@ export async function deleteCatalogItem(catalogId) {
 export async function getAllAttributes(params = {}) {
     try {
         const { page = 1, limit = 10, search = '' } = params;
-        
+
         const allAttributes = await DBService.readAll('attributes');
-        
+
         if (!allAttributes || Object.keys(allAttributes).length === 0) {
             return {
                 success: true,
@@ -1673,18 +1694,21 @@ export async function getAllAttributes(params = {}) {
         }
 
         // Convert object to array
-        let attributesArray = Array.isArray(allAttributes) ? allAttributes : Object.entries(allAttributes).map(([key, value]) => ({
-            id: key,
-            ...value
-        }));
+        let attributesArray = Array.isArray(allAttributes)
+            ? allAttributes
+            : Object.entries(allAttributes).map(([key, value]) => ({
+                  id: key,
+                  ...value
+              }));
 
         // Apply search filter
         if (search) {
             const searchLower = search.toLowerCase();
-            attributesArray = attributesArray.filter(attribute => 
-                (attribute.name && attribute.name.toLowerCase().includes(searchLower)) ||
-                (attribute.description && attribute.description.toLowerCase().includes(searchLower)) ||
-                (attribute.type && attribute.type.toLowerCase().includes(searchLower))
+            attributesArray = attributesArray.filter(
+                (attribute) =>
+                    attribute.name?.toLowerCase().includes(searchLower) ||
+                    attribute.description?.toLowerCase().includes(searchLower) ||
+                    attribute.type?.toLowerCase().includes(searchLower)
             );
         }
 
@@ -1783,7 +1807,7 @@ export async function updateAttribute(attributeId, attributeData) {
         }
 
         await DBService.update(attributeId, updatedData, 'attributes');
-        
+
         return {
             success: true,
             data: { ...existingAttribute, ...updatedData }
@@ -1890,7 +1914,7 @@ export async function getAllGalleryMedia(params = {}) {
     try {
         const { page = 1, limit = 10, search = '' } = params;
         const allMedia = await DBService.readAll('gallery');
-        
+
         if (!allMedia || Object.keys(allMedia).length === 0) {
             return {
                 success: true,
@@ -1914,9 +1938,8 @@ export async function getAllGalleryMedia(params = {}) {
         // Apply search filter
         if (search) {
             const searchLower = search.toLowerCase();
-            mediaArray = mediaArray.filter(item => 
-                (item.alt && item.alt.toLowerCase().includes(searchLower)) ||
-                (item.url && item.url.toLowerCase().includes(searchLower))
+            mediaArray = mediaArray.filter(
+                (item) => item.alt?.toLowerCase().includes(searchLower) || item.url?.toLowerCase().includes(searchLower)
             );
         }
 
@@ -1924,7 +1947,7 @@ export async function getAllGalleryMedia(params = {}) {
         mediaArray.sort((a, b) => {
             if (a.featured && !b.featured) return -1;
             if (!a.featured && b.featured) return 1;
-            
+
             const aDate = new Date(a.createdAt || a.id);
             const bDate = new Date(b.createdAt || b.id);
             return bDate - aDate;
@@ -1950,8 +1973,8 @@ export async function getAllGalleryMedia(params = {}) {
         };
     } catch (error) {
         console.error('Error fetching gallery media:', error);
-        return { 
-            success: false, 
+        return {
+            success: false,
             error: error.message,
             data: [],
             pagination: {
@@ -1977,7 +2000,7 @@ export async function createGalleryMedia(mediaData) {
             createdAt: new Date().toISOString(),
             featured: mediaData.featured || false
         };
-        
+
         const result = await DBService.create(mediaWithTimestamp, 'gallery');
         return { success: true, data: result };
     } catch (error) {
@@ -1998,7 +2021,7 @@ export async function updateGalleryMedia(mediaId, mediaData) {
             ...mediaData,
             updatedAt: new Date().toISOString()
         };
-        
+
         const result = await DBService.update(mediaId, updateData, 'gallery');
         return { success: true, data: result };
     } catch (error) {
@@ -2094,7 +2117,7 @@ export async function deleteCollection(collectionId) {
 export async function getAllNotifications(params = {}) {
     try {
         const { userId = null, unreadOnly = false, type = null, limit = null } = params;
-        
+
         const allNotifications = await DBService.readAll('notifications');
         let notifications = Object.entries(allNotifications || {}).map(([id, notification]) => ({
             id,
@@ -2103,19 +2126,19 @@ export async function getAllNotifications(params = {}) {
 
         // Filter by user (null userId means global notifications)
         if (userId !== undefined) {
-            notifications = notifications.filter(notification => 
-                notification.userId === userId || notification.userId === null
+            notifications = notifications.filter(
+                (notification) => notification.userId === userId || notification.userId === null
             );
         }
 
         // Filter by read status
         if (unreadOnly) {
-            notifications = notifications.filter(notification => !notification.isRead);
+            notifications = notifications.filter((notification) => !notification.isRead);
         }
 
         // Filter by type
         if (type) {
-            notifications = notifications.filter(notification => notification.type === type);
+            notifications = notifications.filter((notification) => notification.type === type);
         }
 
         // Sort by createdAt (newest first)
@@ -2160,7 +2183,7 @@ export async function createNotification(notificationData) {
             expiresAt: notificationData.expiresAt || null
         };
 
-        const result = await DBService.create(notification, 'notifications');
+        const _result = await DBService.create(notification, 'notifications');
         return { success: true, data: notification };
     } catch (error) {
         console.error('Error creating notification:', error);
@@ -2187,7 +2210,7 @@ export async function updateNotification(notificationId, updateData) {
             updatedAt: new Date().toISOString()
         };
 
-        const result = await DBService.update(notificationId, updatedNotification, 'notifications');
+        const _result = await DBService.update(notificationId, updatedNotification, 'notifications');
         return { success: true, data: updatedNotification };
     } catch (error) {
         console.error('Error updating notification:', error);
@@ -2216,7 +2239,7 @@ export async function markNotificationAsRead(notificationId, userId = null) {
             updatedAt: new Date().toISOString()
         };
 
-        const result = await DBService.update(notificationId, updatedNotification, 'notifications');
+        const _result = await DBService.update(notificationId, updatedNotification, 'notifications');
         return { success: true, data: updatedNotification };
     } catch (error) {
         console.error('Error marking notification as read:', error);
@@ -2233,14 +2256,14 @@ export async function markNotificationAsRead(notificationId, userId = null) {
 export async function markMultipleNotificationsAsRead(notificationIds, userId = null) {
     try {
         const results = [];
-        
+
         for (const notificationId of notificationIds) {
             const result = await markNotificationAsRead(notificationId, userId);
             results.push({ notificationId, ...result });
         }
 
-        const successCount = results.filter(r => r.success).length;
-        const failCount = results.filter(r => !r.success).length;
+        const successCount = results.filter((r) => r.success).length;
+        const failCount = results.filter((r) => !r.success).length;
 
         return {
             success: failCount === 0,
@@ -2279,11 +2302,11 @@ export async function deleteNotification(notificationId) {
  */
 export async function getUnreadNotificationsCount(userId = null) {
     try {
-        const notificationsResult = await getAllNotifications({ 
-            userId, 
-            unreadOnly: true 
+        const notificationsResult = await getAllNotifications({
+            userId,
+            unreadOnly: true
         });
-        
+
         if (!notificationsResult.success) {
             return { success: false, error: notificationsResult.error };
         }
@@ -2350,11 +2373,12 @@ export async function autoMarkOrderNotificationsRead(orderId, newStatus, userId)
         // Get all notifications related to this order
         const allNotifications = await DBService.readAll('notifications');
         const orderNotifications = Object.entries(allNotifications || {})
-            .filter(([id, notification]) => 
-                notification.relatedId === orderId && 
-                notification.type === 'order' && 
-                !notification.isRead &&
-                notification.autoMarkRead
+            .filter(
+                ([_id, notification]) =>
+                    notification.relatedId === orderId &&
+                    notification.type === 'order' &&
+                    !notification.isRead &&
+                    notification.autoMarkRead
             )
             .map(([id]) => id);
 
@@ -2382,7 +2406,15 @@ export async function autoMarkOrderNotificationsRead(orderId, newStatus, userId)
  */
 export async function createSystemNotification(systemData) {
     try {
-        const { type, title, message, priority = 'medium', requiresAction = false, actionLink = null, actionText = null } = systemData;
+        const {
+            type,
+            title,
+            message,
+            priority = 'medium',
+            requiresAction = false,
+            actionLink = null,
+            actionText = null
+        } = systemData;
 
         const notification = {
             title: title || 'System Notification',
@@ -2452,28 +2484,27 @@ export async function cleanupExpiredNotifications() {
  */
 export async function getStoreOrdersNotificationCount(userId = null) {
     try {
-        const result = await getAllNotifications({ 
-            userId, 
+        const result = await getAllNotifications({
+            userId,
             unreadOnly: true,
             type: 'order'
         });
-        
+
         if (!result.success) {
             return { success: false, error: result.error };
         }
 
         // Filter for online orders only (not manual orders)
-        const onlineOrderNotifications = result.data.filter(notification => 
-            notification.metadata?.orderType !== 'manual' &&
-            notification.relatedType === 'order'
+        const onlineOrderNotifications = result.data.filter(
+            (notification) => notification.metadata?.orderType !== 'manual' && notification.relatedType === 'order'
         );
 
-        return { 
-            success: true, 
-            data: { 
+        return {
+            success: true,
+            data: {
                 count: onlineOrderNotifications.length,
                 notifications: onlineOrderNotifications
-            } 
+            }
         };
     } catch (error) {
         console.error('Error getting store orders notification count:', error);
@@ -2489,32 +2520,32 @@ export async function getStoreOrdersNotificationCount(userId = null) {
  */
 export async function getSystemNotificationCount(userId = null) {
     try {
-        const result = await getAllNotifications({ 
-            userId, 
-            unreadOnly: true 
+        const result = await getAllNotifications({
+            userId,
+            unreadOnly: true
         });
-        
+
         if (!result.success) {
             return { success: false, error: result.error };
         }
 
         // Filter for system-related notifications
-        const systemNotifications = result.data.filter(notification => 
+        const systemNotifications = result.data.filter((notification) =>
             ['security', 'maintenance', 'error', 'warning'].includes(notification.type)
         );
 
-        return { 
-            success: true, 
-            data: { 
+        return {
+            success: true,
+            data: {
                 count: systemNotifications.length,
                 notifications: systemNotifications,
                 breakdown: {
-                    security: systemNotifications.filter(n => n.type === 'security').length,
-                    maintenance: systemNotifications.filter(n => n.type === 'maintenance').length,
-                    errors: systemNotifications.filter(n => n.type === 'error').length,
-                    warnings: systemNotifications.filter(n => n.type === 'warning').length
+                    security: systemNotifications.filter((n) => n.type === 'security').length,
+                    maintenance: systemNotifications.filter((n) => n.type === 'maintenance').length,
+                    errors: systemNotifications.filter((n) => n.type === 'error').length,
+                    warnings: systemNotifications.filter((n) => n.type === 'warning').length
                 }
-            } 
+            }
         };
     } catch (error) {
         console.error('Error getting system notification count:', error);
@@ -2530,27 +2561,28 @@ export async function getSystemNotificationCount(userId = null) {
  */
 export async function getMarketingNotificationCount(userId = null) {
     try {
-        const result = await getAllNotifications({ 
-            userId, 
-            unreadOnly: true 
+        const result = await getAllNotifications({
+            userId,
+            unreadOnly: true
         });
-        
+
         if (!result.success) {
             return { success: false, error: result.error };
         }
 
         // Filter for marketing-related notifications
-        const marketingNotifications = result.data.filter(notification => 
-            ['report', 'info'].includes(notification.type) &&
-            (notification.metadata?.reportType || notification.metadata?.campaignType)
+        const marketingNotifications = result.data.filter(
+            (notification) =>
+                ['report', 'info'].includes(notification.type) &&
+                (notification.metadata?.reportType || notification.metadata?.campaignType)
         );
 
-        return { 
-            success: true, 
-            data: { 
+        return {
+            success: true,
+            data: {
                 count: marketingNotifications.length,
                 notifications: marketingNotifications
-            } 
+            }
         };
     } catch (error) {
         console.error('Error getting marketing notification count:', error);
@@ -2578,9 +2610,10 @@ export async function getAllNavigationNotificationCounts(userId = null) {
                 storeOrders: storeOrders.success ? storeOrders.data.count : 0,
                 system: system.success ? system.data.count : 0,
                 marketing: marketing.success ? marketing.data.count : 0,
-                total: (storeOrders.success ? storeOrders.data.count : 0) +
-                       (system.success ? system.data.count : 0) +
-                       (marketing.success ? marketing.data.count : 0)
+                total:
+                    (storeOrders.success ? storeOrders.data.count : 0) +
+                    (system.success ? system.data.count : 0) +
+                    (marketing.success ? marketing.data.count : 0)
             }
         };
     } catch (error) {
@@ -2622,25 +2655,28 @@ export async function clearOrderNotifications(orderId, newStatus, userId) {
 export async function getNavigationSectionCounts(sections = [], userId = null) {
     try {
         const counts = {};
-        
+
         for (const section of sections) {
             switch (section) {
                 case 'store':
-                case 'storeOrders':
+                case 'storeOrders': {
                     const storeResult = await getStoreOrdersNotificationCount(userId);
                     counts.store = storeResult.success ? storeResult.data.count : 0;
                     counts.storeOrders = counts.store; // Same count for both
                     break;
-                    
-                case 'system':
+                }
+
+                case 'system': {
                     const systemResult = await getSystemNotificationCount(userId);
                     counts.system = systemResult.success ? systemResult.data.count : 0;
                     break;
-                    
-                case 'marketing':
+                }
+
+                case 'marketing': {
                     const marketingResult = await getMarketingNotificationCount(userId);
                     counts.marketing = marketingResult.success ? marketingResult.data.count : 0;
                     break;
+                }
             }
         }
 
@@ -2662,9 +2698,9 @@ export async function getNavigationSectionCounts(sections = [], userId = null) {
 export async function getAllCoupons(params = {}) {
     try {
         const { page = 1, limit = 10, search = '', filterType = 'all', filterStatus = 'all' } = params;
-        
+
         const allCoupons = await DBService.readAll('coupons');
-        
+
         if (!allCoupons || Object.keys(allCoupons).length === 0) {
             return {
                 success: true,
@@ -2680,33 +2716,36 @@ export async function getAllCoupons(params = {}) {
         }
 
         // Convert object to array
-        let couponsArray = Array.isArray(allCoupons) ? allCoupons : Object.entries(allCoupons).map(([key, value]) => ({
-            id: key,
-            ...value
-        }));
+        let couponsArray = Array.isArray(allCoupons)
+            ? allCoupons
+            : Object.entries(allCoupons).map(([key, value]) => ({
+                  id: key,
+                  ...value
+              }));
 
         // Apply search filter
         if (search) {
             const searchLower = search.toLowerCase();
-            couponsArray = couponsArray.filter(coupon => 
-                (coupon.code && coupon.code.toLowerCase().includes(searchLower)) ||
-                (coupon.name && coupon.name.toLowerCase().includes(searchLower)) ||
-                (coupon.description && coupon.description.toLowerCase().includes(searchLower))
+            couponsArray = couponsArray.filter(
+                (coupon) =>
+                    coupon.code?.toLowerCase().includes(searchLower) ||
+                    coupon.name?.toLowerCase().includes(searchLower) ||
+                    coupon.description?.toLowerCase().includes(searchLower)
             );
         }
 
         // Apply type filter
         if (filterType !== 'all') {
-            couponsArray = couponsArray.filter(coupon => coupon.type === filterType);
+            couponsArray = couponsArray.filter((coupon) => coupon.type === filterType);
         }
 
         // Apply status filter
         if (filterStatus !== 'all') {
             const now = new Date();
-            couponsArray = couponsArray.filter(coupon => {
+            couponsArray = couponsArray.filter((coupon) => {
                 const isExpired = coupon.expiresAt && new Date(coupon.expiresAt) < now;
                 const isUsageLimitReached = coupon.usageType === 'limited' && coupon.usedCount >= coupon.usageLimit;
-                
+
                 switch (filterStatus) {
                     case 'active':
                         return coupon.isActive && !isExpired && !isUsageLimitReached;
@@ -2777,7 +2816,7 @@ export async function createCoupon(couponData) {
             createdAt: new Date().toISOString(),
             usedCount: 0
         };
-        
+
         const result = await DBService.create(couponWithTimestamp, 'coupons');
         return { success: true, data: result };
     } catch (error) {
@@ -2798,7 +2837,7 @@ export async function updateCoupon(couponId, couponData) {
             ...couponData,
             updatedAt: new Date().toISOString()
         };
-        
+
         const result = await DBService.update(couponId, updateData, 'coupons');
         return { success: true, data: result };
     } catch (error) {
@@ -3066,7 +3105,7 @@ export async function getAllTasks() {
         tasksArray.sort((a, b) => {
             const priorityOrder = { high: 3, medium: 2, low: 1 };
             const priorityCompare = (priorityOrder[b.priority] || 0) - (priorityOrder[a.priority] || 0);
-            
+
             if (priorityCompare === 0) {
                 return new Date(a.dueDate || '9999-12-31') - new Date(b.dueDate || '9999-12-31');
             }
@@ -3213,7 +3252,7 @@ export async function createOrderTask(orderId, taskData) {
 export async function getAllCampaigns(params = {}) {
     try {
         const { page = 1, limit = 10, search = '', type = 'all', status = 'all' } = params;
-        
+
         const result = await DBService.readAll('campaigns');
         if (!result) {
             return {
@@ -3240,14 +3279,15 @@ export async function getAllCampaigns(params = {}) {
         }
 
         // Filter campaigns
-        let filteredCampaigns = campaigns.filter(campaign => {
-            const matchesSearch = !search || 
+        const filteredCampaigns = campaigns.filter((campaign) => {
+            const matchesSearch =
+                !search ||
                 campaign.subject?.toLowerCase().includes(search.toLowerCase()) ||
                 campaign.content?.toLowerCase().includes(search.toLowerCase());
-            
+
             const matchesType = type === 'all' || campaign.type === type;
             const matchesStatus = status === 'all' || campaign.status === status;
-            
+
             return matchesSearch && matchesType && matchesStatus;
         });
 
@@ -3399,7 +3439,7 @@ export async function deleteCampaign(campaignId) {
 export async function getAllSubscribers(params = {}) {
     try {
         const { page = 1, limit = 10, search = '', status = 'all' } = params;
-        
+
         const result = await DBService.readAll('newsletter_subscribers');
         if (!result) {
             return {
@@ -3426,13 +3466,14 @@ export async function getAllSubscribers(params = {}) {
         }
 
         // Filter subscribers
-        let filteredSubscribers = subscribers.filter(subscriber => {
-            const matchesSearch = !search || 
+        const filteredSubscribers = subscribers.filter((subscriber) => {
+            const matchesSearch =
+                !search ||
                 subscriber.email?.toLowerCase().includes(search.toLowerCase()) ||
                 subscriber.name?.toLowerCase().includes(search.toLowerCase());
-            
+
             const matchesStatus = status === 'all' || subscriber.status === status;
-            
+
             return matchesSearch && matchesStatus;
         });
 
@@ -3479,7 +3520,7 @@ export async function getAllSubscribers(params = {}) {
 export async function getAllTemplates(params = {}) {
     try {
         const { page = 1, limit = 10, search = '', type = 'all' } = params;
-        
+
         const result = await DBService.readAll('campaign_templates');
         if (!result) {
             return {
@@ -3506,13 +3547,14 @@ export async function getAllTemplates(params = {}) {
         }
 
         // Filter templates
-        let filteredTemplates = templates.filter(template => {
-            const matchesSearch = !search || 
+        const filteredTemplates = templates.filter((template) => {
+            const matchesSearch =
+                !search ||
                 template.name?.toLowerCase().includes(search.toLowerCase()) ||
                 template.description?.toLowerCase().includes(search.toLowerCase());
-            
+
             const matchesType = type === 'all' || template.type === type;
-            
+
             return matchesSearch && matchesType;
         });
 
@@ -3659,10 +3701,10 @@ export async function deleteTemplate(templateId) {
 export async function getCampaignAnalytics(params = {}) {
     try {
         const { type = 'all', dateRange = 30 } = params;
-        
+
         const campaignsResult = await DBService.readAll('campaigns');
         let campaigns = [];
-        
+
         if (Array.isArray(campaignsResult)) {
             campaigns = campaignsResult;
         } else if (typeof campaignsResult === 'object') {
@@ -3673,19 +3715,23 @@ export async function getCampaignAnalytics(params = {}) {
         const cutoffDate = new Date();
         cutoffDate.setDate(cutoffDate.getDate() - dateRange);
 
-        const filteredCampaigns = campaigns.filter(campaign => {
+        const filteredCampaigns = campaigns.filter((campaign) => {
             const matchesType = type === 'all' || campaign.type === type;
             const withinDateRange = new Date(campaign.createdAt || 0) >= cutoffDate;
-            
+
             return matchesType && withinDateRange && campaign.status === 'sent';
         });
 
         const totalCampaigns = filteredCampaigns.length;
         const totalRecipients = filteredCampaigns.reduce((sum, c) => sum + (c.recipientCount || 0), 0);
-        const avgOpenRate = totalCampaigns > 0 ? 
-            (filteredCampaigns.reduce((sum, c) => sum + (c.openRate || 0), 0) / totalCampaigns).toFixed(1) : 0;
-        const avgClickRate = totalCampaigns > 0 ? 
-            (filteredCampaigns.reduce((sum, c) => sum + (c.clickRate || 0), 0) / totalCampaigns).toFixed(1) : 0;
+        const avgOpenRate =
+            totalCampaigns > 0
+                ? (filteredCampaigns.reduce((sum, c) => sum + (c.openRate || 0), 0) / totalCampaigns).toFixed(1)
+                : 0;
+        const avgClickRate =
+            totalCampaigns > 0
+                ? (filteredCampaigns.reduce((sum, c) => sum + (c.clickRate || 0), 0) / totalCampaigns).toFixed(1)
+                : 0;
 
         return {
             success: true,
@@ -3738,19 +3784,20 @@ export async function getAllNewsletterSubscribers(params = {}) {
         // Apply filters
         if (search.trim()) {
             const searchLower = search.toLowerCase().trim();
-            subscribers = subscribers.filter(subscriber => 
-                subscriber.name?.toLowerCase().includes(searchLower) ||
-                subscriber.email?.toLowerCase().includes(searchLower) ||
-                subscriber.tags?.some(tag => tag.toLowerCase().includes(searchLower))
+            subscribers = subscribers.filter(
+                (subscriber) =>
+                    subscriber.name?.toLowerCase().includes(searchLower) ||
+                    subscriber.email?.toLowerCase().includes(searchLower) ||
+                    subscriber.tags?.some((tag) => tag.toLowerCase().includes(searchLower))
             );
         }
 
         if (status) {
-            subscribers = subscribers.filter(subscriber => subscriber.status === status);
+            subscribers = subscribers.filter((subscriber) => subscriber.status === status);
         }
 
         if (source) {
-            subscribers = subscribers.filter(subscriber => subscriber.source === source);
+            subscribers = subscribers.filter((subscriber) => subscriber.source === source);
         }
 
         // Sort subscribers
@@ -3785,8 +3832,8 @@ export async function getAllNewsletterSubscribers(params = {}) {
             success: true,
             data: paginatedSubscribers,
             pagination: {
-                page: parseInt(page),
-                limit: parseInt(limit),
+                page: parseInt(page, 10),
+                limit: parseInt(limit, 10),
                 total: totalItems,
                 totalPages,
                 hasNext: page < totalPages,
@@ -3981,17 +4028,17 @@ export async function getSubscriberStats() {
         }
 
         const subscribers = result.data || [];
-        
+
         // Calculate stats
         const total = subscribers.length;
-        const active = subscribers.filter(s => s.status === 'active').length;
-        const unsubscribed = subscribers.filter(s => s.status === 'unsubscribed').length;
-        const bounced = subscribers.filter(s => s.status === 'bounced').length;
+        const active = subscribers.filter((s) => s.status === 'active').length;
+        const unsubscribed = subscribers.filter((s) => s.status === 'unsubscribed').length;
+        const bounced = subscribers.filter((s) => s.status === 'bounced').length;
 
         // Calculate growth (subscribers in last 7 days)
         const weekAgo = new Date();
         weekAgo.setDate(weekAgo.getDate() - 7);
-        const recentSubscribers = subscribers.filter(s => {
+        const recentSubscribers = subscribers.filter((s) => {
             const subDate = new Date(s.subscribedDate);
             return subDate >= weekAgo && s.status === 'active';
         }).length;
@@ -4037,13 +4084,13 @@ export async function getSubscriberStats() {
 export async function bulkUpdateSubscribers(subscriberIds, updateData) {
     try {
         const results = [];
-        
+
         for (const subscriberId of subscriberIds) {
             const result = await updateNewsletterSubscriber(subscriberId, updateData);
             results.push(result);
         }
 
-        const successCount = results.filter(r => r.success).length;
+        const successCount = results.filter((r) => r.success).length;
         const failureCount = results.length - successCount;
 
         return {
@@ -4077,9 +4124,9 @@ export async function exportSubscribers(filters = {}) {
         }
 
         const subscribers = result.data || [];
-        
+
         // Format data for export
-        const exportData = subscribers.map(subscriber => ({
+        const exportData = subscribers.map((subscriber) => ({
             name: subscriber.name || '',
             email: subscriber.email,
             phone: subscriber.phone || '',
@@ -4115,10 +4162,10 @@ export async function exportSubscribers(filters = {}) {
  */
 export async function getAllBlocks(params = {}) {
     try {
-        const { 
-            page = 1, 
-            limit = 10, 
-            search = '', 
+        const {
+            page = 1,
+            limit = 10,
+            search = '',
             type = 'all',
             status = 'all',
             sortBy = 'createdAt',
@@ -4127,14 +4174,14 @@ export async function getAllBlocks(params = {}) {
 
         // Fetch all blocks from database
         const blocksData = await DBService.readAll('blocks');
-        
+
         // Convert to array if needed
         let blocks = Array.isArray(blocksData) ? blocksData : Object.values(blocksData || {});
 
         // Apply search filter
-        if (search && search.trim()) {
+        if (search?.trim()) {
             const searchTerm = search.toLowerCase().trim();
-            blocks = blocks.filter(block => {
+            blocks = blocks.filter((block) => {
                 return (
                     (block.name || '').toLowerCase().includes(searchTerm) ||
                     (block.description || '').toLowerCase().includes(searchTerm) ||
@@ -4145,20 +4192,20 @@ export async function getAllBlocks(params = {}) {
 
         // Apply type filter
         if (type && type !== 'all') {
-            blocks = blocks.filter(block => block.type === type);
+            blocks = blocks.filter((block) => block.type === type);
         }
 
         // Apply status filter
         if (status && status !== 'all') {
             const isActive = status === 'active';
-            blocks = blocks.filter(block => block.isActive === isActive);
+            blocks = blocks.filter((block) => block.isActive === isActive);
         }
 
         // Sort blocks
         blocks.sort((a, b) => {
             const aValue = a[sortBy] || '';
             const bValue = b[sortBy] || '';
-            
+
             if (sortOrder === 'desc') {
                 return aValue > bValue ? -1 : aValue < bValue ? 1 : 0;
             } else {
@@ -4173,8 +4220,8 @@ export async function getAllBlocks(params = {}) {
         const paginatedBlocks = blocks.slice(offset, offset + limit);
 
         const pagination = {
-            page: parseInt(page),
-            limit: parseInt(limit),
+            page: parseInt(page, 10),
+            limit: parseInt(limit, 10),
             total,
             totalPages,
             hasNext: page < totalPages,
@@ -4205,7 +4252,7 @@ export async function getAllBlocks(params = {}) {
 export async function getBlockById(blockId) {
     try {
         const block = await DBService.getItemByKey('id', blockId, 'blocks');
-        
+
         if (!block) {
             return {
                 success: false,
@@ -4237,7 +4284,7 @@ export async function createBlock(blockData) {
     try {
         // Generate unique ID if not provided
         const blockId = blockData.id || `block_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-        
+
         // Prepare block data
         const newBlock = {
             id: blockId,
@@ -4271,7 +4318,7 @@ export async function createBlock(blockData) {
         }
 
         const result = await DBService.create(newBlock, 'blocks');
-        
+
         return {
             success: true,
             data: result
@@ -4295,7 +4342,7 @@ export async function updateBlock(blockId, blockData) {
     try {
         // Fetch existing block
         const existingBlock = await DBService.getItemByKey('id', blockId, 'blocks');
-        
+
         if (!existingBlock) {
             return {
                 success: false,
@@ -4320,7 +4367,7 @@ export async function updateBlock(blockId, blockData) {
         }
 
         const result = await DBService.update(blockId, updateData, 'blocks');
-        
+
         return {
             success: true,
             data: result
@@ -4343,7 +4390,7 @@ export async function deleteBlock(blockId) {
     try {
         // Check if block exists
         const existingBlock = await DBService.getItemByKey('id', blockId, 'blocks');
-        
+
         if (!existingBlock) {
             return {
                 success: false,
@@ -4352,7 +4399,7 @@ export async function deleteBlock(blockId) {
         }
 
         await DBService.delete(blockId, 'blocks');
-        
+
         return {
             success: true,
             message: 'Block deleted successfully'
@@ -4463,7 +4510,7 @@ export async function getAllAIModels(params = {}) {
 
         // Filter enabled models if requested
         if (params.enabledOnly) {
-            records = records.filter(model => model.enabled === true);
+            records = records.filter((model) => model.enabled === true);
         }
 
         // Sort by creation date (newest first)
@@ -4566,7 +4613,7 @@ export async function updateAIModel(modelId, modelData) {
         };
 
         // Remove undefined values
-        Object.keys(updateData).forEach(key => {
+        Object.keys(updateData).forEach((key) => {
             if (updateData[key] === undefined) {
                 delete updateData[key];
             }
@@ -4660,7 +4707,7 @@ export async function executeAIModel(modelId, params = {}) {
         const response = await fetch(`https://api.replicate.com/v1/models/${model.modelId}/predictions`, {
             method: 'POST',
             headers: {
-                'Authorization': `Token ${apiKey}`,
+                Authorization: `Token ${apiKey}`,
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
@@ -4681,7 +4728,6 @@ export async function executeAIModel(modelId, params = {}) {
             success: true,
             data: result
         };
-
     } catch (error) {
         console.error('Error executing AI model:', error);
         return {
@@ -4702,8 +4748,10 @@ export async function initializeDefaultEndpoints() {
     try {
         // Check if endpoints already exist
         const existingEndpoints = await DBService.readAll('endpoints');
-        const endpointsArray = Array.isArray(existingEndpoints) ? existingEndpoints : Object.values(existingEndpoints || {});
-        
+        const endpointsArray = Array.isArray(existingEndpoints)
+            ? existingEndpoints
+            : Object.values(existingEndpoints || {});
+
         // If endpoints already exist, don't reinitialize
         if (endpointsArray.length > 0) {
             return {
@@ -4873,7 +4921,7 @@ export async function getAllEndpoints(params = {}) {
     try {
         // Initialize default endpoints if needed
         await initializeDefaultEndpoints();
-        
+
         const all = await DBService.readAll('endpoints');
         let records = [];
         if (Array.isArray(all)) {
@@ -4884,15 +4932,15 @@ export async function getAllEndpoints(params = {}) {
 
         // Apply filters
         if (params.status) {
-            records = records.filter(endpoint => endpoint.status === params.status);
+            records = records.filter((endpoint) => endpoint.status === params.status);
         }
 
         if (params.isDefault !== undefined) {
-            records = records.filter(endpoint => endpoint.isDefault === params.isDefault);
+            records = records.filter((endpoint) => endpoint.isDefault === params.isDefault);
         }
 
         if (params.method) {
-            records = records.filter(endpoint => endpoint.method === params.method);
+            records = records.filter((endpoint) => endpoint.method === params.method);
         }
 
         // Sort by creation date (newest first)
@@ -4994,7 +5042,7 @@ export async function updateCustomEndpoint(endpointId, endpointData) {
     try {
         // Get the endpoint first to check if it's a default endpoint
         const existingEndpoint = await DBService.getItemByKey('id', endpointId, 'endpoints');
-        
+
         if (!existingEndpoint) {
             return {
                 success: false,
@@ -5015,7 +5063,7 @@ export async function updateCustomEndpoint(endpointId, endpointData) {
         };
 
         // Remove undefined values and prevent changing isDefault
-        Object.keys(updateData).forEach(key => {
+        Object.keys(updateData).forEach((key) => {
             if (updateData[key] === undefined || key === 'isDefault') {
                 delete updateData[key];
             }
@@ -5044,7 +5092,7 @@ export async function deleteCustomEndpoint(endpointId) {
     try {
         // Get the endpoint first to check if it's a default endpoint
         const existingEndpoint = await DBService.getItemByKey('id', endpointId, 'endpoints');
-        
+
         if (!existingEndpoint) {
             return {
                 success: false,
@@ -5092,7 +5140,7 @@ export async function getAllAPIKeys(params = {}) {
 
         // Apply status filter
         if (params.status) {
-            records = records.filter(key => key.status === params.status);
+            records = records.filter((key) => key.status === params.status);
         }
 
         // Sort by creation date (newest first)
@@ -5175,7 +5223,7 @@ export async function validateApiKey(apiKeyString) {
 export async function createAPIKey(apiKeyData) {
     try {
         const timeNow = new Date().toISOString();
-        
+
         // Generate API key
         const timestamp = Date.now().toString(36);
         const random = Math.random().toString(36).substring(2, 15);
@@ -5227,7 +5275,7 @@ export async function updateAPIKey(keyId, apiKeyData) {
         };
 
         // Remove undefined values and prevent changing the actual key
-        Object.keys(updateData).forEach(key => {
+        Object.keys(updateData).forEach((key) => {
             if (updateData[key] === undefined || key === 'key') {
                 delete updateData[key];
             }
@@ -5312,7 +5360,7 @@ export async function getAPISettings() {
     try {
         const all = await DBService.readAll('api_settings');
         let record = null;
-        
+
         if (Array.isArray(all)) {
             record = all.length ? all[0] : null;
         } else if (typeof all === 'object') {
@@ -5648,9 +5696,9 @@ export async function updateAPISettingsAction(settingsData) {
 export async function getAllCronjobs(params = {}) {
     try {
         const { statusFilter } = params;
-        
+
         const allCronjobs = await DBService.readAll('cronjobs');
-        
+
         if (!allCronjobs || Object.keys(allCronjobs).length === 0) {
             return {
                 success: true,
@@ -5660,14 +5708,16 @@ export async function getAllCronjobs(params = {}) {
         }
 
         // Convert object to array
-        let cronjobsArray = Array.isArray(allCronjobs) ? allCronjobs : Object.entries(allCronjobs).map(([key, value]) => ({
-            id: key,
-            ...value
-        }));
+        let cronjobsArray = Array.isArray(allCronjobs)
+            ? allCronjobs
+            : Object.entries(allCronjobs).map(([key, value]) => ({
+                  id: key,
+                  ...value
+              }));
 
         // Apply status filter
         if (statusFilter && statusFilter !== 'all') {
-            cronjobsArray = cronjobsArray.filter(job => {
+            cronjobsArray = cronjobsArray.filter((job) => {
                 if (statusFilter === 'enabled') return job.enabled === true;
                 if (statusFilter === 'disabled') return job.enabled === false;
                 return true;
@@ -5773,7 +5823,7 @@ export async function updateCronjob(cronjobId, cronjobData) {
  */
 export async function deleteCronjob(cronjobId) {
     try {
-        const result = await DBService.delete(cronjobId, 'cronjobs');
+        const _result = await DBService.delete(cronjobId, 'cronjobs');
 
         return {
             success: true,
@@ -5796,7 +5846,7 @@ export async function deleteCronjob(cronjobId) {
 export async function executeDueCronjobs() {
     try {
         const allCronjobs = await DBService.readAll('cronjobs');
-        
+
         if (!allCronjobs || Object.keys(allCronjobs).length === 0) {
             return {
                 success: true,
@@ -5805,10 +5855,12 @@ export async function executeDueCronjobs() {
             };
         }
 
-        const cronjobsArray = Array.isArray(allCronjobs) ? allCronjobs : Object.entries(allCronjobs).map(([key, value]) => ({
-            id: key,
-            ...value
-        }));
+        const cronjobsArray = Array.isArray(allCronjobs)
+            ? allCronjobs
+            : Object.entries(allCronjobs).map(([key, value]) => ({
+                  id: key,
+                  ...value
+              }));
 
         const now = Date.now();
         let executed = 0;
@@ -5818,7 +5870,7 @@ export async function executeDueCronjobs() {
 
             const lastRun = job.lastRun ? new Date(job.lastRun).getTime() : 0;
             const intervalMs = (job.intervalMinutes || 60) * 60 * 1000;
-            
+
             if (now - lastRun >= intervalMs) {
                 try {
                     // Execute HTTP cronjob
@@ -5830,23 +5882,31 @@ export async function executeDueCronjobs() {
                         });
 
                         // Update job status
-                        await DBService.update(job.id, {
-                            lastRun: new Date().toISOString(),
-                            lastStatus: response.ok ? 'success' : `error: ${response.status}`,
-                            updatedAt: new Date().toISOString()
-                        }, 'cronjobs');
+                        await DBService.update(
+                            job.id,
+                            {
+                                lastRun: new Date().toISOString(),
+                                lastStatus: response.ok ? 'success' : `error: ${response.status}`,
+                                updatedAt: new Date().toISOString()
+                            },
+                            'cronjobs'
+                        );
 
                         executed++;
                     }
                 } catch (jobError) {
                     console.error(`Error executing cronjob ${job.id}:`, jobError);
-                    
+
                     // Update job with error status
-                    await DBService.update(job.id, {
-                        lastRun: new Date().toISOString(),
-                        lastStatus: `error: ${jobError.message}`,
-                        updatedAt: new Date().toISOString()
-                    }, 'cronjobs');
+                    await DBService.update(
+                        job.id,
+                        {
+                            lastRun: new Date().toISOString(),
+                            lastStatus: `error: ${jobError.message}`,
+                            updatedAt: new Date().toISOString()
+                        },
+                        'cronjobs'
+                    );
                 }
             }
         }
@@ -5964,7 +6024,7 @@ export async function executeDueCronjobsAction() {
 export async function getAllSiteSettings() {
     try {
         const allSettings = await DBService.readAll('site_settings');
-        
+
         if (!allSettings || Object.keys(allSettings).length === 0) {
             return {
                 success: true,
@@ -5974,13 +6034,16 @@ export async function getAllSiteSettings() {
         }
 
         // Convert object to array and find the main settings record
-        const settingsArray = Array.isArray(allSettings) ? allSettings : Object.entries(allSettings).map(([key, value]) => ({
-            id: key,
-            ...value
-        }));
+        const settingsArray = Array.isArray(allSettings)
+            ? allSettings
+            : Object.entries(allSettings).map(([key, value]) => ({
+                  id: key,
+                  ...value
+              }));
 
         // Find the main site settings record
-        const mainSettings = settingsArray.find(s => s.type === 'site' || s.key === 'site' || !s.type) || settingsArray[0];
+        const mainSettings =
+            settingsArray.find((s) => s.type === 'site' || s.key === 'site' || !s.type) || settingsArray[0];
 
         return {
             success: true,
@@ -6004,13 +6067,13 @@ export async function getAllSiteSettings() {
 export async function getPublicSiteSettings() {
     try {
         const result = await getAllSiteSettings();
-        
+
         if (!result.success || !result.data) {
             return result;
         }
 
         const settings = result.data;
-        
+
         // Filter out sensitive data for public API
         const publicSettings = {
             siteName: settings.siteName || '',
@@ -6039,9 +6102,9 @@ export async function getPublicSiteSettings() {
                 web3Active: settings.web3Active === true
             },
             // Public OAuth provider info (enabled status only)
-            oauthProviders: settings.providers ? Object.keys(settings.providers).filter(provider => 
-                settings.providers[provider]?.enabled === true
-            ) : []
+            oauthProviders: settings.providers
+                ? Object.keys(settings.providers).filter((provider) => settings.providers[provider]?.enabled === true)
+                : []
         };
 
         return {
@@ -6067,7 +6130,7 @@ export async function getPublicSiteSettings() {
 export async function updateSiteSettings(settingsData) {
     try {
         const timeNow = new Date().toISOString();
-        
+
         // Check for existing site settings record
         const existing = await getAllSiteSettings();
         let result;
@@ -6114,10 +6177,10 @@ export async function uploadFiles(formData) {
         // 2. Generate unique filenames
         // 3. Upload to your preferred storage (Vercel Blob, AWS S3, etc.)
         // 4. Store file metadata in database
-        
+
         const files = formData.getAll('files');
         const uploadedFiles = [];
-        
+
         for (const file of files) {
             if (file && file.size > 0) {
                 // For now, return a placeholder response
@@ -6130,7 +6193,7 @@ export async function uploadFiles(formData) {
                     url: `/uploads/${Date.now()}_${file.name}`, // Placeholder URL
                     uploadedAt: new Date().toISOString()
                 };
-                
+
                 // Store file metadata in database
                 await DBService.create(fileData, 'uploaded_files');
                 uploadedFiles.push(fileData);
@@ -6233,9 +6296,9 @@ export async function uploadFilesAction(formData) {
  */
 export async function getServerInfo() {
     try {
-        const os = await import('os');
-        const fs = await import('fs');
-        const path = await import('path');
+        const os = await import('node:os');
+        const fs = await import('node:fs');
+        const path = await import('node:path');
 
         // Get package.json to read versions
         const packagePath = path.join(process.cwd(), 'package.json');
@@ -6253,8 +6316,8 @@ export async function getServerInfo() {
             platform: os.platform(),
             arch: os.arch(),
             cpus: os.cpus().length,
-            totalMemory: Math.round(os.totalmem() / 1024 / 1024 / 1024 * 100) / 100,
-            freeMemory: Math.round(os.freemem() / 1024 / 1024 / 1024 * 100) / 100,
+            totalMemory: Math.round((os.totalmem() / 1024 / 1024 / 1024) * 100) / 100,
+            freeMemory: Math.round((os.freemem() / 1024 / 1024 / 1024) * 100) / 100,
             uptime: Math.round(os.uptime()),
             processUptime: Math.round(process.uptime()),
             cwd: process.cwd()
@@ -6287,7 +6350,6 @@ export async function getServerInfo() {
                 timestamp: new Date().toISOString()
             }
         };
-
     } catch (error) {
         console.error('Error getting server info:', error);
         return {
@@ -6380,7 +6442,6 @@ export async function clearSystemCache(action) {
                 timestamp: new Date().toISOString()
             }
         };
-
     } catch (error) {
         console.error('Error clearing cache:', error);
         return {
@@ -6428,7 +6489,6 @@ export async function getDatabaseStats() {
                 timestamp: new Date().toISOString()
             }
         };
-
     } catch (error) {
         console.error('Error getting database stats:', error);
         return {
@@ -6487,7 +6547,6 @@ export async function performSystemCleanup(options = {}) {
                 timestamp: new Date().toISOString()
             }
         };
-
     } catch (error) {
         console.error('Error performing system cleanup:', error);
         return {
@@ -6512,4 +6571,429 @@ export async function getDatabaseStatsAction() {
 
 export async function performSystemCleanupAction(options = {}) {
     return await performSystemCleanup(options);
+}
+
+// EUPAGO PAYMENT UTILITY FUNCTIONS (NOT SERVER ACTIONS)
+// These functions can be imported directly into API routes
+
+/**
+ * Check if EuPago is enabled and configured
+ * @returns {Promise<boolean>} Whether EuPago is enabled
+ */
+export async function isEuPagoEnabled() {
+    try {
+        const storeSettings = await DBService.readAll('store_settings');
+        let settings = null;
+
+        if (Array.isArray(storeSettings)) {
+            settings = storeSettings[0];
+        } else if (typeof storeSettings === 'object') {
+            settings = Object.values(storeSettings)[0] || storeSettings;
+        }
+
+        if (settings?.paymentMethods?.euPago) {
+            const apiUrl = settings.paymentMethods.euPago.apiUrl;
+            const apiKey = settings.paymentMethods.euPago.apiKey;
+            return !!(apiUrl && apiKey);
+        }
+
+        return false;
+    } catch (error) {
+        console.error('Failed to check EuPago status:', error);
+        return false;
+    }
+}
+
+/**
+ * Get EuPago configuration from settings
+ * @returns {Promise<Object>} EuPago configuration
+ */
+export async function getEuPagoConfig() {
+    try {
+        const storeSettings = await DBService.readAll('store_settings');
+        let settings = null;
+
+        if (Array.isArray(storeSettings)) {
+            settings = storeSettings[0];
+        } else if (typeof storeSettings === 'object') {
+            settings = Object.values(storeSettings)[0] || storeSettings;
+        }
+
+        if (settings?.paymentMethods?.euPago) {
+            return {
+                success: true,
+                config: settings.paymentMethods.euPago
+            };
+        }
+
+        return {
+            success: false,
+            error: 'EuPago not configured'
+        };
+    } catch (error) {
+        console.error('Failed to get EuPago config:', error);
+        return {
+            success: false,
+            error: error.message
+        };
+    }
+}
+
+/**
+ * Check payment status for a reference
+ * @param {string} reference - Payment reference
+ * @param {string} entity - Payment entity (optional)
+ * @returns {Promise<Object>} Payment status result
+ */
+export async function checkEuPagoPaymentStatus(reference, entity = null) {
+    try {
+        const configResult = await getEuPagoConfig();
+        if (!configResult.success) {
+            throw new Error('EuPago service not configured');
+        }
+
+        const { apiUrl, apiKey } = configResult.config;
+        const endpoint = `${apiUrl}/clientes/rest_api/multibanco/info`;
+        const params = new URLSearchParams({
+            chave: apiKey,
+            referencia: reference
+        });
+
+        if (entity) {
+            params.append('entidade', entity);
+        }
+
+        const response = await fetch(`${endpoint}?${params}`);
+        const data = await response.json();
+
+        return {
+            success: true,
+            paid: data.estado === 'paga',
+            amount: data.valor || 0,
+            state: data.estado,
+            data: data
+        };
+    } catch (error) {
+        console.error('Error checking EuPago payment status:', error);
+        return {
+            success: false,
+            error: error.message
+        };
+    }
+}
+
+/**
+ * Create payment reference
+ * @param {Object} orderData - Order data
+ * @returns {Promise<Object>} Payment reference result
+ */
+export async function createEuPagoPaymentReference(orderData) {
+    try {
+        const configResult = await getEuPagoConfig();
+        if (!configResult.success) {
+            throw new Error('EuPago service not configured');
+        }
+
+        const { apiUrl, apiKey } = configResult.config;
+        const { orderId, amount, method = 'mb', mobile = null } = orderData;
+
+        let endpoint;
+        const params = new URLSearchParams({
+            chave: apiKey,
+            valor: amount.toString(),
+            id: orderId
+        });
+
+        switch (method) {
+            case 'mbway':
+                if (!mobile) {
+                    throw new Error('Mobile number required for MB WAY');
+                }
+                endpoint = `${apiUrl}/clientes/rest_api/mbway/create`;
+                params.append('alias', mobile);
+                break;
+            default:
+                endpoint = `${apiUrl}/clientes/rest_api/multibanco/create`;
+                break;
+        }
+
+        const response = await fetch(endpoint, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded'
+            },
+            body: params
+        });
+
+        const data = await response.json();
+
+        if (data.sucesso) {
+            return {
+                success: true,
+                reference: data.referencia,
+                entity: data.entidade || null,
+                amount: data.valor,
+                method: method,
+                data: data
+            };
+        } else {
+            throw new Error(data.erro || 'Failed to create payment reference');
+        }
+    } catch (error) {
+        console.error('Error creating EuPago payment reference:', error);
+        return {
+            success: false,
+            error: error.message
+        };
+    }
+}
+
+/**
+ * Process payment and update order
+ * @param {Object} orderData - Complete order data
+ * @returns {Promise<Object>} Payment processing result
+ */
+export async function processEuPagoPayment(orderData) {
+    try {
+        const { orderId, items, customer, payment, totals } = orderData;
+
+        // Validate required data
+        if (!orderId || !items || !customer || !payment || !totals) {
+            throw new Error('Missing required order data');
+        }
+
+        const amount = totals.total;
+        const method = payment.method || 'mb';
+        const mobile = payment.mobile || null;
+
+        // Create payment reference
+        const referenceResult = await createEuPagoPaymentReference({
+            orderId,
+            amount,
+            method,
+            mobile
+        });
+
+        if (!referenceResult.success) {
+            throw new Error(referenceResult.error);
+        }
+
+        // Save transaction to database
+        const transaction = {
+            id: orderId,
+            transaction_id: orderId,
+            reference: referenceResult.reference,
+            entity: referenceResult.entity,
+            amount: amount,
+            method: method,
+            mobile: mobile,
+            items: JSON.stringify(items),
+            customer: customer,
+            totals: totals,
+            payment_status: 'pending',
+            order_status: 'pending',
+            payment_method: 'eupago',
+            eupago_data: referenceResult.data,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+        };
+
+        await saveEuPagoTransaction(transaction);
+
+        return {
+            success: true,
+            orderId: orderId,
+            reference: referenceResult.reference,
+            entity: referenceResult.entity,
+            amount: amount,
+            method: method,
+            paymentData: referenceResult.data
+        };
+    } catch (error) {
+        console.error('Error processing EuPago payment:', error);
+        return {
+            success: false,
+            error: error.message
+        };
+    }
+}
+
+/**
+ * Save transaction to database
+ * @param {Object} transactionData - Transaction data
+ * @returns {Promise<Object>} Save result
+ */
+export async function saveEuPagoTransaction(transactionData) {
+    try {
+        // Check if order already exists
+        const existingOrder = await DBService.read(transactionData.id, 'orders');
+
+        if (existingOrder) {
+            // Update existing order
+            const updatedOrder = {
+                ...existingOrder,
+                ...transactionData,
+                updated_at: new Date().toISOString()
+            };
+
+            await DBService.update(transactionData.id, updatedOrder, 'orders');
+        } else {
+            // Create new order
+            await DBService.create(transactionData, 'orders');
+        }
+
+        return {
+            success: true,
+            message: 'Transaction saved successfully'
+        };
+    } catch (error) {
+        console.error('Error saving EuPago transaction:', error);
+        return {
+            success: false,
+            error: error.message
+        };
+    }
+}
+
+/**
+ * Check and update pending payments
+ * @returns {Promise<Object>} Pending payments check result
+ */
+export async function checkEuPagoPendingPayments() {
+    try {
+        const isEnabled = await isEuPagoEnabled();
+        if (!isEnabled) {
+            return { success: false, error: 'EuPago service not configured' };
+        }
+
+        // Get all pending EuPago orders
+        const allOrders = await DBService.readAll('orders');
+        let orders = [];
+
+        if (Array.isArray(allOrders)) {
+            orders = allOrders;
+        } else if (typeof allOrders === 'object') {
+            orders = Object.values(allOrders);
+        }
+
+        const pendingOrders = orders.filter(
+            (order) => order.payment_method === 'eupago' && order.payment_status === 'pending' && order.reference
+        );
+
+        const results = [];
+
+        for (const order of pendingOrders) {
+            try {
+                const statusCheck = await checkEuPagoPaymentStatus(order.reference, order.entity);
+
+                if (statusCheck.success && statusCheck.paid) {
+                    // Update order status
+                    const updatedOrder = {
+                        ...order,
+                        payment_status: 'paid',
+                        status: 'processing',
+                        paid_at: new Date().toISOString(),
+                        updated_at: new Date().toISOString()
+                    };
+
+                    await DBService.update(order.id, updatedOrder, 'orders');
+
+                    // Send confirmation email
+                    await sendEuPagoPaymentConfirmationEmail(order);
+
+                    results.push({
+                        orderId: order.id,
+                        status: 'updated_to_paid',
+                        reference: order.reference
+                    });
+                }
+            } catch (error) {
+                console.error(`Error checking order ${order.id}:`, error);
+                results.push({
+                    orderId: order.id,
+                    status: 'error',
+                    error: error.message
+                });
+            }
+        }
+
+        return {
+            success: true,
+            checked: pendingOrders.length,
+            updated: results.filter((r) => r.status === 'updated_to_paid').length,
+            results: results
+        };
+    } catch (error) {
+        console.error('Error checking pending payments:', error);
+        return {
+            success: false,
+            error: error.message
+        };
+    }
+}
+
+/**
+ * Send payment confirmation email
+ * @param {Object} order - Order data
+ * @returns {Promise<void>}
+ */
+export async function sendEuPagoPaymentConfirmationEmail(order) {
+    try {
+        if (!order.customer?.email) {
+            console.warn('No customer email found for order:', order.id);
+            return;
+        }
+
+        // Import EmailService dynamically to avoid circular dependencies
+        const { default: EmailService } = await import('@/lib/server/email.js');
+
+        await EmailService.sendOrderConfirmationEmail({
+            to: order.customer.email,
+            orderData: order,
+            items: JSON.parse(order.items || '[]')
+        });
+
+        console.log('Payment confirmation email sent for order:', order.id);
+    } catch (error) {
+        console.error('Error sending payment confirmation email:', error);
+    }
+}
+
+/**
+ * Get payment instructions for display
+ * @param {Object} paymentData - Payment data
+ * @returns {Promise<Object>} Payment instructions
+ */
+export async function getEuPagoPaymentInstructions(paymentData) {
+    const { method, reference, entity, amount } = paymentData;
+
+    switch (method) {
+        case 'mbway':
+            return {
+                title: 'MB WAY Payment',
+                instructions: [
+                    'Open your MB WAY app',
+                    'Select "Pay" option',
+                    `Enter the amount: €${amount}`,
+                    'Complete the payment in your app'
+                ],
+                reference: null,
+                entity: null
+            };
+        default:
+            return {
+                title: 'Multibanco Payment',
+                instructions: [
+                    'Go to any Multibanco ATM',
+                    'Select "Payments and Other Services"',
+                    'Select "Payment of Services"',
+                    `Enter Entity: ${entity}`,
+                    `Enter Reference: ${reference}`,
+                    `Confirm the amount: €${amount}`,
+                    'Complete the payment'
+                ],
+                reference: reference,
+                entity: entity
+            };
+    }
 }

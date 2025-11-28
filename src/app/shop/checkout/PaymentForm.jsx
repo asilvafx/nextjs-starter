@@ -69,6 +69,7 @@ const PaymentForm = ({
 
     // Payment Method State
     const [selectedPaymentMethod, setSelectedPaymentMethod] = useState('');
+    const [mbwayMobile, setMbwayMobile] = useState(''); // For MB WAY payments
 
     const handleShippingMethodSelect = (method) => {
         setLocalSelectedShippingMethod(method);
@@ -530,6 +531,85 @@ const PaymentForm = ({
                     localStorage.removeItem('orderData');
                     throw new Error(confirmError.message);
                 }
+            } else if (paymentMethod.startsWith('eupago_')) {
+                // Handle EuPago payments (Multibanco and MB WAY)
+                const eupagoMethod = paymentMethod.replace('eupago_', ''); // 'mb' or 'mbway'
+                
+                // Validate MB WAY mobile number if required
+                if (eupagoMethod === 'mbway' && !mbwayMobile) {
+                    throw new Error('Please enter your mobile number for MB WAY payment');
+                }
+
+                // Prepare EuPago payment data
+                const eupagoPaymentData = {
+                    orderId: orderData.id,
+                    items: orderItems,
+                    customer: customerData,
+                    payment: {
+                        method: eupagoMethod,
+                        mobile: eupagoMethod === 'mbway' ? mbwayMobile : null
+                    },
+                    totals: {
+                        subtotal: orderData.subtotal,
+                        shipping: orderData.shippingCost,
+                        discount: orderData.discountAmount,
+                        vat: orderData.taxAmount,
+                        total: orderData.total
+                    }
+                };
+
+                // Process EuPago payment
+                const eupagoResponse = await fetch('/api/payments/eupago', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        action: 'process_payment',
+                        ...eupagoPaymentData
+                    })
+                });
+
+                const eupagoResult = await eupagoResponse.json();
+
+                if (!eupagoResult.success) {
+                    throw new Error(eupagoResult.error || 'Failed to create EuPago payment');
+                }
+
+                // Apply coupon usage if a coupon was used
+                if (appliedCoupon) {
+                    try {
+                        await fetch('/api/query/public/apply-coupon', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                couponId: appliedCoupon.id,
+                                orderId: orderData.id,
+                                customerEmail: emailInput,
+                                orderAmount: itemsTotal,
+                                discountAmount: couponDiscount
+                            })
+                        });
+                    } catch (couponError) {
+                        console.error('Failed to apply coupon usage:', couponError);
+                        // Don't fail the payment for coupon tracking errors
+                    }
+                }
+
+                // Create/update customer
+                try {
+                    const customerResult = await createOrUpdateCustomerFromOrder(orderData.customer);
+                    console.log('Customer operation result:', customerResult);
+                } catch (customerError) {
+                    console.warn('Customer creation/update failed:', customerError);
+                    // Continue with order creation even if customer operation fails
+                }
+
+                // Redirect to success page with EuPago payment information
+                window.location.href = `/shop/checkout/success?tx=${btoa(orderData.id)}&payment_method=eupago&eupago_method=${eupagoMethod}&reference=${eupagoResult.reference}&entity=${eupagoResult.entity || ''}&amount=${eupagoResult.amount}`;
+                
             } else {
                 // Handle alternative payment methods (bank transfer, pay on delivery)
                 
@@ -609,6 +689,27 @@ const PaymentForm = ({
 
         if (hasStripe && storeSettings?.paymentMethods?.cardPayments) {
             methods.push({ value: 'card', label: `💳 ${t('cardPayment')}`, description: t('cardPaymentDescription') });
+        }
+
+        // Add EuPago payment methods if enabled
+        if (storeSettings?.paymentMethods?.euPago?.enabled) {
+            const supportedMethods = storeSettings.paymentMethods.euPago.supportedMethods || [];
+            
+            if (supportedMethods.includes('mb')) {
+                methods.push({
+                    value: 'eupago_mb',
+                    label: `🏧 Multibanco`,
+                    description: 'Pay using Multibanco ATM or online banking'
+                });
+            }
+            
+            if (supportedMethods.includes('mbway')) {
+                methods.push({
+                    value: 'eupago_mbway',
+                    label: `📱 MB WAY`,
+                    description: 'Pay instantly with your MB WAY app'
+                });
+            }
         }
 
         if (storeSettings?.paymentMethods?.bankTransfer) {
@@ -990,6 +1091,43 @@ const PaymentForm = ({
                                 {/* Payment Method Details */}
                                 {selectedPaymentMethod && (
                                     <div className="space-y-4">
+                                        {/* MB WAY Mobile Input */}
+                                        {selectedPaymentMethod === 'eupago_mbway' && (
+                                            <div className="rounded-lg border bg-card p-4">
+                                                <h3 className="mb-2 font-medium text-md">📱 MB WAY</h3>
+                                                <p className="mb-3 text-muted-foreground text-sm">
+                                                    Enter your mobile number to receive the payment request on your MB WAY app
+                                                </p>
+                                                <div>
+                                                    <label htmlFor="mbwayMobile" className="block mb-2 font-medium text-sm">
+                                                        Mobile Number
+                                                    </label>
+                                                    <input
+                                                        id="mbwayMobile"
+                                                        type="tel"
+                                                        value={mbwayMobile}
+                                                        onChange={(e) => setMbwayMobile(e.target.value)}
+                                                        placeholder="9xxxxxxxx"
+                                                        className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-primary focus:ring-2 focus:ring-primary/20"
+                                                        required={selectedPaymentMethod === 'eupago_mbway'}
+                                                    />
+                                                    <p className="mt-1 text-muted-foreground text-xs">
+                                                        Enter your 9-digit Portuguese mobile number without country code
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        )}
+                                        
+                                        {/* EuPago Multibanco */}
+                                        {selectedPaymentMethod === 'eupago_mb' && (
+                                            <div className="rounded-lg border bg-card p-4">
+                                                <h3 className="mb-2 font-medium text-md">🏧 Multibanco</h3>
+                                                <p className="text-muted-foreground text-sm">
+                                                    After placing your order, you'll receive payment instructions with Entity and Reference numbers to pay at any Multibanco ATM or through online banking.
+                                                </p>
+                                            </div>
+                                        )}
+                                        
                                         {selectedPaymentMethod === 'card' && hasStripe && (
                                             <div className="rounded-lg border bg-card p-4">
                                                 <h3 className="mb-2 font-medium text-md">💳 {t('cardPayment')}</h3>

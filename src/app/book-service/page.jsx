@@ -76,6 +76,27 @@ export default function BookServicePage() {
             methods.push({ value: 'card', label: `💳 Card`, description: 'Pay with card' });
         }
 
+        // Add EuPago payment methods if enabled
+        if (storeSettings?.paymentMethods?.euPago?.enabled) {
+            const supportedMethods = storeSettings.paymentMethods.euPago.supportedMethods || [];
+            
+            if (supportedMethods.includes('mb')) {
+                methods.push({
+                    value: 'eupago_mb',
+                    label: '🏧 Multibanco',
+                    description: 'Pay using Multibanco ATM or online banking'
+                });
+            }
+            
+            if (supportedMethods.includes('mbway')) {
+                methods.push({
+                    value: 'eupago_mbway',
+                    label: '📱 MB WAY',
+                    description: 'Pay instantly with your MB WAY app'
+                });
+            }
+        }
+
         if (storeSettings?.paymentMethods?.bankTransfer) {
             methods.push({ value: 'bank_transfer', label: `🏦 Bank Transfer`, description: 'Pay via bank transfer' });
         }
@@ -144,6 +165,74 @@ export default function BookServicePage() {
 
             // Store locally so success page can read it
             localStorage.setItem('orderData', JSON.stringify(orderData));
+
+            // Handle EuPago payments
+            if (paymentMethod.startsWith('eupago_')) {
+                const eupagoMethod = paymentMethod.replace('eupago_', ''); // 'mb' or 'mbway'
+                
+                // For MB WAY, you'd need to collect mobile number from user
+                // For simplicity, this example uses a prompt, but you should implement proper UI
+                let mobile = null;
+                if (eupagoMethod === 'mbway') {
+                    mobile = prompt('Please enter your mobile number for MB WAY payment (9 digits):');
+                    if (!mobile || mobile.length !== 9) {
+                        toast.error('Valid mobile number required for MB WAY payment');
+                        return;
+                    }
+                }
+
+                // Prepare EuPago payment data
+                const eupagoPaymentData = {
+                    orderId: orderData.id,
+                    items: orderData.items,
+                    customer: orderData.customer,
+                    payment: {
+                        method: eupagoMethod,
+                        mobile: mobile
+                    },
+                    totals: {
+                        subtotal: orderData.subtotal,
+                        shipping: orderData.shippingCost,
+                        discount: orderData.discountAmount,
+                        vat: orderData.taxAmount,
+                        total: orderData.total
+                    }
+                };
+
+                // Process EuPago payment
+                const eupagoResponse = await fetch('/api/payments/eupago', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        action: 'process_payment',
+                        ...eupagoPaymentData
+                    })
+                });
+
+                const eupagoResult = await eupagoResponse.json();
+
+                if (!eupagoResult.success) {
+                    toast.error(eupagoResult.error || 'Failed to create EuPago payment');
+                    return;
+                }
+
+                // Create customer if needed
+                if (orderData.customer && orderData.customer.email) {
+                    try {
+                        const customerResult = await createOrUpdateCustomerFromOrder(orderData.customer);
+                        console.log('Customer operation result:', customerResult);
+                    } catch (customerError) {
+                        console.warn('Customer creation/update failed:', customerError);
+                    }
+                }
+
+                // Clear cart and redirect to success page with EuPago payment information
+                emptyCart();
+                router.push(`/shop/checkout/success?order_id=${orderData.id}&payment_method=eupago&eupago_method=${eupagoMethod}&reference=${eupagoResult.reference}&entity=${eupagoResult.entity || ''}&amount=${eupagoResult.amount}`);
+                return;
+            }
 
             // Create order record on server for non-card methods
             if (paymentMethod !== 'card') {

@@ -111,7 +111,8 @@ const PAYMENT_METHODS = [
     { value: 'bank_transfer', label: 'Bank Transfer' },
     { value: 'pay_on_delivery', label: 'Pay On Delivery' },
     { value: 'cash', label: 'Cash' },
-    { value: 'crypto', label: 'Cryptocurrency' }
+    { value: 'crypto', label: 'Cryptocurrency' },
+    { value: 'eupago', label: 'EuPago (Multibanco/MB WAY)' }
 ];
 
 const PAYMENT_STATUS = [
@@ -177,6 +178,8 @@ export default function OrdersPage() {
     const [isDeleting, setIsDeleting] = useState(false);
     const [fetchError, setFetchError] = useState(null);
     const [isRetrying, setIsRetrying] = useState(false);
+    const [isCheckingEuPago, setIsCheckingEuPago] = useState(false);
+    const [euPagoCheckResults, setEuPagoCheckResults] = useState(null);
 
     const fetchStoreSettings = async () => {
         try {
@@ -295,6 +298,92 @@ export default function OrdersPage() {
     const handleRetryFetch = async () => {
         setFetchError(null);
         await Promise.all([fetchOrders(true), fetchCustomers(), fetchCatalog(), fetchStoreSettings()]);
+    };
+
+    // Check EuPago payment statuses
+    const checkEuPagoPayments = async () => {
+        setIsCheckingEuPago(true);
+        try {
+            const response = await fetch('/api/payments/eupago', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    action: 'check_pending'
+                })
+            });
+
+            const result = await response.json();
+            
+            if (result.success) {
+                setEuPagoCheckResults(result);
+                if (result.updated > 0) {
+                    toast.success(`Updated ${result.updated} paid EuPago orders`);
+                    // Refresh orders to show updated payment statuses
+                    await fetchOrders(true);
+                } else {
+                    toast.info(`Checked ${result.checked} EuPago orders - no updates needed`);
+                }
+            } else {
+                toast.error(result.error || 'Failed to check EuPago payments');
+            }
+        } catch (error) {
+            console.error('Error checking EuPago payments:', error);
+            toast.error('Failed to check EuPago payments');
+        } finally {
+            setIsCheckingEuPago(false);
+        }
+    };
+
+    // Check individual EuPago order status
+    const checkSingleEuPagoOrder = async (order) => {
+        if (!order.reference || order.payment_method !== 'eupago') {
+            toast.error('Order does not have EuPago payment information');
+            return;
+        }
+
+        try {
+            const response = await fetch('/api/payments/eupago/status', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    reference: order.reference,
+                    entity: order.entity
+                })
+            });
+
+            const result = await response.json();
+            
+            if (result.success) {
+                if (result.paid && order.payment_status !== 'paid') {
+                    // Update order status
+                    const updatedOrder = {
+                        ...order,
+                        payment_status: 'paid',
+                        status: 'processing',
+                        paid_at: new Date().toISOString()
+                    };
+
+                    const updateResponse = await updateOrder(order.id, updatedOrder);
+                    if (updateResponse.success) {
+                        toast.success('Order payment status updated to paid');
+                        updateOrderInState(order.id, updatedOrder);
+                    }
+                } else if (result.paid) {
+                    toast.info('Payment is already marked as paid');
+                } else {
+                    toast.info('Payment is still pending');
+                }
+            } else {
+                toast.error(result.error || 'Failed to check payment status');
+            }
+        } catch (error) {
+            console.error('Error checking single EuPago payment:', error);
+            toast.error('Failed to check payment status');
+        }
     };
 
     useEffect(() => {
@@ -831,6 +920,24 @@ export default function OrdersPage() {
                     </Select>
                 </div>
                 <div className="flex gap-2">
+                    <Button 
+                        variant="outline" 
+                        onClick={checkEuPagoPayments} 
+                        disabled={isCheckingEuPago}
+                        className="gap-2"
+                    >
+                        {isCheckingEuPago ? (
+                            <>
+                                <RefreshCw className="h-4 w-4 animate-spin" />
+                                Checking...
+                            </>
+                        ) : (
+                            <>
+                                <CreditCard className="h-4 w-4" />
+                                Check EuPago
+                            </>
+                        )}
+                    </Button>
                     <Button variant="outline" onClick={exportToCSV}>
                         <FileDown className="mr-2 h-4 w-4" />
                         Export CSV
@@ -2092,6 +2199,12 @@ export default function OrdersPage() {
                                                     </Button>
                                                 </DropdownMenuTrigger>
                                                 <DropdownMenuContent align="end">
+                                                    {order.payment_method === 'eupago' && order.payment_status === 'pending' && (
+                                                        <DropdownMenuItem onClick={() => checkSingleEuPagoOrder(order)}>
+                                                            <CreditCard className="mr-2 h-4 w-4" />
+                                                            Check EuPago Payment
+                                                        </DropdownMenuItem>
+                                                    )}
                                                     <DropdownMenuItem onClick={() => openInvoiceDialog(order)}>
                                                         <FileText className="mr-2 h-4 w-4" />
                                                         Invoice

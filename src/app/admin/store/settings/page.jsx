@@ -54,7 +54,13 @@ const defaultFormState = {
             bic: '',
             additionalInstructions: ''
         },
-        payOnDelivery: false
+        payOnDelivery: false,
+        euPago: {
+            enabled: false,
+            apiUrl: 'https://sandbox.eupago.pt/',
+            apiKey: '',
+            supportedMethods: ['mb', 'mbway'] // Multibanco and MB WAY
+        }
     },
     freeShippingEnabled: false,
     freeShippingThreshold: 50,
@@ -655,6 +661,109 @@ function PaymentsTab({ formData, handleNestedInputChange, errors }) {
                                 <p className="mt-1 text-muted-foreground text-sm">
                                     Your Stripe secret key (keep this secure and never expose it)
                                 </p>
+                            </div>
+                        </div>
+                    )}
+                    
+                    <div className="flex flex-row items-center justify-between rounded-lg border p-4">
+                        <div className="space-y-0.5">
+                            <Label className="text-base">EuPago Payment Processing</Label>
+                            <p className="text-muted-foreground text-sm">Accept Multibanco, MB WAY, and credit card payments via EuPago</p>
+                        </div>
+                        <Switch
+                            checked={formData.paymentMethods?.euPago?.enabled || false}
+                            onCheckedChange={(checked) => {
+                                const newEuPago = {
+                                    ...formData.paymentMethods?.euPago,
+                                    enabled: checked
+                                };
+                                handleNestedInputChange('paymentMethods', 'euPago', newEuPago);
+                            }}
+                        />
+                    </div>
+                    {formData.paymentMethods?.euPago?.enabled && (
+                        <div className="space-y-4">
+                            <div>
+                                <Label htmlFor="euPagoApiUrl">EuPago API URL</Label>
+                                <Input
+                                    id="euPagoApiUrl"
+                                    placeholder="https://sandbox.eupago.pt/ or https://eupago.pt/"
+                                    value={formData.paymentMethods?.euPago?.apiUrl || 'https://sandbox.eupago.pt/'}
+                                    onChange={(e) => {
+                                        const newEuPago = {
+                                            ...formData.paymentMethods?.euPago,
+                                            apiUrl: e.target.value
+                                        };
+                                        handleNestedInputChange('paymentMethods', 'euPago', newEuPago);
+                                    }}
+                                />
+                                <p className="mt-1 text-muted-foreground text-sm">
+                                    Use sandbox URL for testing, production URL for live payments
+                                </p>
+                            </div>
+                            <div>
+                                <Label htmlFor="euPagoApiKey">EuPago API Key</Label>
+                                <Input
+                                    id="euPagoApiKey"
+                                    type="password"
+                                    placeholder="Your EuPago API key"
+                                    value={formData.paymentMethods?.euPago?.apiKey || ''}
+                                    onChange={(e) => {
+                                        const newEuPago = {
+                                            ...formData.paymentMethods?.euPago,
+                                            apiKey: e.target.value
+                                        };
+                                        handleNestedInputChange('paymentMethods', 'euPago', newEuPago);
+                                    }}
+                                />
+                                <p className="mt-1 text-muted-foreground text-sm">
+                                    Your EuPago API key (keep this secure and never expose it)
+                                </p>
+                            </div>
+                            <div className="space-y-2">
+                                <Label>Supported Payment Methods</Label>
+                                <div className="flex gap-4">
+                                    <div className="flex items-center space-x-2">
+                                        <input
+                                            type="checkbox"
+                                            id="euPagoMB"
+                                            checked={formData.paymentMethods?.euPago?.supportedMethods?.includes('mb') || false}
+                                            onChange={(e) => {
+                                                const currentMethods = formData.paymentMethods?.euPago?.supportedMethods || [];
+                                                const newMethods = e.target.checked 
+                                                    ? [...currentMethods, 'mb']
+                                                    : currentMethods.filter(m => m !== 'mb');
+                                                const newEuPago = {
+                                                    ...formData.paymentMethods?.euPago,
+                                                    supportedMethods: newMethods
+                                                };
+                                                handleNestedInputChange('paymentMethods', 'euPago', newEuPago);
+                                            }}
+                                            className="rounded"
+                                        />
+                                        <Label htmlFor="euPagoMB" className="text-sm">Multibanco</Label>
+                                    </div>
+                                    <div className="flex items-center space-x-2">
+                                        <input
+                                            type="checkbox"
+                                            id="euPagoMBWay"
+                                            checked={formData.paymentMethods?.euPago?.supportedMethods?.includes('mbway') || false}
+                                            onChange={(e) => {
+                                                const currentMethods = formData.paymentMethods?.euPago?.supportedMethods || [];
+                                                const newMethods = e.target.checked 
+                                                    ? [...currentMethods, 'mbway']
+                                                    : currentMethods.filter(m => m !== 'mbway');
+                                                const newEuPago = {
+                                                    ...formData.paymentMethods?.euPago,
+                                                    supportedMethods: newMethods
+                                                };
+                                                handleNestedInputChange('paymentMethods', 'euPago', newEuPago);
+                                            }}
+                                            className="rounded"
+                                        />
+                                        <Label htmlFor="euPagoMBWay" className="text-sm">MB WAY</Label>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     )}
