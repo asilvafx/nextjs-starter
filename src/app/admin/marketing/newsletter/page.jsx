@@ -565,7 +565,6 @@ export default function NewsletterPage() {
                 <TabsList>
                     <TabsTrigger value="campaigns">Campaigns</TabsTrigger>
                     <TabsTrigger value="sms">SMS Campaigns</TabsTrigger>
-                    <TabsTrigger value="subscribers">Subscribers</TabsTrigger>
                     <TabsTrigger value="templates">Templates</TabsTrigger>
                 </TabsList>
 
@@ -1170,65 +1169,6 @@ export default function NewsletterPage() {
                     <PaginationControls 
                         type="campaigns" 
                         onPageChange={fetchCampaigns} 
-                    />
-                </TabsContent>
-
-                {/* Subscribers Tab */}
-                <TabsContent value="subscribers" className="space-y-6">
-                    <div className="flex items-center justify-between">
-                        <h2 className="text-xl font-semibold">Subscribers</h2>
-                        <div className="text-sm text-muted-foreground">
-                            Total: {pagination.subscribers.total} subscribers
-                        </div>
-                    </div>
-
-                    <div className="grid gap-4">
-                        {subscribers.length === 0 ? (
-                            <Card>
-                                <CardContent className="flex items-center justify-center p-12">
-                                    <div className="text-center">
-                                        <Users className="mx-auto mb-4 h-12 w-12 text-muted-foreground" />
-                                        <h3 className="text-lg font-medium">No subscribers yet</h3>
-                                        <p className="text-muted-foreground mb-4">
-                                            Start building your audience by adding subscribers to your mailing list
-                                        </p>
-                                        <Button variant="outline">
-                                            <Plus className="h-4 w-4 mr-2" />
-                                            Add First Subscriber
-                                        </Button>
-                                    </div>
-                                </CardContent>
-                            </Card>
-                        ) : (
-                            subscribers.map((subscriber) => (
-                            <Card key={subscriber.id}>
-                                <CardHeader>
-                                    <div className="flex items-center justify-between">
-                                        <div>
-                                            <CardTitle className="text-lg">{subscriber.name || subscriber.email}</CardTitle>
-                                            <CardDescription>
-                                                <div>{subscriber.email}</div>
-                                                {subscriber.phone && <div className="flex items-center mt-1"><Phone className="h-3 w-3 mr-1" />{subscriber.phone}</div>}
-                                            </CardDescription>
-                                        </div>
-                                        <div className="flex items-center space-x-2">
-                                            <Badge variant={subscriber.status === 'active' ? 'default' : 'secondary'}>
-                                                {subscriber.status}
-                                            </Badge>
-                                            <div className="text-sm text-muted-foreground">
-                                                Joined: {new Date(subscriber.createdAt).toLocaleDateString()}
-                                            </div>
-                                        </div>
-                                    </div>
-                                </CardHeader>
-                            </Card>
-                            ))
-                        )}
-                    </div>
-
-                    <PaginationControls 
-                        type="subscribers" 
-                        onPageChange={fetchSubscribers} 
                     />
                 </TabsContent>
 

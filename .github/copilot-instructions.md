@@ -46,9 +46,16 @@ This is a **Next.js 15** with **React 19** professional CMS and e-commerce platf
 - **Analytics & Reports**: Business intelligence and performance metrics
 
 ### Marketing & Communication
-- **Newsletter System**: Email campaigns with subscriber management
+- **Newsletter System**: Email campaigns, templates, and subscriber management with server-side functions
 - **Email Templates**: Professional email templates for all business communications
+- **SMS Campaigns**: Text messaging campaigns with subscriber management
 - **Integration Hub**: Third-party service integrations (Analytics, Payment, etc.)
+
+### System Administration & Maintenance
+- **Server Information**: Comprehensive system monitoring with version tracking, memory usage, and uptime statistics
+- **Cache Management**: Advanced Next.js cache clearing with path/tag revalidation and settings cache
+- **Database Health**: Connection monitoring and collection accessibility checks
+- **System Cleanup**: Automated maintenance operations for notifications and cache clearing
 
 ## Key Development Patterns
 
@@ -62,7 +69,277 @@ const item = await DBService.getItemByKey('email', 'user@example.com', 'users');
 const result = await DBService.create(newItem, 'products');
 ```
 
-### Client-Side API Integration
+### Server-Side Admin Functions
+Use server-side functions from `src/lib/server/admin.js` for admin operations:
+```javascript
+import { 
+  getDashboardStats, 
+  getAllOrders, 
+  getAllCustomers, 
+  getAllUsers,
+  createUser,
+  updateUser,
+  deleteUser
+} from '@/lib/server/admin.js';
+
+// Dashboard statistics with aggregated data
+const stats = await getDashboardStats();
+
+// Paginated data retrieval with filtering
+const orders = await getAllOrders({ page: 1, limit: 10, search: 'customer', statusFilter: 'pending' });
+const customers = await getAllCustomers({ page: 1, limit: 10, search: 'john' });
+const users = await getAllUsers({ page: 1, limit: 10, search: 'admin' });
+
+// User management operations
+const newUser = await createUser({ name: 'John Doe', email: 'john@example.com', role: 'user' });
+const updatedUser = await updateUser('john@example.com', { name: 'John Smith' });
+await deleteUser('john@example.com');
+```
+
+### Comprehensive Admin Server Functions
+The platform includes extensive server-side functions in `src/lib/server/admin.js` for complete admin operations:
+
+**Dashboard & Analytics:**
+```javascript
+import { getDashboardStats } from '@/lib/server/admin.js';
+
+// Get comprehensive dashboard statistics
+const dashboardData = await getDashboardStats();
+// Returns: counts, revenue, recent activity for users/orders/products
+```
+
+**Order Management:**
+```javascript
+import { 
+  getAllOrders, 
+  createOrder, 
+  updateOrder, 
+  deleteOrder, 
+  getOrderById 
+} from '@/lib/server/admin.js';
+
+// Paginated orders with filtering
+const orders = await getAllOrders({ 
+  page: 1, 
+  limit: 10, 
+  search: 'customer@email.com', 
+  statusFilter: 'pending' 
+});
+
+// Order CRUD operations
+const order = await createOrder(orderData);
+const updated = await updateOrder(orderId, updateData);
+const deleted = await deleteOrder(orderId);
+const orderDetails = await getOrderById(orderId);
+```
+
+**Customer Management:**
+```javascript
+import { 
+  getAllCustomers, 
+  createCustomer, 
+  updateCustomer, 
+  deleteCustomer,
+  createOrUpdateCustomerFromOrder 
+} from '@/lib/server/admin.js';
+
+// Paginated customers with search
+const customers = await getAllCustomers({ page: 1, limit: 10, search: 'john' });
+
+// Customer CRUD operations
+const customer = await createCustomer(customerData);
+const updated = await updateCustomer(customerId, updateData);
+await deleteCustomer(customerId);
+
+// Smart customer creation from order data
+const customerFromOrder = await createOrUpdateCustomerFromOrder(orderCustomerData);
+```
+
+**User & Role Management:**
+```javascript
+import { 
+  getAllUsers, 
+  getAllRoles,
+  createUser, 
+  updateUser, 
+  deleteUser,
+  createRole,
+  updateRole,
+  deleteRole,
+  getUserRole 
+} from '@/lib/server/admin.js';
+
+// User management with pagination
+const users = await getAllUsers({ page: 1, limit: 10, search: 'admin' });
+const roles = await getAllRoles();
+
+// User CRUD operations (uses email as identifier)
+const newUser = await createUser({ name: 'John', email: 'john@example.com', role: 'admin' });
+const updatedUser = await updateUser('john@example.com', { name: 'John Smith' });
+await deleteUser('john@example.com');
+
+// Role management
+const role = await createRole({ name: 'Manager', permissions: ['read', 'write'] });
+const updatedRole = await updateRole(roleId, { permissions: ['read', 'write', 'admin'] });
+await deleteRole(roleId);
+const userRole = await getUserRole(userId);
+```
+
+**Catalog & Inventory:**
+```javascript
+import { 
+  getAllCatalog, 
+  getAllCategories, 
+  getAllCollections,
+  getAllAttributes,
+  createCatalogItem,
+  updateCatalogItem,
+  deleteCatalogItem,
+  createCategory,
+  updateCategory,
+  deleteCategory,
+  createAttribute,
+  updateAttribute,
+  deleteAttribute 
+} from '@/lib/server/admin.js';
+
+// Paginated catalog data
+const products = await getAllCatalog({ page: 1, limit: 10, search: 'product', categoryFilter: 'electronics' });
+const categories = await getAllCategories({ page: 1, limit: 10, search: 'tech' });
+const collections = await getAllCollections({ page: 1, limit: 10 });
+const attributes = await getAllAttributes({ page: 1, limit: 10 });
+
+// Product management
+const product = await createCatalogItem(productData);
+const updated = await updateCatalogItem(productId, updateData);
+await deleteCatalogItem(productId);
+
+// Category and attribute management
+const category = await createCategory(categoryData);
+const attribute = await createAttribute(attributeData);
+```
+
+**Newsletter & Campaign Management:**
+```javascript
+import { 
+  getAllCampaigns, 
+  getAllSubscribers, 
+  getAllTemplates,
+  createCampaign,
+  updateCampaign,
+  deleteCampaign,
+  createTemplate,
+  updateTemplate,
+  deleteTemplate 
+} from '@/lib/server/admin.js';
+
+// Marketing data with filtering
+const campaigns = await getAllCampaigns({ 
+  page: 1, 
+  limit: 10, 
+  search: 'newsletter', 
+  type: 'email',
+  status: 'sent' 
+});
+const subscribers = await getAllSubscribers({ page: 1, limit: 10, search: 'user@email.com', status: 'active' });
+const templates = await getAllTemplates({ page: 1, limit: 10, search: 'welcome', type: 'email' });
+
+// Campaign management
+const campaign = await createCampaign({
+  subject: 'Newsletter',
+  content: 'Email content',
+  type: 'email',
+  status: 'draft'
+});
+
+// Template management  
+const template = await createTemplate({
+  name: 'Welcome Email',
+  type: 'email',
+  content: 'Template content'
+});
+```
+
+**System Maintenance:**
+```javascript
+import { 
+  getServerInfo, 
+  clearSystemCache, 
+  getDatabaseStats, 
+  performSystemCleanup,
+  // Server actions for maintenance page
+  getServerInfoAction,
+  clearSystemCacheAction,
+  getDatabaseStatsAction,
+  performSystemCleanupAction
+} from '@/lib/server/admin.js';
+
+// Server monitoring
+const serverInfo = await getServerInfo();
+// Returns: versions (node, next, react), system stats (memory, CPU, uptime), logs
+
+// Cache management
+const cacheResult = await clearSystemCache('clear-all-cache');
+// Options: 'revalidate-path', 'revalidate-tag', 'clear-settings-cache', 'clear-all-cache'
+
+// Database health checks
+const dbStats = await getDatabaseStats();
+// Returns: connectivity status, collection accessibility, provider info
+
+// System cleanup
+const cleanupResult = await performSystemCleanup({
+  cleanNotifications: true,
+  clearCaches: true
+});
+
+// Use server actions for direct component usage
+const serverData = await getServerInfoAction();
+```
+
+**Settings & Configuration:**
+```javascript
+import { 
+  getSiteSettings, 
+  getAllSettings,
+  getStoreSettings,
+  getAllStoreSettings,
+  updateStoreSettings,
+  clearSettingsCache,
+  getCachedStoreSettings 
+} from '@/lib/server/admin.js';
+
+// Settings management
+const siteSettings = await getSiteSettings();
+const allSettings = await getAllSettings();
+const storeSettings = await getStoreSettings();
+
+// Update store configuration
+const updated = await updateStoreSettings({
+  storeName: 'My Store',
+  currency: 'USD',
+  vatEnabled: true
+});
+
+// Cache management for settings
+await clearSettingsCache();
+const cachedSettings = await getCachedStoreSettings();
+```
+
+**Media & File Management:**
+```javascript
+import { 
+  getAllGalleryMedia,
+  createGalleryMedia,
+  updateGalleryMedia,
+  deleteGalleryMedia 
+} from '@/lib/server/admin.js';
+
+// Media library management
+const media = await getAllGalleryMedia({ page: 1, limit: 10, search: 'image' });
+const newMedia = await createGalleryMedia(mediaData);
+const updated = await updateGalleryMedia(mediaId, updateData);
+await deleteGalleryMedia(mediaId);
+```
 Use the `QueryAPI` class from `src/lib/client/query.js` for all client operations:
 ```javascript
 import { getAll, create, update, remove } from '@/lib/client/query.js';
@@ -187,18 +464,25 @@ Complete admin interface with modular navigation:
 
 **Core Modules:**
 - **Dashboard**: Analytics, reports, and overview metrics
-- **Access Control**: User management, roles, and permissions
+- **Access Control**: User management, roles, and permissions  
 - **Store Management**: Orders, catalog, inventory, customers, coupons
 - **Content Management**: Media library, blocks system, SEO tools
 - **Workspace**: Task management, agenda, scheduling
-- **Marketing**: Newsletter campaigns, subscriber management
+- **Marketing**: Newsletter campaigns, SMS campaigns, templates (subscriber management moved to analytics cards)
 - **Developer Tools**: Database management, API endpoints, system monitoring
 - **System Settings**: Configuration, integrations, maintenance
 
+**System Maintenance Features:**
+- **Server Information**: Comprehensive monitoring with version tracking, memory usage, uptime statistics, and system logs
+- **Cache Management**: Advanced Next.js revalidation with path/tag clearing and settings cache management
+- **Database Health**: Connection monitoring and collection accessibility verification
+- **System Cleanup**: Automated maintenance operations for notifications and cache clearing
+
 **Layout Structure:**
 - Main layout: `src/app/admin/layout.jsx` with responsive sidebar navigation
-- Dynamic forms with `useFieldArray` for complex data structures
+- Dynamic forms with `useFieldArray` for complex data structures  
 - Consistent `FormField` + `FormControl` pattern from shadcn/ui
+- Server-side admin functions integrated throughout admin interface
 
 ## Critical Developer Workflows
 
