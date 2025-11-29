@@ -79,9 +79,9 @@ export function CatalogItemForm({
         fetchAttributes();
     }, []);
 
-    // Sync customAttributes when formData changes (for edit mode)
+    // Sync customAttributes when formData changes (for edit mode) - only on mount
     useEffect(() => {
-        if (formData.customAttributes) {
+        if (editItem && formData.customAttributes) {
             setCustomAttributes(formData.customAttributes.map(attr => ({
                 name: attr.name || '',
                 nameML: attr.nameML || {},
@@ -89,10 +89,10 @@ export function CatalogItemForm({
                 valueML: attr.valueML || {}
             })));
         }
-    }, [formData.customAttributes]);
+    }, [editItem]);
 
     const addAttribute = () => {
-        setCustomAttributes([
+        const newAttributes = [
             ...customAttributes, 
             { 
                 name: '', 
@@ -100,12 +100,21 @@ export function CatalogItemForm({
                 value: '',
                 valueML: {}
             }
-        ]);
+        ];
+        setCustomAttributes(newAttributes);
+        setFormData({
+            ...formData,
+            customAttributes: newAttributes
+        });
     };
 
     const removeAttribute = (index) => {
         const newAttributes = customAttributes.filter((_, i) => i !== index);
         setCustomAttributes(newAttributes);
+        setFormData({
+            ...formData,
+            customAttributes: newAttributes
+        });
     };
 
     const updateAttribute = (index, field, value) => {

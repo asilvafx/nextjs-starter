@@ -780,9 +780,7 @@ export async function updateUser(userIdentifier, userData) {
             updatedAt: new Date().toISOString()
         };
 
-        console.log('Updating user with key:', userKey, 'data:', updateData);
         const result = await DBService.update(userKey, updateData, 'users');
-        console.log('Update result:', result);
 
         return {
             success: true,
@@ -815,9 +813,7 @@ export async function deleteUser(userIdentifier) {
             };
         }
 
-        console.log('Deleting user with key:', userKey);
         const result = await DBService.delete(userKey, 'users');
-        console.log('Delete result:', result);
 
         return {
             success: true,
@@ -890,9 +886,7 @@ export async function updateRole(roleId, roleData) {
             updatedAt: new Date().toISOString()
         };
 
-        console.log('Updating role with key:', roleKey, 'data:', updateData);
         const result = await DBService.update(roleKey, updateData, 'roles');
-        console.log('Role update result:', result);
 
         return {
             success: true,
@@ -915,9 +909,9 @@ export async function updateRole(roleId, roleData) {
  */
 export async function deleteRole(roleId) {
     try {
-        // First, find the role key using getItemKey function
-        const roleKey = await DBService.getItemKey('id', roleId, 'roles');
-        if (!roleKey) {
+        // First, check if the role exists and get its data
+        const existingRole = await DBService.getItemByKey('id', roleId, 'roles');
+        if (!existingRole) {
             return {
                 success: false,
                 error: 'Role not found',
@@ -925,9 +919,25 @@ export async function deleteRole(roleId) {
             };
         }
 
-        console.log('Deleting role with key:', roleKey);
+        // Check if the role is a default/system role (cannot be deleted)
+        if (existingRole.isDefault === true) {
+            return {
+                success: false,
+                error: 'Cannot delete default role',
+                message: 'System roles cannot be deleted'
+            };
+        }
+
+        // Get the actual database key for deletion
+        const roleKey = await DBService.getItemKey('id', roleId, 'roles');
+        if (!roleKey) {
+            return {
+                success: false,
+                error: 'Role database key not found'
+            };
+        }
+
         const result = await DBService.delete(roleKey, 'roles');
-        console.log('Role delete result:', result);
 
         return {
             success: true,
@@ -1042,9 +1052,7 @@ export async function updateCustomer(customerId, customerData) {
             updatedAt: new Date().toISOString()
         };
 
-        console.log('Updating customer with key:', customerKey, 'data:', updateData);
         const result = await DBService.update(customerKey, updateData, 'customers');
-        console.log('Customer update result:', result);
 
         return {
             success: true,
@@ -1077,9 +1085,7 @@ export async function deleteCustomer(customerId) {
             };
         }
 
-        console.log('Deleting customer with key:', customerKey);
         const result = await DBService.delete(customerKey, 'customers');
-        console.log('Customer delete result:', result);
 
         return {
             success: true,
@@ -1259,9 +1265,7 @@ export async function updateOrder(orderId, orderData) {
             updatedAt: new Date().toISOString()
         };
 
-        console.log('Updating order with key:', orderKey, 'data:', updateData);
         const result = await DBService.update(orderKey, updateData, 'orders');
-        console.log('Order update result:', result);
 
         return {
             success: true,
@@ -1294,9 +1298,7 @@ export async function deleteOrder(orderId) {
             };
         }
 
-        console.log('Deleting order with key:', orderKey);
         const result = await DBService.delete(orderKey, 'orders');
-        console.log('Order delete result:', result);
 
         return {
             success: true,
@@ -1364,7 +1366,6 @@ export async function clearSettingsCache() {
         site_settings_timestamp: null,
         store_settings_timestamp: null
     };
-    console.log('Settings cache cleared');
     return { success: true, message: 'Settings cache cleared successfully' };
 }
 
@@ -1642,7 +1643,7 @@ export async function createCatalogItem(catalogData) {
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString()
         };
-
+        
         await DBService.create(newCatalogItem, 'catalog');
         return {
             success: true,
@@ -1671,7 +1672,7 @@ export async function updateCatalogItem(catalogId, catalogData) {
             updatedAt: new Date().toISOString()
         };
 
-        // Check if catalog item exists
+        // Check if catalog item exists and get the actual database key
         const existingItem = await DBService.getItemByKey('id', catalogId, 'catalog');
         if (!existingItem) {
             return {
@@ -1680,11 +1681,25 @@ export async function updateCatalogItem(catalogId, catalogData) {
             };
         }
 
-        await DBService.update(catalogId, updatedData, 'catalog');
+        // CRITICAL FIX: Get the actual database key (not the item's id field)
+        const dbKey = await DBService.getItemKey('id', catalogId, 'catalog');
+
+        if (!dbKey) {
+            return {
+                success: false,
+                error: 'Catalog item database key not found'
+            };
+        }
+
+        // Use the actual database key for the update
+        const updateResult = await DBService.update(dbKey, updatedData, 'catalog');
+
+        // Verify what was actually saved by reading it back
+        const verifyItem = await DBService.getItemByKey('id', catalogId, 'catalog');
 
         return {
             success: true,
-            data: { ...existingItem, ...updatedData }
+            data: verifyItem || { ...existingItem, ...updatedData }
         };
     } catch (error) {
         console.error('Error updating catalog item:', error);
@@ -1703,7 +1718,26 @@ export async function updateCatalogItem(catalogId, catalogData) {
  */
 export async function deleteCatalogItem(catalogId) {
     try {
-        await DBService.delete(catalogId, 'catalog');
+        // Check if catalog item exists
+        const existingItem = await DBService.getItemByKey('id', catalogId, 'catalog');
+        if (!existingItem) {
+            return {
+                success: false,
+                error: 'Catalog item not found'
+            };
+        }
+
+        // Get the actual database key (not the item's id field)
+        const dbKey = await DBService.getItemKey('id', catalogId, 'catalog');
+        if (!dbKey) {
+            return {
+                success: false,
+                error: 'Catalog item database key not found'
+            };
+        }
+
+        // Use the actual database key for deletion
+        await DBService.delete(dbKey, 'catalog');
 
         return {
             success: true,
@@ -7010,7 +7044,6 @@ export async function sendEuPagoPaymentConfirmationEmail(order) {
             items: JSON.parse(order.items || '[]')
         });
 
-        console.log('Payment confirmation email sent for order:', order.id);
     } catch (error) {
         console.error('Error sending payment confirmation email:', error);
     }

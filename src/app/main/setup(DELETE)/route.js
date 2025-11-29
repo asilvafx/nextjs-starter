@@ -95,9 +95,8 @@ const getDefaultRoles = () => [
         name: 'admin',
         displayName: 'Administrator',
         description: 'Full access to all features and settings',
-        permissions: ['*'],
-        isProtected: true,
-        isDefault: false,
+        permissions: ['*'], 
+        isDefault: true,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
     },
@@ -106,8 +105,7 @@ const getDefaultRoles = () => [
         name: 'user',
         displayName: 'User',
         description: 'Standard user with basic access',
-        permissions: ['read:profile', 'update:profile'],
-        isProtected: true,
+        permissions: ['read:profile', 'update:profile'], 
         isDefault: true,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()

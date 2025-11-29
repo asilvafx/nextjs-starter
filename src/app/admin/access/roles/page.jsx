@@ -44,46 +44,40 @@ import { Textarea } from '@/components/ui/textarea';
 import { useAuth } from '@/hooks/useAuth';
 import { getAllRoles, createRole, updateRole, deleteRole } from '@/lib/server/admin';
 
-// Default roles to be created if roles collection is empty
+// Default roles to be created if roles collection is empty (matches route.js structure)
 const defaultRoles = [
     {
-        id: 'admin-role-001',
-        title: 'Admin',
-        description: 'Full system access with all permissions',
-        routes: ['/admin', '/admin/*', '/dashboard', '/dashboard/*', '/account', '/account/*']
+        id: 'admin_role',
+        name: 'admin',
+        displayName: 'Administrator',
+        description: 'Full access to all features and settings',
+        permissions: ['*'],
+        isDefault: true,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
     },
     {
-        id: 'editor-role-002',
-        title: 'Editor',
-        description: 'Content management and editing permissions',
-        routes: ['/admin/dashboard', '/admin/store', '/admin/store/*', '/account', '/account/*']
-    },
-    {
-        id: 'moderator-role-003',
-        title: 'Moderator',
-        description: 'User and content moderation permissions',
-        routes: ['/admin/access', '/admin/access/users', '/admin/dashboard', '/account', '/account/*']
-    },
-    {
-        id: 'user-role-004',
-        title: 'User',
-        description: 'Basic user access with limited permissions',
-        routes: ['/account', '/account/*', '/dashboard']
+        id: 'user_role',
+        name: 'user',
+        displayName: 'User',
+        description: 'Standard user with basic access',
+        permissions: ['read:profile', 'update:profile'],
+        isDefault: true,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
     }
 ];
 
 const initialFormData = {
-    title: '',
+    name: '',
+    displayName: '',
     description: '',
-    routes: []
+    permissions: []
 };
 
-// Protected system roles that cannot be deleted
-const PROTECTED_ROLES = ['Admin', 'User'];
-
-// Helper function to check if a role is protected
-const isProtectedRole = (roleTitle) => {
-    return PROTECTED_ROLES.includes(roleTitle);
+// Helper function to check if a role is protected (default roles cannot be deleted)
+const isProtectedRole = (role) => {
+    return role?.isDefault === true;
 };
 
 const commonRoutes = [
@@ -234,9 +228,10 @@ export default function RolesPage() {
             const searchLower = search.toLowerCase();
             filteredRoles = rolesArray.filter(
                 (role) =>
-                    role.title?.toLowerCase().includes(searchLower) ||
+                    role.name?.toLowerCase().includes(searchLower) ||
+                    role.displayName?.toLowerCase().includes(searchLower) ||
                     role.description?.toLowerCase().includes(searchLower) ||
-                    role.routes?.some((route) => route.toLowerCase().includes(searchLower))
+                    role.permissions?.some((perm) => perm.toLowerCase().includes(searchLower))
             );
         }
 
@@ -247,7 +242,7 @@ export default function RolesPage() {
                 let bValue = b[sortConfig.key];
 
                 // Handle special cases
-                if (sortConfig.key === 'routes') {
+                if (sortConfig.key === 'permissions') {
                     aValue = aValue?.length || 0;
                     bValue = bValue?.length || 0;
                 }
@@ -273,8 +268,13 @@ export default function RolesPage() {
     const handleSubmit = async (e) => {
         e.preventDefault();
 
-        if (!formData.title.trim()) {
-            toast.error('Role title is required');
+        if (!formData.name.trim()) {
+            toast.error('Role name is required');
+            return;
+        }
+
+        if (!formData.displayName.trim()) {
+            toast.error('Display name is required');
             return;
         }
 
@@ -286,33 +286,17 @@ export default function RolesPage() {
             if (editRole) {
                 // Update existing role
                 const response = await updateRole(editRole.id, {
-                    title: formData.title.trim(),
+                    name: formData.name.trim(),
+                    displayName: formData.displayName.trim(),
                     description: formData.description.trim(),
-                    routes: formData.routes,
-                    updated_at: new Date().toISOString(),
-                    updated_by: currentUser?.id
+                    permissions: formData.permissions,
+                    updatedAt: new Date().toISOString(),
+                    updatedBy: currentUser?.id
                 });
 
                 if (response.success) {
-                    // Update the role in both states with merged data
-                    const rolesArray = Array.isArray(allRoles) ? allRoles : [];
-                    const updatedRoleData = { 
-                        ...editRole, 
-                        title: formData.title.trim(),
-                        description: formData.description.trim(),
-                        routes: formData.routes,
-                        updated_at: new Date().toISOString(),
-                        updated_by: currentUser?.id
-                    };
-                    const updatedRoles = rolesArray.map((role) =>
-                        role.title === editRole.title ? updatedRoleData : role
-                    );
-
-                    setRoles(updatedRoles);
-                    setAllRoles(updatedRoles);
-
                     toast.success('Role updated successfully');
-                    // Also refresh data from database to ensure consistency
+                    // Refresh data from database to ensure consistency
                     await refreshRoles();
                 } else {
                     throw new Error(response.error || 'Failed to update role');
@@ -320,32 +304,20 @@ export default function RolesPage() {
             } else {
                 // Create new role
                 const response = await createRole({
-                    id: Date.now().toString(), // Generate unique ID for new role
-                    title: formData.title.trim(),
+                    id: `role_${Date.now()}`,
+                    name: formData.name.trim(),
+                    displayName: formData.displayName.trim(),
                     description: formData.description.trim(),
-                    routes: formData.routes,
-                    created_at: new Date().toISOString(),
-                    created_by: currentUser?.id
+                    permissions: formData.permissions,
+                    isDefault: false,
+                    createdAt: new Date().toISOString(),
+                    updatedAt: new Date().toISOString(),
+                    createdBy: currentUser?.id
                 });
 
                 if (response.success) {
-                    // Add the new role to both states
-                    const rolesArray = Array.isArray(allRoles) ? allRoles : [];
-                    const newRoleData = {
-                        id: Date.now().toString(), // Ensure ID is included in state
-                        title: formData.title.trim(),
-                        description: formData.description.trim(),
-                        routes: formData.routes,
-                        created_at: new Date().toISOString(),
-                        created_by: currentUser?.id,
-                        ...response.data // Include any additional data from the database response
-                    };
-                    const newRoles = [...rolesArray, newRoleData];
-                    setRoles(newRoles);
-                    setAllRoles(newRoles);
-
                     toast.success('Role created successfully');
-                    // Also refresh data from database to ensure consistency
+                    // Refresh data from database to ensure consistency
                     await refreshRoles();
                 } else {
                     throw new Error(response.error || 'Failed to create role');
@@ -369,17 +341,18 @@ export default function RolesPage() {
 
     const handleEdit = (role) => {
         setFormData({
-            title: role.title || '',
+            name: role.name || '',
+            displayName: role.displayName || '',
             description: role.description || '',
-            routes: role.routes || []
+            permissions: role.permissions || []
         });
         setEditRole(role);
         setIsOpen(true);
     };
 
     const handleDeleteClick = (role) => {
-        if (isProtectedRole(role.title)) {
-            toast.error(`Cannot delete system role "${role.title}". This is a protected role.`);
+        if (isProtectedRole(role)) {
+            toast.error(`Cannot delete default role "${role.displayName || role.name}". This is a system role.`);
             return;
         }
         setRoleToDelete(role);
@@ -390,29 +363,23 @@ export default function RolesPage() {
         if (!roleToDelete) return;
 
         try {
-            const response = await deleteRole(roleToDelete.id); 
+            const response = await deleteRole(roleToDelete.id);
 
             if (response.success) {
-                // Remove the role from both states
-                const rolesArray = Array.isArray(allRoles) ? allRoles : [];
-                const filteredRoles = rolesArray.filter((role) => role.title !== roleToDelete.title);
-                setRoles(filteredRoles);
-                setAllRoles(filteredRoles);
-
-                // Clear middleware cache to ensure deleted roles are no longer applied
-                await clearMiddlewareCache();
-
                 toast.success('Role deleted successfully');
                 setDeleteConfirmOpen(false);
                 setRoleToDelete(null);
-                // Also refresh data from database to ensure consistency  
+                
+                // Clear middleware cache to ensure deleted roles are no longer applied
+                await clearMiddlewareCache();
+                
+                // Refresh data from database to ensure consistency
                 await refreshRoles();
             } else {
                 throw new Error(response.error || 'Failed to delete role');
             }
         } catch (error) {
-            console.error('Error deleting role:', error);
-            toast.error('Failed to delete role');
+            toast.error(error.message || 'Failed to delete role');
         }
     };
 
@@ -427,28 +394,28 @@ export default function RolesPage() {
         setIsViewOpen(true);
     };
 
-    const addRoute = (route) => {
-        if (route && !formData.routes.includes(route)) {
+    const addPermission = (permission) => {
+        if (permission && !formData.permissions.includes(permission)) {
             setFormData({
                 ...formData,
-                routes: [...formData.routes, route]
+                permissions: [...formData.permissions, permission]
             });
         }
     };
 
-    const removeRoute = (index) => {
-        const newRoutes = formData.routes.filter((_, i) => i !== index);
+    const removePermission = (index) => {
+        const newPermissions = formData.permissions.filter((_, i) => i !== index);
         setFormData({
             ...formData,
-            routes: newRoutes
+            permissions: newPermissions
         });
     };
 
-    const addCustomRoute = () => {
-        if (newRoute.trim() && !formData.routes.includes(newRoute.trim())) {
+    const addCustomPermission = () => {
+        if (newRoute.trim() && !formData.permissions.includes(newRoute.trim())) {
             setFormData({
                 ...formData,
-                routes: [...formData.routes, newRoute.trim()]
+                permissions: [...formData.permissions, newRoute.trim()]
             });
             setNewRoute('');
         }

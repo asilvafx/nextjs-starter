@@ -177,8 +177,8 @@ export default function CatalogPage() {
             if (storeRes.success) {
                 setStoreSettings(storeRes.data);
             }
-            if (settingsRes.success && settingsRes.data.length > 0) {
-                const settings = settingsRes.data[0];
+            if (settingsRes.success && settingsRes.data) {
+                const settings = settingsRes.data;
                 setAvailableLanguages(settings.availableLanguages || ['en']);
                 setDefaultLanguage(settings.language || 'en');
             }
@@ -241,15 +241,22 @@ export default function CatalogPage() {
                 });
                 const data = await response.json();
                 if (data.success && data.data?.[0]) {
-                    uploadedImages.push({
-                        url: data.data[0].publicUrl,
-                        alt: file.name
-                    });
+                    const uploadedFile = data.data[0];
+                    // Use the correct URL property from the upload response
+                    const imageUrl = uploadedFile.url || uploadedFile.publicUrl || uploadedFile.blobUrl;
+                    
+                    if (imageUrl) {
+                        uploadedImages.push({
+                            url: imageUrl,
+                            alt: uploadedFile.originalName || file.name
+                        });
+                    } else {
+                        toast.error(`Failed to get URL for ${file.name}`);
+                    }
                 } else {
                     toast.error(`Failed to upload ${file.name}`);
                 }
             } catch (error) {
-                console.error('Upload error:', error);
                 toast.error(`Failed to upload ${file.name}: ${error.message}`);
             }
         }
@@ -258,10 +265,13 @@ export default function CatalogPage() {
         setUploadProgress(100);
 
         if (uploadedImages.length > 0) {
-            setFormData((prev) => ({
-                ...prev,
-                images: [...prev.images, ...uploadedImages]
-            }));
+            setFormData((prev) => {
+                const updatedImages = [...prev.images, ...uploadedImages];
+                return {
+                    ...prev,
+                    images: updatedImages
+                };
+            });
             toast.success(`Successfully uploaded ${uploadedImages.length} image(s)`);
         }
 
@@ -288,17 +298,20 @@ export default function CatalogPage() {
                 }
             }
 
+            // Make sure we're using the current formData state with images
             const processedData = {
-                ...formData
+                ...formData,
+                // Ensure images array is included
+                images: formData.images || [],
+                coverImageIndex: formData.coverImageIndex >= 0 ? formData.coverImageIndex : 0
             };
 
             if (editItem) {
                 const updatedItemRes = await updateCatalogItem(editItem.id, processedData);
                 if (updatedItemRes.success) {
                     toast.success('Item successfully updated!');
-                    setCatalog((prev) =>
-                        prev.map((item) => (item.id === editItem.id ? { ...item, ...processedData } : item))
-                    );
+                    // Refresh data to get the actual saved state
+                    await fetchData();
                 } else {
                     toast.error(updatedItemRes.error || 'Failed to update item');
                     setIsSubmitting(false);
@@ -308,7 +321,8 @@ export default function CatalogPage() {
                 const newItemRes = await createCatalogItem(processedData);
                 if (newItemRes.success) {
                     toast.success('Item successfully created!');
-                    setCatalog((prev) => [...prev, newItemRes.data]);
+                    // Refresh data to get the actual saved state
+                    await fetchData();
                 } else {
                     toast.error(newItemRes.error || 'Failed to create item');
                     setIsSubmitting(false);
@@ -320,7 +334,6 @@ export default function CatalogPage() {
             setFormData(initialFormData);
             setEditItem(null);
         } catch (error) {
-            console.error('Error saving item:', error);
             toast.error(error.message || 'Failed to save item');
         } finally {
             setIsSubmitting(false);

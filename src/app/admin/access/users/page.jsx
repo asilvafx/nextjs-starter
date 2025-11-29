@@ -76,6 +76,12 @@ export default function UsersPage() {
     const hasFetchedRoles = useRef(false);
     const hasFetchedUsers = useRef(false);
 
+    // Helper function to get role display name
+    const getRoleDisplayName = (roleName) => {
+        const role = roles.find((r) => r.value === roleName);
+        return role ? role.label : roleName;
+    };
+
     const fetchRoles = async () => {
         // Prevent multiple simultaneous fetch requests
         if (hasFetchedRoles.current) {
@@ -87,20 +93,30 @@ export default function UsersPage() {
             setRolesLoading(true);
             const response = await getAllRoles();
 
-            // Ensure data is an array and extract role titles
+            // Ensure data is an array and extract roles with displayName and name
             const rolesArray = Array.isArray(response.data) ? response.data : [];
-            const rolesList = rolesArray.map((role) => role.title?.toLowerCase()).filter(Boolean);
+            // Map roles to show displayName for UI and use name as value
+            const rolesList = rolesArray.map((role) => ({
+                value: role.name?.toLowerCase() || role.name,
+                label: role.displayName || role.name
+            })).filter((role) => role.value);
 
             // Set roles with fallback to default roles if none exist
             if (rolesList.length === 0) {
-                setRoles(['user', 'admin', 'editor', 'moderator']);
+                setRoles([
+                    { value: 'admin', label: 'Administrator' },
+                    { value: 'user', label: 'User' }
+                ]);
             } else {
                 setRoles(rolesList);
             }
         } catch (error) {
             console.error('Error fetching roles:', error);
             // Fallback to default roles on error
-            setRoles(['user', 'admin', 'editor', 'moderator']);
+            setRoles([
+                { value: 'admin', label: 'Administrator' },
+                { value: 'user', label: 'User' }
+            ]);
             hasFetchedRoles.current = false;
         } finally {
             setRolesLoading(false);
@@ -287,8 +303,8 @@ export default function UsersPage() {
                     };
                 }
 
-                const userIdentifier = editUser.id || editUser.email;
-                const result = await updateUser(userIdentifier, userData);
+                // Use email as identifier since updateUser uses getItemKey('email', ...)
+                const result = await updateUser(editUser.email, userData);
                 
                 if (!result.success) {
                     throw new Error(result.error || 'Failed to update user');
@@ -310,19 +326,13 @@ export default function UsersPage() {
                     });
                 }
 
-                // Update local state - use email as fallback identifier
+                // Update local state using email as identifier
                 const updatedUserData = { ...editUser, ...userData };
                 setAllUsers((prev) => prev.map((user) => 
-                    (user.id && user.id === (editUser.id || editUser.email)) || 
-                    (user.email === editUser.email) 
-                        ? updatedUserData 
-                        : user
+                    user.email === editUser.email ? updatedUserData : user
                 ));
                 setUsers((prev) => prev.map((user) => 
-                    (user.id && user.id === (editUser.id || editUser.email)) || 
-                    (user.email === editUser.email) 
-                        ? updatedUserData 
-                        : user
+                    user.email === editUser.email ? updatedUserData : user
                 ));
 
                 toast.success('User updated successfully');
@@ -434,21 +444,17 @@ export default function UsersPage() {
         if (!userToDelete) return;
         setIsDeleting(true);
         try {
-            const userIdentifier = userToDelete.id || userToDelete.email;
-            const result = await deleteUser(userIdentifier);
+            // Use email as identifier since deleteUser uses getItemKey('email', ...)
+            const result = await deleteUser(userToDelete.email);
             
             if (!result.success) {
                 throw new Error(result.error || 'Failed to delete user');
             }
             
             toast.success('User deleted successfully');
-            // Update state - use email as fallback identifier
-            setAllUsers((prev) => prev.filter((user) => 
-                !((user.id && user.id === userIdentifier) || user.email === userToDelete.email)
-            ));
-            setUsers((prev) => prev.filter((user) => 
-                !((user.id && user.id === userIdentifier) || user.email === userToDelete.email)
-            ));
+            // Update state using email as identifier
+            setAllUsers((prev) => prev.filter((user) => user.email !== userToDelete.email));
+            setUsers((prev) => prev.filter((user) => user.email !== userToDelete.email));
             setDeleteConfirmOpen(false);
             setUserToDelete(null);
             // Also refresh data from database to ensure consistency
@@ -545,14 +551,14 @@ export default function UsersPage() {
                                 </TableRow>
                             ) : (
                                 users.map((user, index) => (
-                                    <TableRow key={user.id || `user-${index}`}>
+                                    <TableRow key={`user-${index}`}>
                                         <TableCell data-label="Name" className="capitalize">
                                             {user.displayName} {user.email === currentUser?.email ?? '(You)'}
                                         </TableCell>
                                         <TableCell data-label="Email">{user.email}</TableCell>
                                         <TableCell data-label="Role">
                                             <span className="rounded-full bg-slate-100 px-2 py-1 text-black text-xs capitalize">
-                                                {user.role}
+                                                {getRoleDisplayName(user.role)}
                                             </span>
                                         </TableCell>
                                         <TableCell data-label="Created at">
@@ -671,9 +677,9 @@ export default function UsersPage() {
                                     <SelectValue placeholder="Select role" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    {roles.map((r) => (
-                                        <SelectItem key={r} value={r}>
-                                            {r}
+                                    {roles.map((r, index) => (
+                                        <SelectItem key={index} value={r.value}>
+                                            {r.label}
                                         </SelectItem>
                                     ))}
                                 </SelectContent>
@@ -837,7 +843,7 @@ export default function UsersPage() {
                                     <div className="grid grid-cols-2 gap-4 text-sm">
                                         <div>
                                             <p className="text-muted-foreground">Role</p>
-                                            <p className="font-medium capitalize">{viewUser.role}</p>
+                                            <p className="font-medium capitalize">{getRoleDisplayName(viewUser.role)}</p>
                                         </div>
                                         <div>
                                             <p className="text-muted-foreground">Created</p>
