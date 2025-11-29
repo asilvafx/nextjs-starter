@@ -1,5 +1,10 @@
 // @/lib/client/query.js
 
+// Cache for site settings
+let siteSettingsCache = null;
+let cacheTimestamp = null;
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+
 class QueryAPI {
     constructor() {
         this.baseURL = `/api/query`;
@@ -302,6 +307,44 @@ class QueryAPI {
             throw error;
         }
     }
+
+    // Get cached site settings
+    async getSiteSettings(forceRefresh = false) {
+        const now = Date.now();
+        
+        // Return cached data if valid and not forcing refresh
+        if (!forceRefresh && siteSettingsCache && cacheTimestamp && (now - cacheTimestamp) < CACHE_DURATION) {
+            return siteSettingsCache;
+        }
+
+        try {
+            const response = await fetch(`/api/query/public/site_settings?_t=${now}`);
+            
+            if (!response.ok) {
+                console.warn('Failed to fetch site settings');
+                return null;
+            }
+
+            const data = await response.json();
+            
+            if (data.success && data.data && data.data.length > 0) {
+                siteSettingsCache = data.data[0];
+                cacheTimestamp = now;
+                return siteSettingsCache;
+            }
+
+            return null;
+        } catch (error) {
+            console.error('Error fetching site settings:', error);
+            return null;
+        }
+    }
+
+    // Clear site settings cache
+    clearSiteSettingsCache() {
+        siteSettingsCache = null;
+        cacheTimestamp = null;
+    }
 }
 
 // Create and export a singleton instance
@@ -330,6 +373,10 @@ export const batchDelete = (ids, collection) => queryAPI.batchDelete(ids, collec
 
 // Export revalidate function
 export const revalidate = (collection, tag) => queryAPI.revalidate(collection, tag);
+
+// Export site settings functions
+export const getSiteSettings = (forceRefresh) => queryAPI.getSiteSettings(forceRefresh);
+export const clearSiteSettingsCache = () => queryAPI.clearSiteSettingsCache();
 
 // Export the main class instance
 export default queryAPI;

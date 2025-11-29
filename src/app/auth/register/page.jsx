@@ -8,6 +8,7 @@ import { useSession } from 'next-auth/react';
 import { useEffect, useState } from 'react';
 import { RegisterForm } from '@/components/register-form';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
+import { getSiteSettings } from '@/lib/client/query';
 
 const RegisterPage = () => {
     const router = useRouter();
@@ -18,22 +19,15 @@ const RegisterPage = () => {
     useEffect(() => {
         const checkSettings = async () => {
             try {
-                const response = await fetch(`/api/query/public/site_settings?_t=${Date.now()}`);
-                if (response.ok) {
-                    const data = await response.json();
-                    if (data.success && data.data && data.data.length > 0) {
-                        const settings = data.data[0];
-                        if (settings.allowRegistration === false) {
-                            router.push('/auth/login');
-                            return;
-                        }
-                        setRegistrationAllowed(true);
-                    } else {
-                        // If no settings found, allow registration by default
-                        setRegistrationAllowed(true);
+                const settings = await getSiteSettings();
+                if (settings) {
+                    if (settings.allowRegistration === false) {
+                        router.push('/auth/login');
+                        return;
                     }
+                    setRegistrationAllowed(true);
                 } else {
-                    // If API fails, allow registration by default
+                    // If no settings found, allow registration by default
                     setRegistrationAllowed(true);
                 }
             } catch (error) {

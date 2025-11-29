@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { FaCartShopping } from 'react-icons/fa6';
 import { useCart } from 'react-use-cart';
+import { signIn } from 'next-auth/react';
 import { toast } from 'sonner';
 import LanguageSwitch from '@/components/language-switch';
 import { Button } from '@/components/ui/button';
@@ -28,14 +29,10 @@ const Homepage = () => {
     const [showSetupDirWarning, setShowSetupDirWarning] = useState(false);
     
     // First user form state
-    const [userFormData, setUserFormData] = useState({
-        displayName: '',
-        email: '',
-        password: '',
-        confirmPassword: '',
-        phone: '',
-        country: ''
-    });
+    const [name, setName] = useState('');
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
+    const [confirmPassword, setConfirmPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
     const [isCreatingUser, setIsCreatingUser] = useState(false);
 
@@ -46,10 +43,10 @@ const Homepage = () => {
         await logout();
     };
 
-    // Check if setup directory exists
+    // Check if setup directory exists (silently)
     const checkSetupDirectory = async () => {
         try {
-            const response = await fetch('/main/setup');
+            const response = await fetch('/main/setup', { method: 'HEAD' });
             return response.ok;
         } catch (error) {
             return false;
@@ -60,12 +57,12 @@ const Homepage = () => {
     const handleCreateFirstUser = async (e) => {
         e.preventDefault();
         
-        if (userFormData.password !== userFormData.confirmPassword) {
+        if (password !== confirmPassword) {
             toast.error("Passwords don't match");
             return;
         }
 
-        if (userFormData.password.length < 8) {
+        if (password.length < 8) {
             toast.error("Password must be at least 8 characters long");
             return;
         }
@@ -73,26 +70,25 @@ const Homepage = () => {
         setIsCreatingUser(true);
 
         try {
-            // Generate browser fingerprint
             const browserUnique = await Fingerprint();
-            // Hash password (simple base64 encoding as in register form)
-            const passwordHash = btoa(userFormData.password);
+            const passwordHash = btoa(password);
 
-            const response = await fetch('/main/setup/users', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    ...userFormData,
-                    password: passwordHash,
-                    client: browserUnique
-                })
+            const result = await signIn('credentials', {
+                name,
+                email,
+                password: passwordHash,
+                client: browserUnique,
+                action: 'register',
+                redirect: false
             });
 
-            const result = await response.json();
+            if (result?.error) {
+                toast.error(result.error);
+                setIsCreatingUser(false);
+                return;
+            }
 
-            if (result.success) {
+            if (result?.ok) {
                 toast.success('First admin user created successfully!');
                 setNeedsFirstUser(false);
                 setSetupComplete(true);
@@ -100,8 +96,6 @@ const Homepage = () => {
                 // Check if setup directory still exists
                 const setupDirExists = await checkSetupDirectory();
                 setShowSetupDirWarning(setupDirExists);
-            } else {
-                toast.error(result.error || 'Failed to create user');
             }
         } catch (error) {
             console.error('Error creating user:', error);
@@ -114,12 +108,30 @@ const Homepage = () => {
     // Function to check setup and load languages
     useEffect(() => {
         const setupDbEnv = async () => {
-            try {
-                setLoading(true);
-                setSetupPhase('checking');
+            setLoading(true);
+            setSetupPhase('checking');
 
+            // First check if setup directory exists (using HEAD to avoid console errors)
+            const setupExists = await checkSetupDirectory();
+            
+            if (!setupExists) {
+                // Setup directory doesn't exist - show normal homepage
+                setSetupComplete(false);
+                setLoading(false);
+                return;
+            }
+
+            try {
                 // Fetch setup data
                 const response = await fetch('/main/setup');
+                
+                if (!response.ok) {
+                    // Setup directory was just deleted or inaccessible
+                    setSetupComplete(false);
+                    setLoading(false);
+                    return;
+                }
+                
                 const data = await response.json();
                 setSetupData(data);
 
@@ -129,16 +141,26 @@ const Homepage = () => {
                     // Wait a moment to show the database initialization phase
                     await new Promise(resolve => setTimeout(resolve, 1500));
                     
-                    // Check if we need to create first user
-                    const usersResponse = await fetch('/main/setup/users');
-                    const usersData = await usersResponse.json();
-                    
-                    if (usersData.success && usersData.needsFirstUser) {
-                        setSetupPhase('first-user');
-                        setNeedsFirstUser(true);
-                        setLoading(false);
-                    } else {
-                        // Setup is complete, check if setup dir exists
+                    // Check if we need to create first user by checking users collection
+                    try {
+                        const usersResponse = await fetch('/api/query/public/users');
+                        const usersData = await usersResponse.json();
+                        const hasUsers = usersData.success && usersData.data && usersData.data.length > 0;
+                        
+                        if (!hasUsers) {
+                            setSetupPhase('first-user');
+                            setNeedsFirstUser(true);
+                            setLoading(false);
+                        } else {
+                            // Setup is complete, check if setup dir exists
+                            setSetupPhase('complete');
+                            setSetupComplete(true);
+                            const setupDirExists = await checkSetupDirectory();
+                            setShowSetupDirWarning(setupDirExists);
+                            setLoading(false);
+                        }
+                    } catch (userCheckError) {
+                        // If error checking users, assume setup is complete
                         setSetupPhase('complete');
                         setSetupComplete(true);
                         const setupDirExists = await checkSetupDirectory();
@@ -151,7 +173,8 @@ const Homepage = () => {
                 }
             } catch (err) {
                 console.error('❌ Error loading setup:', err);
-                toast.error(`Error loading setup: ${err.message}`);
+                // If error occurs, assume setup is done and show normal homepage
+                setSetupComplete(false);
                 setLoading(false);
             }
         };
@@ -164,7 +187,7 @@ const Homepage = () => {
     if (loading) {
         return (
             <div className="flex min-h-screen items-center justify-center">
-                <Card className="w-full max-w-md">
+                <Card className="w-full max-w-md mx-auto">
                     <CardHeader>
                         <CardTitle className="flex items-center gap-3">
                             <Loader2 className="h-6 w-6 animate-spin text-primary" />
@@ -209,7 +232,7 @@ const Homepage = () => {
     if (needsFirstUser && setupPhase === 'first-user') {
         return (
             <div className="flex min-h-screen items-center justify-center p-4">
-                <Card className="w-full max-w-md">
+                <Card className="w-full max-w-md mx-auto">
                     <CardHeader>
                         <CardTitle>Create First Admin User</CardTitle>
                         <CardDescription>
@@ -219,13 +242,13 @@ const Homepage = () => {
                     <CardContent>
                         <form onSubmit={handleCreateFirstUser} className="space-y-4">
                             <div className="grid gap-3">
-                                <Label htmlFor="displayName">Full Name</Label>
+                                <Label htmlFor="name">Full Name</Label>
                                 <Input
-                                    id="displayName"
+                                    id="name"
                                     type="text"
                                     placeholder="Enter your full name"
-                                    value={userFormData.displayName}
-                                    onChange={(e) => setUserFormData(prev => ({ ...prev, displayName: e.target.value }))}
+                                    value={name}
+                                    onChange={(e) => setName(e.target.value)}
                                     required
                                     disabled={isCreatingUser}
                                 />
@@ -237,8 +260,8 @@ const Homepage = () => {
                                     id="email"
                                     type="email"
                                     placeholder="Enter your email"
-                                    value={userFormData.email}
-                                    onChange={(e) => setUserFormData(prev => ({ ...prev, email: e.target.value }))}
+                                    value={email}
+                                    onChange={(e) => setEmail(e.target.value)}
                                     required
                                     disabled={isCreatingUser}
                                 />
@@ -251,8 +274,8 @@ const Homepage = () => {
                                         id="password"
                                         type={showPassword ? 'text' : 'password'}
                                         placeholder="Enter your password"
-                                        value={userFormData.password}
-                                        onChange={(e) => setUserFormData(prev => ({ ...prev, password: e.target.value }))}
+                                        value={password}
+                                        onChange={(e) => setPassword(e.target.value)}
                                         required
                                         disabled={isCreatingUser}
                                     />
@@ -273,21 +296,9 @@ const Homepage = () => {
                                     id="confirmPassword"
                                     type="password"
                                     placeholder="Confirm your password"
-                                    value={userFormData.confirmPassword}
-                                    onChange={(e) => setUserFormData(prev => ({ ...prev, confirmPassword: e.target.value }))}
+                                    value={confirmPassword}
+                                    onChange={(e) => setConfirmPassword(e.target.value)}
                                     required
-                                    disabled={isCreatingUser}
-                                />
-                            </div>
-
-                            <div className="grid gap-3">
-                                <Label htmlFor="phone">Phone (Optional)</Label>
-                                <Input
-                                    id="phone"
-                                    type="tel"
-                                    placeholder="Enter your phone number"
-                                    value={userFormData.phone}
-                                    onChange={(e) => setUserFormData(prev => ({ ...prev, phone: e.target.value }))}
                                     disabled={isCreatingUser}
                                 />
                             </div>
@@ -313,7 +324,7 @@ const Homepage = () => {
     if (setupComplete) {
         return (
             <div className="flex min-h-screen items-center justify-center p-4">
-                <div className="w-full max-w-2xl space-y-6">
+                <div className="w-full max-w-2xl space-y-6 mx-auto">
                     {showSetupDirWarning ? (
                         <Card className="border-orange-200 bg-orange-50">
                             <CardHeader>
@@ -364,10 +375,10 @@ const Homepage = () => {
         );
     }
 
-    // Normal homepage when setup is incomplete
+    // Normal homepage when setup is complete
     return (
         <>
-            <div className="section">
+            <div className="flex items-center justify-center p-4">
                 <div className="flex flex-col items-center justify-center gap-4">
                     <Link href="/" className="mb-4 flex" prefetch={false}>
                         <Image
@@ -435,39 +446,12 @@ const Homepage = () => {
                     </div> 
                 </div>
             </div>
-            <div className="section mb-4">
+            <div className="w-full max-w-lg mx-auto mb-4">
                 <Card>
                     <CardHeader>
                         <CardTitle>Welcome to Next.js Starter!</CardTitle>
                         <CardDescription>Your go-to boilerplate for Next.js projects.</CardDescription>
                     </CardHeader>
-                    <CardContent>
-                        {setupData?.setupComplete ? (
-                            <p className="text-green-600">✅ Setup is complete!</p>
-                        ) : (
-                            <div>
-                                <p className="text-red-600">❌ Setup incomplete</p>
-                                <p>Progress: {setupData?.setupPercentage}%</p>
-                                {setupData?.status?.missing?.length > 0 && (
-                                    <p>Missing: {setupData.status.missing.join(', ')}</p>
-                                )}
-                                {setupData?.status?.empty?.length > 0 && (
-                                    <p>Empty: {setupData.status.empty.join(', ')}</p>
-                                )}
-                                {setupData?.databaseInitialization && (
-                                    <div className="mt-3">
-                                        <p className="font-medium">Database Status:</p>
-                                        <p className="text-sm text-gray-600">{setupData.databaseInitialization.message}</p>
-                                        {setupData.databaseInitialization.tablesCreated?.length > 0 && (
-                                            <p className="text-sm text-green-600">
-                                                Tables created: {setupData.databaseInitialization.tablesCreated.join(', ')}
-                                            </p>
-                                        )}
-                                    </div>
-                                )}
-                            </div>
-                        )}
-                    </CardContent>
                 </Card>
             </div>
         </>

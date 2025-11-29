@@ -4,7 +4,7 @@ import DBService from '@/data/rest.db.js';
 
 // Default data structures based on admin pages
 const getDefaultSiteSettings = () => ({
-    id: 1,
+    id: "site_settings",
     siteName: 'My CMS Platform',
     siteEmail: 'admin@example.com',
     sitePhone: '',
@@ -56,7 +56,7 @@ const getDefaultSiteSettings = () => ({
 });
 
 const getDefaultStoreSettings = () => ({
-    id: 'store_settings_1',
+    id: 'store_settings',
     businessName: 'My Store',
     tvaNumber: '',
     address: '',
@@ -114,8 +114,33 @@ const getDefaultRoles = () => [
     }
 ];
 
+// Cache for initialization status to prevent duplicate runs
+let initializationInProgress = false;
+let initializationComplete = false;
+
 // Initialize default database tables and data
 const initializeDatabase = async () => {
+    // Prevent duplicate initialization
+    if (initializationInProgress) {
+        return {
+            success: true,
+            tablesCreated: [],
+            errors: [],
+            message: 'Initialization already in progress'
+        };
+    }
+
+    if (initializationComplete) {
+        return {
+            success: true,
+            tablesCreated: [],
+            errors: [],
+            message: 'Database already initialized'
+        };
+    }
+
+    initializationInProgress = true;
+
     const results = {
         success: false,
         tablesCreated: [],
@@ -127,7 +152,10 @@ const initializeDatabase = async () => {
         // Check and create site_settings
         try {
             const existingSiteSettings = await DBService.readAll('site_settings');
-            const hasData = existingSiteSettings && Object.keys(existingSiteSettings).length > 0;
+            const settingsArray = Array.isArray(existingSiteSettings) 
+                ? existingSiteSettings 
+                : Object.values(existingSiteSettings || {});
+            const hasData = settingsArray.length > 0;
             
             if (!hasData) {
                 const defaultSiteSettings = getDefaultSiteSettings();
@@ -144,7 +172,10 @@ const initializeDatabase = async () => {
         // Check and create store_settings
         try {
             const existingStoreSettings = await DBService.readAll('store_settings');
-            const hasData = existingStoreSettings && Object.keys(existingStoreSettings).length > 0;
+            const settingsArray = Array.isArray(existingStoreSettings) 
+                ? existingStoreSettings 
+                : Object.values(existingStoreSettings || {});
+            const hasData = settingsArray.length > 0;
             
             if (!hasData) {
                 const defaultStoreSettings = getDefaultStoreSettings();
@@ -161,7 +192,10 @@ const initializeDatabase = async () => {
         // Check and create roles
         try {
             const existingRoles = await DBService.readAll('roles');
-            const hasData = existingRoles && Object.keys(existingRoles).length > 0;
+            const rolesArray = Array.isArray(existingRoles) 
+                ? existingRoles 
+                : Object.values(existingRoles || {});
+            const hasData = rolesArray.length > 0;
             
             if (!hasData) {
                 const defaultRoles = getDefaultRoles();
@@ -195,12 +229,15 @@ const initializeDatabase = async () => {
             ? `Database initialized successfully. Created: ${results.tablesCreated.join(', ')}`
             : 'Database already initialized with default data';
 
+        initializationComplete = true;
         return results;
     } catch (error) {
         console.error('Database initialization error:', error);
         results.errors.push(error.message);
         results.message = 'Failed to initialize database';
         return results;
+    } finally {
+        initializationInProgress = false;
     }
 };
 

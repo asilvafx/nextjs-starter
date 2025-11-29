@@ -124,6 +124,17 @@ async function handleRegistration(email, passwordHash, { name, client }) {
             //throw new Error('Email already registered.');
         }
 
+        // Check if this is the first user (should be admin)
+        let isFirstUser = false;
+        try {
+            const allUsers = await DBService.readAll('users');
+            const userArray = Array.isArray(allUsers) ? allUsers : Object.values(allUsers || {});
+            isFirstUser = userArray.length === 0;
+        } catch (error) {
+            // If table doesn't exist or error, assume this is the first user
+            isFirstUser = true;
+        }
+
         // Generate salt via crypto API
         const salt = await generateSalt();
 
@@ -140,7 +151,7 @@ async function handleRegistration(email, passwordHash, { name, client }) {
             email: email,
             password: encryptedPassword,
             salt: salt,
-            role: 'user',
+            role: isFirstUser ? 'admin' : 'user',
             created_at: timeNow
         };
 

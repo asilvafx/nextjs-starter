@@ -35,6 +35,7 @@ import { getStoreSettings, updateStoreSettings } from '@/lib/server/admin';
 
 // Default form state
 const defaultFormState = {
+    id: 'store_settings',
     businessName: '',
     tvaNumber: '',
     address: '',
@@ -162,7 +163,13 @@ export default function StoreSettingsPage() {
                                 bic: settingsData.paymentMethods?.bankTransferDetails?.bic || '',
                                 additionalInstructions: settingsData.paymentMethods?.bankTransferDetails?.additionalInstructions || ''
                             },
-                            payOnDelivery: settingsData.paymentMethods?.payOnDelivery || false
+                            payOnDelivery: settingsData.paymentMethods?.payOnDelivery || false,
+                            euPago: {
+                                enabled: settingsData.paymentMethods?.euPago?.enabled || false,
+                                apiUrl: settingsData.paymentMethods?.euPago?.apiUrl || 'https://sandbox.eupago.pt/',
+                                apiKey: settingsData.paymentMethods?.euPago?.apiKey || '',
+                                supportedMethods: settingsData.paymentMethods?.euPago?.supportedMethods || ['mb', 'mbway']
+                            }
                         },
                         freeShippingEnabled: settingsData.freeShippingEnabled || false,
                         freeShippingThreshold: settingsData.freeShippingThreshold || 50,
@@ -176,27 +183,14 @@ export default function StoreSettingsPage() {
                     setSelectedBannedCountries(settingsData.bannedCountries || []);
                     setCarriers(settingsData.carriers || []);
                 } else {
-                    // Create new database table for store_settings if not exist,
-                     try {
-                        const createResult = await updateStoreSettings(defaultFormState);
-                        if (createResult.success && createResult.data?.id) {
-                            setSettingsId(createResult.data.id);
-                            setFormData(defaultFormState);
-                            setSelectedAllowedCountries(defaultFormState.allowedCountries);
-                            setSelectedBannedCountries(defaultFormState.bannedCountries);
-                            setCarriers(defaultFormState.carriers);
-                        } else {
-                            throw new Error('Failed to create store settings');
-                        }
-                    } catch (createError) {
-                        console.error('Error creating store settings:', createError);
-                        toast.error('Failed to initialize store settings');
-                        // Keep the default form state for manual entry
-                        setFormData(defaultFormState);
-                        setSelectedAllowedCountries([]);
-                        setSelectedBannedCountries([]);
-                        setCarriers([]);
-                    }
+                    // No settings found, use default form state
+                    // Settings should be created by setup process
+                    console.log('No store settings found, using defaults');
+                    setSettingsId('store_settings');
+                    setFormData(defaultFormState);
+                    setSelectedAllowedCountries([]);
+                    setSelectedBannedCountries([]);
+                    setCarriers([]);
                 }
             } catch (error) {
                 // Reset fetched flag on error so it can try again

@@ -141,7 +141,7 @@ export default function SystemSettingsPage() {
 
             if (response?.success && response.data) {
                 const settings = response.data;
-                setSettingsId(settings.id);
+                setSettingsId('site_settings');
 
                 // Reset form with fetched data (including integration settings)
                 form.reset({
@@ -270,16 +270,17 @@ export default function SystemSettingsPage() {
             delete cleanData.web3ChainId;
             delete cleanData.web3NetworkName;
 
-            // Use server action to update settings
-            const result = await updateSiteSettingsAction(cleanData);
+            // Use server action to update settings with id='site_settings'
+            const dataWithId = {
+                ...cleanData,
+                id: 'site_settings'
+            };
+            
+            const result = await updateSiteSettingsAction(dataWithId);
             
             if (result?.success) {
-                if (!settingsId && result.data?.id) {
-                    setSettingsId(result.data.id);
-                    toast.success('Settings created successfully');
-                } else {
-                    toast.success('Settings updated successfully');
-                }
+                setSettingsId('site_settings');
+                toast.success('Settings updated successfully');
             } else {
                 toast.error(result?.error || 'Failed to save settings');
                 return;

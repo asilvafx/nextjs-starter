@@ -542,15 +542,26 @@ export async function getAllCollections(params = {}) {
  */
 export async function getStoreSettings() {
     try {
-        const settings = await DBService.readAll('site_settings');
+        // First try to get by ID
+        const settingById = await DBService.getItemByKey('id', 'store_settings', 'store_settings');
+        
+        if (settingById) {
+            return {
+                success: true,
+                data: settingById
+            };
+        }
+
+        // If not found by ID, get all and find the first one
+        const settings = await DBService.readAll('store_settings');
         const settingsArray = Array.isArray(settings) ? settings : Object.values(settings || {});
 
-        // Find store settings or return default
-        const storeSetting = settingsArray.find((s) => s.key === 'store' || s.type === 'store');
+        // Return first setting found or null
+        const storeSetting = settingsArray.length > 0 ? settingsArray[0] : null;
 
         return {
             success: true,
-            data: storeSetting || null
+            data: storeSetting
         };
     } catch (error) {
         console.error('Error fetching store settings:', error);
@@ -597,21 +608,46 @@ export async function getAllStoreSettings() {
 export async function updateStoreSettings(settingsData) {
     try {
         let result;
+        const settingsId = settingsData.id || 'store_settings';
 
-        if (settingsData.id) {
-            // Update existing settings
-            result = await DBService.update(settingsData.id, settingsData, 'store_settings');
-        } else {
-            // Create new settings
+        // Check if settings exist
+        try {
+            const existing = await DBService.getItemByKey('id', settingsId, 'store_settings');
+            
+            if (existing) {
+                // Update existing settings using the database key
+                const dbKey = await DBService.getItemKey('id', settingsId, 'store_settings');
+                const updatedData = {
+                    ...settingsData,
+                    id: settingsId,
+                    updatedAt: new Date().toISOString()
+                };
+                result = await DBService.update(dbKey, updatedData, 'store_settings');
+            } else {
+                // Create new settings with fixed ID
+                const newSettings = {
+                    ...settingsData,
+                    id: settingsId,
+                    updatedAt: new Date().toISOString(),
+                    createdAt: new Date().toISOString()
+                };
+                result = await DBService.create(newSettings, 'store_settings');
+            }
+        } catch (checkError) {
+            // If error checking, try to create
             const newSettings = {
                 ...settingsData,
-                id: Date.now().toString(),
-                key: 'store',
-                type: 'store',
+                id: settingsId,
                 updatedAt: new Date().toISOString(),
                 createdAt: new Date().toISOString()
             };
             result = await DBService.create(newSettings, 'store_settings');
+        }
+
+        // Clear the cache after updating
+        if (settingsCache.store_settings) {
+            settingsCache.store_settings = null;
+            settingsCache.store_settings_timestamp = null;
         }
 
         return {
@@ -1358,19 +1394,34 @@ export async function getSiteSettings() {
         }
 
         console.log('Fetching fresh site settings from database');
+        
+        // Query by ID first
+        const siteSettings = await DBService.getItemByKey('id', 'site_settings', 'site_settings');
+        
+        if (siteSettings) {
+            // Update cache
+            settingsCache.site_settings = siteSettings;
+            settingsCache.site_settings_timestamp = Date.now();
+            
+            return {
+                success: true,
+                data: siteSettings
+            };
+        }
+        
+        // Fallback: read all and find first entry
         const settings = await DBService.readAll('site_settings');
         const settingsArray = Array.isArray(settings) ? settings : Object.values(settings || {});
-
-        // Find main site settings or use first entry
-        const siteSettings = settingsArray.find((s) => s.key === 'main' || s.type === 'main') || settingsArray[0] || {};
-
-        // Update cache
-        settingsCache.site_settings = siteSettings;
-        settingsCache.site_settings_timestamp = Date.now();
+        const firstSettings = settingsArray[0] || null;
+        
+        if (firstSettings) {
+            settingsCache.site_settings = firstSettings;
+            settingsCache.site_settings_timestamp = Date.now();
+        }
 
         return {
             success: true,
-            data: siteSettings
+            data: firstSettings
         };
     } catch (error) {
         console.error('Error fetching site settings:', error);
@@ -1378,7 +1429,7 @@ export async function getSiteSettings() {
             success: false,
             error: 'Failed to fetch site settings',
             message: error.message,
-            data: {}
+            data: null
         };
     }
 }
@@ -1389,9 +1440,8 @@ export async function getSiteSettings() {
  */
 export async function getCachedStoreSettings() {
     try {
-        // Check cache first
-        if (isCacheValid('store_settings') && settingsCache.store_settings) {
-            console.log('Returning cached store settings');
+        // Check if cache is valid
+        if (isCacheValid('store_settings')) {
             return {
                 success: true,
                 data: settingsCache.store_settings,
@@ -1399,29 +1449,33 @@ export async function getCachedStoreSettings() {
             };
         }
 
-        console.log('Fetching fresh store settings from database');
-        const settings = await DBService.readAll('store_settings');
-        const settingsArray = Array.isArray(settings) ? settings : Object.values(settings || {});
+        // Fetch fresh data using getStoreSettings
+        const result = await getStoreSettings();
 
-        // Find main store settings or use first entry
-        const storeSettings =
-            settingsArray.find((s) => s.key === 'store' || s.type === 'store') || settingsArray[0] || {};
+        if (result.success && result.data) {
+            // Update cache
+            settingsCache.store_settings = result.data;
+            settingsCache.store_settings_timestamp = Date.now();
 
-        // Update cache
-        settingsCache.store_settings = storeSettings;
-        settingsCache.store_settings_timestamp = Date.now();
+            return {
+                success: true,
+                data: result.data,
+                cached: false
+            };
+        }
 
         return {
             success: true,
-            data: storeSettings
+            data: null,
+            cached: false
         };
     } catch (error) {
-        console.error('Error fetching store settings:', error);
+        console.error('Error fetching cached store settings:', error);
         return {
             success: false,
             error: 'Failed to fetch store settings',
             message: error.message,
-            data: {}
+            data: null
         };
     }
 }
@@ -6023,31 +6077,23 @@ export async function executeDueCronjobsAction() {
  */
 export async function getAllSiteSettings() {
     try {
-        const allSettings = await DBService.readAll('site_settings');
-
-        if (!allSettings || Object.keys(allSettings).length === 0) {
+        // Query by ID first
+        const siteSettings = await DBService.getItemByKey('id', 'site_settings', 'site_settings');
+        
+        if (siteSettings) {
             return {
                 success: true,
-                data: null,
-                message: 'No site settings found'
+                data: siteSettings
             };
         }
-
-        // Convert object to array and find the main settings record
-        const settingsArray = Array.isArray(allSettings)
-            ? allSettings
-            : Object.entries(allSettings).map(([key, value]) => ({
-                  id: key,
-                  ...value
-              }));
-
-        // Find the main site settings record
-        const mainSettings =
-            settingsArray.find((s) => s.type === 'site' || s.key === 'site' || !s.type) || settingsArray[0];
-
+        
+        // Fallback: read all and return first entry
+        const allSettings = await DBService.readAll('site_settings');
+        const settingsArray = Array.isArray(allSettings) ? allSettings : Object.values(allSettings || {});
+        
         return {
             success: true,
-            data: mainSettings || null
+            data: settingsArray[0] || null
         };
     } catch (error) {
         console.error('Error fetching site settings:', error);
@@ -6131,25 +6177,36 @@ export async function updateSiteSettings(settingsData) {
     try {
         const timeNow = new Date().toISOString();
 
-        // Check for existing site settings record
-        const existing = await getAllSiteSettings();
-        let result;
-
+        // Ensure id is set to 'site_settings'
         const payload = {
             ...settingsData,
-            type: 'site',
+            id: 'site_settings',
             updatedAt: timeNow
         };
 
-        if (existing.success && existing.data && existing.data.id) {
-            // Update existing record
-            result = await DBService.update(existing.data.id, payload, 'site_settings');
+        // Check if settings exist by querying with id
+        const existing = await DBService.getItemByKey('id', 'site_settings', 'site_settings');
+        let result;
+
+        if (existing) {
+            // Get the database key for the existing record
+            const dbKey = await DBService.getItemKey('id', 'site_settings', 'site_settings');
+            
+            if (dbKey) {
+                // Update existing record using the database key
+                result = await DBService.update(dbKey, payload, 'site_settings');
+            } else {
+                throw new Error('Failed to get database key for site settings');
+            }
         } else {
-            // Create new record
+            // Create new record with id='site_settings'
             payload.createdAt = timeNow;
-            payload.id = payload.id || Date.now().toString();
             result = await DBService.create(payload, 'site_settings');
         }
+
+        // Clear cache after update
+        settingsCache.site_settings = null;
+        settingsCache.site_settings_timestamp = null;
 
         return {
             success: true,
