@@ -54,7 +54,15 @@ const PaymentSuccess = () => {
                 let actualOrderId = orderId;
 
                 // For Stripe payments, decode base64 order ID
+                // For EuPago and other methods, use orderId as-is
                 if (paymentMethod === 'card') {
+                    try {
+                        actualOrderId = atob(orderId);
+                    } catch (_e) {
+                        actualOrderId = orderId;
+                    }
+                } else if (paymentMethod === 'eupago') {
+                    // EuPago passes the order ID in base64, decode it
                     try {
                         actualOrderId = atob(orderId);
                     } catch (_e) {
@@ -268,13 +276,22 @@ const PaymentSuccess = () => {
                                 <div className="mb-4 rounded-lg border border-orange-200 bg-orange-50 p-4">
                                     {eupagoMethod === 'mbway' ? (
                                         <div className="text-orange-800">
-                                            <h3 className="font-semibold mb-2">📱 MB WAY Payment</h3>
-                                            <p className="text-sm mb-2">
-                                                Your MB WAY payment request has been sent. Please check your MB WAY app to complete the payment.
+                                            <h3 className="font-semibold mb-3">📱 MB WAY Payment</h3>
+                                            <p className="text-sm mb-3">
+                                                A payment request has been sent to your MB WAY app. Please open your MB WAY app and approve the payment.
                                             </p>
-                                            <p className="text-sm">
-                                                <strong>Amount:</strong> €{eupagoAmount}
-                                            </p>
+                                            <div className="space-y-2 text-sm">
+                                                <p><strong>Reference:</strong> <span className="font-mono bg-white px-2 py-1 rounded">{eupagoReference}</span></p>
+                                                <p><strong>Amount:</strong> €{eupagoAmount}</p>
+                                            </div>
+                                            <div className="mt-3 p-3 bg-blue-50 rounded text-xs space-y-1">
+                                                <p className="font-semibold text-blue-900">How to complete payment:</p>
+                                                <p>1. Open your MB WAY app on your phone</p>
+                                                <p>2. Check for the payment notification</p>
+                                                <p>3. Verify the amount and merchant details</p>
+                                                <p>4. Confirm the payment with your PIN</p>
+                                                <p className="text-blue-700 mt-2">⚠️ Payment must be approved within 4 minutes</p>
+                                            </div>
                                         </div>
                                     ) : eupagoMethod === 'mb' ? (
                                         <div className="text-orange-800">

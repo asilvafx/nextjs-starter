@@ -1,5 +1,5 @@
 'use client';
-import { Boxes, Building, Key, Locate, Mail, MapPin, Plus, Save, Settings, Shield, Trash2, MessageSquare, Upload } from 'lucide-react';
+import { Boxes, Building, Eye, EyeOff, Key, Locate, Mail, MapPin, Plus, Save, Settings, Shield, Trash2, MessageSquare, Upload } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useFieldArray, useForm } from 'react-hook-form';
 import { toast } from 'sonner';
@@ -487,6 +487,7 @@ export default function SystemSettingsPage() {
 // SMS Settings Tab
 function SMSSettingsTab({ form, isSubmitting }) {
     const smsEnabled = form.watch('smsEnabled');
+    const [showTwilioKey, setShowTwilioKey] = useState(false);
 
     return (
         <Card>
@@ -522,7 +523,28 @@ function SMSSettingsTab({ form, isSubmitting }) {
                             <FormItem>
                                 <FormLabel>Twilio API Key</FormLabel>
                                 <FormControl>
-                                    <Input placeholder="sk-xxxxxxxxxxxx" disabled={isSubmitting} {...field} />
+                                    <div className="relative">
+                                        <Input
+                                            type={showTwilioKey ? "text" : "password"}
+                                            placeholder="sk-xxxxxxxxxxxx"
+                                            disabled={isSubmitting}
+                                            {...field}
+                                        />
+                                        <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="sm"
+                                            className="absolute top-0 right-0 h-full px-3 py-2 hover:bg-transparent"
+                                            onClick={() => setShowTwilioKey(!showTwilioKey)}
+                                            disabled={isSubmitting}
+                                        >
+                                            {showTwilioKey ? (
+                                                <EyeOff className="h-4 w-4" />
+                                            ) : (
+                                                <Eye className="h-4 w-4" />
+                                            )}
+                                        </Button>
+                                    </div>
                                 </FormControl>
                                 <FormMessage />
                             </FormItem>
@@ -744,6 +766,7 @@ function LocationTab({ form, getCurrentLocation, isSubmitting, languages }) {
 // Security Tab (Turnstile)
 function SecurityTab({ form, isSubmitting }) {
     const enabled = form.watch('turnstileEnabled');
+    const [showTurnstileKey, setShowTurnstileKey] = useState(false);
 
     const allowRegistration = form.watch('allowRegistration');
     const enableFrontend = form.watch('enableFrontend');
@@ -782,7 +805,28 @@ function SecurityTab({ form, isSubmitting }) {
                             <FormItem>
                                 <FormLabel>Turnstile Site Key</FormLabel>
                                 <FormControl>
-                                    <Input placeholder="1x00000000000000000000" disabled={isSubmitting} {...field} />
+                                    <div className="relative">
+                                        <Input
+                                            type={showTurnstileKey ? "text" : "password"}
+                                            placeholder="1x00000000000000000000"
+                                            disabled={isSubmitting}
+                                            {...field}
+                                        />
+                                        <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="sm"
+                                            className="absolute top-0 right-0 h-full px-3 py-2 hover:bg-transparent"
+                                            onClick={() => setShowTurnstileKey(!showTurnstileKey)}
+                                            disabled={isSubmitting}
+                                        >
+                                            {showTurnstileKey ? (
+                                                <EyeOff className="h-4 w-4" />
+                                            ) : (
+                                                <Eye className="h-4 w-4" />
+                                            )}
+                                        </Button>
+                                    </div>
                                 </FormControl>
                                 <FormMessage />
                             </FormItem>
@@ -1044,6 +1088,7 @@ function SiteSettingsTab({ form, languages, getCurrentLocation, isSubmitting }) 
 // Email Settings Tab Component
 function EmailSettingsTab({ form, emailProviders, isSubmitting }) {
     const selectedProvider = form.watch('emailProvider');
+    const [showEmailPassword, setShowEmailPassword] = useState(false);
 
     return (
         <Card>
@@ -1109,12 +1154,28 @@ function EmailSettingsTab({ form, emailProviders, isSubmitting }) {
                                     <FormItem>
                                         <FormLabel>Email Password</FormLabel>
                                         <FormControl>
-                                            <Input
-                                                type="password"
-                                                placeholder="Your email password or app password"
-                                                disabled={isSubmitting}
-                                                {...field}
-                                            />
+                                            <div className="relative">
+                                                <Input
+                                                    type={showEmailPassword ? "text" : "password"}
+                                                    placeholder="Your email password or app password"
+                                                    disabled={isSubmitting}
+                                                    {...field}
+                                                />
+                                                <Button
+                                                    type="button"
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    className="absolute top-0 right-0 h-full px-3 py-2 hover:bg-transparent"
+                                                    onClick={() => setShowEmailPassword(!showEmailPassword)}
+                                                    disabled={isSubmitting}
+                                                >
+                                                    {showEmailPassword ? (
+                                                        <EyeOff className="h-4 w-4" />
+                                                    ) : (
+                                                        <Eye className="h-4 w-4" />
+                                                    )}
+                                                </Button>
+                                            </div>
                                         </FormControl>
                                         <FormMessage />
                                     </FormItem>
@@ -1182,6 +1243,62 @@ function EmailSettingsTab({ form, emailProviders, isSubmitting }) {
                             />
                         </div>
 
+                        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                            <FormField
+                                control={form.control}
+                                name="emailUser"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Email Username</FormLabel>
+                                        <FormControl>
+                                            <Input
+                                                type="email"
+                                                placeholder="your-email@example.com"
+                                                disabled={isSubmitting}
+                                                {...field}
+                                            />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+
+                            <FormField
+                                control={form.control}
+                                name="emailPass"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Email Password</FormLabel>
+                                        <FormControl>
+                                            <div className="relative">
+                                                <Input
+                                                    type={showEmailPassword ? "text" : "password"}
+                                                    placeholder="Your email password"
+                                                    disabled={isSubmitting}
+                                                    {...field}
+                                                />
+                                                <Button
+                                                    type="button"
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    className="absolute top-0 right-0 h-full px-3 py-2 hover:bg-transparent"
+                                                    onClick={() => setShowEmailPassword(!showEmailPassword)}
+                                                    disabled={isSubmitting}
+                                                >
+                                                    {showEmailPassword ? (
+                                                        <EyeOff className="h-4 w-4" />
+                                                    ) : (
+                                                        <Eye className="h-4 w-4" />
+                                                    )}
+                                                </Button>
+                                            </div>
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                        </div>
+
                         <FormField
                             control={form.control}
                             name="smtpSecure"
@@ -1210,6 +1327,15 @@ function EmailSettingsTab({ form, emailProviders, isSubmitting }) {
 
 // OAuth Tab Component (merged Site Options + OAuth Providers)
 function OAuthTab({ form, oauthProviders, isSubmitting }) {
+    const [showSecrets, setShowSecrets] = useState({});
+
+    const toggleSecret = (providerId) => {
+        setShowSecrets(prev => ({
+            ...prev,
+            [providerId]: !prev[providerId]
+        }));
+    };
+
     return (
         <div className="grid gap-6">
             {/* Application Settings Section */}
@@ -1305,15 +1431,34 @@ function OAuthTab({ form, oauthProviders, isSubmitting }) {
                                             <FormItem>
                                                 <FormLabel>Client Secret</FormLabel>
                                                 <FormControl>
-                                                    <Input
-                                                        type="password"
-                                                        placeholder={`${provider.name} Client Secret`}
-                                                        {...field}
-                                                        disabled={
-                                                            !form.watch(`providers.${provider.id}.enabled`) ||
-                                                            isSubmitting
-                                                        }
-                                                    />
+                                                    <div className="relative">
+                                                        <Input
+                                                            type={showSecrets[provider.id] ? "text" : "password"}
+                                                            placeholder={`${provider.name} Client Secret`}
+                                                            {...field}
+                                                            disabled={
+                                                                !form.watch(`providers.${provider.id}.enabled`) ||
+                                                                isSubmitting
+                                                            }
+                                                        />
+                                                        <Button
+                                                            type="button"
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            className="absolute top-0 right-0 h-full px-3 py-2 hover:bg-transparent"
+                                                            onClick={() => toggleSecret(provider.id)}
+                                                            disabled={
+                                                                !form.watch(`providers.${provider.id}.enabled`) ||
+                                                                isSubmitting
+                                                            }
+                                                        >
+                                                            {showSecrets[provider.id] ? (
+                                                                <EyeOff className="h-4 w-4" />
+                                                            ) : (
+                                                                <Eye className="h-4 w-4" />
+                                                            )}
+                                                        </Button>
+                                                    </div>
                                                 </FormControl>
                                                 <FormMessage />
                                             </FormItem>

@@ -8,7 +8,6 @@ import { useTranslations } from 'next-intl';
 import { useEffect, useState } from 'react';
 import Turnstile from 'react-turnstile';
 import { useCart } from 'react-use-cart';
-import { createOrder, createOrUpdateCustomerFromOrder } from '@/lib/server/admin';
 import GooglePlacesInput from '@/components/google-places-input';
 import { Button } from '@/components/ui/button';
 import { CountryDropdown } from '@/components/ui/country-dropdown';
@@ -559,18 +558,36 @@ const PaymentForm = ({
                 };
 
                 // Process EuPago payment
-                const eupagoResponse = await fetch('/api/payments/eupago', {
+                console.log('Sending EuPago payment request:', eupagoPaymentData);
+                
+                const eupagoResponse = await fetch('/api/eupago', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({
                         action: 'process_payment',
-                        ...eupagoPaymentData
+                        orderData: eupagoPaymentData
                     })
                 });
 
-                const eupagoResult = await eupagoResponse.json();
+                console.log('EuPago response status:', eupagoResponse.status);
+                console.log('EuPago response headers:', Object.fromEntries(eupagoResponse.headers.entries()));
+
+                // Get the raw response text first
+                const responseText = await eupagoResponse.text();
+                console.log('EuPago raw response (first 1000 chars):', responseText.substring(0, 1000));
+
+                // Try to parse as JSON
+                let eupagoResult;
+                try {
+                    eupagoResult = JSON.parse(responseText);
+                    console.log('EuPago result:', eupagoResult);
+                } catch (parseError) {
+                    console.error('Failed to parse JSON:', parseError);
+                    console.error('Full response:', responseText);
+                    throw new Error(`Server returned invalid JSON. Response starts with: ${responseText.substring(0, 100)}`);
+                }
 
                 if (!eupagoResult.success) {
                     throw new Error(eupagoResult.error || 'Failed to create EuPago payment');
@@ -598,31 +615,22 @@ const PaymentForm = ({
                     }
                 }
 
-                // Create/update customer
-                try {
-                    const customerResult = await createOrUpdateCustomerFromOrder(orderData.customer);
-                    console.log('Customer operation result:', customerResult);
-                } catch (customerError) {
-                    console.warn('Customer creation/update failed:', customerError);
-                    // Continue with order creation even if customer operation fails
-                }
-
                 // Redirect to success page with EuPago payment information
                 window.location.href = `/shop/checkout/success?tx=${btoa(orderData.id)}&payment_method=eupago&eupago_method=${eupagoMethod}&reference=${eupagoResult.reference}&entity=${eupagoResult.entity || ''}&amount=${eupagoResult.amount}`;
                 
             } else {
                 // Handle alternative payment methods (bank transfer, pay on delivery)
                 
-                // First create/update customer if needed
-                try {
-                    const customerResult = await createOrUpdateCustomerFromOrder(orderData.customer);
-                    console.log('Customer operation result:', customerResult);
-                } catch (customerError) {
-                    console.warn('Customer creation/update failed:', customerError);
-                    // Continue with order creation even if customer operation fails
-                }
-                
-                const result = await createOrder(orderData);
+                // Create order via API
+                const orderResponse = await fetch('/api/orders', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(orderData)
+                });
+
+                const result = await orderResponse.json();
 
                 if (result.success) {
                     // Apply coupon usage if a coupon was used

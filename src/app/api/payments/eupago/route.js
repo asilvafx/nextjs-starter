@@ -1,6 +1,10 @@
 // src/app/api/payments/eupago/route.js
-// Redirect to centralized EuPago API route
+// This route is deprecated - use /api/eupago directly
+// Keeping for backward compatibility only
 import { NextResponse } from 'next/server';
+import {
+    processEuPagoPayment
+} from '@/lib/server/admin.js';
 
 export async function OPTIONS() {
     return new Response(null, {
@@ -15,42 +19,48 @@ export async function OPTIONS() {
 
 export async function POST(req) {
     try {
-        // Get request body
-        const body = await req.json();
+        const { action, orderData } = await req.json();
 
-        // Forward to centralized EuPago API
-        const baseUrl = req.headers.get('host');
-        const protocol = req.headers.get('x-forwarded-proto') || 'http';
-        const apiUrl = `${protocol}://${baseUrl}/api/eupago`;
-
-        const response = await fetch(apiUrl, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(body)
-        });
-
-        const data = await response.json();
-
-        return NextResponse.json(data, {
-            status: response.status,
-            headers: {
-                'Access-Control-Allow-Origin': '*'
+        if (action === 'process_payment') {
+            if (!orderData) {
+                return NextResponse.json(
+                    {
+                        success: false,
+                        error: 'Order data is required'
+                    },
+                    { 
+                        status: 400,
+                        headers: { 'Access-Control-Allow-Origin': '*' }
+                    }
+                );
             }
-        });
-    } catch (error) {
-        console.error('EuPago redirect error:', error.message);
+
+            const processResult = await processEuPagoPayment(orderData);
+            return NextResponse.json(processResult, {
+                headers: { 'Access-Control-Allow-Origin': '*' }
+            });
+        }
+
         return NextResponse.json(
             {
                 success: false,
-                error: error.message
+                error: 'Invalid action'
+            },
+            { 
+                status: 400,
+                headers: { 'Access-Control-Allow-Origin': '*' }
+            }
+        );
+    } catch (error) {
+        console.error('EuPago payment error:', error);
+        return NextResponse.json(
+            {
+                success: false,
+                error: error.message || 'Payment processing failed'
             },
             {
                 status: 500,
-                headers: {
-                    'Access-Control-Allow-Origin': '*'
-                }
+                headers: { 'Access-Control-Allow-Origin': '*' }
             }
         );
     }

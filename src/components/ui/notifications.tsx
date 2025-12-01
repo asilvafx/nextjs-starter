@@ -128,9 +128,11 @@ export function NotificationsPopover() {
     const [loading, setLoading] = React.useState(true);
 
     // Load notifications when component mounts or popover opens
-    const loadNotifications = React.useCallback(async () => {
+    const loadNotifications = React.useCallback(async (showLoadingState = false) => {
         try {
-            setLoading(true);
+            if (showLoadingState) {
+                setLoading(true);
+            }
             
             // Get recent notifications (last 20)
             const result = await notificationAPI.getAll({ 
@@ -150,19 +152,21 @@ export function NotificationsPopover() {
         } catch (error) {
             console.error('Error loading notifications:', error);
         } finally {
-            setLoading(false);
+            if (showLoadingState) {
+                setLoading(false);
+            }
         }
     }, [user?.email]);
 
-    // Load notifications on mount and when popover opens
+    // Load notifications on mount (with loading state)
     React.useEffect(() => {
-        loadNotifications();
+        loadNotifications(true);
     }, [loadNotifications]);
 
-    // Reload when popover opens
+    // Reload when popover opens (without loading state)
     React.useEffect(() => {
         if (isOpen) {
-            loadNotifications();
+            loadNotifications(false);
         }
     }, [isOpen, loadNotifications]);
 
@@ -279,12 +283,13 @@ export function NotificationsPopover() {
     };
 
     return (
-        <Popover open={isOpen} onOpenChange={setIsOpen}>
+        <Popover open={isOpen} onOpenChange={setIsOpen}> 
             <PopoverTrigger asChild>
-                <Button variant="outline" size="icon" className="relative">
-                    <Bell className="h-4 w-4" />
-                    {unreadCount > 0 && (
-                        <span className="-top-1 -right-1 absolute flex h-4 w-4 items-center justify-center rounded-full bg-red-500 font-medium text-[10px] text-white">
+                
+                <Button variant="outline" size="icon" className="relative" disabled={loading}>
+                    <Bell className={cn('h-4 w-4 transition-opacity', loading && 'opacity-40')} />
+                    {unreadCount > 0 && !loading && (
+                        <span className="-top-1 -right-1 absolute flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-red-500 px-1 font-medium text-[10px] text-white">
                             {unreadCount > 99 ? '99+' : unreadCount}
                         </span>
                     )}
@@ -303,20 +308,13 @@ export function NotificationsPopover() {
 
                 {/* Content */}
                 <ScrollArea className="h-[calc(100vh-20rem)] max-h-96">
-                    {loading ? (
-                        <div className="flex items-center justify-center p-8">
-                            <div className="flex items-center gap-2 text-muted-foreground">
-                                <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
-                                <span>Loading notifications...</span>
-                            </div>
-                        </div>
-                    ) : notifications.length === 0 ? (
+                    {notifications.length === 0 && !loading ? (
                         <div className="flex flex-col items-center justify-center p-8 text-center">
                             <CheckCircle className="mb-4 h-12 w-12 text-muted-foreground" />
                             <h3 className="mb-2 font-medium">All caught up!</h3>
                             <p className="text-muted-foreground text-sm">No new notifications at this time</p>
                         </div>
-                    ) : (
+                    ) : notifications.length > 0 ? (
                         <div className="divide-y">
                             {notifications.map((notification) => (
                                 <div
@@ -384,7 +382,7 @@ export function NotificationsPopover() {
                                 </div>
                             ))}
                         </div>
-                    )}
+                    ) : null}
                 </ScrollArea>
 
                 {/* Footer */}

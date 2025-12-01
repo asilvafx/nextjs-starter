@@ -129,6 +129,8 @@ export async function POST(req) {
 
             case 'process_payment': {
                 const { orderData } = data;
+                
+                console.log('EuPago API - process_payment action called with data:', JSON.stringify(orderData, null, 2));
 
                 if (!orderData) {
                     return new Response(
@@ -138,15 +140,42 @@ export async function POST(req) {
                         }),
                         {
                             status: 400,
-                            headers: { 'Access-Control-Allow-Origin': '*' }
+                            headers: { 
+                                'Access-Control-Allow-Origin': '*',
+                                'Content-Type': 'application/json'
+                            }
                         }
                     );
                 }
 
                 const processResult = await processEuPagoPayment(orderData);
+                
+                console.log('EuPago API - processResult:', JSON.stringify(processResult, null, 2));
+                
+                // Ensure we always return JSON
+                if (!processResult) {
+                    console.error('EuPago API - processEuPagoPayment returned null/undefined');
+                    return new Response(
+                        JSON.stringify({
+                            success: false,
+                            error: 'Payment processing failed'
+                        }),
+                        {
+                            status: 500,
+                            headers: { 
+                                'Access-Control-Allow-Origin': '*',
+                                'Content-Type': 'application/json'
+                            }
+                        }
+                    );
+                }
+                
                 return new Response(JSON.stringify(processResult), {
-                    status: 200,
-                    headers: { 'Access-Control-Allow-Origin': '*' }
+                    status: processResult.success ? 200 : 400,
+                    headers: { 
+                        'Access-Control-Allow-Origin': '*',
+                        'Content-Type': 'application/json'
+                    }
                 });
             }
 
@@ -224,14 +253,18 @@ export async function POST(req) {
         }
     } catch (error) {
         console.error('EuPago POST Error:', error.message);
+        console.error('EuPago POST Error Stack:', error.stack);
         return new Response(
             JSON.stringify({
                 success: false,
-                error: error.message
+                error: error.message || 'Internal server error'
             }),
             {
                 status: error.statusCode || 500,
-                headers: { 'Access-Control-Allow-Origin': '*' }
+                headers: { 
+                    'Access-Control-Allow-Origin': '*',
+                    'Content-Type': 'application/json'
+                }
             }
         );
     }

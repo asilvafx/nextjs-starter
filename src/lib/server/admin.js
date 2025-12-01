@@ -6701,6 +6701,7 @@ export async function isEuPagoEnabled() {
  */
 export async function getEuPagoConfig() {
     try {
+        console.log('GetEuPagoConfig - Fetching store settings');
         const storeSettings = await DBService.readAll('store_settings');
         let settings = null;
 
@@ -6710,16 +6711,39 @@ export async function getEuPagoConfig() {
             settings = Object.values(storeSettings)[0] || storeSettings;
         }
 
+        console.log('Store settings found:', !!settings);
+        console.log('Payment methods:', !!settings?.paymentMethods);
+        console.log('EuPago config:', !!settings?.paymentMethods?.euPago);
+        
         if (settings?.paymentMethods?.euPago) {
+            const euPagoConfig = settings.paymentMethods.euPago;
+            console.log('EuPago enabled:', euPagoConfig.enabled);
+            console.log('EuPago has apiUrl:', !!euPagoConfig.apiUrl);
+            console.log('EuPago has apiKey:', !!euPagoConfig.apiKey);
+            
+            if (!euPagoConfig.enabled) {
+                return {
+                    success: false,
+                    error: 'EuPago is not enabled in store settings'
+                };
+            }
+            
+            if (!euPagoConfig.apiUrl || !euPagoConfig.apiKey) {
+                return {
+                    success: false,
+                    error: 'EuPago API URL or API Key not configured in store settings'
+                };
+            }
+            
             return {
                 success: true,
-                config: settings.paymentMethods.euPago
+                config: euPagoConfig
             };
         }
 
         return {
             success: false,
-            error: 'EuPago not configured'
+            error: 'EuPago not configured in store settings. Please configure EuPago in Admin > Store > Settings > Payments tab.'
         };
     } catch (error) {
         console.error('Failed to get EuPago config:', error);
@@ -6738,30 +6762,66 @@ export async function getEuPagoConfig() {
  */
 export async function checkEuPagoPaymentStatus(reference, entity = null) {
     try {
+        console.log('CheckEuPagoPaymentStatus - Start', { reference, entity });
+        
         const configResult = await getEuPagoConfig();
         if (!configResult.success) {
             throw new Error('EuPago service not configured');
         }
 
         const { apiUrl, apiKey } = configResult.config;
-        const endpoint = `${apiUrl}/clientes/rest_api/multibanco/info`;
-        const params = new URLSearchParams({
+        
+        // Normalize API URL - remove trailing slash
+        const normalizedApiUrl = apiUrl.replace(/\/$/, '');
+        const endpoint = `${normalizedApiUrl}/clientes/rest_api/multibanco/info`;
+        
+        // Prepare request body as JSON (matching EuPago documentation)
+        const requestBody = {
             chave: apiKey,
             referencia: reference
-        });
+        };
 
         if (entity) {
-            params.append('entidade', entity);
+            requestBody.entidade = entity;
         }
 
-        const response = await fetch(`${endpoint}?${params}`);
-        const data = await response.json();
+        console.log('Checking EuPago payment status:', { endpoint, reference, entity });
+
+        const response = await fetch(endpoint, {
+            method: 'POST',
+            headers: {
+                'accept': 'application/json',
+                'content-type': 'application/json'
+            },
+            body: JSON.stringify(requestBody)
+        });
+
+        const responseText = await response.text();
+        
+        let data;
+        try {
+            data = JSON.parse(responseText);
+            console.log('EuPago status check response:', data);
+        } catch (parseError) {
+            console.error('Failed to parse EuPago status response:', parseError);
+            throw new Error(`Invalid response from EuPago API: ${responseText.substring(0, 200)}`);
+        }
+
+        // Check if payment is paid based on estado_referencia field
+        const isPaid = data.estado_referencia === 'paga';
+        const isPending = data.estado_referencia === 'pendente';
 
         return {
             success: true,
-            paid: data.estado === 'paga',
-            amount: data.valor || 0,
-            state: data.estado,
+            paid: isPaid,
+            pending: isPending,
+            reference: data.referencia,
+            entity: data.entidade,
+            identifier: data.identificador,
+            status: data.estado_referencia,
+            paymentDate: data.pagamentos?.[0]?.data_pagamento || null,
+            paymentTime: data.pagamentos?.[0]?.hora_pagamento || null,
+            amount: data.pagamentos?.[0]?.valor || null,
             data: data
         };
     } catch (error) {
@@ -6780,61 +6840,144 @@ export async function checkEuPagoPaymentStatus(reference, entity = null) {
  */
 export async function createEuPagoPaymentReference(orderData) {
     try {
+        console.log('CreateEuPagoPaymentReference - Start');
+        
         const configResult = await getEuPagoConfig();
         if (!configResult.success) {
-            throw new Error('EuPago service not configured');
+            console.error('EuPago config error:', configResult.error);
+            throw new Error('EuPago service not configured. Please check your store settings.');
         }
 
         const { apiUrl, apiKey } = configResult.config;
-        const { orderId, amount, method = 'mb', mobile = null } = orderData;
+        console.log('EuPago config:', { apiUrl: apiUrl ? 'configured' : 'missing', apiKey: apiKey ? 'configured' : 'missing' });
+        
+        const { orderId, amount, method = 'mb', mobile = null, customerEmail = null, customerName = null } = orderData;
+
+        // Normalize API URL - remove trailing slash to avoid double slashes
+        const normalizedApiUrl = apiUrl.replace(/\/$/, '');
 
         let endpoint;
-        const params = new URLSearchParams({
-            chave: apiKey,
-            valor: amount.toString(),
-            id: orderId
-        });
+        let requestBody;
+        let headers;
 
-        switch (method) {
-            case 'mbway':
-                if (!mobile) {
-                    throw new Error('Mobile number required for MB WAY');
+        if (method === 'mbway') {
+            // MB WAY uses the new API v1.02 format
+            if (!mobile) {
+                throw new Error('Mobile number required for MB WAY');
+            }
+            
+            endpoint = `${normalizedApiUrl}/api/v1.02/mbway/create`;
+            
+            // Clean mobile number (remove spaces, dashes, etc.)
+            const cleanMobile = mobile.replace(/[\s\-\+]/g, '');
+            
+            requestBody = {
+                payment: {
+                    amount: {
+                        currency: 'EUR',
+                        value: parseFloat(amount)
+                    },
+                    customerPhone: cleanMobile,
+                    countryCode: '+351'
+                },
+                customer: {
+                    name: customerName || 'Customer',
+                    email: customerEmail || 'customer@email.com',
+                    phone: cleanMobile
                 }
-                endpoint = `${apiUrl}/clientes/rest_api/mbway/create`;
-                params.append('alias', mobile);
-                break;
-            default:
-                endpoint = `${apiUrl}/clientes/rest_api/multibanco/create`;
-                break;
+            };
+            
+            headers = {
+                'Authorization': `ApiKey ${apiKey}`,
+                'accept': 'application/json',
+                'content-type': 'application/json'
+            };
+        } else {
+            // Multibanco uses the old REST API format
+            endpoint = `${normalizedApiUrl}/clientes/rest_api/multibanco/create`;
+            
+            requestBody = {
+                chave: apiKey,
+                valor: amount,
+                id: orderId,
+                data_inicio: new Date().toISOString().split('T')[0], // YYYY-MM-DD
+                data_fim: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 7 days later
+                per_dup: 0,
+                userID: customerEmail || 'customer@email.com'
+            };
+            
+            headers = {
+                'accept': 'application/json',
+                'content-type': 'application/json'
+            };
         }
+
+        console.log('Calling EuPago API:', { endpoint, method, orderId, amount });
+        console.log('EuPago request body:', requestBody);
 
         const response = await fetch(endpoint, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded'
-            },
-            body: params
+            headers: headers,
+            body: JSON.stringify(requestBody)
         });
 
-        const data = await response.json();
+        console.log('EuPago API response status:', response.status);
+        console.log('EuPago API response headers:', Object.fromEntries(response.headers.entries()));
+        
+        // Get response text first to see what we're actually receiving
+        const responseText = await response.text();
+        console.log('EuPago API raw response (first 500 chars):', responseText.substring(0, 500));
+        
+        // Try to parse as JSON
+        let data;
+        try {
+            data = JSON.parse(responseText);
+            console.log('EuPago API parsed response:', data);
+        } catch (parseError) {
+            console.error('Failed to parse EuPago response as JSON:', parseError);
+            console.error('Response was:', responseText.substring(0, 1000));
+            throw new Error(`EuPago API returned invalid JSON. Status: ${response.status}. Response: ${responseText.substring(0, 200)}`);
+        }
 
-        if (data.sucesso) {
-            return {
-                success: true,
-                reference: data.referencia,
-                entity: data.entidade || null,
-                amount: data.valor,
-                method: method,
-                data: data
-            };
+        // Handle different response formats
+        if (method === 'mbway') {
+            // MB WAY API v1.02 response format
+            if (data.transactionStatus === 'Success') {
+                return {
+                    success: true,
+                    reference: data.reference,
+                    transactionId: data.transactionID,
+                    entity: null, // MB WAY doesn't use entity
+                    amount: amount,
+                    method: method,
+                    data: data
+                };
+            } else {
+                const errorMsg = data.message || data.error || 'Failed to create MB WAY payment';
+                throw new Error(errorMsg);
+            }
         } else {
-            throw new Error(data.erro || 'Failed to create payment reference');
+            // Multibanco REST API response format
+            if (data.sucesso === true || data.sucesso === 'true') {
+                return {
+                    success: true,
+                    reference: data.referencia,
+                    entity: data.entidade || null,
+                    amount: data.valor,
+                    method: method,
+                    data: data
+                };
+            } else {
+                const errorMsg = data.erro || data.resposta || 'Failed to create payment reference';
+                throw new Error(errorMsg);
+            }
         }
     } catch (error) {
         console.error('Error creating EuPago payment reference:', error);
+        console.error('Error stack:', error.stack);
         return {
             success: false,
-            error: error.message
+            error: error.message || 'Failed to create payment reference'
         };
     }
 }
@@ -6846,50 +6989,137 @@ export async function createEuPagoPaymentReference(orderData) {
  */
 export async function processEuPagoPayment(orderData) {
     try {
+        console.log('ProcessEuPagoPayment - Start', { orderId: orderData?.orderId });
+        
         const { orderId, items, customer, payment, totals } = orderData;
 
         // Validate required data
         if (!orderId || !items || !customer || !payment || !totals) {
+            console.error('ProcessEuPagoPayment - Missing data:', { 
+                hasOrderId: !!orderId, 
+                hasItems: !!items, 
+                hasCustomer: !!customer, 
+                hasPayment: !!payment, 
+                hasTotals: !!totals 
+            });
             throw new Error('Missing required order data');
         }
 
         const amount = totals.total;
         const method = payment.method || 'mb';
         const mobile = payment.mobile || null;
+        const customerName = `${customer.firstName} ${customer.lastName}`.trim();
 
-        // Create payment reference
+        console.log('ProcessEuPagoPayment - Creating payment reference:', { orderId, amount, method });
+
+        // Create payment reference with EuPago
         const referenceResult = await createEuPagoPaymentReference({
             orderId,
             amount,
             method,
-            mobile
+            mobile,
+            customerEmail: customer.email,
+            customerName: customerName
         });
 
+        console.log('ProcessEuPagoPayment - Reference result:', { success: referenceResult.success, reference: referenceResult.reference });
+
         if (!referenceResult.success) {
-            throw new Error(referenceResult.error);
+            throw new Error(referenceResult.error || 'Failed to create payment reference');
         }
 
-        // Save transaction to database
-        const transaction = {
+        // Get store settings for VAT calculations
+        const storeSettingsData = await DBService.readAll('store_settings');
+        const storeSettings = Array.isArray(storeSettingsData) ? storeSettingsData[0] : storeSettingsData;
+
+        // Create order in database with proper structure matching other payment methods
+        const orderToCreate = {
             id: orderId,
-            transaction_id: orderId,
-            reference: referenceResult.reference,
-            entity: referenceResult.entity,
-            amount: amount,
-            method: method,
-            mobile: mobile,
-            items: JSON.stringify(items),
             customer: customer,
-            totals: totals,
-            payment_status: 'pending',
-            order_status: 'pending',
-            payment_method: 'eupago',
-            eupago_data: referenceResult.data,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
+            items: items,
+            subtotal: totals.subtotal || 0,
+            shippingCost: totals.shipping || 0,
+            discountType: 'fixed',
+            discountValue: 0,
+            discountAmount: totals.discount || 0,
+            taxEnabled: storeSettings?.vatEnabled || false,
+            taxRate: storeSettings?.vatPercentage || 20,
+            taxAmount: totals.vat || 0,
+            taxIncluded: storeSettings?.vatIncludedInPrice || false,
+            total: amount,
+            status: 'pending',
+            paymentStatus: 'pending',
+            paymentMethod: `eupago_${method}`,
+            eupagoReference: referenceResult.reference,
+            eupagoEntity: referenceResult.entity,
+            eupagoTransactionId: referenceResult.transactionId || null,
+            eupagoMethod: method,
+            eupagoMobile: mobile,
+            deliveryNotes: '',
+            shippingNotes: '',
+            sendEmail: true,
+            appointmentId: null,
+            isServiceAppointment: false,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            // Additional fields for compatibility
+            uid: orderId,
+            cst_email: customer.email,
+            cst_name: `${customer.firstName} ${customer.lastName}`,
+            amount: amount,
+            vatAmount: (totals.vat || 0).toFixed(2),
+            vatPercentage: storeSettings?.vatPercentage || 20,
+            vatIncluded: storeSettings?.vatIncludedInPrice || false,
+            finalTotal: amount.toFixed(2),
+            shipping_address: {
+                streetAddress: customer.streetAddress,
+                apartmentUnit: customer.apartmentUnit || '',
+                city: customer.city,
+                state: customer.state,
+                zipCode: customer.zipCode,
+                country: customer.country,
+                countryIso: customer.countryIso
+            },
+            phone: customer.phone
         };
 
-        await saveEuPagoTransaction(transaction);
+        console.log('ProcessEuPagoPayment - Saving order to database');
+
+        // Save order to database
+        const saveResult = await DBService.create(orderToCreate, 'orders');
+        
+        console.log('ProcessEuPagoPayment - Save result:', { success: !!saveResult });
+        
+        if (!saveResult) {
+            throw new Error('Failed to save order to database');
+        }
+
+        // Create or update customer
+        try {
+            await createOrUpdateCustomerFromOrder(customer);
+        } catch (customerError) {
+            console.warn('Customer creation/update failed:', customerError);
+        }
+
+        // Send order confirmation email
+        try {
+            const EmailService = (await import('./email.js')).default;
+            await EmailService.sendOrderConfirmationEmail(
+                customer.email,
+                orderToCreate,
+                `Your order payment is pending. Please complete the ${method === 'mbway' ? 'MB WAY' : 'Multibanco'} payment.`,
+                {
+                    paymentMethod: `eupago_${method}`,
+                    reference: referenceResult.reference,
+                    entity: referenceResult.entity,
+                    amount: amount
+                }
+            );
+        } catch (emailError) {
+            console.warn('Failed to send order confirmation email:', emailError);
+        }
+
+        console.log('ProcessEuPagoPayment - Success');
 
         return {
             success: true,
@@ -6902,43 +7132,67 @@ export async function processEuPagoPayment(orderData) {
         };
     } catch (error) {
         console.error('Error processing EuPago payment:', error);
+        console.error('Error stack:', error.stack);
         return {
             success: false,
-            error: error.message
+            error: error.message || 'Payment processing failed'
         };
     }
 }
 
 /**
- * Save transaction to database
- * @param {Object} transactionData - Transaction data
- * @returns {Promise<Object>} Save result
+ * Update EuPago order payment status
+ * @param {string} orderId - Order ID
+ * @param {Object} paymentData - Payment confirmation data
+ * @returns {Promise<Object>} Update result
  */
-export async function saveEuPagoTransaction(transactionData) {
+export async function updateEuPagoOrderStatus(orderId, paymentData) {
     try {
-        // Check if order already exists
-        const existingOrder = await DBService.read(transactionData.id, 'orders');
+        // Get order key
+        const orderKey = await DBService.getItemKey('id', orderId, 'orders');
+        
+        if (!orderKey) {
+            throw new Error('Order not found');
+        }
 
-        if (existingOrder) {
-            // Update existing order
-            const updatedOrder = {
-                ...existingOrder,
-                ...transactionData,
-                updated_at: new Date().toISOString()
-            };
+        // Get existing order
+        const existingOrder = await DBService.getItemByKey('id', orderId, 'orders');
+        
+        // Update order with payment confirmation
+        const updatedOrder = {
+            ...existingOrder,
+            paymentStatus: 'paid',
+            status: 'processing',
+            paidAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            eupagoPaymentData: paymentData
+        };
 
-            await DBService.update(transactionData.id, updatedOrder, 'orders');
-        } else {
-            // Create new order
-            await DBService.create(transactionData, 'orders');
+        await DBService.update(orderKey, updatedOrder, 'orders');
+
+        // Send payment confirmation email
+        try {
+            const EmailService = (await import('./email.js')).default;
+            await EmailService.sendOrderConfirmationEmail(
+                existingOrder.customer.email,
+                updatedOrder,
+                'Your payment has been confirmed and your order is being processed.',
+                {
+                    paymentMethod: existingOrder.paymentMethod,
+                    paymentConfirmed: true
+                }
+            );
+        } catch (emailError) {
+            console.warn('Failed to send payment confirmation email:', emailError);
         }
 
         return {
             success: true,
-            message: 'Transaction saved successfully'
+            message: 'Order payment status updated successfully',
+            order: updatedOrder
         };
     } catch (error) {
-        console.error('Error saving EuPago transaction:', error);
+        console.error('Error updating EuPago order status:', error);
         return {
             success: false,
             error: error.message
@@ -6968,34 +7222,33 @@ export async function checkEuPagoPendingPayments() {
         }
 
         const pendingOrders = orders.filter(
-            (order) => order.payment_method === 'eupago' && order.payment_status === 'pending' && order.reference
+            (order) => 
+                (order.paymentMethod?.startsWith('eupago_') || order.payment_method === 'eupago') && 
+                (order.paymentStatus === 'pending' || order.payment_status === 'pending') && 
+                (order.eupagoReference || order.reference)
         );
 
         const results = [];
 
         for (const order of pendingOrders) {
             try {
-                const statusCheck = await checkEuPagoPaymentStatus(order.reference, order.entity);
+                const reference = order.eupagoReference || order.reference;
+                const entity = order.eupagoEntity || order.entity;
+                const statusCheck = await checkEuPagoPaymentStatus(reference, entity);
 
                 if (statusCheck.success && statusCheck.paid) {
-                    // Update order status
-                    const updatedOrder = {
-                        ...order,
-                        payment_status: 'paid',
-                        status: 'processing',
-                        paid_at: new Date().toISOString(),
-                        updated_at: new Date().toISOString()
-                    };
-
-                    await DBService.update(order.id, updatedOrder, 'orders');
-
-                    // Send confirmation email
-                    await sendEuPagoPaymentConfirmationEmail(order);
+                    // Update order payment status
+                    const updateResult = await updateEuPagoOrderStatus(order.id, statusCheck.data);
+                    
+                    if (!updateResult.success) {
+                        console.warn(`Failed to update order ${order.id}:`, updateResult.error);
+                        continue;
+                    }
 
                     results.push({
                         orderId: order.id,
                         status: 'updated_to_paid',
-                        reference: order.reference
+                        reference: reference
                     });
                 }
             } catch (error) {

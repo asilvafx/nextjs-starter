@@ -178,8 +178,6 @@ export default function OrdersPage() {
     const [isDeleting, setIsDeleting] = useState(false);
     const [fetchError, setFetchError] = useState(null);
     const [isRetrying, setIsRetrying] = useState(false);
-    const [isCheckingEuPago, setIsCheckingEuPago] = useState(false);
-    const [euPagoCheckResults, setEuPagoCheckResults] = useState(null);
 
     const fetchStoreSettings = async () => {
         try {
@@ -223,6 +221,31 @@ export default function OrdersPage() {
                 setTotalPages(response.pagination.totalPages);
                 setTotalItems(response.pagination.totalItems);
                 setFetchError(null); // Clear any previous errors
+                
+                // Auto-check EuPago payments if there are pending ones (but don't show loading state)
+                if (!isRetry) {
+                    const hasPendingEuPago = response.data.some(order => 
+                        (order.paymentMethod?.startsWith('eupago_') || order.payment_method === 'eupago') && 
+                        (order.paymentStatus === 'pending' || order.payment_status === 'pending')
+                    );
+                    
+                    if (hasPendingEuPago) {
+                        // Check EuPago payments silently in the background
+                        fetch('/api/eupago', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ action: 'check_pending' })
+                        })
+                        .then(res => res.json())
+                        .then(result => {
+                            if (result.success && result.updatedCount > 0) {
+                                // Only refresh if payments were updated
+                                fetchOrders(true);
+                            }
+                        })
+                        .catch(err => console.error('Background EuPago check failed:', err));
+                    }
+                }
             } else {
                 throw new Error(response.error || 'Failed to fetch orders');
             }
@@ -300,91 +323,7 @@ export default function OrdersPage() {
         await Promise.all([fetchOrders(true), fetchCustomers(), fetchCatalog(), fetchStoreSettings()]);
     };
 
-    // Check EuPago payment statuses
-    const checkEuPagoPayments = async () => {
-        setIsCheckingEuPago(true);
-        try {
-            const response = await fetch('/api/payments/eupago', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    action: 'check_pending'
-                })
-            });
 
-            const result = await response.json();
-            
-            if (result.success) {
-                setEuPagoCheckResults(result);
-                if (result.updated > 0) {
-                    toast.success(`Updated ${result.updated} paid EuPago orders`);
-                    // Refresh orders to show updated payment statuses
-                    await fetchOrders(true);
-                } else {
-                    toast.info(`Checked ${result.checked} EuPago orders - no updates needed`);
-                }
-            } else {
-                toast.error(result.error || 'Failed to check EuPago payments');
-            }
-        } catch (error) {
-            console.error('Error checking EuPago payments:', error);
-            toast.error('Failed to check EuPago payments');
-        } finally {
-            setIsCheckingEuPago(false);
-        }
-    };
-
-    // Check individual EuPago order status
-    const checkSingleEuPagoOrder = async (order) => {
-        if (!order.reference || order.payment_method !== 'eupago') {
-            toast.error('Order does not have EuPago payment information');
-            return;
-        }
-
-        try {
-            const response = await fetch('/api/payments/eupago/status', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    reference: order.reference,
-                    entity: order.entity
-                })
-            });
-
-            const result = await response.json();
-            
-            if (result.success) {
-                if (result.paid && order.payment_status !== 'paid') {
-                    // Update order status
-                    const updatedOrder = {
-                        ...order,
-                        payment_status: 'paid',
-                        status: 'processing',
-                        paid_at: new Date().toISOString()
-                    };
-
-                    const updateResponse = await updateOrder(order.id, updatedOrder);
-                    if (updateResponse.success) {
-                        toast.success('Order payment status updated to paid');
-                        updateOrderInState(order.id, updatedOrder);
-                    }
-                } else if (result.paid) {
-                    toast.info('Payment is already marked as paid');
-                } else {
-                    toast.info('Payment is still pending');
-                }
-            } else {
-                toast.error(result.error || 'Failed to check payment status');
-            }
-        } catch (error) {
-            console.error('Error checking single EuPago payment:', error);
-            toast.error('Failed to check payment status');
-        }
-    };
 
     useEffect(() => {
         fetchStoreSettings();
@@ -766,6 +705,26 @@ export default function OrdersPage() {
         }).format(amount);
     };
 
+    const formatPaymentMethod = (paymentMethod) => {
+        if (!paymentMethod) return 'None/Pending';
+        
+        if (paymentMethod.startsWith('eupago_')) {
+            const method = paymentMethod.replace('eupago_', '');
+            return method === 'mb' ? 'EuPago Multibanco' : 'EuPago MB WAY';
+        }
+        
+        const methodMap = {
+            'card': 'Credit/Debit Card',
+            'bank_transfer': 'Bank Transfer',
+            'pay_on_delivery': 'Pay On Delivery',
+            'cash': 'Cash',
+            'crypto': 'Cryptocurrency',
+            'none': 'None/Pending'
+        };
+        
+        return methodMap[paymentMethod] || paymentMethod;
+    };
+
     const handleDeleteOrder = (order) => {
         setOrderToDelete(order);
         setDeleteConfirmText('');
@@ -920,24 +879,6 @@ export default function OrdersPage() {
                     </Select>
                 </div>
                 <div className="flex gap-2">
-                    <Button 
-                        variant="outline" 
-                        onClick={checkEuPagoPayments} 
-                        disabled={isCheckingEuPago}
-                        className="gap-2"
-                    >
-                        {isCheckingEuPago ? (
-                            <>
-                                <RefreshCw className="h-4 w-4 animate-spin" />
-                                Checking...
-                            </>
-                        ) : (
-                            <>
-                                <CreditCard className="h-4 w-4" />
-                                Check EuPago
-                            </>
-                        )}
-                    </Button>
                     <Button variant="outline" onClick={exportToCSV}>
                         <FileDown className="mr-2 h-4 w-4" />
                         Export CSV
@@ -1391,32 +1332,69 @@ export default function OrdersPage() {
                                                                     </CardHeader>
                                                                     <CardContent className="space-y-4">
                                                                         {!isEditingPayment ? (
-                                                                            <div className="grid grid-cols-2 gap-4">
-                                                                                <div>
-                                                                                    <label className="font-medium text-gray-500 text-sm">
-                                                                                        Payment Method
-                                                                                    </label>
-                                                                                    <p className="text-sm">
-                                                                                        {selectedOrder.paymentMethod ||
-                                                                                            selectedOrder.method ||
-                                                                                            'Card'}
-                                                                                    </p>
+                                                                            <>
+                                                                                <div className="grid grid-cols-2 gap-4">
+                                                                                    <div>
+                                                                                        <label className="font-medium text-gray-500 text-sm">
+                                                                                            Payment Method
+                                                                                        </label>
+                                                                                        <p className="text-sm">
+                                                                                            {formatPaymentMethod(selectedOrder.paymentMethod || selectedOrder.method)}
+                                                                                        </p>
+                                                                                    </div>
+                                                                                    <div>
+                                                                                        <label className="font-medium text-gray-500 text-sm">
+                                                                                            Payment Status
+                                                                                        </label>
+                                                                                        <Badge
+                                                                                            variant={
+                                                                                                selectedOrder.paymentStatus ===
+                                                                                                'paid'
+                                                                                                    ? 'default'
+                                                                                                    : 'outline'
+                                                                                            }>
+                                                                                            {selectedOrder.paymentStatus}
+                                                                                        </Badge>
+                                                                                    </div>
                                                                                 </div>
-                                                                                <div>
-                                                                                    <label className="font-medium text-gray-500 text-sm">
-                                                                                        Payment Status
-                                                                                    </label>
-                                                                                    <Badge
-                                                                                        variant={
-                                                                                            selectedOrder.paymentStatus ===
-                                                                                            'paid'
-                                                                                                ? 'default'
-                                                                                                : 'outline'
-                                                                                        }>
-                                                                                        {selectedOrder.paymentStatus}
-                                                                                    </Badge>
-                                                                                </div>
-                                                                            </div>
+                                                                                {selectedOrder.eupagoReference && (
+                                                                                    <div className="border-t pt-4 mt-4">
+                                                                                        <label className="font-medium text-gray-500 text-sm block mb-2">
+                                                                                            EuPago Payment Information
+                                                                                        </label>
+                                                                                        <div className="space-y-2 bg-gray-50 p-3 rounded-md">
+                                                                                            <div className="flex justify-between">
+                                                                                                <span className="text-sm text-gray-600">Method:</span>
+                                                                                                <span className="text-sm font-medium">
+                                                                                                    {selectedOrder.eupagoMethod === 'mbway' ? '📱 MB WAY' : '🏧 Multibanco'}
+                                                                                                </span>
+                                                                                            </div>
+                                                                                            <div className="flex justify-between">
+                                                                                                <span className="text-sm text-gray-600">Reference:</span>
+                                                                                                <span className="text-sm font-mono font-medium">{selectedOrder.eupagoReference}</span>
+                                                                                            </div>
+                                                                                            {selectedOrder.eupagoEntity && (
+                                                                                                <div className="flex justify-between">
+                                                                                                    <span className="text-sm text-gray-600">Entity:</span>
+                                                                                                    <span className="text-sm font-mono font-medium">{selectedOrder.eupagoEntity}</span>
+                                                                                                </div>
+                                                                                            )}
+                                                                                            {selectedOrder.eupagoTransactionId && (
+                                                                                                <div className="flex justify-between">
+                                                                                                    <span className="text-sm text-gray-600">Transaction ID:</span>
+                                                                                                    <span className="text-sm font-mono font-medium text-xs">{selectedOrder.eupagoTransactionId}</span>
+                                                                                                </div>
+                                                                                            )}
+                                                                                            {selectedOrder.eupagoMobile && (
+                                                                                                <div className="flex justify-between">
+                                                                                                    <span className="text-sm text-gray-600">Mobile:</span>
+                                                                                                    <span className="text-sm font-mono font-medium">{selectedOrder.eupagoMobile}</span>
+                                                                                                </div>
+                                                                                            )}
+                                                                                        </div>
+                                                                                    </div>
+                                                                                )}
+                                                                            </>
                                                                         ) : (
                                                                             // Edit Mode
                                                                             <div className="space-y-4">
@@ -2199,12 +2177,6 @@ export default function OrdersPage() {
                                                     </Button>
                                                 </DropdownMenuTrigger>
                                                 <DropdownMenuContent align="end">
-                                                    {order.payment_method === 'eupago' && order.payment_status === 'pending' && (
-                                                        <DropdownMenuItem onClick={() => checkSingleEuPagoOrder(order)}>
-                                                            <CreditCard className="mr-2 h-4 w-4" />
-                                                            Check EuPago Payment
-                                                        </DropdownMenuItem>
-                                                    )}
                                                     <DropdownMenuItem onClick={() => openInvoiceDialog(order)}>
                                                         <FileText className="mr-2 h-4 w-4" />
                                                         Invoice
@@ -3083,8 +3055,32 @@ export default function OrdersPage() {
                                             </div>
                                             <div className="flex justify-between">
                                                 <span>Payment Method:</span>
-                                                <span>{selectedOrderForInvoice.paymentMethod || 'Card'}</span>
+                                                <span>{formatPaymentMethod(selectedOrderForInvoice.paymentMethod)}</span>
                                             </div>
+                                            {selectedOrderForInvoice.eupagoReference && (
+                                                <>
+                                                    <div className="flex justify-between">
+                                                        <span>EuPago Method:</span>
+                                                        <span>{selectedOrderForInvoice.eupagoMethod === 'mbway' ? 'MB WAY' : 'Multibanco'}</span>
+                                                    </div>
+                                                    <div className="flex justify-between">
+                                                        <span>Reference:</span>
+                                                        <span className="font-mono">{selectedOrderForInvoice.eupagoReference}</span>
+                                                    </div>
+                                                    {selectedOrderForInvoice.eupagoEntity && (
+                                                        <div className="flex justify-between">
+                                                            <span>Entity:</span>
+                                                            <span className="font-mono">{selectedOrderForInvoice.eupagoEntity}</span>
+                                                        </div>
+                                                    )}
+                                                    {selectedOrderForInvoice.eupagoTransactionId && (
+                                                        <div className="flex justify-between">
+                                                            <span>Transaction ID:</span>
+                                                            <span className="font-mono text-xs">{selectedOrderForInvoice.eupagoTransactionId}</span>
+                                                        </div>
+                                                    )}
+                                                </>
+                                            )}
                                             <div className="flex justify-between">
                                                 <span>Status:</span>
                                                 <Badge
