@@ -87,9 +87,28 @@ async function POST(request) {
         }
 
         // Find coupon
-        const coupons = (await DBService.readAll('coupons')) || [];
+        const couponsData = await DBService.readAll('coupons');
+        
+        // Convert object to array if needed
+        let coupons = [];
+        if (Array.isArray(couponsData)) {
+            coupons = couponsData;
+        } else if (couponsData && typeof couponsData === 'object') {
+            coupons = Object.entries(couponsData).map(([key, value]) => ({
+                id: key,
+                ...value
+            }));
+        }
+        
         const normalizedCode = code.toUpperCase().trim();
-        const coupon = coupons.find((c) => c.code?.toUpperCase() === normalizedCode);
+        const coupon = coupons.find((c) => c.code?.toUpperCase().trim() === normalizedCode);
+
+        console.log('Coupon validation:', { 
+            requestedCode: normalizedCode, 
+            totalCoupons: coupons.length,
+            availableCodes: coupons.map(c => c.code),
+            found: !!coupon 
+        });
 
         if (!coupon) {
             return NextResponse.json({

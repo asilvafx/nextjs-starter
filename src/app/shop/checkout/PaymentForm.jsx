@@ -69,6 +69,7 @@ const PaymentForm = ({
     // Payment Method State
     const [selectedPaymentMethod, setSelectedPaymentMethod] = useState('');
     const [mbwayMobile, setMbwayMobile] = useState(''); // For MB WAY payments
+    const [mbwayCountryCode, setMbwayCountryCode] = useState('+351'); // MB WAY country code
 
     const handleShippingMethodSelect = (method) => {
         setLocalSelectedShippingMethod(method);
@@ -266,6 +267,7 @@ const PaymentForm = ({
                 // Update cart total display
                 onShippingUpdate(shippingCost, selectedShippingMethod, result.discount.amount);
             } else {
+                console.log(result); 
                 setPromoError(result.message || 'Invalid promo code');
                 setAppliedCoupon(null);
                 setDiscountAmount(0);
@@ -441,7 +443,7 @@ const PaymentForm = ({
                 id: Math.floor(Date.now() / 1000) + '_' + Math.floor(Math.random() * (9999 - 1000 + 1)) + 1000,
                 customer: customerData,
                 items: orderItems,
-                subtotal: storeSettings?.vatEnabled && storeSettings.vatIncludedInPrice ? subtotalExclVat : itemsTotal,
+                subtotal: itemsTotal,
                 shippingCost: shippingTotal,
                 discountType: appliedCoupon ? appliedCoupon.type : 'fixed',
                 discountValue: appliedCoupon ? appliedCoupon.value : 0,
@@ -546,7 +548,8 @@ const PaymentForm = ({
                     customer: customerData,
                     payment: {
                         method: eupagoMethod,
-                        mobile: eupagoMethod === 'mbway' ? mbwayMobile : null
+                        mobile: eupagoMethod === 'mbway' ? mbwayMobile : null,
+                        countryCode: eupagoMethod === 'mbway' ? mbwayCountryCode : null
                     },
                     totals: {
                         subtotal: orderData.subtotal,
@@ -1104,23 +1107,44 @@ const PaymentForm = ({
                                             <div className="rounded-lg border bg-card p-4">
                                                 <h3 className="mb-2 font-medium text-md">📱 MB WAY</h3>
                                                 <p className="mb-3 text-muted-foreground text-sm">
-                                                    Enter your mobile number to receive the payment request on your MB WAY app
+                                                    Enter your mobile number to receive the payment request on your MB WAY app. You'll have 5 minutes to approve the payment.
                                                 </p>
                                                 <div>
                                                     <label htmlFor="mbwayMobile" className="block mb-2 font-medium text-sm">
                                                         Mobile Number
                                                     </label>
-                                                    <input
-                                                        id="mbwayMobile"
-                                                        type="tel"
-                                                        value={mbwayMobile}
-                                                        onChange={(e) => setMbwayMobile(e.target.value)}
-                                                        placeholder="9xxxxxxxx"
-                                                        className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-primary focus:ring-2 focus:ring-primary/20"
-                                                        required={selectedPaymentMethod === 'eupago_mbway'}
-                                                    />
+                                                    <div className="flex gap-2">
+                                                        <select
+                                                            value={mbwayCountryCode}
+                                                            onChange={(e) => setMbwayCountryCode(e.target.value)}
+                                                            className="w-32 rounded-lg border border-gray-300 px-3 py-2 focus:border-primary focus:ring-2 focus:ring-primary/20"
+                                                        >
+                                                            <option value="+351">🇵🇹 +351</option>
+                                                            <option value="+34">🇪🇸 +34</option>
+                                                            <option value="+33">🇫🇷 +33</option>
+                                                            <option value="+44">🇬🇧 +44</option>
+                                                            <option value="+49">🇩🇪 +49</option>
+                                                            <option value="+39">🇮🇹 +39</option>
+                                                            <option value="+31">🇳🇱 +31</option>
+                                                            <option value="+32">🇧🇪 +32</option>
+                                                            <option value="+41">🇨🇭 +41</option>
+                                                            <option value="+1">🇺🇸 +1</option>
+                                                        </select>
+                                                        <input
+                                                            id="mbwayMobile"
+                                                            type="tel"
+                                                            value={mbwayMobile}
+                                                            onChange={(e) => setMbwayMobile(e.target.value.replace(/\D/g, ''))}
+                                                            placeholder="9xxxxxxxx"
+                                                            className="flex-1 rounded-lg border border-gray-300 px-3 py-2 focus:border-primary focus:ring-2 focus:ring-primary/20"
+                                                            required={selectedPaymentMethod === 'eupago_mbway'}
+                                                            maxLength="15"
+                                                        />
+                                                    </div>
                                                     <p className="mt-1 text-muted-foreground text-xs">
-                                                        Enter your 9-digit Portuguese mobile number without country code
+                                                        {mbwayCountryCode === '+351' 
+                                                            ? 'Enter your 9-digit mobile number' 
+                                                            : 'Enter your mobile number without country code'}
                                                     </p>
                                                 </div>
                                             </div>

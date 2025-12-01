@@ -3,62 +3,7 @@
 import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
 import { auth } from '@/auth.js';
-
-// Mock API Keys Data
-const mockApiKeys = [
-    {
-        id: '1',
-        key: 'ak_dev_1a2b3c4d5e6f7g8h9i0j',
-        name: 'Development Key',
-        description: 'Development environment access',
-        active: true,
-        permissions: ['read', 'write'],
-        rateLimit: 1000,
-        lastUsed: null,
-        created_at: '2024-01-01T00:00:00Z',
-        created_by: 'admin',
-        expires_at: '2025-01-01T00:00:00Z'
-    },
-    {
-        id: '2',
-        key: 'ak_prod_9z8y7x6w5v4u3t2s1r0q',
-        name: 'Production Key',
-        description: 'Production environment full access',
-        active: true,
-        permissions: ['read', 'write', 'delete'],
-        rateLimit: 5000,
-        lastUsed: '2024-12-15T10:30:00Z',
-        created_at: '2024-01-01T00:00:00Z',
-        created_by: 'admin',
-        expires_at: '2025-06-01T00:00:00Z'
-    }
-];
-
-// Mock Whitelist Data
-const mockWhitelist = [
-    {
-        id: '1',
-        type: 'ip',
-        value: 'localhost',
-        description: 'Internal company network',
-        active: true,
-        category: 'internal',
-        created_at: '2024-01-01T00:00:00Z',
-        created_by: 'admin',
-        last_accessed: '2024-12-15T14:30:00Z'
-    },
-    {
-        id: '2',
-        type: 'ip',
-        value: '127.0.0.1',
-        description: 'Localhost',
-        active: true,
-        category: 'internal',
-        created_at: '2024-01-01T00:00:00Z',
-        created_by: 'admin',
-        last_accessed: '2024-12-15T14:30:00Z'
-    }
-];
+import DBService from '@/data/rest.db.js';
 
 export async function verifyToken(_request) {
     try {
@@ -133,8 +78,8 @@ export async function verifyCsrfToken(request) {
 // Enhanced public access middleware
 export function withPublicAccess(handler, options = {}) {
     const {
-        requireApiKey = true,
-        requireIpWhitelist = true,
+        requireApiKey = false,
+        requireIpWhitelist = false,
         skipCsrfForApiKey = true,
         requiredPermission = null,
         logAccess = false
@@ -142,9 +87,16 @@ export function withPublicAccess(handler, options = {}) {
 
     return async (request, context) => {
         try {
+            // Check if request is internal first
+            const ipValidation = await validateIpAndDomain(request);
+            if (ipValidation.isInternal) {
+                // Internal requests don't need API key or CSRF validation
+                return await handler(request, context);
+            }
+
             let hasValidApiKey = false;
 
-            // Check for API key first
+            // Check for API key for external requests
             if (requireApiKey) {
                 const apiKey =
                     request.headers.get('x-api-key') || request.headers.get('authorization')?.replace('Bearer ', '');
@@ -153,9 +105,21 @@ export function withPublicAccess(handler, options = {}) {
                     return NextResponse.json({ error: 'API key is required for external access.' }, { status: 401 });
                 }
 
-                // Validate API key against mock data
-                const validKey = mockApiKeys.find(
-                    (key) => key.key === apiKey && key.active && new Date(key.expires_at) > new Date()
+                // Get API keys from database
+                const apiKeysData = await DBService.readAll('api_keys');
+                let apiKeys = [];
+                if (Array.isArray(apiKeysData)) {
+                    apiKeys = apiKeysData;
+                } else if (apiKeysData && typeof apiKeysData === 'object') {
+                    apiKeys = Object.entries(apiKeysData).map(([key, value]) => ({
+                        id: key,
+                        ...value
+                    }));
+                }
+
+                // Validate API key against database
+                const validKey = apiKeys.find(
+                    (key) => key.key === apiKey && key.status === 'active' && (!key.expiresAt || new Date(key.expiresAt) > new Date())
                 );
 
                 if (!validKey) {
@@ -163,7 +127,7 @@ export function withPublicAccess(handler, options = {}) {
                 }
 
                 // Check permissions if required
-                if (requiredPermission && !validKey.permissions.includes(requiredPermission)) {
+                if (requiredPermission && validKey.permissions && !validKey.permissions.includes(requiredPermission)) {
                     return NextResponse.json(
                         { error: `API key lacks required permission: ${requiredPermission}` },
                         { status: 403 }
@@ -175,11 +139,7 @@ export function withPublicAccess(handler, options = {}) {
 
             // If we have a valid API key and skipCsrfForApiKey is true, skip CSRF check
             if (!(hasValidApiKey && skipCsrfForApiKey)) {
-                // Verify CSRF token
-                const validate = await validateIpAndDomain(request);
-                if (validate.isInternal) {
-                    return await handler(request, context);
-                }
+                // Verify CSRF token for external requests
                 const csrfResult = await verifyCsrfToken(request);
                 if (csrfResult.error) {
                     return NextResponse.json({ error: csrfResult.error }, { status: csrfResult.status });
@@ -187,10 +147,9 @@ export function withPublicAccess(handler, options = {}) {
             }
 
             // Check IP whitelist if required
-            if (requireIpWhitelist) {
-                const ipResult = await validateIpAndDomain(request);
-                if (ipResult.error) {
-                    return NextResponse.json({ error: ipResult.error }, { status: ipResult.status });
+            if (requireIpWhitelist && !ipValidation.isInternal) {
+                if (ipValidation.error) {
+                    return NextResponse.json({ error: ipValidation.error }, { status: ipValidation.status });
                 }
             }
 
@@ -284,14 +243,23 @@ export async function validateIpAndDomain(request) {
             referer?.includes(host) ||
             clientIp === '127.0.0.1' ||
             clientIp === '::1' ||
-            clientIp === 'localhost';
+            clientIp === 'localhost' ||
+            clientIp === 'unknown';
 
         if (isInternal) {
             return { success: true, isInternal: true };
         }
 
-        // Get whitelisted IPs and domains
-        const whitelistedEntries = mockWhitelist.filter((entry) => entry.active);
+        // Get whitelisted IPs and domains from database
+        const whitelistData = await DBService.readAll('ip_whitelist');
+        let whitelistedEntries = [];
+        if (Array.isArray(whitelistData)) {
+            whitelistedEntries = whitelistData.filter((entry) => entry.active);
+        } else if (whitelistData && typeof whitelistData === 'object') {
+            whitelistedEntries = Object.entries(whitelistData)
+                .map(([key, value]) => ({ id: key, ...value }))
+                .filter((entry) => entry.active);
+        }
 
         // Check IP whitelist
         const isIpWhitelisted = whitelistedEntries.some((entry) => {

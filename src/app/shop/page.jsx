@@ -102,13 +102,7 @@ function Shop() {
             // Set store settings
             if (storeResponse?.success) {
                 setStoreSettings(storeResponse.data);
-            }
-
-            // Set site settings to state if needed
-            if (siteResponse?.success) {
-                // You can use site settings here if needed
-                console.log('Site settings loaded:', siteResponse.data);
-            }
+            } 
 
             // Set categories
             if (categoriesResponse?.success) {

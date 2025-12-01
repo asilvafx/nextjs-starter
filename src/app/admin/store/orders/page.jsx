@@ -245,6 +245,41 @@ export default function OrdersPage() {
                         })
                         .catch(err => console.error('Background EuPago check failed:', err));
                     }
+                    
+                    // Auto-cancel expired MB WAY payments
+                    const now = new Date().getTime();
+                    const expiredMbWayOrders = response.data.filter(order => {
+                        const isMbWay = order.eupagoMethod === 'mbway' || 
+                                       (order.paymentMethod?.includes('mbway'));
+                        const isPending = order.paymentStatus === 'pending' && order.status !== 'cancelled';
+                        const hasExpiry = order.mbwayExpiryTime;
+                        
+                        if (!isMbWay || !isPending || !hasExpiry) return false;
+                        
+                        const expiryTime = new Date(order.mbwayExpiryTime).getTime();
+                        return now > expiryTime;
+                    });
+                    
+                    // Cancel expired MB WAY orders
+                    if (expiredMbWayOrders.length > 0) {
+                        Promise.all(
+                            expiredMbWayOrders.map(order => 
+                                fetch('/api/query/orders', {
+                                    method: 'PUT',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({
+                                        id: order.id,
+                                        status: 'cancelled',
+                                        paymentStatus: 'cancelled',
+                                        updatedAt: new Date().toISOString()
+                                    })
+                                })
+                            )
+                        ).then(() => {
+                            console.log(`Auto-cancelled ${expiredMbWayOrders.length} expired MB WAY orders`);
+                            fetchOrders(true); // Refresh to show updated status
+                        }).catch(err => console.error('Failed to auto-cancel expired orders:', err));
+                    }
                 }
             } else {
                 throw new Error(response.error || 'Failed to fetch orders');

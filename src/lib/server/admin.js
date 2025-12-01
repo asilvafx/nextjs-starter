@@ -6851,7 +6851,7 @@ export async function createEuPagoPaymentReference(orderData) {
         const { apiUrl, apiKey } = configResult.config;
         console.log('EuPago config:', { apiUrl: apiUrl ? 'configured' : 'missing', apiKey: apiKey ? 'configured' : 'missing' });
         
-        const { orderId, amount, method = 'mb', mobile = null, customerEmail = null, customerName = null } = orderData;
+        const { orderId, amount, method = 'mb', mobile = null, countryCode = '+351', customerEmail = null, customerName = null } = orderData;
 
         // Normalize API URL - remove trailing slash to avoid double slashes
         const normalizedApiUrl = apiUrl.replace(/\/$/, '');
@@ -6878,7 +6878,7 @@ export async function createEuPagoPaymentReference(orderData) {
                         value: parseFloat(amount)
                     },
                     customerPhone: cleanMobile,
-                    countryCode: '+351'
+                    countryCode: countryCode || '+351'
                 },
                 customer: {
                     name: customerName || 'Customer',
@@ -7008,9 +7008,10 @@ export async function processEuPagoPayment(orderData) {
         const amount = totals.total;
         const method = payment.method || 'mb';
         const mobile = payment.mobile || null;
+        const countryCode = payment.countryCode || '+351';
         const customerName = `${customer.firstName} ${customer.lastName}`.trim();
 
-        console.log('ProcessEuPagoPayment - Creating payment reference:', { orderId, amount, method });
+        console.log('ProcessEuPagoPayment - Creating payment reference:', { orderId, amount, method, countryCode });
 
         // Create payment reference with EuPago
         const referenceResult = await createEuPagoPaymentReference({
@@ -7018,6 +7019,7 @@ export async function processEuPagoPayment(orderData) {
             amount,
             method,
             mobile,
+            countryCode,
             customerEmail: customer.email,
             customerName: customerName
         });
@@ -7033,6 +7035,9 @@ export async function processEuPagoPayment(orderData) {
         const storeSettings = Array.isArray(storeSettingsData) ? storeSettingsData[0] : storeSettingsData;
 
         // Create order in database with proper structure matching other payment methods
+        const currentTime = new Date();
+        const mbwayExpiryTime = method === 'mbway' ? new Date(currentTime.getTime() + 5 * 60 * 1000) : null; // 5 minutes for MB WAY
+        
         const orderToCreate = {
             id: orderId,
             customer: customer,
@@ -7055,13 +7060,14 @@ export async function processEuPagoPayment(orderData) {
             eupagoTransactionId: referenceResult.transactionId || null,
             eupagoMethod: method,
             eupagoMobile: mobile,
+            mbwayExpiryTime: mbwayExpiryTime ? mbwayExpiryTime.toISOString() : null,
             deliveryNotes: '',
             shippingNotes: '',
             sendEmail: true,
             appointmentId: null,
             isServiceAppointment: false,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
+            createdAt: currentTime.toISOString(),
+            updatedAt: currentTime.toISOString(),
             // Additional fields for compatibility
             uid: orderId,
             cst_email: customer.email,

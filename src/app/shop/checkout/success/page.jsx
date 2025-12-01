@@ -23,6 +23,8 @@ const PaymentSuccess = () => {
     const [orderDetails, setOrderDetails] = useState(null);
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(true);
+    const [timeRemaining, setTimeRemaining] = useState(null);
+    const [paymentExpired, setPaymentExpired] = useState(false);
 
     // Use ref to track if we've already processed the order
     const hasProcessedOrder = useRef(false);
@@ -153,6 +155,19 @@ const PaymentSuccess = () => {
 
                 setOrderDetails(orderDetailsData);
 
+                // For MB WAY payments, initialize countdown timer
+                if (paymentMethod === 'eupago' && eupagoMethod === 'mbway' && orderData.mbwayExpiryTime) {
+                    const expiryTime = new Date(orderData.mbwayExpiryTime).getTime();
+                    const now = Date.now();
+                    const remaining = Math.max(0, expiryTime - now);
+                    
+                    if (remaining > 0) {
+                        setTimeRemaining(Math.floor(remaining / 1000));
+                    } else {
+                        setPaymentExpired(true);
+                    }
+                }
+
                 // Clear cart and any stored order data
                 emptyCart();
                 localStorage.removeItem('orderData');
@@ -167,8 +182,33 @@ const PaymentSuccess = () => {
         fetchOrder();
     }, [orderId, emptyCart]); // Keep dependencies but use ref to prevent re-execution
 
+    // Countdown timer for MB WAY payments
+    useEffect(() => {
+        if (timeRemaining === null || timeRemaining <= 0) return;
+
+        const timer = setInterval(() => {
+            setTimeRemaining((prev) => {
+                if (prev <= 1) {
+                    setPaymentExpired(true);
+                    clearInterval(timer);
+                    return 0;
+                }
+                return prev - 1;
+            });
+        }, 1000);
+
+        return () => clearInterval(timer);
+    }, [timeRemaining]);
+
+    // Format countdown time (MM:SS)
+    const formatTime = (seconds) => {
+        const mins = Math.floor(seconds / 60);
+        const secs = seconds % 60;
+        return `${mins}:${secs.toString().padStart(2, '0')}`;
+    };
+
     const handleContinue = () => {
-        router.push('/');
+        router.push('/shop');
     };
 
     const _handleViewOrders = () => {
@@ -277,6 +317,22 @@ const PaymentSuccess = () => {
                                     {eupagoMethod === 'mbway' ? (
                                         <div className="text-orange-800">
                                             <h3 className="font-semibold mb-3">📱 MB WAY Payment</h3>
+                                            
+                                            {paymentExpired ? (
+                                                <div className="mb-3 p-3 bg-red-100 border border-red-300 rounded text-red-800">
+                                                    <p className="font-semibold">⏰ Payment Time Expired</p>
+                                                    <p className="text-sm mt-1">Your MB WAY payment window has expired. Please contact support or place a new order.</p>
+                                                </div>
+                                            ) : timeRemaining !== null ? (
+                                                <div className="mb-3 p-3 bg-blue-100 border border-blue-300 rounded">
+                                                    <div className="flex items-center justify-between">
+                                                        <span className="font-semibold text-blue-900">Time Remaining:</span>
+                                                        <span className="text-2xl font-mono font-bold text-blue-900">{formatTime(timeRemaining)}</span>
+                                                    </div>
+                                                    <p className="text-blue-700 text-xs mt-1">⚠️ Approve the payment in your MB WAY app before time runs out</p>
+                                                </div>
+                                            ) : null}
+                                            
                                             <p className="text-sm mb-3">
                                                 A payment request has been sent to your MB WAY app. Please open your MB WAY app and approve the payment.
                                             </p>
@@ -290,7 +346,6 @@ const PaymentSuccess = () => {
                                                 <p>2. Check for the payment notification</p>
                                                 <p>3. Verify the amount and merchant details</p>
                                                 <p>4. Confirm the payment with your PIN</p>
-                                                <p className="text-blue-700 mt-2">⚠️ Payment must be approved within 4 minutes</p>
                                             </div>
                                         </div>
                                     ) : eupagoMethod === 'mb' ? (
@@ -449,9 +504,9 @@ const PaymentSuccess = () => {
                                             )}
                                         </span>
                                     </div>
-                                    {orderDetails.discountAmount && parseFloat(orderDetails.discountAmount) > 0 && (
+                                    {orderDetails.discountAmount && (
                                         <div className="flex justify-between text-green-600">
-                                            <span>Réduction</span>
+                                            <span>Discount</span>
                                             <span>
                                                 -{orderDetails.currency === 'USD' ? '$' : '€'}
                                                 {parseFloat(orderDetails.discountAmount).toFixed(2)}
