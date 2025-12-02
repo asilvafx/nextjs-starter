@@ -228,10 +228,10 @@ class PostgresDBService {
 
     // Update an existing item
     async update(id, updateData, table) {
+        await this.ensureTable();
+        const key = this.buildKey(table, id);
+        
         try {
-            await this.ensureTable();
-            const key = this.buildKey(table, id);
-
             // Get existing data first
             const existing = await this.read(id, table);
             if (!existing) {

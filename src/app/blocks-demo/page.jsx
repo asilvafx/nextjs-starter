@@ -1,9 +1,32 @@
-import BlockEl from '@/components/BlockEl';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Code, Type, Image, Video, Youtube, FileText, Layout } from 'lucide-react';
+import { Code, Type, Image, Video, Youtube, FileText, Layout, Info, ArrowRight } from 'lucide-react';
+import Link from 'next/link';
+
+/**
+ * Blocks Demo Page
+ * 
+ * This page demonstrates how to use the BlockEl component system.
+ * 
+ * To display blocks on this page:
+ * 1. Create blocks in the admin panel (/admin/blocks)
+ * 2. Import BlockEl: import BlockEl from '@/components/BlockEl'
+ * 3. Use the component: <BlockEl id="your_block_id" />
+ * 
+ * Example:
+ * import BlockEl from '@/components/BlockEl';
+ * 
+ * <BlockEl id="welcome_text" />
+ * <BlockEl id="hero_image" className="rounded-lg" />
+ */
 
 export default function BlocksDemo() {
+    // Define blocks to display (add block IDs here after creating them in admin panel)
+    const demoBlocks = [
+        // Example: { id: 'welcome_text', title: 'Welcome Text', description: 'A simple text block' },
+        // Example: { id: 'hero_image', title: 'Hero Image', description: 'Hero section image' },
+    ];
+
     return (
         <div className="container mx-auto px-4 py-8">
             <div className="mb-8 text-center">
@@ -15,6 +38,68 @@ export default function BlocksDemo() {
             </div>
 
             <div className="space-y-12">
+                {/* Quick Start Guide */}
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2 text-blue-900">
+                            <Info className="h-6 w-6" />
+                            Getting Started
+                        </CardTitle>
+                        <CardDescription className="text-blue-700">
+                            Follow these steps to create and display blocks on this page
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        <div className="flex items-start gap-3">
+                            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-600 text-white font-bold">1</div>
+                            <div>
+                                <h4 className="font-semibold text-blue-900 mb-1">Create Blocks in Admin Panel</h4>
+                                <p className="text-sm text-blue-700 mb-2">
+                                    Go to the admin panel and create your content blocks with different types (text, HTML, images, videos, etc.)
+                                </p>
+                                <Link 
+                                    href="/admin/blocks" 
+                                    className="inline-flex items-center gap-1 text-sm font-medium text-blue-600 hover:text-blue-800"
+                                >
+                                    Open Admin Blocks Panel <ArrowRight className="h-4 w-4" />
+                                </Link>
+                            </div>
+                        </div>
+                        <div className="flex items-start gap-3">
+                            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-600 text-white font-bold">2</div>
+                            <div>
+                                <h4 className="font-semibold text-blue-900 mb-1">Import BlockEl Component</h4>
+                                <p className="text-sm text-blue-700 mb-2">Add this import at the top of this file:</p>
+                                <div className="p-3 rounded border border-blue-200 font-mono text-sm">
+                                    <code>import BlockEl from '@/components/BlockEl';</code>
+                                </div>
+                            </div>
+                        </div>
+                        <div className="flex items-start gap-3">
+                            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-600 text-white font-bold">3</div>
+                            <div>
+                                <h4 className="font-semibold text-blue-900 mb-1">Add Block IDs to Demo Array</h4>
+                                <p className="text-sm text-blue-700 mb-2">Update the demoBlocks array in this file:</p>
+                                <div className="p-3 rounded border border-blue-200 font-mono text-sm">
+                                    <code className="whitespace-pre">{`const demoBlocks = [
+  { id: 'your_block_id', title: 'Block Title', description: 'Description' },
+];`}</code>
+                                </div>
+                            </div>
+                        </div>
+                        <div className="flex items-start gap-3">
+                            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-600 text-white font-bold">4</div>
+                            <div>
+                                <h4 className="font-semibold text-blue-900 mb-1">Display Blocks</h4>
+                                <p className="text-sm text-blue-700 mb-2">Use the BlockEl component to render your blocks:</p>
+                                <div className="p-3 rounded border border-blue-200 font-mono text-sm">
+                                    <code>&lt;BlockEl id="your_block_id" /&gt;</code>
+                                </div>
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+
                 {/* Introduction */}
                 <Card>
                     <CardHeader>
@@ -70,7 +155,7 @@ export default function BlocksDemo() {
                             </div>
                             <div>
                                 <h3 className="font-semibold text-lg mb-3">Usage Examples</h3>
-                                <div className="bg-gray-50 p-4 rounded-lg font-mono text-sm space-y-2">
+                                <div className="p-4 rounded-lg font-mono text-sm space-y-2">
                                     <div>
                                         <span className="text-gray-600">// Basic usage</span><br />
                                         <code>&lt;BlockEl id="welcome_text" /&gt;</code>
@@ -89,270 +174,111 @@ export default function BlocksDemo() {
                     </CardContent>
                 </Card>
 
-                {/* Example Blocks */}
-                <div className="grid gap-8">
-                    {/* Text Block Example */}
-                    <Card>
+                {/* Demo Blocks Section */}
+                {demoBlocks.length > 0 ? (
+                    <div className="grid gap-8">
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>Live Demo Blocks</CardTitle>
+                                <CardDescription>
+                                    These are the blocks you've imported on this page
+                                </CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                {/* Blocks will be displayed here once you add them to the demoBlocks array */}
+                                {/* Example:
+                                {demoBlocks.map((block) => (
+                                    <Card key={block.id} className="mb-4">
+                                        <CardHeader>
+                                            <CardTitle>{block.title}</CardTitle>
+                                            <CardDescription>{block.description}</CardDescription>
+                                        </CardHeader>
+                                        <CardContent>
+                                            <BlockEl id={block.id} />
+                                        </CardContent>
+                                    </Card>
+                                ))}
+                                */}
+                            </CardContent>
+                        </Card>
+                    </div>
+                ) : (
+                    <Card className="border-2 border-gray-200">
                         <CardHeader>
-                            <CardTitle className="flex items-center gap-2">
-                                <Type className="h-5 w-5" />
-                                Text Block Example
+                            <CardTitle className="flex items-center gap-2 text-gray-700">
+                                <Layout className="h-6 w-6" />
+                                No Blocks Imported Yet
                             </CardTitle>
                             <CardDescription>
-                                Simple text content that can be managed from the admin panel
+                                Start by creating blocks in the admin panel, then import them here
                             </CardDescription>
                         </CardHeader>
                         <CardContent>
-                            <div className="mb-4">
-                                <code className="bg-gray-100 px-3 py-1 rounded text-sm">
-                                    &lt;BlockEl id="welcome_text" /&gt;
-                                </code>
-                            </div>
-                            <div className="border rounded-lg p-4 bg-white">
-                                <BlockEl 
-                                    id="welcome_text" 
-                                    fallback={
-                                        <div className="text-gray-500 italic">
-                                            Create a text block with ID "welcome_text" in the admin panel to see it here.
-                                        </div>
-                                    }
-                                />
+                            <p className="text-gray-600 mb-4">
+                                This demo page will display blocks once you:
+                            </p>
+                            <ol className="list-decimal list-inside space-y-2 text-gray-700 mb-6">
+                                <li>Create blocks in the <Link href="/admin/blocks" className="text-blue-600 hover:underline">admin panel</Link></li>
+                                <li>Add block IDs to the <code className="bg-gray-100 px-2 py-1 rounded">demoBlocks</code> array in this file</li>
+                                <li>Import <code className="bg-gray-100 px-2 py-1 rounded">BlockEl</code> component at the top of this file</li>
+                                <li>Use <code className="bg-gray-100 px-2 py-1 rounded">&lt;BlockEl id="your_block_id" /&gt;</code> to render blocks</li>
+                            </ol>
+                            <div className="p-4 rounded-lg border border-gray-200">
+                                <p className="font-semibold mb-2">Example Implementation:</p>
+                                <pre className="p-3 rounded border text-sm overflow-x-auto">
+<code>{`// 1. Import BlockEl
+import BlockEl from '@/components/BlockEl';
+
+// 2. Add blocks to demoBlocks array
+const demoBlocks = [
+  { 
+    id: 'welcome_text', 
+    title: 'Welcome Text', 
+    description: 'A text block' 
+  },
+  { 
+    id: 'hero_image', 
+    title: 'Hero Image', 
+    description: 'Main hero image' 
+  },
+];
+
+// 3. Display blocks in JSX
+{demoBlocks.map((block) => (
+  <BlockEl key={block.id} id={block.id} />
+))}`}</code>
+                                </pre>
                             </div>
                         </CardContent>
                     </Card>
+                )}
 
-                    {/* HTML Block Example */}
-                    <Card>
-                        <CardHeader>
-                            <CardTitle className="flex items-center gap-2">
-                                <Code className="h-5 w-5" />
-                                HTML Block Example
-                            </CardTitle>
-                            <CardDescription>
-                                Custom HTML with CSS and JavaScript support
-                            </CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="mb-4">
-                                <code className="bg-gray-100 px-3 py-1 rounded text-sm">
-                                    &lt;BlockEl id="custom_widget" /&gt;
-                                </code>
-                            </div>
-                            <div className="border rounded-lg p-4 bg-white">
-                                <BlockEl 
-                                    id="custom_widget"
-                                    fallback={
-                                        <div className="text-gray-500 italic">
-                                            Create an HTML block with ID "custom_widget" in the admin panel to see a custom widget here.
-                                        </div>
-                                    }
-                                />
-                            </div>
-                        </CardContent>
-                    </Card>
-
-                    {/* Image Block Example */}
-                    <Card>
-                        <CardHeader>
-                            <CardTitle className="flex items-center gap-2">
-                                <Image className="h-5 w-5" />
-                                Image Block Example
-                            </CardTitle>
-                            <CardDescription>
-                                Images with alt text and optional captions
-                            </CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="mb-4">
-                                <code className="bg-gray-100 px-3 py-1 rounded text-sm">
-                                    &lt;BlockEl id="hero_image" className="rounded-lg shadow-lg" /&gt;
-                                </code>
-                            </div>
-                            <div className="border rounded-lg p-4 bg-white">
-                                <BlockEl 
-                                    id="hero_image" 
-                                    className="rounded-lg shadow-lg"
-                                    fallback={
-                                        <div className="text-gray-500 italic">
-                                            Create an image block with ID "hero_image" in the admin panel to display an image here.
-                                        </div>
-                                    }
-                                />
-                            </div>
-                        </CardContent>
-                    </Card>
-
-                    {/* YouTube Block Example */}
-                    <Card>
-                        <CardHeader>
-                            <CardTitle className="flex items-center gap-2">
-                                <Youtube className="h-5 w-5" />
-                                YouTube Block Example
-                            </CardTitle>
-                            <CardDescription>
-                                Embedded YouTube videos with custom settings
-                            </CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="mb-4">
-                                <code className="bg-gray-100 px-3 py-1 rounded text-sm">
-                                    &lt;BlockEl id="demo_video" /&gt;
-                                </code>
-                            </div>
-                            <div className="border rounded-lg p-4 bg-white">
-                                <BlockEl 
-                                    id="demo_video"
-                                    fallback={
-                                        <div className="text-gray-500 italic">
-                                            Create a YouTube block with ID "demo_video" in the admin panel to embed a video here.
-                                        </div>
-                                    }
-                                />
-                            </div>
-                        </CardContent>
-                    </Card>
-
-                    {/* Form Block Example */}
-                    <Card>
-                        <CardHeader>
-                            <CardTitle className="flex items-center gap-2">
-                                <FileText className="h-5 w-5" />
-                                Form Block Example
-                            </CardTitle>
-                            <CardDescription>
-                                Dynamic forms with customizable fields
-                            </CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="mb-4">
-                                <code className="bg-gray-100 px-3 py-1 rounded text-sm">
-                                    &lt;BlockEl id="contact_form" /&gt;
-                                </code>
-                            </div>
-                            <div className="border rounded-lg p-4 bg-white">
-                                <BlockEl 
-                                    id="contact_form"
-                                    fallback={
-                                        <div className="text-gray-500 italic">
-                                            Create a form block with ID "contact_form" in the admin panel to display a contact form here.
-                                        </div>
-                                    }
-                                />
-                            </div>
-                        </CardContent>
-                    </Card>
-
-                    {/* Layout Block Example */}
-                    <Card>
-                        <CardHeader>
-                            <CardTitle className="flex items-center gap-2">
-                                <Layout className="h-5 w-5" />
-                                Layout Block Example
-                            </CardTitle>
-                            <CardDescription>
-                                Grid and flexbox layouts for organizing content
-                            </CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="mb-4">
-                                <code className="bg-gray-100 px-3 py-1 rounded text-sm">
-                                    &lt;BlockEl id="feature_grid" /&gt;
-                                </code>
-                            </div>
-                            <div className="border rounded-lg p-4 bg-white">
-                                <BlockEl 
-                                    id="feature_grid"
-                                    fallback={
-                                        <div className="text-gray-500 italic">
-                                            Create a layout block with ID "feature_grid" in the admin panel to display a grid layout here.
-                                        </div>
-                                    }
-                                />
-                            </div>
-                        </CardContent>
-                    </Card>
-                </div>
-
-                {/* Getting Started Guide */}
-                <Card className="bg-blue-50 border-blue-200">
-                    <CardHeader>
-                        <CardTitle className="text-blue-900">Getting Started</CardTitle>
-                        <CardDescription className="text-blue-700">
-                            Follow these steps to start using content blocks in your site
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="grid md:grid-cols-2 gap-6 text-blue-800">
-                            <div className="space-y-4">
-                                <div>
-                                    <h3 className="font-semibold">1. Create Blocks in Admin</h3>
-                                    <p className="text-sm">
-                                        Go to <code className="bg-blue-100 px-2 py-1 rounded">Admin → Blocks</code> to create and manage your content blocks.
-                                    </p>
-                                </div>
-                                <div>
-                                    <h3 className="font-semibold">2. Copy the Block ID</h3>
-                                    <p className="text-sm">
-                                        Each block gets a unique ID that you'll use to reference it in your components.
-                                    </p>
-                                </div>
-                                <div>
-                                    <h3 className="font-semibold">3. Use BlockEl Component</h3>
-                                    <p className="text-sm">
-                                        Import and use the BlockEl component in any React page or component.
-                                    </p>
-                                </div>
-                            </div>
-                            <div className="space-y-4">
-                                <div>
-                                    <h3 className="font-semibold">Code Example</h3>
-                                    <div className="bg-blue-100 p-3 rounded text-sm font-mono">
-                                        <div className="text-blue-600">// Import the component</div>
-                                        <div>import BlockEl from '@/components/BlockEl';</div>
-                                        <br />
-                                        <div className="text-blue-600">// Use in your JSX</div>
-                                        <div>&lt;BlockEl id="your_block_id" /&gt;</div>
-                                    </div>
-                                </div>
-                                <div>
-                                    <h3 className="font-semibold">Features</h3>
-                                    <ul className="text-sm space-y-1">
-                                        <li>✅ Automatic type detection and rendering</li>
-                                        <li>✅ Loading states and error handling</li>
-                                        <li>✅ Fallback content support</li>
-                                        <li>✅ Custom styling with className and style props</li>
-                                        <li>✅ Active/inactive status respect</li>
-                                    </ul>
-                                </div>
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
-
-                {/* Multiple Blocks Example */}
+                {/* API Documentation */}
                 <Card>
                     <CardHeader>
-                        <CardTitle>Multiple Blocks Example</CardTitle>
+                        <CardTitle>BlockEl Component Props</CardTitle>
                         <CardDescription>
-                            You can use multiple blocks together to build complex layouts
+                            Available props for customizing block rendering
                         </CardDescription>
                     </CardHeader>
                     <CardContent>
-                        <div className="space-y-6">
-                            <div className="grid md:grid-cols-2 gap-4">
-                                <BlockEl 
-                                    id="sidebar_text" 
-                                    fallback={<div className="bg-gray-100 p-4 rounded text-gray-500 italic">Sidebar text block</div>}
-                                />
-                                <BlockEl 
-                                    id="main_content" 
-                                    fallback={<div className="bg-gray-100 p-4 rounded text-gray-500 italic">Main content block</div>}
-                                />
+                        <div className="space-y-4">
+                            <div>
+                                <code className="bg-gray-100 text-gray-600 px-2 py-1 rounded text-sm font-semibold">id</code>
+                                <span className="text-gray-600 ml-2">(required) - The unique identifier of the block</span>
                             </div>
-                            <BlockEl 
-                                id="footer_info" 
-                                fallback={<div className="bg-gray-100 p-4 rounded text-center text-gray-500 italic">Footer info block</div>}
-                            />
+                            <div>
+                                <code className="bg-gray-100 text-gray-600 px-2 py-1 rounded text-sm font-semibold">className</code>
+                                <span className="text-gray-600 ml-2">(optional) - Additional CSS classes for styling</span>
+                            </div>
+                            <div>
+                                <code className="bg-gray-100 text-gray-600 px-2 py-1 rounded text-sm font-semibold">style</code>
+                                <span className="text-gray-600 ml-2">(optional) - Inline styles object</span>
+                            </div>
+                            <div>
+                                <code className="bg-gray-100 text-gray-600 px-2 py-1 rounded text-sm font-semibold">fallback</code>
+                                <span className="text-gray-600 ml-2">(optional) - Content to display if block is not found</span>
+                            </div>
                         </div>
                     </CardContent>
                 </Card>

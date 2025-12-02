@@ -25,6 +25,10 @@ const PaymentSuccess = () => {
     const [loading, setLoading] = useState(true);
     const [timeRemaining, setTimeRemaining] = useState(null);
     const [paymentExpired, setPaymentExpired] = useState(false);
+    const [paymentVerified, setPaymentVerified] = useState(false);
+    const [isPolling, setIsPolling] = useState(false);
+    const [orderCancelled, setOrderCancelled] = useState(false);
+    const pollingIntervalRef = useRef(null);
 
     // Use ref to track if we've already processed the order
     const hasProcessedOrder = useRef(false);
@@ -70,9 +74,7 @@ const PaymentSuccess = () => {
                     } catch (_e) {
                         actualOrderId = orderId;
                     }
-                }
-
-                console.log('Fetching order from database with ID:', actualOrderId);
+                } 
 
                 // Fetch order directly from database using admin.js
                 const orderResult = await getOrderById(actualOrderId);
@@ -84,8 +86,7 @@ const PaymentSuccess = () => {
                     return;
                 }
 
-                const orderData = orderResult.data;
-                console.log('Retrieved order from database:', orderData);
+                const orderData = orderResult.data; 
 
                 // Parse items and customer data if they are stored as strings
                 const rawItems = typeof orderData.items === 'string' ? JSON.parse(orderData.items) : orderData.items || [];
@@ -200,6 +201,59 @@ const PaymentSuccess = () => {
         return () => clearInterval(timer);
     }, [timeRemaining]);
 
+    // Poll order status for MB WAY payments
+    useEffect(() => {
+        // Only poll for eupago_mbway payments that haven't been verified or expired
+        if (paymentMethod !== 'eupago' || eupagoMethod !== 'mbway') return;
+        if (paymentVerified || paymentExpired || orderCancelled || !orderDetails) return;
+        if (isPolling) return;
+
+        setIsPolling(true);
+
+        // Poll every 5 seconds
+        const pollOrderStatus = async () => {
+            try {
+                let actualOrderId = orderId;
+                try {
+                    actualOrderId = atob(orderId);
+                } catch (_e) {
+                    actualOrderId = orderId;
+                }
+
+                const orderResult = await getOrderById(actualOrderId);
+                
+                if (orderResult.success && orderResult.data) {
+                    const order = orderResult.data;
+                    
+                    // Check if payment has been confirmed
+                    if (order.status === 'paid' || order.status === 'confirmed' || order.paymentStatus === 'paid') {
+                        setPaymentVerified(true);
+                        if (pollingIntervalRef.current) {
+                            clearInterval(pollingIntervalRef.current);
+                            pollingIntervalRef.current = null;
+                        }
+                        return;
+                    }
+                }
+            } catch (e) {
+                console.error('Error polling order status:', e);
+            }
+        };
+
+        // Start polling
+        pollingIntervalRef.current = setInterval(pollOrderStatus, 5000);
+
+        // Initial poll
+        pollOrderStatus();
+
+        return () => {
+            if (pollingIntervalRef.current) {
+                clearInterval(pollingIntervalRef.current);
+                pollingIntervalRef.current = null;
+            }
+        };
+    }, [paymentMethod, eupagoMethod, paymentVerified, paymentExpired, orderCancelled, orderDetails, orderId]);
+
     // Format countdown time (MM:SS)
     const formatTime = (seconds) => {
         const mins = Math.floor(seconds / 60);
@@ -273,13 +327,29 @@ const PaymentSuccess = () => {
                 className="mx-auto max-w-4xl">
                 {/* Success Icon */}
                 <div className="mb-8 text-center">
-                    {error ? (
+                    {error || orderCancelled ? (
                         <motion.div
                             initial={{ scale: 0 }}
                             animate={{ scale: 1 }}
                             transition={{ type: 'spring', stiffness: 260, damping: 20 }}
                             className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-red-500 text-white">
                             <XCircle className="h-10 w-10" />
+                        </motion.div>
+                    ) : paymentMethod === 'eupago' && eupagoMethod === 'mbway' && paymentExpired && !paymentVerified ? (
+                        <motion.div
+                            initial={{ scale: 0 }}
+                            animate={{ scale: 1 }}
+                            transition={{ type: 'spring', stiffness: 260, damping: 20 }}
+                            className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-red-500 text-white">
+                            <XCircle className="h-10 w-10" />
+                        </motion.div>
+                    ) : paymentMethod === 'eupago' && eupagoMethod === 'mbway' && !paymentVerified ? (
+                        <motion.div
+                            initial={{ scale: 0 }}
+                            animate={{ scale: 1 }}
+                            transition={{ type: 'spring', stiffness: 260, damping: 20 }}
+                            className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-blue-500">
+                            <div className="h-10 w-10 animate-spin rounded-full border-white border-b-2"></div>
                         </motion.div>
                     ) : (
                         <motion.div
@@ -292,14 +362,31 @@ const PaymentSuccess = () => {
                     )}
 
                     <h1 className="mb-4 font-bold text-4xl">
-                        {error ? <span>{error}</span> : <span>{t('paymentSuccessTitle')}</span>}
+                        {error ? (
+                            <span>{error}</span>
+                        ) : orderCancelled ? (
+                            <span>Order Cancelled</span>
+                        ) : paymentMethod === 'eupago' && eupagoMethod === 'mbway' && paymentExpired && !paymentVerified ? (
+                            <span>Payment Expired</span>
+                        ) : paymentMethod === 'eupago' && eupagoMethod === 'mbway' && !paymentVerified ? (
+                            <span>Payment Pending</span>
+                        ) : (
+                            <span>{t('paymentSuccessTitle')}</span>
+                        )}
                     </h1>
 
-                    {!error && (
+                    {!error && !orderCancelled && (
                         <>
-                            <p className="mb-4 text-muted-foreground text-xl">{t('paymentSuccessMessage')}</p>
+                            <p className="mb-4 text-muted-foreground text-xl">
+                                {paymentMethod === 'eupago' && eupagoMethod === 'mbway' && paymentExpired && !paymentVerified 
+                                    ? 'Your MB WAY payment window has expired. This order will be automatically cancelled by our system.'
+                                    : paymentMethod === 'eupago' && eupagoMethod === 'mbway' && !paymentVerified 
+                                    ? 'Please confirm your payment in the MB WAY app to complete your order.'
+                                    : t('paymentSuccessMessage')
+                                }
+                            </p>
                             {paymentMethod === 'bank_transfer' && (
-                                <div className="mb-4 rounded-lg border border-blue-200 bg-blue-50 p-4">
+                                <div className="mb-4 rounded-lg p-4">
                                     <p className="text-blue-800 text-sm">
                                         <strong>{t('bankTransfer')}:</strong> {t('bankTransferPayment')}
                                     </p>
@@ -312,22 +399,36 @@ const PaymentSuccess = () => {
                                     </p>
                                 </div>
                             )}
-                            {paymentMethod === 'eupago' && eupagoMethod && (
-                                <div className="mb-4 rounded-lg border border-orange-200 bg-orange-50 p-4">
+                            {paymentMethod === 'eupago' && eupagoMethod === 'mbway' && paymentVerified && (
+                                <div className="mb-4 rounded-lg border border-green-200 bg-green-50 p-4">
+                                    <div className="text-green-800">
+                                        <h3 className="font-semibold mb-3">✅ Payment Confirmed</h3>
+                                        <p className="text-sm">Your MB WAY payment has been successfully confirmed. Thank you for your purchase!</p>
+                                    </div>
+                                </div>
+                            )}
+                            {paymentMethod === 'eupago' && eupagoMethod && !paymentVerified && (
+                                <div className="mb-4 rounded-lg border p-4">
                                     {eupagoMethod === 'mbway' ? (
-                                        <div className="text-orange-800">
+                                        <div>
                                             <h3 className="font-semibold mb-3">📱 MB WAY Payment</h3>
                                             
-                                            {paymentExpired ? (
+                                            {orderCancelled ? (
+                                                <div className="mb-3 p-3 bg-red-100 border border-red-300 rounded text-red-800">
+                                                    <p className="font-semibold">❌ Order Cancelled</p>
+                                                    <p className="text-sm mt-1">Your order has been automatically cancelled due to payment timeout. The MB WAY payment was not confirmed within the 5-minute window.</p>
+                                                    <p className="text-sm mt-2 font-semibold">Please place a new order if you wish to continue with your purchase.</p>
+                                                </div>
+                                            ) : paymentExpired ? (
                                                 <div className="mb-3 p-3 bg-red-100 border border-red-300 rounded text-red-800">
                                                     <p className="font-semibold">⏰ Payment Time Expired</p>
-                                                    <p className="text-sm mt-1">Your MB WAY payment window has expired. Please contact support or place a new order.</p>
+                                                    <p className="text-sm mt-1">Your MB WAY payment window has expired. This order will be automatically cancelled by our system.</p>
                                                 </div>
                                             ) : timeRemaining !== null ? (
-                                                <div className="mb-3 p-3 bg-blue-100 border border-blue-300 rounded">
+                                                <div className="mb-3 p-3 border rounded">
                                                     <div className="flex items-center justify-between">
-                                                        <span className="font-semibold text-blue-900">Time Remaining:</span>
-                                                        <span className="text-2xl font-mono font-bold text-blue-900">{formatTime(timeRemaining)}</span>
+                                                        <span className="font-semibold">Time Remaining:</span>
+                                                        <span className="text-2xl font-mono font-bold">{formatTime(timeRemaining)}</span>
                                                     </div>
                                                     <p className="text-blue-700 text-xs mt-1">⚠️ Approve the payment in your MB WAY app before time runs out</p>
                                                 </div>
@@ -337,11 +438,11 @@ const PaymentSuccess = () => {
                                                 A payment request has been sent to your MB WAY app. Please open your MB WAY app and approve the payment.
                                             </p>
                                             <div className="space-y-2 text-sm">
-                                                <p><strong>Reference:</strong> <span className="font-mono bg-white px-2 py-1 rounded">{eupagoReference}</span></p>
+                                                <p><strong>Reference:</strong> <span className="font-mono bg-white text-gray-800 px-2 py-1 rounded">{eupagoReference}</span></p>
                                                 <p><strong>Amount:</strong> €{eupagoAmount}</p>
                                             </div>
-                                            <div className="mt-3 p-3 bg-blue-50 rounded text-xs space-y-1">
-                                                <p className="font-semibold text-blue-900">How to complete payment:</p>
+                                            <div className="mt-3 p-3 rounded text-xs space-y-1">
+                                                <p className="font-semibold">How to complete payment:</p>
                                                 <p>1. Open your MB WAY app on your phone</p>
                                                 <p>2. Check for the payment notification</p>
                                                 <p>3. Verify the amount and merchant details</p>
@@ -377,19 +478,19 @@ const PaymentSuccess = () => {
                     )}
                 </div>
 
-                {error ? (
+                {error || orderCancelled ? (
                     <Card className="border-destructive/50 bg-destructive/10">
                         <CardContent className="pt-6 text-center">
                             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
                                 <Button onClick={handleContinue} size="lg">
                                     <Home className="mr-2 h-5 w-5" />
-                                    {t('backToHome')}
+                                    {orderCancelled ? 'Return to Shop' : t('backToHome')}
                                 </Button>
                             </motion.div>
                         </CardContent>
                     </Card>
                 ) : (
-                    orderDetails && (
+                    orderDetails && (paymentMethod !== 'eupago' || eupagoMethod !== 'mbway' || paymentVerified) && (
                         <motion.div
                             initial={{ opacity: 0, y: 20 }}
                             animate={{ opacity: 1, y: 0 }}
@@ -542,7 +643,7 @@ const PaymentSuccess = () => {
                 )}
 
                 {/* Action Buttons */}
-                {!error && orderDetails && (
+                {!error && !orderCancelled && orderDetails && (paymentMethod !== 'eupago' || eupagoMethod !== 'mbway' || paymentVerified) && (
                     <motion.div
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
@@ -556,6 +657,24 @@ const PaymentSuccess = () => {
                             <Download className="mr-2 h-5 w-5" />
                             {t('downloadReceipt')}
                         </Button>
+                    </motion.div>
+                )}
+
+                {/* Payment Verification Message */}
+                {!error && !orderCancelled && orderDetails && paymentMethod === 'eupago' && eupagoMethod === 'mbway' && !paymentVerified && !paymentExpired && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ delay: 0.4 }}
+                        className="mt-8 text-center">
+                        <Card>
+                            <CardContent className="pt-6">
+                                <div className="flex flex-col items-center space-y-3">
+                                    <p className="font-semibold">Waiting for Payment Confirmation...</p>
+                                    <p className="text-blue-700 text-sm">Please approve the payment in your MB WAY app. Your order details will appear once payment is confirmed.</p>
+                                </div>
+                            </CardContent>
+                        </Card>
                     </motion.div>
                 )}
 

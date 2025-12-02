@@ -103,8 +103,7 @@ export async function POST(request) {
 
         // Create or update customer using smart function
         try {
-            const customerResult = await createOrUpdateCustomerFromOrder(orderData.customer);
-            console.log('Customer operation result:', customerResult);
+            const customerResult = await createOrUpdateCustomerFromOrder(orderData.customer); 
         } catch (customerError) {
             console.warn('Failed to create/update customer record:', customerError);
             // Continue with order processing even if customer operation fails
@@ -147,8 +146,7 @@ export async function POST(request) {
                 };
 
                 await EmailService.sendOrderConfirmationEmail(orderData.customer.email, emailPayload);
-
-                console.log('Order confirmation email sent to:', orderData.customer.email);
+ 
             } catch (emailError) {
                 console.error('Failed to send order confirmation email:', emailError);
                 // Don't fail the order creation if email fails

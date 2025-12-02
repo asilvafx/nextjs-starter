@@ -266,8 +266,7 @@ const PaymentForm = ({
                 setPromoError('');
                 // Update cart total display
                 onShippingUpdate(shippingCost, selectedShippingMethod, result.discount.amount);
-            } else {
-                console.log(result); 
+            } else { 
                 setPromoError(result.message || 'Invalid promo code');
                 setAppliedCoupon(null);
                 setDiscountAmount(0);
@@ -560,8 +559,7 @@ const PaymentForm = ({
                     }
                 };
 
-                // Process EuPago payment
-                console.log('Sending EuPago payment request:', eupagoPaymentData);
+                // Process EuPago payment 
                 
                 const eupagoResponse = await fetch('/api/eupago', {
                     method: 'POST',
@@ -572,20 +570,15 @@ const PaymentForm = ({
                         action: 'process_payment',
                         orderData: eupagoPaymentData
                     })
-                });
-
-                console.log('EuPago response status:', eupagoResponse.status);
-                console.log('EuPago response headers:', Object.fromEntries(eupagoResponse.headers.entries()));
+                }); 
 
                 // Get the raw response text first
-                const responseText = await eupagoResponse.text();
-                console.log('EuPago raw response (first 1000 chars):', responseText.substring(0, 1000));
+                const responseText = await eupagoResponse.text(); 
 
                 // Try to parse as JSON
                 let eupagoResult;
                 try {
-                    eupagoResult = JSON.parse(responseText);
-                    console.log('EuPago result:', eupagoResult);
+                    eupagoResult = JSON.parse(responseText); 
                 } catch (parseError) {
                     console.error('Failed to parse JSON:', parseError);
                     console.error('Full response:', responseText);

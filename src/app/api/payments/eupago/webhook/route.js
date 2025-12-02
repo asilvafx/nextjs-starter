@@ -26,8 +26,7 @@ export const POST = withPublicAccess(async (req) => {
             const statusCheck = await checkEuPagoPaymentStatus(reference, entity);
 
             if (statusCheck.success && statusCheck.paid) {
-                // The service will handle updating the order and sending emails
-                console.log(`EuPago webhook: Payment confirmed for reference ${reference}`);
+                // The service will handle updating the order and sending emails  
             }
         }
 

@@ -129,9 +129,7 @@ export async function POST(req) {
 
             case 'process_payment': {
                 const { orderData } = data;
-                
-                console.log('EuPago API - process_payment action called with data:', JSON.stringify(orderData, null, 2));
-
+                 
                 if (!orderData) {
                     return new Response(
                         JSON.stringify({
@@ -149,9 +147,7 @@ export async function POST(req) {
                 }
 
                 const processResult = await processEuPagoPayment(orderData);
-                
-                console.log('EuPago API - processResult:', JSON.stringify(processResult, null, 2));
-                
+                 
                 // Ensure we always return JSON
                 if (!processResult) {
                     console.error('EuPago API - processEuPagoPayment returned null/undefined');

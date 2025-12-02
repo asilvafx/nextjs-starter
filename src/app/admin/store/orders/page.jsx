@@ -1397,7 +1397,7 @@ export default function OrdersPage() {
                                                                                         <label className="font-medium text-gray-500 text-sm block mb-2">
                                                                                             EuPago Payment Information
                                                                                         </label>
-                                                                                        <div className="space-y-2 bg-gray-50 p-3 rounded-md">
+                                                                                        <div className="space-y-2 border p-3 rounded-md">
                                                                                             <div className="flex justify-between">
                                                                                                 <span className="text-sm text-gray-600">Method:</span>
                                                                                                 <span className="text-sm font-medium">
